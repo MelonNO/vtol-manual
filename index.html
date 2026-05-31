@@ -1165,7 +1165,7 @@ async function fetchWeather() {
         '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">' + lat.toFixed(4) + ', ' + lon.toFixed(4) + ' · ' + skyDesc(wCode) + ' · ' + new Date().toLocaleTimeString() + '</div>' +
       '</div>' +
       // 3 status banners
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px">' +
         '<div style="background:' + wStat.bg + ';border:2px solid ' + wStat.c + ';padding:14px 16px">' +
           '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">WIND</div>' +
           '<div style="font-family:var(--head);font-size:24px;font-weight:700;color:' + wStat.c + ';letter-spacing:3px">' + wStat.s + '</div>' +
