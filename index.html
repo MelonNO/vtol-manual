@@ -822,24 +822,15 @@ pfRenderArchive();
 // ── WEATHER ──
 function getLocation() {
   const btn = document.querySelector('[onclick="getLocation()"]');
-  if (!navigator.geolocation) {
-    alert('Geolocation is not supported by this browser.');
-    return;
-  }
-  btn.textContent = 'LOCATING...';
-  btn.disabled = true;
+  if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+  btn.textContent = 'LOCATING...'; btn.disabled = true;
   navigator.geolocation.getCurrentPosition(
     pos => {
       document.getElementById('wx-lat').value = pos.coords.latitude.toFixed(4);
       document.getElementById('wx-lon').value = pos.coords.longitude.toFixed(4);
-      btn.textContent = 'USE GPS';
-      btn.disabled = false;
+      btn.textContent = 'USE GPS'; btn.disabled = false;
     },
-    err => {
-      btn.textContent = 'USE GPS';
-      btn.disabled = false;
-      alert('GPS error: ' + err.message);
-    },
+    err => { btn.textContent = 'USE GPS'; btn.disabled = false; alert('GPS error: ' + err.message); },
     { timeout: 10000 }
   );
 }
@@ -854,61 +845,163 @@ async function fetchWeather() {
   }
   out.innerHTML = '<div class="alert alert-info">Fetching weather data...</div>';
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code&wind_speed_unit=ms&timezone=auto`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const c = data.current;
-    const wind = c.wind_speed_10m;
-    const gusts = c.wind_gusts_10m;
-    const temp = c.temperature_2m;
-    const dir = c.wind_direction_10m;
+    const wxUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+      '&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation,rain,snowfall' +
+      '&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,weather_code,' +
+      'temperature_1000hPa,temperature_950hPa,temperature_900hPa,temperature_850hPa,' +
+      'relative_humidity_1000hPa,relative_humidity_950hPa,relative_humidity_900hPa,relative_humidity_850hPa' +
+      '&wind_speed_unit=ms&timezone=auto&forecast_days=1';
 
-    let status, statusColor, statusBg;
-    if (wind > 8 || gusts > 10) {
-      status = 'NO-GO'; statusColor = 'var(--red)'; statusBg = '#1f0a0a';
-    } else if (wind > 5) {
-      status = 'CAUTION'; statusColor = 'var(--amber)'; statusBg = '#1f1a08';
-    } else {
-      status = 'GO'; statusColor = 'var(--green)'; statusBg = '#0a1f0e';
+    const [wxResp, geoResp] = await Promise.all([
+      fetch(wxUrl),
+      fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lon + '&format=json&accept-language=en').catch(() => null)
+    ]);
+    if (!wxResp.ok) throw new Error('HTTP ' + wxResp.status);
+    const data = await wxResp.json();
+    const geoData = geoResp ? await geoResp.json().catch(() => null) : null;
+
+    const c = data.current;
+    const wind = c.wind_speed_10m, gusts = c.wind_gusts_10m, temp = c.temperature_2m;
+    const rh = c.relative_humidity_2m, dir = c.wind_direction_10m;
+    const precip = c.precipitation || 0, wCode = c.weather_code;
+    const hIdx = Math.max(0, data.hourly.time.indexOf(c.time));
+    const h = data.hourly;
+
+    // Location name
+    let locName = lat.toFixed(4) + ', ' + lon.toFixed(4);
+    if (geoData && geoData.address) {
+      const a = geoData.address;
+      const parts = [a.village || a.town || a.city || a.county, a.state || a.region, a.country].filter(Boolean);
+      if (parts.length) locName = parts.join(', ');
     }
 
-    const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-    const dirLabel = dirs[Math.round(dir / 22.5) % 16];
+    const DIRS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    function compass(d) { return DIRS[Math.round(d / 22.5) % 16]; }
 
-    out.innerHTML = `
-      <div style="background:${statusBg};border:2px solid ${statusColor};padding:18px 20px;margin-bottom:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-        <div style="font-family:var(--head);font-size:42px;font-weight:700;color:${statusColor};letter-spacing:4px;line-height:1">${status}</div>
-        <div style="flex:1;min-width:160px">
-          <div style="font-size:13px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">WIND · GUSTS · DIR · TEMP</div>
-          <div style="font-family:var(--head);font-size:22px;font-weight:700;color:var(--text);letter-spacing:2px">
-            ${wind.toFixed(1)} m/s · ${gusts.toFixed(1)} m/s · ${dirLabel} · ${temp.toFixed(1)}°C
-          </div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px">
-        <div class="card${wind > 8 ? ' danger' : wind > 5 ? ' amber' : ' accent'}">
-          <div class="card-title">WIND SPEED</div>
-          <div style="font-family:var(--head);font-size:28px;font-weight:700;color:${wind > 8 ? 'var(--red)' : wind > 5 ? 'var(--amber)' : 'var(--green)'}">${wind.toFixed(1)} <span style="font-size:14px">m/s</span></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">LIMIT: GO ≤5 · CAU ≤8</div>
-        </div>
-        <div class="card${gusts > 10 ? ' danger' : gusts > 8 ? ' amber' : ' accent'}">
-          <div class="card-title">GUSTS</div>
-          <div style="font-family:var(--head);font-size:28px;font-weight:700;color:${gusts > 10 ? 'var(--red)' : gusts > 8 ? 'var(--amber)' : 'var(--green)'}">${gusts.toFixed(1)} <span style="font-size:14px">m/s</span></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">LIMIT: NO-GO >10</div>
-        </div>
-        <div class="card">
-          <div class="card-title">DIRECTION</div>
-          <div style="font-family:var(--head);font-size:28px;font-weight:700;color:var(--text)">${dirLabel} <span style="font-size:14px">${dir}°</span></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">FROM</div>
-        </div>
-        <div class="card">
-          <div class="card-title">TEMPERATURE</div>
-          <div style="font-family:var(--head);font-size:28px;font-weight:700;color:var(--text)">${temp.toFixed(1)} <span style="font-size:14px">°C</span></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:4px">2m AGL</div>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--muted);letter-spacing:1px">SOURCE: OPEN-METEO · ${lat.toFixed(4)}, ${lon.toFixed(4)} · ${new Date().toLocaleTimeString()}</div>`;
+    const WMO = {0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Freezing fog',
+      51:'Light drizzle',53:'Moderate drizzle',55:'Dense drizzle',56:'Light freezing drizzle',57:'Heavy freezing drizzle',
+      61:'Slight rain',63:'Moderate rain',65:'Heavy rain',66:'Light freezing rain',67:'Heavy freezing rain',
+      71:'Slight snow',73:'Moderate snow',75:'Heavy snow',77:'Snow grains',
+      80:'Slight showers',81:'Moderate showers',82:'Violent showers',85:'Slight snow showers',86:'Heavy snow showers',
+      95:'Thunderstorm',96:'Thunderstorm + hail',99:'Thunderstorm + heavy hail'};
+    function skyDesc(code) { return WMO[code] || 'Unknown'; }
+
+    function windStat(w, g) {
+      if (w > 8 || g > 10) return {s:'NO-GO', c:'var(--red)', bg:'#1f0a0a'};
+      if (w > 5)           return {s:'CAUTION', c:'var(--amber)', bg:'#1f1a08'};
+      return                      {s:'GO', c:'var(--green)', bg:'#0a1f0e'};
+    }
+    function precipStat(code, mm) {
+      if (code >= 95) return {s:'NO-GO', label:'Thunderstorm', c:'var(--red)', bg:'#1f0a0a'};
+      if (code >= 85) return {s:'NO-GO', label:'Snow showers', c:'var(--red)', bg:'#1f0a0a'};
+      if (code >= 71) return {s:'NO-GO', label:'Snow', c:'var(--red)', bg:'#1f0a0a'};
+      if (code === 66 || code === 67) return {s:'NO-GO', label:'Freezing rain', c:'var(--red)', bg:'#1f0a0a'};
+      if (code === 82 || code >= 63 || mm > 4) return {s:'NO-GO', label:skyDesc(code), c:'var(--red)', bg:'#1f0a0a'};
+      if (code >= 51 || mm > 0) return {s:'CAUTION', label:skyDesc(code), c:'var(--amber)', bg:'#1f1a08'};
+      return {s:'GO', label:'None', c:'var(--green)', bg:'#0a1f0e'};
+    }
+    function icingStat(t, rhv) {
+      if (t === null || t === undefined) return {label:'--', c:'var(--muted)'};
+      if (t > 2 || t < -25) return {label:'NIL', c:'var(--green)'};
+      const r = rhv || 0;
+      if (t >= -2  && t <= 2  && r >= 80) return {label:'HIGH', c:'var(--red)'};
+      if (t >= -10 && t < -2  && r >= 80) return {label:'MOD',  c:'var(--amber)'};
+      if (r >= 60) return {label:'LOW', c:'var(--amber)'};
+      return {label:'NIL', c:'var(--green)'};
+    }
+
+    const wStat = windStat(wind, gusts);
+    const pStat = precipStat(wCode, precip);
+
+    const icingLevels = [
+      {label:'SURFACE', alt:'2m AGL',   t:temp,                             rh:rh},
+      {label:'~100m',   alt:'1000 hPa', t:h.temperature_1000hPa[hIdx],      rh:h.relative_humidity_1000hPa[hIdx]},
+      {label:'~500m',   alt:'950 hPa',  t:h.temperature_950hPa[hIdx],       rh:h.relative_humidity_950hPa[hIdx]},
+      {label:'~1000m',  alt:'900 hPa',  t:h.temperature_900hPa[hIdx],       rh:h.relative_humidity_900hPa[hIdx]},
+      {label:'~1500m',  alt:'850 hPa',  t:h.temperature_850hPa[hIdx],       rh:h.relative_humidity_850hPa[hIdx]},
+    ];
+    const icingStats = icingLevels.map(l => icingStat(l.t, l.rh));
+    const worstIcing = icingStats.find(i => i.label === 'HIGH') || icingStats.find(i => i.label === 'MOD') || icingStats.find(i => i.label === 'LOW') || {label:'NIL', c:'var(--green)'};
+
+    // Icing table rows
+    const icingRows = icingLevels.map(function(l, i) {
+      const ice = icingStats[i];
+      const tCol = (l.t !== null && l.t !== undefined && l.t <= 2 && l.t >= -25) ? 'var(--amber)' : 'var(--text)';
+      const tStr = (l.t !== null && l.t !== undefined) ? l.t.toFixed(1) + '°C' : '--';
+      const rhStr = (l.rh !== null && l.rh !== undefined) ? l.rh + '%' : '--';
+      return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px">' +
+        '<span style="color:var(--text);font-family:var(--head);font-weight:700;letter-spacing:1px">' + l.label + '</span>' +
+        '<span style="color:var(--muted)">' + l.alt + '</span>' +
+        '<span style="color:' + tCol + '">' + tStr + '</span>' +
+        '<span style="color:var(--muted)">' + rhStr + '</span>' +
+        '<span style="color:' + ice.c + ';font-family:var(--head);font-weight:700;letter-spacing:1px">' + ice.label + '</span>' +
+        '</div>';
+    }).join('');
+
+    // 4-hour forecast rows
+    var fcastRows = '';
+    for (var i = 1; i <= 4; i++) {
+      var fi = hIdx + i;
+      if (fi >= h.time.length) break;
+      var fw = h.wind_speed_10m[fi], fg = h.wind_gusts_10m[fi];
+      var ft = h.temperature_2m[fi], fd = h.wind_direction_10m[fi];
+      var fp = h.precipitation[fi] || 0, fc = h.weather_code[fi];
+      var fws = windStat(fw, fg), fps = precipStat(fc, fp);
+      var rowC = (fws.s === 'NO-GO' || fps.s === 'NO-GO') ? 'var(--red)' : (fws.s === 'CAUTION' || fps.s === 'CAUTION') ? 'var(--amber)' : 'var(--green)';
+      var timeStr = h.time[fi].slice(11, 16);
+      fcastRows += '<div style="display:grid;grid-template-columns:55px 1fr 45px 60px 1fr;padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;align-items:center">' +
+        '<span style="color:' + rowC + ';font-family:var(--head);font-weight:700">' + timeStr + '</span>' +
+        '<span style="color:var(--text)">' + fw.toFixed(1) + ' m/s G' + fg.toFixed(1) + '</span>' +
+        '<span style="color:var(--muted)">' + compass(fd) + '</span>' +
+        '<span style="color:var(--text)">' + ft.toFixed(1) + '°C</span>' +
+        '<span style="color:' + (fp > 0 ? 'var(--amber)' : 'var(--muted)') + ';font-size:11px">' + skyDesc(fc) + '</span>' +
+        '</div>';
+    }
+
+    out.innerHTML =
+      // Location header
+      '<div style="margin-bottom:16px">' +
+        '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:3px">LOCATION</div>' +
+        '<div style="font-family:var(--head);font-size:20px;font-weight:700;color:var(--text);letter-spacing:1px">' + locName + '</div>' +
+        '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">' + lat.toFixed(4) + ', ' + lon.toFixed(4) + ' · ' + skyDesc(wCode) + ' · ' + new Date().toLocaleTimeString() + '</div>' +
+      '</div>' +
+      // 3 status banners
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">' +
+        '<div style="background:' + wStat.bg + ';border:2px solid ' + wStat.c + ';padding:14px 16px">' +
+          '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">WIND</div>' +
+          '<div style="font-family:var(--head);font-size:24px;font-weight:700;color:' + wStat.c + ';letter-spacing:3px">' + wStat.s + '</div>' +
+          '<div style="font-family:var(--head);font-size:14px;color:var(--text);margin-top:4px">' + wind.toFixed(1) + ' m/s · G' + gusts.toFixed(1) + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + compass(dir) + ' ' + dir + '° · ' + temp.toFixed(1) + '°C</div>' +
+        '</div>' +
+        '<div style="background:' + pStat.bg + ';border:2px solid ' + pStat.c + ';padding:14px 16px">' +
+          '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">PRECIPITATION</div>' +
+          '<div style="font-family:var(--head);font-size:24px;font-weight:700;color:' + pStat.c + ';letter-spacing:3px">' + pStat.s + '</div>' +
+          '<div style="font-family:var(--head);font-size:14px;color:var(--text);margin-top:4px">' + pStat.label + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (precip > 0 ? precip.toFixed(1) + ' mm/h' : 'No precipitation') + '</div>' +
+        '</div>' +
+        '<div style="background:' + (worstIcing.label==='HIGH'?'#1f0a0a':worstIcing.label==='NIL'?'#0a1f0e':'#1f1a08') + ';border:2px solid ' + worstIcing.c + ';padding:14px 16px">' +
+          '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">ICING</div>' +
+          '<div style="font-family:var(--head);font-size:24px;font-weight:700;color:' + worstIcing.c + ';letter-spacing:3px">' + (worstIcing.label==='NIL'?'CLEAR':worstIcing.label) + '</div>' +
+          '<div style="font-family:var(--head);font-size:14px;color:var(--text);margin-top:4px">' + (worstIcing.label==='NIL'?'No icing risk':'Icing possible') + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-top:2px">Worst across all levels</div>' +
+        '</div>' +
+      '</div>' +
+      // Icing table
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">ICING BY ALTITUDE</div>' +
+      '<div style="background:var(--surface);border:1px solid var(--border2);margin-bottom:14px">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:8px 12px;border-bottom:1px solid var(--border2);font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted)">' +
+          '<span>ALT</span><span>PRESSURE</span><span>TEMP</span><span>RH</span><span>RISK</span>' +
+        '</div>' + icingRows +
+      '</div>' +
+      // 4-hour forecast
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">4-HOUR FORECAST</div>' +
+      '<div style="background:var(--surface);border:1px solid var(--border2);margin-bottom:14px">' +
+        '<div style="display:grid;grid-template-columns:55px 1fr 45px 60px 1fr;padding:8px 12px;border-bottom:1px solid var(--border2);font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted)">' +
+          '<span>TIME</span><span>WIND</span><span>DIR</span><span>TEMP</span><span>CONDITIONS</span>' +
+        '</div>' + fcastRows +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--muted);letter-spacing:1px">SOURCE: OPEN-METEO · OSM NOMINATIM · ' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '</div>';
+
   } catch(e) {
     out.innerHTML = '<div class="alert alert-danger">Failed to fetch weather: ' + e.message + '</div>';
   }
