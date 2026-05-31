@@ -1390,7 +1390,7 @@ function parseBinData(buf) {
   }
   if(!firstT)firstT=bat.t[0]||gps.t[0]||0;
   if(!lastT) lastT=bat.t[bat.t.length-1]||gps.t[gps.t.length-1]||0;
-  return {bat,gps,arsp,modes,msgs,firstT,lastT};
+  return {bat,gps,pos,arsp,modes,msgs,firstT,lastT};
 }
 
 function binChart(values, times, color, height) {
