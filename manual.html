@@ -705,6 +705,60 @@ function filterPrearm() {
     row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
   });
 }
+function escRx(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+function escH(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function manSearch(query) {
+  var wrap=document.getElementById('man-search-wrap');
+  var list=document.getElementById('man-search-results');
+  query=query.trim();
+  if(!query){wrap.style.display='none';return;}
+  var TABS={overview:'Overview',comms:'RF & Comms',flightmodes:'Flight Modes',aircraft:'Aircraft',mission:'Mission',procedures:'Procedures',emergency:'Emergency',prearm:'Pre-Arm Ref',abbrev:'Abbreviations'};
+  var re=new RegExp(escRx(query),'i'), reG=new RegExp(escRx(query),'gi');
+  var results=[], seen=new Set();
+  Object.keys(TABS).forEach(function(tabId){
+    if(results.length>=25)return;
+    var panel=document.getElementById('tab-'+tabId); if(!panel)return;
+    var walker=document.createTreeWalker(panel,NodeFilter.SHOW_TEXT);
+    var node;
+    while((node=walker.nextNode())&&results.length<25){
+      var text=node.nodeValue||'';
+      if(!text.trim()||!re.test(text))continue;
+      reG.lastIndex=0;
+      var m=reG.exec(text); if(!m)continue;
+      var s=Math.max(0,m.index-55), e=Math.min(text.length,m.index+m[0].length+95);
+      var snippet=(s>0?'…':'')+text.slice(s,e)+(e<text.length?'…':'');
+      var section=TABS[tabId];
+      var titles=panel.querySelectorAll('.section-title'), bestTitle=null;
+      titles.forEach(function(t){if(node.compareDocumentPosition(t)&Node.DOCUMENT_POSITION_PRECEDING)bestTitle=t;});
+      if(bestTitle)section=TABS[tabId]+' › '+bestTitle.textContent.trim();
+      var key=tabId+'|'+section+'|'+snippet.slice(0,40);
+      if(!seen.has(key)){seen.add(key);results.push({tabId:tabId,section:section,snippet:snippet,mt:m[0]});}
+    }
+  });
+  wrap.style.display='';
+  if(!results.length){
+    list.innerHTML='<div style="padding:12px 20px;color:var(--muted);font-size:13px;letter-spacing:1px">NO RESULTS FOR “'+escH(query)+'”</div>';
+    return;
+  }
+  list.innerHTML='<div style="padding:8px 20px;font-size:10px;color:var(--muted);letter-spacing:2px;border-bottom:1px solid var(--border2)">'+results.length+' RESULT'+(results.length!==1?'S':'')+' — CLICK TO NAVIGATE</div>'+
+    results.map(function(r){
+      var safe=escH(r.snippet).replace(new RegExp(escRx(escH(r.mt)),'gi'),'<mark style="background:var(--amber);color:#000;padding:0 2px">$&</mark>');
+      return '<div onclick="manGoTo(\''+r.tabId+'\')" style="padding:10px 20px;border-bottom:1px solid var(--border);cursor:pointer" onmouseover="this.style.background=\'var(--surface2)\'" onmouseout="this.style.background=\'\'">'
+        +'<div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--accent);margin-bottom:3px">'+escH(r.section)+'</div>'
+        +'<div style="font-size:13px;color:var(--muted);line-height:1.5">'+safe+'</div>'
+        +'</div>';
+    }).join('');
+}
+
+function manGoTo(tabId){
+  document.getElementById('man-search').value='';
+  document.getElementById('man-search-wrap').style.display='none';
+  var btn=document.querySelector('button[onclick*="\''+tabId+'\'"]');
+  switchTab(tabId,btn);
+  window.scrollTo(0,0);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('tab-overview').classList.add('active');
   document.querySelector('nav button[onclick*="overview"]').classList.add('active');
