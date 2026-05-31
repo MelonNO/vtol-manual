@@ -601,6 +601,22 @@ function logBattery() {
   ['bl-flight','bl-start','bl-min','bl-rest','bl-time','bl-notes'].forEach(id=>document.getElementById(id).value='');
 }
 function deleteBattEntry(idx) { if (!confirm('Delete this entry?')) return; const e=loadBattLog(); e.splice(idx,1); saveBattLog(e); renderBattLog(); }
+
+const BATT_CHEM = {
+  lipo:  { full:4.20, nominal:3.70, low:3.60, critical:3.50, name:'LiPo' },
+  liion: { full:4.20, nominal:3.60, low:3.20, critical:3.00, name:'Li-Ion' },
+  life:  { full:3.65, nominal:3.30, low:3.00, critical:2.80, name:'LiFe' }
+};
+function loadBattType() {
+  try { return JSON.parse(localStorage.getItem('vtol_batt_type')) || {cells:6, chem:'lipo'}; }
+  catch(e) { return {cells:6, chem:'lipo'}; }
+}
+function saveBattType() {
+  const cells = parseInt(document.getElementById('bl-cells').value);
+  const chem  = document.getElementById('bl-chem').value;
+  localStorage.setItem('vtol_batt_type', JSON.stringify({cells, chem}));
+}
+
 function renderBattLog() {
   const entries=loadBattLog(), empty=document.getElementById('bl-log-empty'), table=document.getElementById('bl-log-table'), analysis=document.getElementById('bl-analysis');
   if (!entries.length) { empty.style.display=''; table.style.display='none'; analysis.innerHTML=''; return; }
