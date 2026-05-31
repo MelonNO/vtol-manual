@@ -621,7 +621,7 @@ let pfStart = null, pfElapsed = 0, pfInterval = null, pfRunning = false;
 
 // ── PERSISTENT DATA STORE ──
 var vtolData = { archive: [], weatherFavorites: [] };
-var vtolDataHandle = null, vtolDataHandlePending = null, wxCurrentLocName = '';
+var vtolDataHandle = null, vtolDataHandlePending = null, wxCurrentLocName = '', vtolSyncTimer = null;
 
 function idbGet(key) {
   return new Promise(function(res,rej){
