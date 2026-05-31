@@ -1240,7 +1240,18 @@ function mavlinkExtractBattery(buf) {
   const minV = toV(Math.min(...valid));
   // Approximate duration: assume ~1Hz voltage samples
   const durationMin = valid.length / 60;
-  const date = new Date().toISOString().split('T')[0];
+  // Extract actual flight date from first .tlog timestamp (8-byte big-endian uint64 microseconds)
+  let date = new Date().toISOString().split('T')[0];
+  for (let j = 8; j < Math.min(buf.length, 500); j++) {
+    if (buf[j] === 0xFE || buf[j] === 0xFD) {
+      const hi = ((buf[j-8]<<24)|(buf[j-7]<<16)|(buf[j-6]<<8)|buf[j-5]) >>> 0;
+      const lo = ((buf[j-4]<<24)|(buf[j-3]<<16)|(buf[j-2]<<8)|buf[j-1]) >>> 0;
+      const ms = (hi * 4294967296 + lo) / 1000;
+      const d = new Date(ms);
+      if (d.getFullYear() >= 2015 && d.getFullYear() <= 2040) date = d.toISOString().split('T')[0];
+      break;
+    }
+  }
 
   return { startV, minV, endV, durationMin, date };
 }
