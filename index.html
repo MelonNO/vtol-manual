@@ -818,6 +818,101 @@ function mavlinkExtractBattery(buf) {
 
 // Render archive on load
 pfRenderArchive();
+
+// ── WEATHER ──
+function getLocation() {
+  const btn = document.querySelector('[onclick="getLocation()"]');
+  if (!navigator.geolocation) {
+    alert('Geolocation is not supported by this browser.');
+    return;
+  }
+  btn.textContent = 'LOCATING...';
+  btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('wx-lat').value = pos.coords.latitude.toFixed(4);
+      document.getElementById('wx-lon').value = pos.coords.longitude.toFixed(4);
+      btn.textContent = 'USE GPS';
+      btn.disabled = false;
+    },
+    err => {
+      btn.textContent = 'USE GPS';
+      btn.disabled = false;
+      alert('GPS error: ' + err.message);
+    },
+    { timeout: 10000 }
+  );
+}
+
+async function fetchWeather() {
+  const lat = parseFloat(document.getElementById('wx-lat').value);
+  const lon = parseFloat(document.getElementById('wx-lon').value);
+  const out = document.getElementById('wx-result');
+  if (isNaN(lat) || isNaN(lon)) {
+    out.innerHTML = '<div class="alert alert-warn">Enter coordinates or use GPS first.</div>';
+    return;
+  }
+  out.innerHTML = '<div class="alert alert-info">Fetching weather data...</div>';
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code&wind_speed_unit=ms&timezone=auto`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const c = data.current;
+    const wind = c.wind_speed_10m;
+    const gusts = c.wind_gusts_10m;
+    const temp = c.temperature_2m;
+    const dir = c.wind_direction_10m;
+
+    let status, statusColor, statusBg;
+    if (wind > 8 || gusts > 10) {
+      status = 'NO-GO'; statusColor = 'var(--red)'; statusBg = '#1f0a0a';
+    } else if (wind > 5) {
+      status = 'CAUTION'; statusColor = 'var(--amber)'; statusBg = '#1f1a08';
+    } else {
+      status = 'GO'; statusColor = 'var(--green)'; statusBg = '#0a1f0e';
+    }
+
+    const dirs = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    const dirLabel = dirs[Math.round(dir / 22.5) % 16];
+
+    out.innerHTML = `
+      <div style="background:${statusBg};border:2px solid ${statusColor};padding:18px 20px;margin-bottom:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div style="font-family:var(--head);font-size:42px;font-weight:700;color:${statusColor};letter-spacing:4px;line-height:1">${status}</div>
+        <div style="flex:1;min-width:160px">
+          <div style="font-size:13px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">WIND · GUSTS · DIR · TEMP</div>
+          <div style="font-family:var(--head);font-size:22px;font-weight:700;color:var(--text);letter-spacing:2px">
+            ${wind.toFixed(1)} m/s · ${gusts.toFixed(1)} m/s · ${dirLabel} · ${temp.toFixed(1)}°C
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:10px">
+        <div class="card${wind > 8 ? ' danger' : wind > 5 ? ' amber' : ' accent'}">
+          <div class="card-title">WIND SPEED</div>
+          <div style="font-family:var(--head);font-size:28px;font-weight:700;color:${wind > 8 ? 'var(--red)' : wind > 5 ? 'var(--amber)' : 'var(--green)'}">${wind.toFixed(1)} <span style="font-size:14px">m/s</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">LIMIT: GO ≤5 · CAU ≤8</div>
+        </div>
+        <div class="card${gusts > 10 ? ' danger' : gusts > 8 ? ' amber' : ' accent'}">
+          <div class="card-title">GUSTS</div>
+          <div style="font-family:var(--head);font-size:28px;font-weight:700;color:${gusts > 10 ? 'var(--red)' : gusts > 8 ? 'var(--amber)' : 'var(--green)'}">${gusts.toFixed(1)} <span style="font-size:14px">m/s</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">LIMIT: NO-GO >10</div>
+        </div>
+        <div class="card">
+          <div class="card-title">DIRECTION</div>
+          <div style="font-family:var(--head);font-size:28px;font-weight:700;color:var(--text)">${dirLabel} <span style="font-size:14px">${dir}°</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">FROM</div>
+        </div>
+        <div class="card">
+          <div class="card-title">TEMPERATURE</div>
+          <div style="font-family:var(--head);font-size:28px;font-weight:700;color:var(--text)">${temp.toFixed(1)} <span style="font-size:14px">°C</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">2m AGL</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px">SOURCE: OPEN-METEO · ${lat.toFixed(4)}, ${lon.toFixed(4)} · ${new Date().toLocaleTimeString()}</div>`;
+  } catch(e) {
+    out.innerHTML = '<div class="alert alert-danger">Failed to fetch weather: ' + e.message + '</div>';
+  }
+}
 </script>
 </body>
 </html>
