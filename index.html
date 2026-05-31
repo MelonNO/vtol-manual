@@ -1166,39 +1166,39 @@ async function fetchWeather() {
       '</div>' +
       // 3 status banners
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px">' +
-        '<div style="background:' + wStat.bg + ';border:2px solid ' + wStat.c + ';padding:14px 16px">' +
-          '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">WIND</div>' +
-          '<div style="font-family:var(--head);font-size:24px;font-weight:700;color:' + wStat.c + ';letter-spacing:3px">' + wStat.s + '</div>' +
-          '<div style="font-family:var(--head);font-size:14px;color:var(--text);margin-top:4px">' + wind.toFixed(1) + ' m/s · G' + gusts.toFixed(1) + '</div>' +
-          '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + compass(dir) + ' ' + dir + '° · ' + temp.toFixed(1) + '°C</div>' +
+        '<div style="background:' + wStat.bg + ';border:2px solid ' + wStat.c + ';padding:20px">' +
+          '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">WIND</div>' +
+          '<div style="font-family:var(--head);font-size:36px;font-weight:700;color:' + wStat.c + ';letter-spacing:3px;line-height:1">' + wStat.s + '</div>' +
+          '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + wind.toFixed(1) + ' m/s &nbsp;G' + gusts.toFixed(1) + '</div>' +
+          '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + compass(dir) + ' ' + dir + '° &nbsp;·&nbsp; ' + temp.toFixed(1) + '°C &nbsp;·&nbsp; RH ' + rh + '%</div>' +
         '</div>' +
-        '<div style="background:' + pStat.bg + ';border:2px solid ' + pStat.c + ';padding:14px 16px">' +
-          '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">PRECIPITATION</div>' +
-          '<div style="font-family:var(--head);font-size:24px;font-weight:700;color:' + pStat.c + ';letter-spacing:3px">' + pStat.s + '</div>' +
-          '<div style="font-family:var(--head);font-size:14px;color:var(--text);margin-top:4px">' + pStat.label + '</div>' +
-          '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + (precip > 0 ? precip.toFixed(1) + ' mm/h' : 'No precipitation') + '</div>' +
+        '<div style="background:' + pStat.bg + ';border:2px solid ' + pStat.c + ';padding:20px">' +
+          '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">PRECIPITATION</div>' +
+          '<div style="font-family:var(--head);font-size:36px;font-weight:700;color:' + pStat.c + ';letter-spacing:3px;line-height:1">' + pStat.s + '</div>' +
+          '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + pStat.label + '</div>' +
+          '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + (precip > 0 ? precip.toFixed(1) + ' mm/h' : 'No precipitation') + '</div>' +
         '</div>' +
-        '<div style="background:' + (worstIcing.label==='HIGH'?'#1f0a0a':worstIcing.label==='NIL'?'#0a1f0e':'#1f1a08') + ';border:2px solid ' + worstIcing.c + ';padding:14px 16px">' +
-          '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">ICING</div>' +
-          '<div style="font-family:var(--head);font-size:24px;font-weight:700;color:' + worstIcing.c + ';letter-spacing:3px">' + (worstIcing.label==='NIL'?'CLEAR':worstIcing.label) + '</div>' +
-          '<div style="font-family:var(--head);font-size:14px;color:var(--text);margin-top:4px">' + (worstIcing.label==='NIL'?'No icing risk':'Icing possible') + '</div>' +
-          '<div style="font-size:11px;color:var(--muted);margin-top:2px">Worst across all levels</div>' +
+        '<div style="background:' + (worstIcing.label==='HIGH'?'#1f0a0a':worstIcing.label==='NIL'?'#0a1f0e':'#1f1a08') + ';border:2px solid ' + worstIcing.c + ';padding:20px">' +
+          '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">ICING RISK</div>' +
+          '<div style="font-family:var(--head);font-size:36px;font-weight:700;color:' + worstIcing.c + ';letter-spacing:3px;line-height:1">' + (worstIcing.label==='NIL'?'CLEAR':worstIcing.label) + '</div>' +
+          '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + (worstIcing.label==='NIL'?'No icing risk':'Icing possible') + '</div>' +
+          '<div style="font-size:13px;color:var(--muted);margin-top:4px">Worst across all levels</div>' +
         '</div>' +
       '</div>' +
       // Icing table
-      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">ICING BY ALTITUDE</div>' +
-      '<div style="background:var(--surface);border:1px solid var(--border2);margin-bottom:14px">' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:8px 12px;border-bottom:1px solid var(--border2);font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted)">' +
+      '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">ICING BY ALTITUDE</div>' +
+      '<div style="overflow-x:auto;margin-bottom:18px"><div style="min-width:420px;background:var(--surface);border:1px solid var(--border2)">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:10px 14px;border-bottom:1px solid var(--border2);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">' +
           '<span>ALT</span><span>PRESSURE</span><span>TEMP</span><span>RH</span><span>RISK</span>' +
         '</div>' + icingRows +
-      '</div>' +
+      '</div></div>' +
       // 4-hour forecast
-      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">4-HOUR FORECAST</div>' +
-      '<div style="background:var(--surface);border:1px solid var(--border2);margin-bottom:14px">' +
-        '<div style="display:grid;grid-template-columns:55px 1fr 45px 60px 1fr;padding:8px 12px;border-bottom:1px solid var(--border2);font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted)">' +
+      '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">4-HOUR FORECAST</div>' +
+      '<div style="overflow-x:auto;margin-bottom:18px"><div style="min-width:480px;background:var(--surface);border:1px solid var(--border2)">' +
+        '<div style="display:grid;grid-template-columns:65px 1fr 50px 70px 1fr;padding:10px 14px;border-bottom:1px solid var(--border2);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">' +
           '<span>TIME</span><span>WIND</span><span>DIR</span><span>TEMP</span><span>CONDITIONS</span>' +
         '</div>' + fcastRows +
-      '</div>' +
+      '</div></div>' +
       '<div style="font-size:11px;color:var(--muted);letter-spacing:1px">SOURCE: OPEN-METEO · OSM NOMINATIM · ' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '</div>';
 
   } catch(e) {
