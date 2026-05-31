@@ -421,6 +421,7 @@ function switchTab(name, btn) {
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
+  localStorage.setItem('vtol_active_tab', name);
 }
 function openEmerg() { document.getElementById('emerg-modal').style.display='block'; document.body.style.overflow='hidden'; }
 function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow=''; }
