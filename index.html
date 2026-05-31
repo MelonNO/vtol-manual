@@ -741,7 +741,122 @@ async function vtolInit() {
       if(handle){ var perm=await handle.queryPermission({mode:'readwrite'}); if(perm==='granted'){vtolDataHandle=handle;}else{vtolDataHandlePending=handle;} }
     } catch(e){}
   }
-  await vtolLoadData(); vtolUpdateFileStatus(); pfRenderArchive(); wxRenderFavorites();
+  await vtolLoadData(); vtolUpdateFileStatus();
+  if (vtolGetPAT()) {
+    vtolUpdateSyncStatus('syncing');
+    try { await vtolCloudPull(); vtolUpdateSyncStatus('synced'); }
+    catch(e) { vtolUpdateSyncStatus('error', e.message); }
+  } else { vtolUpdateSyncStatus('none'); }
+  pfRenderArchive(); wxRenderFavorites();
+}
+
+// ── CLOUD SYNC (GitHub Gist) ──
+function vtolGetPAT() { return localStorage.getItem('vtol_gh_pat') || ''; }
+
+function vtolUpdateSyncStatus(state, msg) {
+  var ts = state === 'synced' ? new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : null;
+  if (ts) localStorage.setItem('vtol_last_sync', ts);
+  document.querySelectorAll('.vtol-sync-status').forEach(function(el) {
+    if      (state==='syncing') el.innerHTML='<span style="color:var(--amber)">&#x21BB; SYNCING...</span>';
+    else if (state==='synced')  el.innerHTML='<span style="color:var(--green)">&#x2601; SYNCED '+ts+'</span>';
+    else if (state==='error')   el.innerHTML='<span style="color:var(--red)" title="'+(msg||'')+'">&#x26A0; SYNC ERROR</span>';
+    else {
+      var ls=localStorage.getItem('vtol_last_sync');
+      el.innerHTML = vtolGetPAT()
+        ? '<span style="color:var(--green)">&#x2601; '+(ls?'SYNCED '+ls:'READY')+'</span>'
+        : '<span style="color:var(--muted)">&#x2601; NOT SET UP</span>';
+    }
+  });
+  document.querySelectorAll('.vtol-sync-btn').forEach(function(btn){ btn.style.display=vtolGetPAT()?'':'none'; });
+  document.querySelectorAll('.vtol-sync-setup-btn').forEach(function(btn){ btn.textContent=vtolGetPAT()?'CHANGE TOKEN':'SETUP SYNC'; });
+}
+
+async function vtolGistFetch(method, endpoint, body) {
+  var opts = { method:method, headers:{'Authorization':'token '+vtolGetPAT(),'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  var resp = await fetch('https://api.github.com'+endpoint, opts);
+  if (!resp.ok) throw new Error('GitHub '+resp.status+' '+resp.statusText);
+  return resp.json();
+}
+
+async function vtolFindOrCreateGist() {
+  var id = localStorage.getItem('vtol_gh_gist_id') || '';
+  if (id) {
+    try { await vtolGistFetch('GET','/gists/'+id); return id; } catch(e) { localStorage.removeItem('vtol_gh_gist_id'); }
+  }
+  var list = await vtolGistFetch('GET','/gists');
+  var found = list.find(function(g){ return g.description==='VTOL Flight Data' && g.files['vtol-data.json']; });
+  if (found) { localStorage.setItem('vtol_gh_gist_id',found.id); return found.id; }
+  var created = await vtolGistFetch('POST','/gists',{ description:'VTOL Flight Data', public:false, files:{'vtol-data.json':{content:JSON.stringify(vtolData,null,2)}} });
+  localStorage.setItem('vtol_gh_gist_id',created.id); return created.id;
+}
+
+async function vtolCloudPull() {
+  var id = await vtolFindOrCreateGist();
+  var gist = await vtolGistFetch('GET','/gists/'+id);
+  var content = gist.files['vtol-data.json'] && gist.files['vtol-data.json'].content;
+  if (content) {
+    var remote = JSON.parse(content);
+    if (Array.isArray(remote.archive))          vtolData.archive = remote.archive;
+    if (Array.isArray(remote.weatherFavorites)) vtolData.weatherFavorites = remote.weatherFavorites;
+    vtolSaveLocal();
+  }
+}
+
+async function vtolCloudPush() {
+  if (!vtolGetPAT()) return;
+  vtolUpdateSyncStatus('syncing');
+  try {
+    var id = await vtolFindOrCreateGist();
+    await vtolGistFetch('PATCH','/gists/'+id,{ files:{'vtol-data.json':{content:JSON.stringify(vtolData,null,2)}} });
+    vtolUpdateSyncStatus('synced');
+  } catch(e) { vtolUpdateSyncStatus('error', e.message); }
+}
+
+function vtolScheduleCloudPush() {
+  if (vtolSyncTimer) clearTimeout(vtolSyncTimer);
+  vtolSyncTimer = setTimeout(vtolCloudPush, 3000);
+}
+
+async function vtolSetupSync() {
+  var hasPAT = !!vtolGetPAT();
+  var input = prompt(
+    'GitHub Personal Access Token\n\n' +
+    'Get one at: github.com → Settings → Developer settings\n' +
+    '→ Personal access tokens → Tokens (classic) → Generate new token\n' +
+    'Required scope: gist (tick only this box)\n\n' +
+    (hasPAT ? 'Token already configured. Paste a new token to replace, or leave blank to disconnect:' : 'Paste your token:'),
+    ''
+  );
+  if (input === null) return;
+  if (input.trim() === '') {
+    if (hasPAT && confirm('Disconnect cloud sync? Your local data will not be deleted.')) {
+      localStorage.removeItem('vtol_gh_pat'); localStorage.removeItem('vtol_gh_gist_id');
+      vtolUpdateSyncStatus('none');
+    }
+    return;
+  }
+  localStorage.setItem('vtol_gh_pat', input.trim());
+  localStorage.removeItem('vtol_gh_gist_id');
+  vtolUpdateSyncStatus('syncing');
+  try {
+    await vtolCloudPull(); await vtolCloudPush(); vtolUpdateSyncStatus('synced');
+    pfRenderArchive(); wxRenderFavorites();
+  } catch(e) {
+    vtolUpdateSyncStatus('error', e.message);
+    alert('Sync failed. Make sure the token has the "gist" scope.\nError: ' + e.message);
+    localStorage.removeItem('vtol_gh_pat');
+    vtolUpdateSyncStatus('none');
+  }
+}
+
+async function vtolSyncNow() {
+  if (!vtolGetPAT()) { vtolSetupSync(); return; }
+  vtolUpdateSyncStatus('syncing');
+  try {
+    await vtolCloudPull(); await vtolCloudPush(); vtolUpdateSyncStatus('synced');
+    pfRenderArchive(); wxRenderFavorites();
+  } catch(e) { vtolUpdateSyncStatus('error', e.message); }
 }
 
 function pfTimerToggle() {
