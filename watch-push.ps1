@@ -1,5 +1,5 @@
 # ============================================================
-# watch-push.ps1  —  Auto-commit and push on file change
+# watch-push.ps1 - Auto-commit and push on file change
 # Leave this running in a terminal while you work.
 # Press Ctrl+C to stop.
 # ============================================================
@@ -7,16 +7,16 @@
 $folder = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $folder
 
-# Files to watch (add extensions as needed)
+$env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
+
 $watchExtensions = @("*.html", "*.js", "*.css", "*.json")
 
 Write-Host ""
-Write-Host "=== VTOL Manual — Auto Push ===" -ForegroundColor Cyan
+Write-Host "=== VTOL Manual - Auto Push ===" -ForegroundColor Cyan
 Write-Host "Watching: $folder" -ForegroundColor Green
 Write-Host "Press Ctrl+C to stop." -ForegroundColor Yellow
 Write-Host ""
 
-# Debounce: avoid multiple rapid triggers from one save
 $lastPush = [datetime]::MinValue
 $debounceSeconds = 4
 
@@ -30,23 +30,21 @@ function Push-Changes {
     $script:lastPush = $now
     Start-Sleep -Seconds $script:debounceSeconds
 
-    # Check nothing else triggered after us (debounce)
     if ($script:lastPush -ne $now) { return }
 
-    Set-Location $folder
+    Set-Location $script:folder
     $status = git status --porcelain
-    if (-not $status) { return }  # Nothing to commit
+    if (-not $status) { return }
 
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm"
     git add .
     git commit -m "auto-update $timestamp" --quiet
 
-    $pushResult = git push 2>&1
+    git push
     if ($LASTEXITCODE -eq 0) {
         Write-Host "[$timestamp] Pushed to GitHub" -ForegroundColor Green
     } else {
-        Write-Host "[$timestamp] Push failed: $pushResult" -ForegroundColor Red
-        Write-Host "  Check your internet connection or GitHub credentials." -ForegroundColor Yellow
+        Write-Host "[$timestamp] Push failed - check internet/credentials." -ForegroundColor Red
     }
 }
 
@@ -60,7 +58,6 @@ foreach ($ext in $watchExtensions) {
 }
 $watcher.Filter = "*.*"
 
-# Keep alive
 try {
     while ($true) { Start-Sleep -Seconds 1 }
 } finally {
