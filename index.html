@@ -797,14 +797,13 @@ function pfPromptArchive() {
 }
 
 function pfSaveArchive(entry) {
-  const log = JSON.parse(localStorage.getItem('vtol_pf_archive') || '[]');
-  log.unshift(entry);
-  localStorage.setItem('vtol_pf_archive', JSON.stringify(log));
+  vtolData.archive.unshift(entry);
+  vtolSaveData();
   pfRenderArchive();
 }
 
 function pfRenderArchive() {
-  const log = JSON.parse(localStorage.getItem('vtol_pf_archive') || '[]');
+  const log = vtolData.archive;
   const wrap = document.getElementById('pf-archive-wrap');
   const list = document.getElementById('pf-archive-list');
   if (!log.length) { wrap.style.display = 'none'; return; }
@@ -832,10 +831,58 @@ function pfRenderArchive() {
 
 function pfDeleteArchive(idx) {
   if (!confirm('Delete this entry?')) return;
-  const log = JSON.parse(localStorage.getItem('vtol_pf_archive') || '[]');
-  log.splice(idx, 1);
-  localStorage.setItem('vtol_pf_archive', JSON.stringify(log));
+  vtolData.archive.splice(idx, 1);
+  vtolSaveData();
   pfRenderArchive();
+}
+
+// ── WEATHER FAVORITES ──
+function wxParsePaste(val) {
+  var clean = val.trim().replace(/[^\d\s,.\-]/g,'');
+  var parts = clean.split(/[\s,]+/).filter(function(p){ return p.length > 0; });
+  if (parts.length >= 2) {
+    var lat = parseFloat(parts[0]), lon = parseFloat(parts[1]);
+    if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      document.getElementById('wx-lat').value = lat.toFixed(4);
+      document.getElementById('wx-lon').value = lon.toFixed(4);
+    }
+  }
+}
+function wxSaveFavorite() {
+  var lat = parseFloat(document.getElementById('wx-lat').value);
+  var lon = parseFloat(document.getElementById('wx-lon').value);
+  if (isNaN(lat) || isNaN(lon)) { alert('Fetch weather first to get a location to save.'); return; }
+  if (vtolData.weatherFavorites.find(function(f){ return f.lat===lat && f.lon===lon; })) { alert('Location already saved.'); return; }
+  var name = wxCurrentLocName || (lat.toFixed(4)+', '+lon.toFixed(4));
+  vtolData.weatherFavorites.push({ lat:lat, lon:lon, name:name });
+  vtolSaveData();
+  wxRenderFavorites();
+}
+function wxLoadFavorite(idx) {
+  var fav = vtolData.weatherFavorites[idx]; if (!fav) return;
+  document.getElementById('wx-lat').value = fav.lat.toFixed(4);
+  document.getElementById('wx-lon').value = fav.lon.toFixed(4);
+  if (document.getElementById('wx-paste')) document.getElementById('wx-paste').value = '';
+  fetchWeather();
+}
+function wxDeleteFavorite(idx) {
+  if (!confirm('Remove this location?')) return;
+  vtolData.weatherFavorites.splice(idx, 1);
+  vtolSaveData(); wxRenderFavorites();
+}
+function wxRenderFavorites() {
+  var el = document.getElementById('wx-favorites'); if (!el) return;
+  if (!vtolData.weatherFavorites.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">No saved locations — fetch a location then press SAVE ★</div>';
+    return;
+  }
+  el.innerHTML = vtolData.weatherFavorites.map(function(f,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">' +
+      '<button onclick="wxLoadFavorite('+i+')" style="flex:1;text-align:left;background:none;border:none;color:var(--text);cursor:pointer;font-family:var(--mono);font-size:14px;padding:0">'+f.name+'</button>' +
+      '<span style="font-size:11px;color:var(--muted);white-space:nowrap">'+f.lat.toFixed(3)+', '+f.lon.toFixed(3)+'</span>' +
+      '<button onclick="wxDeleteFavorite('+i+')" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0">✕</button>' +
+    '</div>';
+  }).join('');
 }
 
 // ══════════════════════════════════════
