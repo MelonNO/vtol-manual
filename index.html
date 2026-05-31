@@ -723,10 +723,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const d = document.getElementById('bl-date');
   if (d) d.valueAsDate = new Date();
   renderBattLog();
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tab-preflight').classList.add('active');
-  document.querySelector('nav button[onclick*="preflight"]').classList.add('active');
+  // Restore last active tab, default to preflight
+  const savedTab = localStorage.getItem('vtol_active_tab') || 'preflight';
+  const tabEl = document.getElementById('tab-' + savedTab);
+  const tabBtn = document.querySelector('nav button[onclick*="\''+savedTab+'\'"]');
+  if (tabEl && tabBtn) {
+    tabEl.classList.add('active');
+    tabBtn.classList.add('active');
+  } else {
+    document.getElementById('tab-preflight').classList.add('active');
+    document.querySelector('nav button[onclick*="preflight"]').classList.add('active');
+  }
 });
 
 buildChecklist(CL,  'cl-container',  'vtol_cl2', 'csp-',  'updateOverall1');
