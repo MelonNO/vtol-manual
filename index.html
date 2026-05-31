@@ -619,6 +619,130 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').ca
 // ══════════════════════════════════════
 let pfStart = null, pfElapsed = 0, pfInterval = null, pfRunning = false;
 
+// ── PERSISTENT DATA STORE ──
+var vtolData = { archive: [], weatherFavorites: [] };
+var vtolDataHandle = null, vtolDataHandlePending = null, wxCurrentLocName = '';
+
+function idbGet(key) {
+  return new Promise(function(res,rej){
+    var r=indexedDB.open('vtol-db',1);
+    r.onupgradeneeded=function(e){e.target.result.createObjectStore('kv');};
+    r.onerror=function(){rej(r.error);};
+    r.onsuccess=function(e){
+      var tx=e.target.result.transaction('kv','readonly');
+      var op=tx.objectStore('kv').get(key);
+      op.onsuccess=function(){res(op.result);}; op.onerror=function(){rej(op.error);};
+    };
+  });
+}
+function idbPut(key,val) {
+  return new Promise(function(res,rej){
+    var r=indexedDB.open('vtol-db',1);
+    r.onupgradeneeded=function(e){e.target.result.createObjectStore('kv');};
+    r.onerror=function(){rej(r.error);};
+    r.onsuccess=function(e){
+      var tx=e.target.result.transaction('kv','readwrite');
+      var op=tx.objectStore('kv').put(val,key);
+      op.onsuccess=function(){res();}; op.onerror=function(){rej(op.error);};
+    };
+  });
+}
+function vtolSaveLocal() {
+  localStorage.setItem('vtol_pf_archive', JSON.stringify(vtolData.archive));
+  localStorage.setItem('vtol_wx_fav', JSON.stringify(vtolData.weatherFavorites));
+}
+async function vtolWriteFile() {
+  var w=await vtolDataHandle.createWritable();
+  await w.write(JSON.stringify(vtolData,null,2)); await w.close();
+}
+async function vtolSaveData() {
+  vtolSaveLocal();
+  if (vtolDataHandle) { try { await vtolWriteFile(); } catch(e){console.warn('File write:',e);} }
+}
+async function vtolLoadData() {
+  if (vtolDataHandle) {
+    try {
+      var file=await vtolDataHandle.getFile(); var text=await file.text();
+      var d=text.trim()?JSON.parse(text):{};
+      vtolData.archive=d.archive||[]; vtolData.weatherFavorites=d.weatherFavorites||[];
+      vtolSaveLocal(); return;
+    } catch(e) {}
+  }
+  vtolData.archive=JSON.parse(localStorage.getItem('vtol_pf_archive')||'[]');
+  vtolData.weatherFavorites=JSON.parse(localStorage.getItem('vtol_wx_fav')||'[]');
+}
+function vtolUpdateFileStatus() {
+  document.querySelectorAll('.vtol-file-status').forEach(function(el){
+    if (!window.showSaveFilePicker) {
+      el.innerHTML='<span style="color:var(--muted)">FILE SYSTEM NOT SUPPORTED — EXPORT/IMPORT AVAILABLE</span>';
+    } else if (vtolDataHandle) {
+      el.innerHTML='<span style="color:var(--green)">&#x2713; '+vtolDataHandle.name+'</span>';
+    } else if (vtolDataHandlePending) {
+      el.innerHTML='<span style="color:var(--amber)">&#x26A0; NEEDS RECONNECT: '+vtolDataHandlePending.name+'</span>';
+    } else {
+      el.innerHTML='<span style="color:var(--amber)">&#x26A0; BROWSER CACHE ONLY — USE LINK FILE TO PERSIST</span>';
+    }
+  });
+  document.querySelectorAll('.vtol-link-btn').forEach(function(btn){
+    if (!window.showSaveFilePicker) { btn.style.display='none'; return; }
+    btn.textContent = (vtolDataHandlePending&&!vtolDataHandle) ? 'RECONNECT' : (vtolDataHandle ? 'CHANGE FILE' : 'LINK FILE');
+  });
+}
+async function vtolLinkFile() {
+  if (!window.showSaveFilePicker) return;
+  if (vtolDataHandlePending && !vtolDataHandle) {
+    try {
+      var perm=await vtolDataHandlePending.requestPermission({mode:'readwrite'});
+      if (perm==='granted') {
+        vtolDataHandle=vtolDataHandlePending; vtolDataHandlePending=null;
+        await vtolLoadData(); vtolUpdateFileStatus(); pfRenderArchive(); wxRenderFavorites();
+      }
+    } catch(e){alert('Reconnect failed: '+e.message);} return;
+  }
+  try {
+    var handle=await window.showSaveFilePicker({
+      suggestedName:'vtol-data.json',
+      types:[{description:'VTOL Data',accept:{'application/json':['.json']}}]
+    });
+    var existing={};
+    try { var f=await handle.getFile(); var t=await f.text(); if(t.trim()) existing=JSON.parse(t); } catch(e){}
+    if (existing.archive) {
+      existing.archive.forEach(function(e){ if(!vtolData.archive.find(function(a){return a.date===e.date;})) vtolData.archive.push(e); });
+      vtolData.archive.sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+    }
+    if (existing.weatherFavorites) {
+      existing.weatherFavorites.forEach(function(f){ if(!vtolData.weatherFavorites.find(function(v){return v.lat===f.lat&&v.lon===f.lon;})) vtolData.weatherFavorites.push(f); });
+    }
+    vtolDataHandle=handle; await vtolSaveData(); await idbPut('vtolDataHandle',handle);
+    vtolUpdateFileStatus(); pfRenderArchive(); wxRenderFavorites();
+  } catch(e){ if(e.name!=='AbortError') alert('Error: '+e.message); }
+}
+function vtolExportData() {
+  var blob=new Blob([JSON.stringify(vtolData,null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='vtol-data.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function vtolImportData() {
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=async function(e){
+    var f=e.target.files[0]; if(!f) return;
+    try {
+      var d=JSON.parse(await f.text());
+      if(d.archive) { d.archive.forEach(function(entry){ if(!vtolData.archive.find(function(a){return a.date===entry.date;})) vtolData.archive.unshift(entry); }); vtolData.archive.sort(function(a,b){return new Date(b.date)-new Date(a.date);}); }
+      if(d.weatherFavorites) { d.weatherFavorites.forEach(function(fav){ if(!vtolData.weatherFavorites.find(function(v){return v.lat===fav.lat&&v.lon===fav.lon;})) vtolData.weatherFavorites.push(fav); }); }
+      await vtolSaveData(); pfRenderArchive(); wxRenderFavorites(); alert('Imported successfully.');
+    } catch(err){alert('Import failed: '+err.message);}
+  }; inp.click();
+}
+async function vtolInit() {
+  if (window.showSaveFilePicker) {
+    try {
+      var handle=await idbGet('vtolDataHandle');
+      if(handle){ var perm=await handle.queryPermission({mode:'readwrite'}); if(perm==='granted'){vtolDataHandle=handle;}else{vtolDataHandlePending=handle;} }
+    } catch(e){}
+  }
+  await vtolLoadData(); vtolUpdateFileStatus(); pfRenderArchive(); wxRenderFavorites();
+}
+
 function pfTimerToggle() {
   const btn = document.getElementById('pf-start-btn');
   const display = document.getElementById('pf-timer');
