@@ -627,16 +627,80 @@ function renderBattLog() {
       const minS=e.min<22.5?'color:var(--red);font-weight:bold':e.min<23.0?'color:var(--amber)':'';
       return `<tr><td>${e.date}</td><td>${e.flight||'—'}</td><td>${e.start}V</td><td style="${minS}">${e.min}V</td><td>${e.rest}V</td><td style="color:${sagC}">${e.sag}V</td><td>${e.time||'—'}</td><td style="color:var(--muted);font-size:11px">${e.notes||'—'}</td><td><button onclick="deleteBattEntry(${i})" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td></tr>`;
     }).join('');
-  const mins=entries.map(e=>e.min), sags=entries.map(e=>e.sag);
-  const lowestMin=Math.min(...mins), avgSag=(sags.reduce((a,b)=>a+b,0)/sags.length).toFixed(2), worstSag=Math.max(...sags).toFixed(2);
-  const safeReturn=(lowestMin+parseFloat(worstSag)+0.5).toFixed(1);
-  analysis.innerHTML=`<div class="card amber"><div class="card-title">Analysis — ${entries.length} flight${entries.length>1?'s':''}</div><table>
-    <tr><th>Metric</th><th>Value</th><th>Meaning</th></tr>
-    <tr><td>Lowest min voltage seen</td><td style="color:var(--red);font-weight:bold">${lowestMin}V</td><td>Lowest drop during landing across all flights</td></tr>
-    <tr><td>Average voltage sag</td><td style="color:var(--amber)">${avgSag}V</td><td>Typical start→landing drop</td></tr>
-    <tr><td>Worst voltage sag</td><td style="color:var(--red)">${worstSag}V</td><td>Worst observed sag — use for safety margin</td></tr>
-    <tr><td>Recommended BATT_LOW_VOLT</td><td style="color:var(--accent);font-weight:bold">${safeReturn}V</td><td>Min observed + worst sag + 0.5V margin</td></tr>
-  </table><div class="alert alert-warn" style="margin-top:10px">BATT_LOW_VOLT is not set. Based on flight data, consider setting it to <strong>${safeReturn}V</strong>.</div></div>`;
+  // Battery type
+  const bt = loadBattType();
+  const cells = bt.cells;
+  const chem  = BATT_CHEM[bt.chem] || BATT_CHEM.lipo;
+  const cellSel = document.getElementById('bl-cells');
+  const chemSel = document.getElementById('bl-chem');
+  if (cellSel) cellSel.value = String(cells);
+  if (chemSel) chemSel.value = bt.chem;
+
+  const mins = entries.map(e=>e.min), sags = entries.map(e=>e.sag), starts = entries.map(e=>e.start);
+  const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+  const avgMin = avg(mins), lowestMin = Math.min(...mins), avgSag = avg(sags);
+  const worstSag = Math.max(...sags), avgStart = avg(starts);
+
+  // Pack thresholds scaled to cell count
+  const critV = (chem.critical * cells).toFixed(1);
+  const lowV  = (chem.low      * cells).toFixed(1);
+  const fullV = (chem.full     * cells).toFixed(1);
+
+  // BATT_LOW_VOLT: avg landing + 0.8V return margin, never below critical + 1.0V.
+  // Previous formula (lowestMin + worstSag + 0.5) was wrong — it double-counted
+  // the full-flight sag, producing absurdly high values like 25V on a 6S pack.
+  const recRaw     = Math.max(avgMin + 0.8, chem.critical * cells + 1.0);
+  const recBattLow = recRaw.toFixed(1);
+  const recPC      = (recRaw / cells).toFixed(2);
+  const marginV    = (recRaw - chem.critical * cells).toFixed(1);
+
+  // Table row colour for min voltage — use per-cell thresholds
+  const minRowStyle = (v) => v/cells < chem.critical + 0.05 ? 'color:var(--red);font-weight:bold' : v/cells < chem.low + 0.1 ? 'color:var(--amber)' : '';
+
+  // Rebuild table with per-cell column
+  table.innerHTML = `<tr><th>Date</th><th>Flight</th><th>Start V</th><th>Min V</th><th>V/cell</th><th>Rest V</th><th>Sag</th><th>Min</th><th>Notes</th><th></th></tr>` +
+    entries.map((e,i) => {
+      const sagC = e.sag > cells*0.35 ? 'var(--red)' : e.sag > cells*0.2 ? 'var(--amber)' : 'var(--green)';
+      const minSt = minRowStyle(e.min);
+      const vpc = (e.min/cells).toFixed(2);
+      return `<tr><td>${e.date}</td><td>${e.flight||'—'}</td><td>${e.start}V</td><td style="${minSt}">${e.min}V</td><td style="${minSt}">${vpc}V</td><td>${e.rest}V</td><td style="color:${sagC}">${e.sag}V</td><td>${e.time||'—'}</td><td style="color:var(--muted);font-size:11px">${e.notes||'—'}</td><td><button onclick="deleteBattEntry(${i})" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td></tr>`;
+    }).join('');
+
+  // Health
+  let hColor, hText;
+  if      (avgMin/cells < chem.critical + 0.05) { hColor='var(--red)';   hText='CRITICAL — Average landing voltage is near the emergency threshold'; }
+  else if (avgMin/cells < chem.low       + 0.05) { hColor='var(--red)';   hText='LOW — Average landing voltage is below the safe minimum'; }
+  else if (avgMin/cells < chem.low       + 0.15) { hColor='var(--amber)'; hText='MARGINAL — Average landing voltage is close to the low threshold'; }
+  else                                            { hColor='var(--green)'; hText='HEALTHY — Landing voltages are within the normal range'; }
+
+  analysis.innerHTML = `
+  <div class="card amber" style="margin-bottom:14px">
+    <div class="card-title">Analysis — ${entries.length} flight${entries.length>1?'s':''} · ${cells}S ${chem.name}</div>
+    <table>
+      <tr><th>Metric</th><th>Pack</th><th>Per cell</th><th>Notes</th></tr>
+      <tr><td>Avg start voltage</td><td>${avgStart.toFixed(1)}V</td><td>${(avgStart/cells).toFixed(2)}V</td><td style="color:var(--muted)">Typical charge at power-on</td></tr>
+      <tr><td>Avg min at landing</td><td style="color:var(--amber)">${avgMin.toFixed(1)}V</td><td style="color:var(--amber)">${(avgMin/cells).toFixed(2)}V</td><td style="color:var(--muted)">Typical lowest voltage at touchdown</td></tr>
+      <tr><td>Lowest min seen</td><td style="color:var(--red);font-weight:bold">${lowestMin.toFixed(1)}V</td><td style="color:var(--red)">${(lowestMin/cells).toFixed(2)}V</td><td style="color:var(--muted)">Absolute worst recorded</td></tr>
+      <tr><td>Avg flight sag</td><td>${avgSag.toFixed(2)}V</td><td>${(avgSag/cells).toFixed(3)}V</td><td style="color:var(--muted)">Typical start→landing drop</td></tr>
+      <tr><td>Worst sag</td><td style="color:var(--amber)">${worstSag.toFixed(2)}V</td><td>${(worstSag/cells).toFixed(3)}V</td><td style="color:var(--muted)">Largest drop in one flight</td></tr>
+      <tr><th colspan="4" style="padding-top:10px;color:var(--muted)">THRESHOLDS — ${cells}S ${chem.name}</th></tr>
+      <tr><td>Full charge</td><td>${fullV}V</td><td>${chem.full}V</td><td style="color:var(--muted)">After a complete charge</td></tr>
+      <tr><td>Low (return now)</td><td>${lowV}V</td><td>${chem.low}V</td><td style="color:var(--amber)">Chemistry low limit</td></tr>
+      <tr><td>Critical</td><td style="color:var(--red)">${critV}V</td><td style="color:var(--red)">${chem.critical}V</td><td style="color:var(--red)">QLand triggers here</td></tr>
+    </table>
+  </div>
+  <div class="card accent" style="margin-bottom:14px">
+    <div class="card-title">Recommended BATT_LOW_VOLT</div>
+    <div style="font-family:var(--head);font-size:44px;font-weight:700;color:var(--accent);letter-spacing:3px;line-height:1;margin-bottom:8px">${recBattLow}V</div>
+    <div style="font-size:14px;color:var(--text);margin-bottom:6px">${recPC}V/cell &nbsp;·&nbsp; ${marginV}V above critical (${critV}V)</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Avg landing (${avgMin.toFixed(1)}V) + 0.8V return margin. When this triggers you still have ${marginV}V extra above the emergency threshold — enough for RTL and VTOL descent.</div>
+    <div class="alert alert-info" style="margin:0">Mission Planner: Full Parameter List → <strong>BATT_LOW_VOLT = ${recBattLow}</strong></div>
+  </div>
+  <div class="card" style="border-left-color:${hColor}">
+    <div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:${hColor};margin-bottom:4px">PACK HEALTH</div>
+    <div style="color:${hColor};font-size:14px">${hText}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">Avg landing: ${avgMin.toFixed(1)}V (${(avgMin/cells).toFixed(2)}V/cell) · Low threshold: ${lowV}V (${chem.low}V/cell)</div>
+  </div>`;
 }
 
 // Init
