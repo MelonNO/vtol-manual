@@ -245,9 +245,18 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   </div>
   <div id="cl-container"></div>
   <div id="go-nogo" class="go-nogo"></div>
-  <div id="pf-archive-wrap" style="margin-top:28px;display:none">
-    <div class="section-title" style="margin-top:0">Preflight Archive</div>
-    <div id="pf-archive-list"></div>
+  <div style="margin-top:28px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--surface);border:1px solid var(--border2);margin-bottom:12px">
+      <div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">DATA FILE</div>
+      <div class="vtol-file-status" style="flex:1;font-size:11px;letter-spacing:1px"></div>
+      <button class="cl-reset vtol-link-btn" onclick="vtolLinkFile()">LINK FILE</button>
+      <button class="cl-reset" onclick="vtolExportData()">EXPORT</button>
+      <button class="cl-reset" onclick="vtolImportData()">IMPORT</button>
+    </div>
+    <div id="pf-archive-wrap" style="display:none">
+      <div class="section-title" style="margin-top:0">Preflight Archive</div>
+      <div id="pf-archive-list"></div>
+    </div>
   </div>
 </div>
 
