@@ -1365,6 +1365,13 @@ function parseBinData(buf) {
           gps.lng.push(r.Lng!=null?r.Lng:null);
           if(r.GWk>100){gps.gwk.push(r.GWk);gps.gms.push(r.GMS||0);}
         }
+      } else if(n==='POS'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0;
+        if(t>0&&r.RelHomeAlt!=null&&isFinite(r.RelHomeAlt)){
+          pos.t.push(t); pos.relHome.push(r.RelHomeAlt);
+          if(r.Alt!=null) pos.alt.push(r.Alt);
+        }
       } else if(n==='ARSP'||n==='ASPD'){
         const r=binRecord(p,fmt.fmt,fmt.labels);
         const t=r.TimeUS||0,v=r.Airspeed!=null?r.Airspeed:r.Aspd;
