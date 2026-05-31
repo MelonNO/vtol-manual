@@ -1481,12 +1481,20 @@ function renderBinResult(d, filename) {
   const ctArr=d.bat.ct.filter(c=>c!=null&&c>=0);
   const mAhUsed=ctArr.length>1?(ctArr[ctArr.length-1]-ctArr[0]).toFixed(0):'—';
 
-  // Altitude (relative to launch)
-  const altPairs=d.gps.alt.map((a,i)=>({a,t:d.gps.t[i]})).filter(x=>x.a!=null&&isFinite(x.a));
-  const baseAlt=altPairs.length?altPairs[0].a:0;
-  const relAlts=altPairs.map(x=>+(x.a-baseAlt).toFixed(1));
-  const altTimes=altPairs.map(x=>x.t);
-  const maxAlt=relAlts.length?Math.max(...relAlts).toFixed(0):'—';
+  // Altitude — prefer POS.RelHomeAlt (true AGL from EKF), fall back to GPS MSL - launch MSL
+  let relAlts, altTimes, altLabel, maxAlt, baseAlt=0;
+  if(d.pos.relHome.length>2){
+    relAlts=d.pos.relHome; altTimes=d.pos.t;
+    altLabel='ALTITUDE AGL — RELATIVE TO HOME (m) · source: POS.RelHomeAlt';
+    maxAlt=Math.max(...relAlts).toFixed(0);
+  } else {
+    const altPairs=d.gps.alt.map((a,i)=>({a,t:d.gps.t[i]})).filter(x=>x.a!=null&&isFinite(x.a));
+    baseAlt=altPairs.length?altPairs[0].a:0;
+    relAlts=altPairs.map(x=>+(x.a-baseAlt).toFixed(1));
+    altTimes=altPairs.map(x=>x.t);
+    altLabel='ALTITUDE RELATIVE TO LAUNCH GPS FIX (m) · POS messages not found';
+    maxAlt=relAlts.length?Math.max(...relAlts).toFixed(0):'—';
+  }
 
   // Airspeed
   const spdArr=d.arsp.v.filter(v=>v>0&&v<100);
