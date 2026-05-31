@@ -365,15 +365,15 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 
 <!-- TELEMETRY ANALYSIS -->
 <div id="tab-tlog" class="tab-panel">
-  <div class="section-title" style="margin-top:0">Telemetry Analysis</div>
-  <p>Upload an ArduPilot <strong>.tlog</strong> from Mission Planner. Extracts battery, altitude, airspeed, GPS quality, flight modes, and status messages.</p>
+  <div class="section-title" style="margin-top:0">DataFlash Log Analysis</div>
+  <p>Upload an ArduPilot <strong>.bin</strong> DataFlash log from the flight controller SD card. Richer and more complete than .tlog — extracts battery, altitude, airspeed, GPS, flight modes, and status messages.</p>
   <div class="card accent" style="margin-bottom:20px">
-    <label class="bl-label" style="margin-bottom:8px;display:block">SELECT .TLOG FILE</label>
-    <input type="file" id="tlog-full-file" accept=".tlog,.log" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
-    <button class="bl-btn" onclick="parseTlogFull()">ANALYSE</button>
-    <div id="tlog-full-status" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
+    <label class="bl-label" style="margin-bottom:8px;display:block">SELECT .BIN FILE</label>
+    <input type="file" id="bin-file" accept=".bin,.BIN" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
+    <button class="bl-btn" onclick="parseBinFull()">ANALYSE</button>
+    <div id="bin-status" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
   </div>
-  <div id="tlog-full-result"></div>
+  <div id="bin-result"></div>
 </div>
 
 <!-- WEATHER -->
