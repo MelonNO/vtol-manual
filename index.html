@@ -252,6 +252,10 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <button class="cl-reset vtol-link-btn" onclick="vtolLinkFile()">LINK FILE</button>
       <button class="cl-reset" onclick="vtolExportData()">EXPORT</button>
       <button class="cl-reset" onclick="vtolImportData()">IMPORT</button>
+      <div style="width:1px;background:var(--border2);align-self:stretch;margin:0 2px"></div>
+      <div class="vtol-sync-status" style="font-size:11px;letter-spacing:1px"></div>
+      <button class="cl-reset vtol-sync-setup-btn" onclick="vtolSetupSync()">SETUP SYNC</button>
+      <button class="cl-reset vtol-sync-btn" onclick="vtolSyncNow()" style="display:none">SYNC NOW</button>
     </div>
     <div id="pf-archive-wrap" style="display:none">
       <div class="section-title" style="margin-top:0">Preflight Archive</div>
