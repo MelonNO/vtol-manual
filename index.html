@@ -1014,8 +1014,8 @@ function mavlinkExtractBattery(buf) {
   return { startV, minV, endV, durationMin, date };
 }
 
-// Render archive on load
-pfRenderArchive();
+// Initialise on load
+vtolInit();
 
 // ── WEATHER ──
 function getLocation() {
