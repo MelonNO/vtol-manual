@@ -1282,13 +1282,300 @@ function mavlinkExtractBattery(buf) {
 // BIN (ArduPilot DataFlash) ANALYSIS
 // ══════════════════════════════════════
 const QPLANE_MODES = {0:'MANUAL',1:'CIRCLE',2:'STABILIZE',3:'TRAINING',4:'ACRO',5:'FBWA',6:'FBWB',7:'CRUISE',8:'AUTOTUNE',10:'AUTO',11:'RTL',12:'LOITER',13:'TAKEOFF',15:'GUIDED',17:'QSTABILIZE',18:'QHOVER',19:'QLOITER',20:'QLAND',21:'QRTL',22:'QAUTOTUNE',23:'QACRO',24:'THERMAL',25:'LOITER_QLAND'};
-const SEV_COLOR = ['var(--red)','var(--red)','var(--red)','var(--red)','var(--amber)','var(--text)','var(--muted)','var(--muted)'];
-const SEV_LABEL = ['EMERGENCY','ALERT','CRITICAL','ERROR','WARNING','NOTICE','INFO','DEBUG'];
+const MODE_CLR = {MANUAL:'#6b7280',FBWA:'#93c5fd',FBWB:'#60a5fa',CRUISE:'#3b82f6',AUTO:'#f97316',RTL:'#ef4444',LOITER:'#a78bfa',GUIDED:'#f59e0b',TAKEOFF:'#facc15',QSTABILIZE:'#4ade80',QHOVER:'#22c55e',QLOITER:'#16a34a',QLAND:'#ef4444',QRTL:'#dc2626',LOITER_QLAND:'#f97316',CIRCLE:'#e879f9',THERMAL:'#fb923c'};
+const BIN_SZ = {a:64,b:1,B:1,h:2,H:2,i:4,I:4,f:4,d:8,n:4,N:16,Z:64,c:2,C:2,e:4,E:4,L:4,M:1,q:8,Q:8};
 
+function binStr(buf, off, max) {
+  let s=''; for(let k=0;k<max&&off+k<buf.length;k++){const c=buf[off+k];if(!c)break;s+=String.fromCharCode(c);} return s;
+}
+
+function binRecord(payload, fmtStr, labels) {
+  const rec={}, view=new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  let o=0;
+  for(let k=0;k<fmtStr.length&&o<payload.byteLength;k++){
+    const fc=fmtStr[k], lbl=labels[k]||('f'+k), sz=BIN_SZ[fc]||1;
+    if(o+sz>payload.byteLength) break;
+    let v=null;
+    try{switch(fc){
+      case 'b': v=view.getInt8(o); break;
+      case 'B':case 'M': v=view.getUint8(o); break;
+      case 'h': v=view.getInt16(o,true); break;
+      case 'H': v=view.getUint16(o,true); break;
+      case 'c': v=view.getInt16(o,true)/100; break;
+      case 'C': v=view.getUint16(o,true)/100; break;
+      case 'i': v=view.getInt32(o,true); break;
+      case 'I': v=view.getUint32(o,true); break;
+      case 'e': v=view.getInt32(o,true)/100; break;
+      case 'E': v=view.getUint32(o,true)/100; break;
+      case 'L': v=view.getInt32(o,true)*1e-7; break;
+      case 'f': v=view.getFloat32(o,true); break;
+      case 'd': v=view.getFloat64(o,true); break;
+      case 'q':case 'Q':{const lo=view.getUint32(o,true),hi=view.getUint32(o+4,true);v=hi*4294967296+lo;break;}
+      case 'n': v=binStr(payload,o,4); break;
+      case 'N': v=binStr(payload,o,16); break;
+      case 'Z': v=binStr(payload,o,64); break;
+    }}catch(e){}
+    rec[lbl]=v; o+=sz;
+  }
+  return rec;
+}
+
+function parseBinData(buf) {
+  const H1=0xA3,H2=0x95,FMT=0x80;
+  const fmts={};
+  const bat={t:[],v:[],c:[],ct:[]};
+  const gps={t:[],alt:[],sats:[],hdop:[],spd:[],lat:[],lng:[],gwk:[],gms:[]};
+  const arsp={t:[],v:[]};
+  const modes=[], msgs=[];
+  let firstT=0, lastT=0, i=0;
+
+  while(i<buf.length-2){
+    if(buf[i]!==H1||buf[i+1]!==H2){i++;continue;}
+    const type=buf[i+2];
+    if(type===FMT){
+      if(i+89>buf.length){i++;continue;}
+      const ft=buf[i+3],fl=buf[i+4];
+      fmts[ft]={name:binStr(buf,i+5,4).trim(),len:fl,fmt:binStr(buf,i+9,16),labels:binStr(buf,i+25,64).split(',').map(s=>s.trim())};
+      i+=89;
+    } else {
+      const fmt=fmts[type];
+      if(!fmt||fmt.len<3){i++;continue;}
+      if(i+fmt.len>buf.length){i++;continue;}
+      const p=buf.subarray(i+3,i+fmt.len);
+      const n=fmt.name.toUpperCase();
+      if(n==='BAT'||n==='BATT'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        if(r.Volt>3&&r.Volt<60){
+          const t=r.TimeUS||0;
+          if(!firstT)firstT=t; lastT=Math.max(lastT,t);
+          bat.t.push(t);bat.v.push(r.Volt);
+          if(r.Curr!=null)bat.c.push(r.Curr);
+          if(r.CurrTot!=null)bat.ct.push(r.CurrTot);
+        }
+      } else if(n==='GPS'||n==='GPS2'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0;
+        if(t>0&&r.NSats!=null){
+          if(!firstT)firstT=t; lastT=Math.max(lastT,t);
+          gps.t.push(t);gps.sats.push(r.NSats);gps.hdop.push(r.HDop||99);
+          gps.alt.push(r.Alt!=null?r.Alt:null);
+          gps.spd.push(r.Spd!=null?r.Spd:null);
+          gps.lat.push(r.Lat!=null?r.Lat:null);
+          gps.lng.push(r.Lng!=null?r.Lng:null);
+          if(r.GWk>100){gps.gwk.push(r.GWk);gps.gms.push(r.GMS||0);}
+        }
+      } else if(n==='ARSP'||n==='ASPD'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0,v=r.Airspeed!=null?r.Airspeed:r.Aspd;
+        if(t>0&&v!=null&&v>=0&&v<120){arsp.t.push(t);arsp.v.push(v);}
+      } else if(n==='MODE'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0,m=r.Mode!=null?r.Mode:r.ModeNum;
+        if(t>0&&m!=null)modes.push({t,mode:m});
+      } else if(n==='MSG'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0,txt=r.Message||r.Msg||'';
+        if(txt.trim().length>1)msgs.push({t,text:txt.trim()});
+      }
+      i+=fmt.len;
+    }
+  }
+  if(!firstT)firstT=bat.t[0]||gps.t[0]||0;
+  if(!lastT) lastT=bat.t[bat.t.length-1]||gps.t[gps.t.length-1]||0;
+  return {bat,gps,arsp,modes,msgs,firstT,lastT};
+}
+
+function binChart(values, times, color, height) {
+  height=height||80;
+  if(!values||values.length<2)return '<div style="color:var(--muted);font-size:12px;padding:8px 0">No data</div>';
+  let vs=values,ts=times;
+  if(vs.length>600){const step=vs.length/600;vs=[];ts=[];for(let k=0;k<600;k++){const idx=Math.round(k*step);if(values[idx]!=null){vs.push(values[idx]);ts.push(times[idx]);}}}
+  const valid=vs.filter(v=>v!=null&&isFinite(v));
+  if(!valid.length)return '<div style="color:var(--muted);font-size:12px;padding:8px 0">No valid data</div>';
+  const minV=Math.min(...valid),maxV=Math.max(...valid),range=maxV-minV||0.1;
+  const W=700,H=height,ml=46,mb=14,mt=6,mr=6,cW=W-ml-mr,cH=H-mt-mb;
+  const durSec=(ts[ts.length-1]-ts[0])/1e6;
+  const poly=vs.map((v,i)=>{
+    if(v==null||!isFinite(v))return null;
+    const x=(ml+(ts[i]-ts[0])/(ts[ts.length-1]-ts[0])*cW).toFixed(1);
+    const y=(mt+cH-((v-minV)/range)*cH).toFixed(1);
+    return x+','+y;
+  }).filter(Boolean).join(' ');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block">'
+    +'<rect x="'+ml+'" y="'+mt+'" width="'+cW+'" height="'+cH+'" fill="var(--surface2)"/>'
+    +'<text x="'+(ml-3)+'" y="'+(mt+9)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+maxV.toFixed(1)+'</text>'
+    +'<text x="'+(ml-3)+'" y="'+(mt+cH)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+minV.toFixed(1)+'</text>'
+    +'<text x="'+ml+'" y="'+(H-2)+'" fill="var(--muted)" font-size="9" font-family="monospace">0:00</text>'
+    +'<text x="'+(ml+cW)+'" y="'+(H-2)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+Math.floor(durSec/60)+':'+(''+(Math.round(durSec)%60)).padStart(2,'0')+'</text>'
+    +'<rect x="'+ml+'" y="'+mt+'" width="'+cW+'" height="'+cH+'" fill="none" stroke="var(--border2)" stroke-width="0.5"/>'
+    +'<polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round"/>'
+    +'</svg>';
+}
+
+function parseBinFull() {
+  const file=document.getElementById('bin-file').files[0];
+  const status=document.getElementById('bin-status');
+  const result=document.getElementById('bin-result');
+  if(!file){status.textContent='Select a .bin file first.';return;}
+  status.style.color='var(--muted)';status.textContent='Parsing '+file.name+' ('+Math.round(file.size/1024)+' KB)…';
+  result.innerHTML='';
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const buf=new Uint8Array(ev.target.result);
+      const d=parseBinData(buf);
+      const counts=[];
+      if(d.bat.v.length)counts.push(d.bat.v.length+' battery samples');
+      if(d.gps.t.length)counts.push(d.gps.t.length+' GPS records');
+      if(d.arsp.v.length)counts.push(d.arsp.v.length+' airspeed samples');
+      if(d.modes.length)counts.push(d.modes.length+' mode changes');
+      if(!counts.length){status.style.color='var(--amber)';status.textContent='No recognisable data found. Is this a valid ArduPilot .bin DataFlash log?';return;}
+      status.style.color='var(--green)';status.textContent='Parsed — '+counts.join(', ');
+      renderBinResult(d,file.name);
+    }catch(e){status.style.color='var(--red)';status.textContent='Error: '+e.message;}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderBinResult(d, filename) {
+  const out=document.getElementById('bin-result');
+  const bt=loadBattType(),cells=bt.cells,chem=BATT_CHEM[bt.chem]||BATT_CHEM.lipo;
+
+  // Wall-clock date from GPS GWk/GMS
+  let flightDate='Unknown date',startStr='—';
+  if(d.gps.gwk.length){
+    const wk=d.gps.gwk.find(w=>w>100);
+    if(wk!=null){
+      const idx=d.gps.gwk.indexOf(wk);
+      const wallMs=315964800000+wk*604800000+(d.gps.gms[idx]||0);
+      const dt=new Date(wallMs);
+      flightDate=dt.toISOString().split('T')[0];
+      startStr=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    }
+  }
+
+  // Duration
+  const durSec=(d.lastT-d.firstT)/1e6;
+  const durStr=durSec>0?Math.floor(durSec/60)+'m '+(Math.round(durSec)%60)+'s':'—';
+  const tFmt=s=>Math.floor(s/60)+'m '+(''+(Math.round(s)%60)).padStart(2,'0')+'s';
+
+  // Battery
+  const vv=d.bat.v.filter((v,i)=>v>cells*chem.critical*0.85&&v<cells*chem.full*1.05);
+  const vt=d.bat.t.filter((_,i)=>d.bat.v[i]>cells*chem.critical*0.85&&d.bat.v[i]<cells*chem.full*1.05);
+  const startV=vv.length?vv[0].toFixed(2):'—';
+  const endV=vv.length?vv[vv.length-1].toFixed(2):'—';
+  const minVnum=vv.length?Math.min(...vv):null;
+  const minV=minVnum!=null?minVnum.toFixed(2):'—';
+  const sag=vv.length?(vv[0]-minVnum).toFixed(2):'—';
+  const currArr=d.bat.c.filter(c=>c!=null&&c>=0&&c<500);
+  const maxCurr=currArr.length?Math.max(...currArr).toFixed(1):'—';
+  const avgCurr=currArr.length?(currArr.reduce((a,b)=>a+b,0)/currArr.length).toFixed(1):'—';
+  const ctArr=d.bat.ct.filter(c=>c!=null&&c>=0);
+  const mAhUsed=ctArr.length>1?(ctArr[ctArr.length-1]-ctArr[0]).toFixed(0):'—';
+
+  // Altitude (relative to launch)
+  const altPairs=d.gps.alt.map((a,i)=>({a,t:d.gps.t[i]})).filter(x=>x.a!=null&&isFinite(x.a));
+  const baseAlt=altPairs.length?altPairs[0].a:0;
+  const relAlts=altPairs.map(x=>+(x.a-baseAlt).toFixed(1));
+  const altTimes=altPairs.map(x=>x.t);
+  const maxAlt=relAlts.length?Math.max(...relAlts).toFixed(0):'—';
+
+  // Airspeed
+  const spdArr=d.arsp.v.filter(v=>v>0&&v<100);
+  const maxSpd=spdArr.length?Math.max(...spdArr).toFixed(1):'—';
+  const avgSpd=spdArr.length?(spdArr.reduce((a,b)=>a+b,0)/spdArr.length).toFixed(1):'—';
+
+  // GPS
+  const satArr=d.gps.sats.filter(s=>s>0);
+  const minSat=satArr.length?Math.min(...satArr):'—';
+  const avgSat=satArr.length?Math.round(satArr.reduce((a,b)=>a+b,0)/satArr.length):'—';
+  const hdopArr=d.gps.hdop.filter(h=>h>0&&h<50);
+  const maxHDop=hdopArr.length?Math.max(...hdopArr).toFixed(2):'—';
+
+  // Mode segments
+  const totalUs=d.lastT-d.firstT||1;
+  const modeSegs=d.modes.map((m,k)=>{
+    const tEnd=k+1<d.modes.length?d.modes[k+1].t:d.lastT;
+    const dur=(tEnd-m.t)/1e6;
+    const name=QPLANE_MODES[m.mode]||('MODE_'+m.mode);
+    const pct=((tEnd-m.t)/totalUs*100).toFixed(2);
+    return {name,dur,pct,clr:MODE_CLR[name]||'#6b7280',tSec:(m.t-d.firstT)/1e6};
+  });
+
+  // Status messages (deduplicated, sort by time)
+  const seenTxt=new Set();
+  const uniqMsgs=d.msgs.filter(m=>{if(seenTxt.has(m.text))return false;seenTxt.add(m.text);return true;});
+
+  // Charts
+  const voltChart=vv.length>2?binChart(vv,vt,'var(--accent)',80):'';
+  const altChart=relAlts.length>2?binChart(relAlts,altTimes,'var(--green)',80):'';
+  const arspChart=spdArr.length>2?binChart(d.arsp.v,d.arsp.t,'#60a5fa',70):'';
+
+  function sc(title,color,rows){
+    return '<div style="background:var(--surface);border:1px solid var(--border2);border-left:3px solid '+color+';padding:16px 18px">'
+      +'<div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:'+color+';margin-bottom:10px">'+title+'</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:2.1">'+rows+'</div></div>';
+  }
+  function row(){return Array.from(arguments).join(' &nbsp;·&nbsp; ');}
+  function lbl(k,v,c){return '<span style="color:var(--muted)">'+k+'</span> <strong style="color:'+(c||'var(--text)')+'">'+v+'</strong>';}
+
+  out.innerHTML=
+    '<div style="margin-bottom:18px">'
+      +'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:3px">DATAFLASH LOG</div>'
+      +'<div style="font-family:var(--head);font-size:20px;font-weight:700;color:var(--text);letter-spacing:1px">'+filename+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+flightDate+' &nbsp;·&nbsp; Start: '+startStr+' &nbsp;·&nbsp; Duration: '+durStr+' &nbsp;·&nbsp; '+cells+'S '+chem.name+'</div>'
+    +'</div>'
+
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">'
+      +sc('BATTERY','var(--accent)',
+          row(lbl('Start',startV+'V'),lbl('Min',minV+'V','var(--red)'))+'\n'
+          +row(lbl('End',endV+'V'),lbl('Sag',sag+'V','var(--amber)'))+'\n'
+          +(mAhUsed!=='—'?row(lbl('Used',mAhUsed+' mAh'))+'\n':'')
+          +(maxCurr!=='—'?row(lbl('Avg I',avgCurr+'A'),lbl('Max I',maxCurr+'A')):''))
+      +sc('ALTITUDE AGL','var(--green)',
+          row(lbl('Max',maxAlt+'m'))+'\n'+row(lbl('Base',baseAlt.toFixed(0)+'m MSL')))
+      +sc('AIRSPEED','#60a5fa',
+          row(lbl('Max',maxSpd+' m/s'),lbl('Avg',avgSpd+' m/s'))+'\n'
+          +'<span style="font-size:11px">Cruise target: 13 m/s</span>')
+      +sc('GPS',avgSat>=8?'var(--green)':'var(--amber)',
+          row(lbl('Avg sats',avgSat),lbl('Min',minSat))+'\n'+row(lbl('Max HDOP',maxHDop)))
+    +'</div>'
+
+    +(voltChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">BATTERY VOLTAGE (V)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+voltChart+'</div>':'')
+    +(altChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">ALTITUDE RELATIVE TO LAUNCH (m)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+altChart+'</div>':'')
+    +(arspChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">AIRSPEED (m/s)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+arspChart+'</div>':'')
+
+    +(modeSegs.length?
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">FLIGHT MODE TIMELINE</div>'
+      +'<div style="height:34px;display:flex;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px">'
+      +modeSegs.map(s=>'<div style="flex:0 0 '+s.pct+'%;background:'+s.clr+'33;border-right:1px solid '+s.clr+'66" title="'+s.name+' — '+tFmt(s.dur)+'"></div>').join('')
+      +'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px">'
+      +modeSegs.map(s=>'<div style="display:flex;align-items:center;gap:6px;font-size:13px">'
+        +'<div style="width:10px;height:10px;background:'+s.clr+'"></div>'
+        +'<span style="color:var(--muted)">'+s.name+'</span>'
+        +'<span style="color:var(--text);font-family:var(--mono)">'+tFmt(s.dur)+'</span></div>').join('')
+      +'</div>':'')
+
+    +(uniqMsgs.length?
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">STATUS MESSAGES ('+uniqMsgs.length+' unique)</div>'
+      +'<div style="background:var(--surface);border:1px solid var(--border2);max-height:340px;overflow-y:auto;margin-bottom:16px">'
+      +uniqMsgs.map(m=>{
+        const sec=(m.t-d.firstT)/1e6;
+        const ts=Math.floor(sec/60)+':'+(''+(Math.round(sec)%60)).padStart(2,'0');
+        const warn=m.text.match(/error|fail|warn|critical|unsafe|bad\s|low\s|unable|disarm|no\s|lost|denied/i);
+        return '<div style="display:flex;gap:12px;padding:7px 12px;border-bottom:1px solid var(--border);align-items:baseline">'
+          +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;min-width:44px">'+ts+'</span>'
+          +'<span style="font-size:13px;color:'+(warn?'var(--amber)':'var(--text)')+'">'+m.text+'</span></div>';
+      }).join('')+'</div>'
+    :'<div style="color:var(--green);font-size:13px;margin-bottom:16px">No status messages in log.</div>');
+}
+
+// placeholder — kept to avoid breaking any old reference
 function rf32le(p, o) {
-  const ab = new ArrayBuffer(4); const v = new DataView(ab);
-  for (let k=0;k<4;k++) v.setUint8(k, p[o+k]||0);
-  return v.getFloat32(0, true);
+  const ab=new ArrayBuffer(4);const v=new DataView(ab);
+  for(let k=0;k<4;k++)v.setUint8(k,p[o+k]||0);
+  return v.getFloat32(0,true);
 }
 
 function mavlinkExtractAll(buf) {
