@@ -658,6 +658,7 @@ async function vtolWriteFile() {
 async function vtolSaveData() {
   vtolSaveLocal();
   if (vtolDataHandle) { try { await vtolWriteFile(); } catch(e){console.warn('File write:',e);} }
+  if (vtolGetPAT()) vtolScheduleCloudPush();
 }
 async function vtolLoadData() {
   if (vtolDataHandle) {
