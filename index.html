@@ -1072,6 +1072,7 @@ async function fetchWeather() {
       const parts = [a.village || a.town || a.city || a.county, a.state || a.region, a.country].filter(Boolean);
       if (parts.length) locName = parts.join(', ');
     }
+    wxCurrentLocName = locName;
 
     const DIRS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
     function compass(d) { return DIRS[Math.round(d / 22.5) % 16]; }
