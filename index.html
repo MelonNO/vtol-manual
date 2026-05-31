@@ -1325,6 +1325,7 @@ function parseBinData(buf) {
   const fmts={};
   const bat={t:[],v:[],c:[],ct:[]};
   const gps={t:[],alt:[],sats:[],hdop:[],spd:[],lat:[],lng:[],gwk:[],gms:[]};
+  const pos={t:[],relHome:[],alt:[]};   // POS.RelHomeAlt = true AGL from EKF
   const arsp={t:[],v:[]};
   const modes=[], msgs=[];
   let firstT=0, lastT=0, i=0;
