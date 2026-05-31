@@ -1128,7 +1128,7 @@ async function fetchWeather() {
       const tCol = (l.t !== null && l.t !== undefined && l.t <= 2 && l.t >= -25) ? 'var(--amber)' : 'var(--text)';
       const tStr = (l.t !== null && l.t !== undefined) ? l.t.toFixed(1) + '°C' : '--';
       const rhStr = (l.rh !== null && l.rh !== undefined) ? l.rh + '%' : '--';
-      return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px">' +
+      return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:11px 14px;border-bottom:1px solid var(--border);font-size:14px">' +
         '<span style="color:var(--text);font-family:var(--head);font-weight:700;letter-spacing:1px">' + l.label + '</span>' +
         '<span style="color:var(--muted)">' + l.alt + '</span>' +
         '<span style="color:' + tCol + '">' + tStr + '</span>' +
