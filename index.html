@@ -333,6 +333,27 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
     </div>
     <div id="mp-fetch-status" style="font-size:13px;margin-top:8px;display:none"></div>
   </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Battery Configuration</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label class="bl-label">CELL COUNT</label>
+        <select id="bl-cells" class="bl-input" onchange="saveBattType();renderBattLog()" style="width:auto;cursor:pointer;background:var(--surface2)">
+          <option value="3">3S (11.1V nom)</option><option value="4">4S (14.8V nom)</option>
+          <option value="5">5S (18.5V nom)</option><option value="6">6S (22.2V nom)</option>
+          <option value="7">7S (25.9V nom)</option><option value="8">8S (29.6V nom)</option>
+        </select>
+      </div>
+      <div>
+        <label class="bl-label">CHEMISTRY</label>
+        <select id="bl-chem" class="bl-input" onchange="saveBattType();renderBattLog()" style="width:auto;cursor:pointer;background:var(--surface2)">
+          <option value="lipo">LiPo (4.2V full · 3.7V nom)</option>
+          <option value="liion">Li-Ion (4.2V full · 3.6V nom)</option>
+          <option value="life">LiFe / A123 (3.65V full · 3.3V nom)</option>
+        </select>
+      </div>
+    </div>
+  </div>
   <div id="bl-analysis"></div>
   <div class="section-title">Flight Log</div>
   <div id="bl-log-empty" style="color:var(--muted);font-size:14px;padding:12px 0">No entries yet.</div>
