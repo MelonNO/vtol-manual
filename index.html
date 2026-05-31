@@ -969,8 +969,10 @@ function wxSaveFavorite() {
   var lon = parseFloat(document.getElementById('wx-lon').value);
   if (isNaN(lat) || isNaN(lon)) { alert('Fetch weather first to get a location to save.'); return; }
   if (vtolData.weatherFavorites.find(function(f){ return f.lat===lat && f.lon===lon; })) { alert('Location already saved.'); return; }
-  var name = wxCurrentLocName || (lat.toFixed(4)+', '+lon.toFixed(4));
-  vtolData.weatherFavorites.push({ lat:lat, lon:lon, name:name });
+  var defaultName = wxCurrentLocName || (lat.toFixed(4)+', '+lon.toFixed(4));
+  var name = prompt('Name this location:', defaultName);
+  if (name === null) return;
+  vtolData.weatherFavorites.push({ lat:lat, lon:lon, name:(name.trim()||defaultName) });
   vtolSaveData();
   wxRenderFavorites();
 }
