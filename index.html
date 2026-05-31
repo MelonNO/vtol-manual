@@ -1375,6 +1375,7 @@ async function fetchWeather() {
         '<div style="font-family:var(--head);font-size:20px;font-weight:700;color:var(--text);letter-spacing:1px">' + locName + '</div>' +
         '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">' + lat.toFixed(4) + ', ' + lon.toFixed(4) + ' · ' + skyDesc(wCode) + ' · ' + new Date().toLocaleTimeString() + '</div>' +
       '</div>' +
+      sunHTML +
       // 3 status banners
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px">' +
         '<div style="background:' + wStat.bg + ';border:2px solid ' + wStat.c + ';padding:20px">' +
