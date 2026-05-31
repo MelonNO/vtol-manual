@@ -1,4 +1,4 @@
-const CACHE = 'vtol-manual-v2';
+const CACHE = 'vtol-manual-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -21,15 +21,33 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(response => {
-        if (!response || response.status !== 200 || response.type === 'opaque') return response;
-        const clone = response.clone();
-        caches.open(CACHE).then(c => c.put(e.request, clone));
+  const url = new URL(e.request.url);
+  const isHTML = url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/');
+
+  if (isHTML) {
+    // Network-first for HTML: always try to get the latest version,
+    // fall back to cache only when offline.
+    e.respondWith(
+      fetch(e.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
         return response;
-      }).catch(() => caches.match('./index.html'));
-    })
-  );
+      }).catch(() => caches.match(e.request))
+    );
+  } else {
+    // Cache-first for fonts and other static assets.
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        if (cached) return cached;
+        return fetch(e.request).then(response => {
+          if (!response || response.status !== 200 || response.type === 'opaque') return response;
+          const clone = response.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+          return response;
+        });
+      })
+    );
+  }
 });
