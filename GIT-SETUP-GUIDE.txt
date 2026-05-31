@@ -1,0 +1,90 @@
+================================================
+VTOL MANUAL — AUTO-PUSH TO GITHUB SETUP GUIDE
+================================================
+
+PREREQUISITES
+-------------
+1. Git must be installed on your PC.
+   Download: https://git-scm.com/download/win
+   After installing, open a new terminal and type: git --version
+   You should see a version number.
+
+2. You must be logged into GitHub in your browser.
+
+3. Your GitHub repo must already exist (you created it earlier).
+
+
+STEP 1 — EDIT git-setup.ps1
+-----------------------------
+Open git-setup.ps1 in Notepad and change these two lines near the top:
+
+   $GITHUB_USERNAME = "YOUR-USERNAME"
+   $REPO_NAME       = "YOUR-REPO-NAME"
+
+Use your actual GitHub username and the repo name you created.
+Example:
+   $GITHUB_USERNAME = "johndoe"
+   $REPO_NAME       = "vtol-relay"
+
+Save and close.
+
+
+STEP 2 — RUN git-setup.ps1 (ONE TIME ONLY)
+--------------------------------------------
+Right-click git-setup.ps1 → "Run with PowerShell"
+
+If Windows blocks it, open PowerShell as Administrator and run:
+   Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+Then try again.
+
+When prompted by git to log in to GitHub, sign in with your browser
+or use a Personal Access Token.
+
+This script:
+- Initialises git in your folder
+- Connects to your GitHub repo
+- Pushes all files for the first time
+
+
+STEP 3 — ENABLE GITHUB PAGES (if not done yet)
+------------------------------------------------
+In your GitHub repo:
+  Settings → Pages → Source: Deploy from branch → main / root → Save
+
+Your site will be live at:
+  https://YOUR-USERNAME.github.io/YOUR-REPO-NAME/
+
+
+STEP 4 — RUN watch-push.ps1 (WHENEVER YOU WORK)
+-------------------------------------------------
+Right-click watch-push.ps1 → "Run with PowerShell"
+
+Leave this window open while you work.
+Every time you save index.html or manual.html, it will:
+  - Wait 4 seconds (in case you save again quickly)
+  - Commit the changes
+  - Push to GitHub
+  - Print a confirmation line with the timestamp
+
+Your GitHub Pages site updates automatically ~60 seconds after each push.
+
+Press Ctrl+C in the watcher window to stop it.
+
+
+TROUBLESHOOTING
+---------------
+"Push failed" in the watcher:
+  - Check your internet connection
+  - You may need to authenticate: run git-setup.ps1 again
+
+"git is not installed":
+  - Download and install from https://git-scm.com
+  - Restart PowerShell after installing
+
+Changes not appearing on the site:
+  - GitHub Pages can take up to 2 minutes to update
+  - Check the Actions tab in your repo for build status
+  - Make sure GitHub Pages is enabled (Step 3)
+
+================================================

@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HEEWING T2 — FLIGHT TOOLS</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
+:root {
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2a2a2a; --border2:#333;
+  --text:#e8e8e8; --muted:#666; --accent:#f97316; --amber:#facc15; --red:#ef4444;
+  --green:#22c55e; --dim:#444; --mono:'Share Tech Mono',monospace; --head:'Oswald',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;}
+header{background:var(--surface);border-bottom:2px solid var(--accent);}
+.hdr-top{display:flex;align-items:stretch;border-bottom:1px solid var(--border2);}
+.hdr-badge{background:var(--accent);color:#000;font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:3px;writing-mode:vertical-rl;padding:12px 8px;display:flex;align-items:center;}
+.hdr-main{flex:1;padding:14px 24px;}
+.hdr-doc-id{font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px;}
+.hdr-title{font-family:var(--head);font-size:22px;font-weight:700;color:var(--accent);letter-spacing:2px;line-height:1;}
+.hdr-sub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:5px;}
+.hdr-meta{display:flex;gap:32px;padding:8px 24px 8px 52px;font-size:10px;color:var(--muted);letter-spacing:1px;flex-wrap:wrap;}
+.hdr-meta span strong{color:var(--text);}
+nav{background:var(--surface2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;padding:0 8px;align-items:center;}
+nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:12px 18px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;}
+nav button:hover{color:var(--text);}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+.nav-manual-btn{margin-left:auto;background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;padding:6px 14px;cursor:pointer;white-space:nowrap;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;}
+.nav-manual-btn:hover{background:var(--accent);color:#000;}
+.content{max-width:960px;margin:0 auto;padding:28px 24px;padding-bottom:100px;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeSlideIn .2s ease both;}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideDown{from{opacity:0;max-height:0;}to{opacity:1;max-height:600px;}}
+@keyframes checkPop{0%{transform:scale(0);}60%{transform:scale(1.3);}100%{transform:scale(1);}}
+@keyframes pulseFab{0%,100%{box-shadow:0 4px 20px rgba(239,68,68,.4);}50%{box-shadow:0 4px 32px rgba(239,68,68,.8),0 0 0 6px rgba(239,68,68,.15);}}
+@keyframes goNogoBanner{from{opacity:0;transform:scaleX(.95);}to{opacity:1;transform:scaleX(1);}}
+#emerg-fab{position:fixed;bottom:20px;right:20px;z-index:900;background:var(--red);color:#fff;border:none;font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px 22px;cursor:pointer;border-radius:4px;box-shadow:0 4px 20px rgba(239,68,68,.4);transition:background .15s,transform .1s;display:flex;align-items:center;gap:8px;animation:pulseFab 2.5s ease-in-out infinite;}
+#emerg-fab:hover{background:#dc2626;animation:none;box-shadow:0 4px 28px rgba(239,68,68,.7);}
+#emerg-fab:active{transform:scale(.96);}
+.section-title{font-family:var(--head);font-size:15px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2);padding-bottom:6px;margin:28px 0 14px;}
+.section-title:first-child{margin-top:0;}
+p{color:var(--muted);margin-bottom:10px;}
+p strong,p b{color:var(--text);}
+.card{background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--dim);padding:16px 18px;margin-bottom:14px;}
+.card.accent{border-left-color:var(--accent);}
+.card.amber{border-left-color:var(--amber);}
+.card.danger{border-left-color:var(--red);background:#1a0e0e;}
+.card-title{font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+.card.amber .card-title{color:var(--amber);}
+.card.danger .card-title{color:var(--red);}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px;}
+th{text-align:left;padding:8px 12px;font-family:var(--head);font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2);}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text);}
+td:first-child{color:var(--muted);}
+td code{background:var(--surface2);border:1px solid var(--border2);padding:2px 6px;border-radius:2px;color:var(--accent);font-size:13px;}
+tr:last-child td{border-bottom:none;}
+.val{color:var(--accent);font-weight:bold;}
+.warn-val{color:var(--amber);font-weight:bold;}
+.crit-val{color:var(--red);font-weight:bold;}
+.alert{padding:10px 14px;margin:10px 0;font-size:12px;border-left:3px solid;letter-spacing:.3px;}
+.alert-danger{border-color:var(--red);background:#1f1010;color:#f87171;}
+.alert-warn{border-color:var(--amber);background:#1f1a08;color:#facc15;}
+.alert-info{border-color:var(--accent);background:#1f1208;color:var(--accent);}
+.alert::before{font-weight:bold;margin-right:8px;}
+.alert-danger::before{content:'⚠ CAUTION:';color:var(--red);}
+.alert-warn::before{content:'⚡ WARNING:';color:var(--amber);}
+.alert-info::before{content:'▶ NOTE:';}
+.step{display:flex;gap:14px;margin-bottom:12px;align-items:flex-start;}
+.step-n{font-family:var(--head);font-size:14px;font-weight:700;color:var(--accent);min-width:24px;padding-top:1px;}
+.step-body{flex:1;}
+.step-body strong{color:var(--text);display:block;margin-bottom:2px;}
+.step-body p{margin:0;font-size:12px;}
+.emerg-hdr{font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-bottom:1px solid var(--red);padding-bottom:6px;margin-bottom:10px;opacity:.8;}
+.proc-step{display:flex;gap:12px;margin-bottom:8px;font-size:12px;}
+.proc-step .n{color:var(--red);font-weight:bold;min-width:18px;}
+.proc-step .t{color:var(--text);}
+.mbadge{display:inline-block;font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:2px;}
+.m-qhov{background:#14230f;color:#22c55e;border:1px solid #166534;}
+.m-fbwb{background:#0f1a2e;color:#60a5fa;border:1px solid #1e40af;}
+.m-auto{background:#1c1208;color:#f97316;border:1px solid #c2410c;}
+.m-rtl{background:#1f0f0f;color:#ef4444;border:1px solid #991b1b;}
+/* ── CHECKLIST ── */
+.cl-hdr{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+.cl-hdr-title{font-family:var(--head);font-size:22px;font-weight:700;letter-spacing:3px;color:var(--accent);text-transform:uppercase;}
+.cl-progress-wrap{flex:1;min-width:100px;}
+.cl-progress{height:4px;background:var(--surface2);}
+.cl-progress-bar{height:100%;background:var(--green);transition:width .5s cubic-bezier(.4,0,.2,1);}
+.cl-progress-label{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:3px;}
+.cl-reset{background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:13px;padding:8px 16px;cursor:pointer;letter-spacing:1px;}
+.cl-reset:hover{border-color:var(--amber);color:var(--amber);}
+.cl-section{margin-bottom:20px;animation:fadeSlideIn .25s ease both;}
+.cl-section:nth-child(1){animation-delay:.05s;}
+.cl-section:nth-child(2){animation-delay:.10s;}
+.cl-section:nth-child(3){animation-delay:.15s;}
+.cl-section:nth-child(4){animation-delay:.20s;}
+.cl-section:nth-child(5){animation-delay:.25s;}
+.cl-section-hdr{display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid var(--border2);margin-bottom:2px;}
+.cl-section-name{font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--accent);}
+.cl-section-prog{font-size:10px;color:var(--muted);margin-left:auto;letter-spacing:1px;}
+.ci{display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-height:50px;transition:opacity .2s;}
+.ci:last-child{border-bottom:none;}
+.ci.done{opacity:.5;}
+.ci-left{display:flex;align-items:center;gap:12px;width:50%;padding:12px 16px;cursor:pointer;border-right:1px solid var(--border);transition:background .1s;user-select:none;}
+.ci-left:hover{background:var(--surface2);}
+.ci.done .ci-left .ci-short{text-decoration:line-through;}
+.ci-right{display:flex;align-items:center;width:50%;padding:12px 16px;cursor:pointer;transition:background .1s;gap:10px;user-select:none;}
+.ci-right:hover{background:var(--surface2);}
+.ci-right.open{background:#1c1208;}
+.ci-right .expand-icon{font-size:18px;color:var(--dim);flex-shrink:0;transition:transform .15s,color .15s;}
+.ci-right.open .expand-icon{transform:rotate(90deg);color:var(--accent);}
+.ci-right .expand-hint{font-size:12px;color:var(--muted);letter-spacing:.5px;flex:1;}
+.ci-right.open .expand-hint{color:var(--accent);}
+.ci-box{width:24px;height:24px;border:2px solid var(--dim);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;}
+.ci.done .ci-box{background:var(--green);border-color:var(--green);color:#000;font-weight:bold;animation:checkPop .25s cubic-bezier(.34,1.56,.64,1) both;}
+.ci.done .ci-box::after{content:'✓';}
+.ci-short{color:var(--text);font-size:15px;flex:1;}
+.ci-detail{display:none;margin:0 0 2px;padding:14px 20px;background:#1a1108;border-bottom:1px solid var(--border2);border-left:3px solid var(--accent);font-size:14px;color:var(--muted);overflow:hidden;}
+.ci-detail.visible{display:block;animation:slideDown .2s ease both;}
+.ci-detail-text{color:var(--text);margin-bottom:4px;line-height:1.5;}
+.ci-note{display:block;font-size:13px;color:var(--muted);margin-top:6px;}
+.ci-note.w{color:var(--amber);}
+.ci-note.c{color:var(--red);}
+.ci-note code{background:var(--bg);border:1px solid var(--border2);padding:2px 5px;color:var(--accent);font-size:12px;}
+.ci-note.copy-val{display:block;font-size:13px;color:var(--accent);background:var(--surface2);border:1px solid var(--border2);padding:5px 8px;margin-top:5px;word-break:break-all;white-space:pre;cursor:pointer;user-select:all;}
+.ci-note.copy-val::before{content:'⎘ ';opacity:.6;}
+.ci-note.copy-val.copied{border-color:var(--green);color:var(--green);}
+.go-nogo{margin-top:18px;padding:12px 18px;font-family:var(--head);font-size:16px;font-weight:700;letter-spacing:3px;text-transform:uppercase;display:none;border:1px solid;}
+.go-nogo.go{display:block;color:var(--green);border-color:var(--green);background:#0a1f0d;animation:goNogoBanner .3s ease both;}
+.go-nogo.nogo{display:block;color:var(--red);border-color:var(--red);background:#1f0a0a;animation:goNogoBanner .3s ease both;}
+/* battery log inputs */
+.bl-label{display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
+.bl-input{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none;}
+.bl-input:focus{border-color:var(--accent);}
+.bl-btn{padding:10px 20px;background:var(--accent);border:none;color:#000;font-family:var(--head);font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;}
+.bl-btn:hover{background:#ea6b0a;}
+footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:40px;}
+@media(max-width:600px){
+  .hdr-badge{writing-mode:horizontal-tb;padding:6px 12px;font-size:10px;}
+  .hdr-title{font-size:15px;}
+  .hdr-meta{padding:8px 12px;gap:8px 16px;font-size:9px;}
+  .content{padding:16px 12px 100px;}
+  nav button{padding:10px 10px;font-size:11px;letter-spacing:.5px;}
+  .ci-left,.ci-right{padding:10px 8px;}
+  .ci-box{width:22px;height:22px;font-size:13px;}
+  #emerg-fab{bottom:16px;right:16px;font-size:13px;padding:12px 16px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-top">
+    <div class="hdr-badge">TOOLS</div>
+    <div class="hdr-main">
+      <div class="hdr-doc-id">HEEWING T2 VTOL · ARDUPLANE · ELRS 915/868/2.4GHz · SIYI HM30</div>
+      <div class="hdr-title">RELAY CARRIER — FLIGHT TOOLS</div>
+      <div class="hdr-sub">CHECKLISTS · BATTERY LOG · EMERGENCY PROCEDURES</div>
+    </div>
+  </div>
+  <div class="hdr-meta">
+    <span><strong>PLATFORM</strong> Heewing T2 VTOL</span>
+    <span><strong>BATT</strong> 6S 7000mAh</span>
+    <span><strong>CRIT VOLT</strong> 22.2V</span>
+    <span><strong>RTL ALT</strong> 120m AGL</span>
+    <span><strong>CRUISE</strong> 13 m/s</span>
+  </div>
+</header>
+
+<nav id="nav">
+  <button onclick="switchTab('preflight',this)">Pre-Flight</button>
+  <button onclick="switchTab('turnaround',this)">Turnaround</button>
+  <button onclick="switchTab('postflight',this)">Post-Flight</button>
+  <button onclick="switchTab('battlog',this)">Battery Log</button>
+  <button onclick="switchTab('weather',this)">Weather</button>
+  <a class="nav-manual-btn" href="manual.html">MANUAL ▶</a>
+</nav>
+
+<button id="emerg-fab" onclick="openEmerg()">⚠ EMERGENCY</button>
+
+<div id="emerg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999;overflow-y:auto">
+  <div style="max-width:860px;margin:0 auto;padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-bottom:2px solid var(--red);padding-bottom:12px">
+      <span style="font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:3px;color:var(--red)">⚠ EMERGENCY PROCEDURES</span>
+      <button onclick="closeEmerg()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:6px 14px;cursor:pointer;letter-spacing:1px">CLOSE ✕</button>
+    </div>
+    <div class="alert alert-danger">Memorise these actions. In-flight response time is measured in seconds.</div>
+    <div class="card danger" style="margin-top:14px">
+      <div class="emerg-hdr">RC Link Loss — 915MHz (Ground → Carrier)</div>
+      <div class="proc-step"><div class="n">1</div><div class="t">Short loss (≤1.5s): ArduPlane switches to <span class="mbadge m-fbwb">FBWA</span> automatically. Regain link and resume.</div></div>
+      <div class="proc-step"><div class="n">2</div><div class="t">Long loss (&gt;5s): RTL triggers at 120m AGL. Do NOT power-cycle TX in flight.</div></div>
+      <div class="proc-step"><div class="n">3</div><div class="t">GCS (SIYI HM30) still available: send mode commands via Mission Planner.</div></div>
+    </div>
+    <div class="card danger">
+      <div class="emerg-hdr">Relay Link Loss — 2.4GHz (Carrier → FPV)</div>
+      <div class="proc-step"><div class="n">1</div><div class="t">FPV failsafe activates. Co-pilot ceases inputs immediately.</div></div>
+      <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot holds loiter — sub-drone may be RTH-ing toward carrier position.</div></div>
+      <div class="proc-step"><div class="n">3</div><div class="t">If relay does not recover: co-pilot monitors FPV failsafe. Carrier Pilot recovers independently.</div></div>
+    </div>
+    <div class="card danger">
+      <div class="emerg-hdr">Video Loss — 5.8GHz or SIYI Chain</div>
+      <div class="proc-step"><div class="n">1</div><div class="t">Co-pilot: zero inputs. Sub-drone to hover/stabilise.</div></div>
+      <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot: descend carrier to reduce path loss. Wait 10s.</div></div>
+      <div class="proc-step"><div class="n">3</div><div class="t">Not recovered: FPV RTH. Carrier Pilot recovers carrier independently.</div></div>
+    </div>
+    <div class="card danger">
+      <div class="emerg-hdr">Transition Failure — VTOL → FW</div>
+      <div class="proc-step"><div class="n">1</div><div class="t">No airspeed build within 3s or excessive pitch-down: <span class="mbadge m-qhov">QHOVER</span> immediately.</div></div>
+      <div class="proc-step"><div class="n">2</div><div class="t"><code>Q_TRANS_FAIL=4s</code> — auto-abort triggers at 4s. Do not wait for it.</div></div>
+      <div class="proc-step"><div class="n">3</div><div class="t">Land in VTOL. Inspect tilt servo, cruise ESC, battery voltage before next attempt.</div></div>
+    </div>
+    <div class="card danger">
+      <div class="emerg-hdr">Battery Critical — Carrier</div>
+      <div class="proc-step"><div class="n">1</div><div class="t">No BATT_LOW_VOLT set. First automated action: <code>22.2V</code> → Loiter to QLand at current position. Will NOT return home.</div></div>
+      <div class="proc-step"><div class="n">2</div><div class="t">Initiate manual RTL at <span class="warn-val">24V</span>. If dropping rapidly: Nomad left button → RTL immediately.</div></div>
+      <div class="proc-step"><div class="n">3</div><div class="t">If Loiter→QLand triggers: confirm area below is clear. Aircraft descending vertically from current position.</div></div>
+    </div>
+    <div class="card danger">
+      <div class="emerg-hdr">GCS Link Loss (SIYI HM30)</div>
+      <div class="proc-step"><div class="n">1</div><div class="t">Switch to physical ELRS 915MHz TX immediately. Confirm carrier responds.</div></div>
+      <div class="proc-step"><div class="n">2</div><div class="t">In AUTO: GCS failsafe triggers RTL. In FBWB/QHOVER: no failsafe — fly manually.</div></div>
+      <div class="proc-step"><div class="n">3</div><div class="t">Use Nomad 3-position switch (QHOVER/FBWB/AUTO) or left button for RTL.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- PRE-FLIGHT -->
+<div id="tab-preflight" class="tab-panel">
+  <div class="cl-hdr">
+    <div class="cl-hdr-title">Pre-Flight Check</div>
+    <div class="cl-progress-wrap">
+      <div class="cl-progress"><div class="cl-progress-bar" id="pb"></div></div>
+      <div class="cl-progress-label" id="pl">0 / 0 ITEMS COMPLETE</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <div id="pf-timer" style="font-family:var(--mono);font-size:20px;font-weight:bold;color:var(--muted);letter-spacing:3px;min-width:72px;text-align:center;transition:color .3s">00:00</div>
+      <button class="cl-reset" id="pf-start-btn" onclick="pfTimerToggle()" style="border-color:var(--accent);color:var(--accent)">START</button>
+      <button class="cl-reset" onclick="pfTimerReset()" title="Reset timer">↺</button>
+    </div>
+    <button class="cl-reset" id="expand-btn" onclick="toggleExpandAll()">EXPAND ALL</button>
+    <button class="cl-reset" onclick="resetCL()">RESET</button>
+  </div>
+  <div id="cl-container"></div>
+  <div id="go-nogo" class="go-nogo"></div>
+  <div id="pf-archive-wrap" style="margin-top:28px;display:none">
+    <div class="section-title" style="margin-top:0">Preflight Archive</div>
+    <div id="pf-archive-list"></div>
+  </div>
+</div>
+
+<!-- TURNAROUND -->
+<div id="tab-turnaround" class="tab-panel">
+  <div class="cl-hdr">
+    <div class="cl-hdr-title">Turnaround Check</div>
+    <div class="cl-progress-wrap">
+      <div class="cl-progress"><div class="cl-progress-bar" id="pb2"></div></div>
+      <div class="cl-progress-label" id="pl2">0 / 0 ITEMS COMPLETE</div>
+    </div>
+    <button class="cl-reset" id="expand-btn2" onclick="toggleExpandAll2()">EXPAND ALL</button>
+    <button class="cl-reset" onclick="resetCL2()">RESET</button>
+  </div>
+  <div id="cl-container2"></div>
+  <div id="go-nogo2" class="go-nogo"></div>
+</div>
+
+<!-- POST-FLIGHT -->
+<div id="tab-postflight" class="tab-panel">
+  <div class="section-title">Immediate Post-Landing</div>
+  <div class="card accent">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Disarm carrier</strong><p>Confirm disarmed in Mission Planner. All motors stopped. Do not approach until disarmed.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Disarm FPV sub-drone</strong><p>Co-pilot confirms FPV disarmed. Props stopped.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Disconnect carrier battery</strong><p>Disconnect 6S pack. All systems power down. Record landing voltage.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Disconnect FPV battery</strong><p>Record FPV landing voltage.</p></div></div>
+  </div>
+  <div class="section-title">Ground Station Teardown</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Check mast battery voltage</strong><p>Disconnect and measure 6S 3000mAh mast battery. Below <span class="warn-val">21.0V</span>: charge immediately, do not store discharged.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Power down HM30 ground unit</strong><p>Disconnect ethernet. Remove mast battery safely.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Lower and secure mast</strong><p>Confirm HM30 and cabling secured before transport.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Close Mission Planner</strong><p>Save log if required.</p></div></div>
+  </div>
+  <div class="section-title">Inspection</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Carrier airframe</strong><p>Inspect tilt motor mounts, wing joins, prop blades, connectors. Check for heat or smell from ESCs/motors.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier battery</strong><p>Check for puffing, heat, damage. Store at 22.2V if not flying within 24h.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Video chain</strong><p>Check CVBS→HDMI and SIYI HDMI→IP for heat. Inspect VRX antenna.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>FPV sub-drone</strong><p>Inspect props, motors, frame.</p></div></div>
+  </div>
+</div>
+
+<!-- BATTERY LOG -->
+<div id="tab-battlog" class="tab-panel">
+  <div class="section-title" style="margin-top:0">Auto-Read from .tlog</div>
+  <p>Upload an ArduPilot <strong>.tlog</strong> file from Mission Planner to automatically extract battery voltages and flight time.</p>
+  <div class="card" style="margin-bottom:20px">
+    <label class="bl-label" style="margin-bottom:8px;display:block">SELECT .TLOG FILE</label>
+    <input type="file" id="tlog-file" accept=".tlog,.log" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
+    <div id="tlog-status" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
+    <button class="bl-btn" onclick="parseTlog()">READ TLOG</button>
+  </div>
+
+  <div class="section-title">Log New Flight</div>
+  <p>Fields auto-filled from .tlog above, or enter manually.</p>
+  <div class="card accent" style="margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div><label class="bl-label">DATE</label><input type="date" id="bl-date" class="bl-input"></div>
+      <div><label class="bl-label">FLIGHT / SORTIE</label><input type="text" id="bl-flight" class="bl-input" placeholder="e.g. sortie 3"></div>
+      <div><label class="bl-label">VOLTAGE AT POWER-ON (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-start" class="bl-input" step="0.1" placeholder="e.g. 25.1" style="flex:1"><button onclick="fetchVoltage('bl-start')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label">LOWEST VOLTAGE DURING LANDING (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-min" class="bl-input" step="0.1" placeholder="e.g. 22.8" style="flex:1"><button onclick="fetchVoltage('bl-min')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label">RESTING VOLTAGE AFTER LANDING (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-rest" class="bl-input" step="0.1" placeholder="e.g. 23.2" style="flex:1"><button onclick="fetchVoltage('bl-rest')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label">FLIGHT TIME (min)</label><input type="number" id="bl-time" class="bl-input" step="1" placeholder="e.g. 18"></div>
+    </div>
+    <div style="margin-bottom:12px"><label class="bl-label">NOTES</label><input type="text" id="bl-notes" class="bl-input" placeholder="Wind, conditions, anomalies..."></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="bl-btn" onclick="logBattery()">SAVE ENTRY</button>
+      <span style="font-size:12px;color:var(--muted)">MP buttons fetch live voltage from Mission Planner (laptop only — requires MP running with REST API on port 20199)</span>
+    </div>
+    <div id="mp-fetch-status" style="font-size:13px;margin-top:8px;display:none"></div>
+  </div>
+  <div id="bl-analysis"></div>
+  <div class="section-title">Flight Log</div>
+  <div id="bl-log-empty" style="color:var(--muted);font-size:14px;padding:12px 0">No entries yet.</div>
+  <div style="overflow-x:auto"><table id="bl-log-table" style="display:none">
+    <tr><th>Date</th><th>Flight</th><th>Start V</th><th>Min V</th><th>Rest V</th><th>Sag</th><th>Min</th><th>Notes</th><th></th></tr>
+  </table></div>
+</div>
+
+<!-- WEATHER -->
+<div id="tab-weather" class="tab-panel">
+  <div class="section-title" style="margin-top:0">Weather Check</div>
+  <p>Live conditions via Open-Meteo. T2 limits: <strong>GO ≤5 m/s</strong> · <strong>CAUTION 5–8 m/s</strong> · <strong>NO-GO &gt;8 m/s</strong> wind or any gusts &gt;10 m/s.</p>
+  <div class="card accent" style="margin-bottom:20px">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:140px"><label class="bl-label">LATITUDE</label><input type="number" id="wx-lat" class="bl-input" step="0.0001" placeholder="e.g. 59.9139"></div>
+      <div style="flex:1;min-width:140px"><label class="bl-label">LONGITUDE</label><input type="number" id="wx-lon" class="bl-input" step="0.0001" placeholder="e.g. 10.7522"></div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="bl-btn" onclick="getLocation()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border2)">USE GPS</button>
+        <button class="bl-btn" onclick="fetchWeather()">FETCH</button>
+      </div>
+    </div>
+  </div>
+  <div id="wx-result"></div>
+</div>
+
+</div><!-- /content -->
+
+<footer>HEEWING T2 VTOL RELAY CARRIER · FLIGHT TOOLS · ARDUPLANE</footer>
+
+<script>
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+function openEmerg() { document.getElementById('emerg-modal').style.display='block'; document.body.style.overflow='hidden'; }
+function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow=''; }
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeEmerg(); });
+
+// ── CHECKLIST 1 ──
+const CL = [
+  { id:'A', name:'SITE', items:[
+    { s:'Airspace verified & pilots briefed', t:'Airspace verified — NOTAMs checked, operation permitted. Both pilots briefed on roles and emergency actions.', w:true },
+    { s:'Wind within limits', t:'Wind within limits — crosswind acceptable for VTOL.', n:'Wind vane active — carrier will weathervane into wind automatically.' },
+    { s:'Landing zone clear', t:'VTOL landing zone clear — 5m radius, level, no obstacles.' },
+  ]},
+  { id:'B', name:'VTOL BUILD & POWER-ON', items:[
+    { s:'Airframe inspected', t:'Carrier drone assembled and inspected — no cracks at tilt motor mounts or wing joins.' },
+    { s:'Pitot cover on', t:'Pitot cover installed.', n:'Leave on until pitot calibration step.', w:true },
+    { s:'Battery secured & power on', t:'Battery secured — strap tight, no movement. Power on carrier drone immediately to allow GPS fix acquisition while ground station is being set up.', n:'Power on early for best GPS fix quality. Do not arm yet.' },
+    { s:'Props tight, rotation correct', t:'All props tight — correct rotation direction confirmed for all 4 motors.', n:'Front pair: both tilt motor props. Rear pair: fixed lift motor props.', w:true },
+  ]},
+  { id:'C', name:'GROUND STATION', items:[
+    { s:'Mast up and powered', t:'HM30 mast erected and powered — 6S 3000mAh secured to mast.' },
+    { s:'Ethernet connected', t:'Ethernet cable connected mast → laptop.' },
+    { s:'HM30 linked, battery OK', t:'HM30 ground unit linked — verify LED is blue. Check mast battery voltage.' },
+    { s:'Subnet verified', t:'Ethernet network adapter on correct subnet.', n:'IP must be <code>192.168.144.X</code> — subnet mask <code>255.255.255.0</code>' },
+    { s:'Mission Planner connected', t:'Mission Planner open — second screen via USB-C. Select <strong>UDPCI</strong> in MP connection dropdown.', extras:[{label:'IP',val:'192.168.144.12'},{label:'Port',val:'19856'}] },
+    { s:'GStreamer configured', t:'GStreamer: right-click avionics screen → Video → Set GStreamer Source. Paste pipeline:', n:'rtspsrc location=rtsp://192.168.144.26:8554/main.264 latency=41 udp-reconnect=1 timeout=0 do-retransmission=false ! application/x-rtp ! decodebin3 ! queue max-size-buffers=1 leaky=2 ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink sync=false', copy:true },
+    { s:'mpv.conf verified', t:'MPV.net — verify mpv.conf contains correct low-latency config:', n:'profile=low-latency\nno-cache\nuntimed\nhwdec=auto\nrtsp-transport=udp', copy:true },
+    { s:'MPV stream open', t:'MPV.net — open stream: copy URL, right-click screen → File → Open URL or file from clipboard', n:'rtsp://192.168.144.25:8554/main.264', copy:true },
+    { s:'All devices charged', t:'All controllers, TX units and EcoFlow charged and ready.' },
+  ]},
+  { id:'D', name:'CARRIER DRONE', items:[
+    { s:'Compass calibrated', t:'Compass calibration — Mission Planner: Initial Setup → Mandatory Hardware → Compass → Start. Rotate through all axes. Verify no compass errors.' },
+    { s:'Home position set', t:'Home position set correctly — verify on map.' },
+    { s:'Mission verified', t:'Mission loaded and verified on map — all 7 waypoints in correct positions.' },
+    { s:'Failsafe params verified', t:'Failsafe parameters verified in Mission Planner Full Parameter List:', n:'THR_FAILSAFE = 2  (RC failsafe enabled)\nTHR_FS_VALUE = 950  (throttle loss threshold)\nFS_SHORT_ACTN = 0  (short loss → FBWA)\nFS_SHORT_TIMEOUT = 1.5  (seconds)\nFS_LONG_ACTN = 1  (long loss → RTL)\nFS_LONG_TIMEOUT = 5  (seconds)\nBATT_CRT_VOLT = 22.2  (critical voltage, V)\nBATT_FS_CRT_ACT = 6  (critical → Loiter to QLand)\nFS_GCS_ENABL = 2  (GCS failsafe in AUTO only)', w:true, copy:true },
+    { s:'Servo check (MANUAL)', t:'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and in correct direction. Switch back to QHOVER when done.', n:'MANUAL must never be used in flight.', w:true },
+    { s:'Mode cycle verified', t:'Cycle through all 3 Nomad switch positions, confirm QHOVER / FBWB / AUTO update in Mission Planner. Verify tilt servos rotate forward on FBWB.' },
+    { s:'Pitot calibrated, cover removed', t:'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated" in Messages. Confirm airspeed stable and below 2 m/s. Remove pitot cover.', w:true },
+    { s:'Correct AUTO waypoint selected', t:'Verify correct starting waypoint for AUTO mode. If launching without co-pilot, WP 1 must NOT be the active waypoint.', w:true },
+  ]},
+  { id:'E', name:'FPV SUB-DRONE', items:[
+    { s:'FPV battery connected', t:'FPV battery connected — voltage nominal.' },
+    { s:'FPV props checked', t:'FPV props tight — correct rotation direction.', n:'7"+ quad — check motor bell screws and prop nuts.' },
+    { s:'VTX on, video confirmed', t:'5.8GHz VTX powered — correct channel and band. Verify FPV video feed visible in MPV.net.', n:'Must show live FPV view — not static or blank.', w:true },
+    { s:'Relay link bound', t:'Bind FPV RX to carrier relay Nomad: hold LEFT button on carrier Nomad for 3s. Confirm ELRS 2.4GHz relay link established.', n:'Required every preflight. Bind to carrier Nomad only — not the ground TX.', w:true },
+  ]}
+];
+
+const CL2 = [
+  { id:'T1', name:'CARRIER — BATTERY & INSPECTION', items:[
+    { s:'Airframe inspected', t:'Quick visual — check tilt motor mounts, wing joins, props for damage from previous flight.' },
+    { s:'Battery swapped', t:'Remove used battery, record landing voltage, place on charger immediately. Install fresh battery — strap tight, verify above 25.0V.', n:'Used batteries must be set to charge before the next flight begins.', w:true },
+    { s:'Power on, GPS acquiring', t:'Power on carrier drone. Allow GPS to re-acquire fix before proceeding.' },
+  ]},
+  { id:'T2', name:'CARRIER — PRE-ARM', items:[
+    { s:'Home position reset', t:'Home position updated on map — verify correct location.' },
+    { s:'Mission verified', t:'Mission still loaded and correct — all 7 waypoints in correct positions.' },
+    { s:'Correct AUTO waypoint selected', t:'Verify correct starting waypoint for AUTO. If no co-pilot, WP 1 must NOT be active.', w:true },
+    { s:'Servo check (MANUAL)', t:'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and correctly. Switch back to QHOVER when done.', n:'MANUAL must never be used in flight.', w:true },
+    { s:'Pitot calibrated, cover removed', t:'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated". Confirm airspeed below 2 m/s. Remove pitot cover.', w:true },
+    { s:'Mode cycle verified', t:'Cycle all 3 Nomad switch positions. Confirm QHOVER / FBWB / AUTO in Mission Planner. Verify tilt servos rotate on FBWB.' },
+    { s:'GStreamer restarted', t:'GStreamer must be restarted after power cycle. Right-click avionics → Video → Set GStreamer Source → confirm pipeline → start.' },
+    { s:'MPV stream restarted', t:'MPV.net stream must be reopened. Copy URL, right-click screen → File → Open URL or file from clipboard.', n:'rtsp://192.168.144.25:8554/main.264', copy:true },
+  ]},
+  { id:'T3', name:'FPV SUB-DRONE', items:[
+    { s:'FPV battery swapped', t:'Remove used FPV battery, place on charger. Install fresh pack. Verify voltage nominal.' },
+    { s:'FPV props checked', t:'Quick visual — props undamaged, tight.' },
+    { s:'VTX on, video confirmed', t:'5.8GHz VTX powered. Verify FPV feed visible in MPV.net.', n:'Must show live FPV view — not static or blank.', w:true },
+    { s:'Relay link bound', t:'Re-bind FPV RX to carrier relay Nomad: hold LEFT button for 3s. Confirm ELRS 2.4GHz link established.', n:'Required every flight — bind to carrier Nomad only.', w:true },
+  ]}
+];
+
+function buildChecklist(CL_data, containerId, storageKey, secProgPrefix, overallFn) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+  CL_data.forEach(sec => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cl-section';
+    wrap.id = 'cls-' + sec.id;
+    wrap.innerHTML = `<div class="cl-section-hdr"><span class="cl-section-name">${sec.id}. ${sec.name}</span><span class="cl-section-prog" id="${secProgPrefix}${sec.id}"></span></div>`;
+    sec.items.forEach((item, i) => {
+      const key = `${sec.id}-${i}`;
+      const done = saved[key] || false;
+      const hasDetail = item.t || item.n || (item.extras && item.extras.length);
+      const noteClass = item.copy ? ' copy-val' : (item.w ? ' w' : '');
+      const noteHtml = item.n ? `<span class="ci-note${noteClass}"${item.copy ? ` onclick="copyVal(this,event)"` : ''}>${item.n}</span>` : '';
+      const extrasHtml = (item.extras||[]).map(e => `<div style="margin-top:6px"><span style="font-size:10px;color:var(--muted);letter-spacing:1px">${e.label}</span><span class="ci-note copy-val" onclick="copyVal(this,event)">${e.val}</span></div>`).join('');
+      const detailHtml = hasDetail ? `<div class="ci-detail" id="det-${sec.id}-${i}"><span class="ci-detail-text">${item.t||''}</span>${noteHtml}${extrasHtml}</div>` : '';
+      const row = document.createElement('div');
+      row.className = 'ci' + (done ? ' done' : '');
+      row.dataset.key = key; row.dataset.sec = sec.id; row.dataset.store = storageKey; row.dataset.prefix = secProgPrefix; row.dataset.overall = overallFn;
+      row.innerHTML = `<div class="ci-left" onclick="toggleCI(this.closest('.ci'),event)"><div class="ci-box"></div><span class="ci-short">${item.s||item.t}</span></div><div class="ci-right${hasDetail?'':' no-detail'}" id="right-${sec.id}-${i}" ${hasDetail?`onclick="toggleDetail('${sec.id}-${i}',this,event)"`:''}>${hasDetail?`<span class="expand-icon">▶</span><span class="expand-hint">DETAILS</span>`:''}</div>`;
+      wrap.appendChild(row);
+      if (hasDetail) { const d = document.createElement('div'); d.innerHTML = detailHtml; wrap.appendChild(d.firstChild); }
+    });
+    c.appendChild(wrap);
+    updateSecProg(sec.id, secProgPrefix, containerId);
+  });
+  window[overallFn]();
+}
+
+function toggleCI(el, e) {
+  if (e) e.stopPropagation();
+  el.classList.toggle('done');
+  const saved = JSON.parse(localStorage.getItem(el.dataset.store) || '{}');
+  saved[el.dataset.key] = el.classList.contains('done');
+  localStorage.setItem(el.dataset.store, JSON.stringify(saved));
+  updateSecProg(el.dataset.sec, el.dataset.prefix, el.closest('[id^="cl-container"]') ? el.closest('[id^="cl-container"]').id : 'cl-container');
+  window[el.dataset.overall]();
+}
+
+function updateSecProg(id, prefix, containerId) {
+  const c = document.getElementById(containerId || 'cl-container');
+  const sec = c ? c.querySelector('#cls-' + id) : document.getElementById('cls-' + id);
+  if (!sec) return;
+  const all = sec.querySelectorAll('.ci').length;
+  const done = sec.querySelectorAll('.ci.done').length;
+  const el = document.getElementById(prefix + id);
+  if (el) el.textContent = `${done}/${all}`;
+}
+
+function toggleDetail(key, r, e) {
+  if (e) e.stopPropagation();
+  const det = document.getElementById('det-' + key);
+  if (!det) return;
+  const open = det.classList.toggle('visible');
+  r.classList.toggle('open', open);
+  const h = r.querySelector('.expand-hint');
+  if (h) h.textContent = open ? 'CLOSE' : 'DETAILS';
+}
+
+function copyVal(el, e) {
+  e.stopPropagation();
+  navigator.clipboard.writeText(el.innerText.replace(/^⎘ /, '')).then(() => {
+    el.classList.add('copied');
+    setTimeout(() => el.classList.remove('copied'), 1500);
+  });
+}
+
+function updateOverall1() {
+  const all = document.querySelectorAll('#cl-container .ci');
+  const done = document.querySelectorAll('#cl-container .ci.done');
+  const pct = all.length ? (done.length / all.length) * 100 : 0;
+  document.getElementById('pb').style.width = pct + '%';
+  document.getElementById('pl').textContent = `${done.length} / ${all.length} ITEMS COMPLETE`;
+  const gn = document.getElementById('go-nogo');
+  if (done.length === all.length && all.length > 0) { gn.className = 'go-nogo go'; gn.textContent = '// GO — ALL ITEMS COMPLETE — CLEAR TO ARM //'; }
+  else if (done.length > 0) { gn.className = 'go-nogo nogo'; gn.textContent = `// NO-GO — ${all.length - done.length} ITEMS REMAINING //`; }
+  else { gn.className = 'go-nogo'; }
+}
+
+function updateOverall2() {
+  const all = document.querySelectorAll('#cl-container2 .ci');
+  const done = document.querySelectorAll('#cl-container2 .ci.done');
+  const pct = all.length ? (done.length / all.length) * 100 : 0;
+  document.getElementById('pb2').style.width = pct + '%';
+  document.getElementById('pl2').textContent = `${done.length} / ${all.length} ITEMS COMPLETE`;
+  const gn = document.getElementById('go-nogo2');
+  if (done.length === all.length && all.length > 0) { gn.className = 'go-nogo go'; gn.textContent = '// GO — TURNAROUND COMPLETE — CLEAR TO ARM //'; }
+  else if (done.length > 0) { gn.className = 'go-nogo nogo'; gn.textContent = `// NO-GO — ${all.length - done.length} ITEMS REMAINING //`; }
+  else { gn.className = 'go-nogo'; }
+}
+
+function toggleExpandAll() {
+  const btn = document.getElementById('expand-btn');
+  const expanded = btn.textContent === 'COLLAPSE';
+  document.querySelectorAll('#cl-container .ci-detail').forEach(d => d.classList.toggle('visible', !expanded));
+  document.querySelectorAll('#cl-container .ci-right').forEach(r => { r.classList.toggle('open', !expanded); const h = r.querySelector('.expand-hint'); if (h) h.textContent = !expanded ? 'CLOSE' : 'DETAILS'; });
+  btn.textContent = expanded ? 'EXPAND ALL' : 'COLLAPSE';
+}
+function toggleExpandAll2() {
+  const btn = document.getElementById('expand-btn2');
+  const expanded = btn.textContent === 'COLLAPSE';
+  document.querySelectorAll('#cl-container2 .ci-detail').forEach(d => d.classList.toggle('visible', !expanded));
+  document.querySelectorAll('#cl-container2 .ci-right').forEach(r => { r.classList.toggle('open', !expanded); const h = r.querySelector('.expand-hint'); if (h) h.textContent = !expanded ? 'CLOSE' : 'DETAILS'; });
+  btn.textContent = expanded ? 'EXPAND ALL' : 'COLLAPSE';
+}
+function resetCL() { if (!confirm('Reset preflight checklist?')) return; localStorage.removeItem('vtol_cl2'); buildChecklist(CL, 'cl-container', 'vtol_cl2', 'csp-', 'updateOverall1'); }
+function resetCL2() { if (!confirm('Reset turnaround checklist?')) return; localStorage.removeItem('vtol_cl3'); buildChecklist(CL2, 'cl-container2', 'vtol_cl3', 'csp2-', 'updateOverall2'); }
+
+// ── BATTERY LOG ──
+function loadBattLog() { return JSON.parse(localStorage.getItem('vtol_battlog') || '[]'); }
+function saveBattLog(e) { localStorage.setItem('vtol_battlog', JSON.stringify(e)); }
+function logBattery() {
+  const date=document.getElementById('bl-date').value, flight=document.getElementById('bl-flight').value;
+  const start=parseFloat(document.getElementById('bl-start').value), min=parseFloat(document.getElementById('bl-min').value);
+  const rest=parseFloat(document.getElementById('bl-rest').value), time=document.getElementById('bl-time').value;
+  const notes=document.getElementById('bl-notes').value;
+  if (!date||isNaN(start)||isNaN(min)||isNaN(rest)) { alert('Please fill in date, start V, min landing V, and resting V.'); return; }
+  const entries=loadBattLog(); entries.unshift({date,flight,start,min,rest,time,notes,sag:+(start-min).toFixed(2)});
+  saveBattLog(entries); renderBattLog();
+  ['bl-flight','bl-start','bl-min','bl-rest','bl-time','bl-notes'].forEach(id=>document.getElementById(id).value='');
+}
+function deleteBattEntry(idx) { if (!confirm('Delete this entry?')) return; const e=loadBattLog(); e.splice(idx,1); saveBattLog(e); renderBattLog(); }
+function renderBattLog() {
+  const entries=loadBattLog(), empty=document.getElementById('bl-log-empty'), table=document.getElementById('bl-log-table'), analysis=document.getElementById('bl-analysis');
+  if (!entries.length) { empty.style.display=''; table.style.display='none'; analysis.innerHTML=''; return; }
+  empty.style.display='none'; table.style.display='';
+  table.innerHTML='<tr><th>Date</th><th>Flight</th><th>Start V</th><th>Min V</th><th>Rest V</th><th>Sag</th><th>Min</th><th>Notes</th><th></th></tr>' +
+    entries.map((e,i) => {
+      const sagC=e.sag>2?'var(--red)':e.sag>1.2?'var(--amber)':'var(--green)';
+      const minS=e.min<22.5?'color:var(--red);font-weight:bold':e.min<23.0?'color:var(--amber)':'';
+      return `<tr><td>${e.date}</td><td>${e.flight||'—'}</td><td>${e.start}V</td><td style="${minS}">${e.min}V</td><td>${e.rest}V</td><td style="color:${sagC}">${e.sag}V</td><td>${e.time||'—'}</td><td style="color:var(--muted);font-size:11px">${e.notes||'—'}</td><td><button onclick="deleteBattEntry(${i})" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td></tr>`;
+    }).join('');
+  const mins=entries.map(e=>e.min), sags=entries.map(e=>e.sag);
+  const lowestMin=Math.min(...mins), avgSag=(sags.reduce((a,b)=>a+b,0)/sags.length).toFixed(2), worstSag=Math.max(...sags).toFixed(2);
+  const safeReturn=(lowestMin+parseFloat(worstSag)+0.5).toFixed(1);
+  analysis.innerHTML=`<div class="card amber"><div class="card-title">Analysis — ${entries.length} flight${entries.length>1?'s':''}</div><table>
+    <tr><th>Metric</th><th>Value</th><th>Meaning</th></tr>
+    <tr><td>Lowest min voltage seen</td><td style="color:var(--red);font-weight:bold">${lowestMin}V</td><td>Lowest drop during landing across all flights</td></tr>
+    <tr><td>Average voltage sag</td><td style="color:var(--amber)">${avgSag}V</td><td>Typical start→landing drop</td></tr>
+    <tr><td>Worst voltage sag</td><td style="color:var(--red)">${worstSag}V</td><td>Worst observed sag — use for safety margin</td></tr>
+    <tr><td>Recommended BATT_LOW_VOLT</td><td style="color:var(--accent);font-weight:bold">${safeReturn}V</td><td>Min observed + worst sag + 0.5V margin</td></tr>
+  </table><div class="alert alert-warn" style="margin-top:10px">BATT_LOW_VOLT is not set. Based on flight data, consider setting it to <strong>${safeReturn}V</strong>.</div></div>`;
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  const d = document.getElementById('bl-date');
+  if (d) d.valueAsDate = new Date();
+  renderBattLog();
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-preflight').classList.add('active');
+  document.querySelector('nav button[onclick*="preflight"]').classList.add('active');
+});
+
+buildChecklist(CL,  'cl-container',  'vtol_cl2', 'csp-',  'updateOverall1');
+buildChecklist(CL2, 'cl-container2', 'vtol_cl3', 'csp2-', 'updateOverall2');
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+// ══════════════════════════════════════
+// PREFLIGHT TIMER
+// ══════════════════════════════════════
+let pfStart = null, pfElapsed = 0, pfInterval = null, pfRunning = false;
+
+function pfTimerToggle() {
+  const btn = document.getElementById('pf-start-btn');
+  const display = document.getElementById('pf-timer');
+  if (!pfRunning) {
+    pfStart = Date.now() - pfElapsed;
+    pfInterval = setInterval(() => {
+      pfElapsed = Date.now() - pfStart;
+      display.textContent = pfFmt(pfElapsed);
+      display.style.color = pfElapsed > 20*60000 ? 'var(--amber)' : 'var(--accent)';
+    }, 500);
+    pfRunning = true;
+    btn.textContent = 'STOP';
+    btn.style.borderColor = 'var(--red)';
+    btn.style.color = 'var(--red)';
+    display.style.color = 'var(--accent)';
+  } else {
+    clearInterval(pfInterval);
+    pfRunning = false;
+    btn.textContent = 'START';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    display.style.color = 'var(--muted)';
+    pfPromptArchive();
+  }
+}
+
+function pfTimerReset() {
+  clearInterval(pfInterval);
+  pfRunning = false; pfElapsed = 0; pfStart = null;
+  const display = document.getElementById('pf-timer');
+  display.textContent = '00:00';
+  display.style.color = 'var(--muted)';
+  const btn = document.getElementById('pf-start-btn');
+  btn.textContent = 'START';
+  btn.style.borderColor = 'var(--accent)';
+  btn.style.color = 'var(--accent)';
+}
+
+function pfFmt(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+}
+
+function pfPromptArchive() {
+  if (pfElapsed < 5000) return;
+  const goNogo = document.getElementById('go-nogo');
+  const status = goNogo.classList.contains('go') ? 'GO' : goNogo.classList.contains('nogo') ? 'NO-GO' : 'INCOMPLETE';
+  const note = prompt(`Archive preflight session?\nDuration: ${pfFmt(pfElapsed)} · Status: ${status}\n\nNotes (optional):`);
+  if (note === null) return;
+  pfSaveArchive({ date: new Date().toISOString(), duration: pfFmt(pfElapsed), durationMs: pfElapsed, status, notes: note });
+}
+
+function pfSaveArchive(entry) {
+  const log = JSON.parse(localStorage.getItem('vtol_pf_archive') || '[]');
+  log.unshift(entry);
+  localStorage.setItem('vtol_pf_archive', JSON.stringify(log));
+  pfRenderArchive();
+}
+
+function pfRenderArchive() {
+  const log = JSON.parse(localStorage.getItem('vtol_pf_archive') || '[]');
+  const wrap = document.getElementById('pf-archive-wrap');
+  const list = document.getElementById('pf-archive-list');
+  if (!log.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  list.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:14px">
+    <tr><th style="text-align:left;padding:8px 12px;font-family:var(--head);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2)">Date</th>
+    <th style="text-align:left;padding:8px 12px;font-family:var(--head);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2)">Duration</th>
+    <th style="text-align:left;padding:8px 12px;font-family:var(--head);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2)">Status</th>
+    <th style="text-align:left;padding:8px 12px;font-family:var(--head);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2)">Notes</th>
+    <th style="border-bottom:1px solid var(--border2)"></th></tr>
+    ${log.map((e,i) => {
+      const d = new Date(e.date);
+      const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      const sc = e.status==='GO' ? 'var(--green)' : e.status==='NO-GO' ? 'var(--red)' : 'var(--amber)';
+      return `<tr>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:var(--muted);font-size:13px">${dateStr}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono)">${e.duration}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:${sc};font-weight:bold;font-family:var(--head)">${e.status}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:var(--muted);font-size:13px">${e.notes||'—'}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border)"><button onclick="pfDeleteArchive(${i})" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td>
+      </tr>`;
+    }).join('')}
+  </table></div>`;
+}
+
+function pfDeleteArchive(idx) {
+  if (!confirm('Delete this entry?')) return;
+  const log = JSON.parse(localStorage.getItem('vtol_pf_archive') || '[]');
+  log.splice(idx, 1);
+  localStorage.setItem('vtol_pf_archive', JSON.stringify(log));
+  pfRenderArchive();
+}
+
+// ══════════════════════════════════════
+// MISSION PLANNER VOLTAGE FETCH
+// ══════════════════════════════════════
+async function fetchVoltage(fieldId) {
+  const status = document.getElementById('mp-fetch-status');
+  status.style.display = '';
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Fetching from Mission Planner...';
+  try {
+    const r = await fetch('http://localhost:20199/mavlink/SYS_STATUS', { signal: AbortSignal.timeout(2000) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    const mV = data.voltage_battery || data.VOLTAGE_BATTERY;
+    if (!mV || mV === 65535) throw new Error('No valid voltage in response');
+    const v = (mV / 1000).toFixed(2);
+    document.getElementById(fieldId).value = v;
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Got ${v}V from Mission Planner`;
+    setTimeout(() => { status.style.display='none'; }, 3000);
+  } catch(e) {
+    status.style.color = 'var(--amber)';
+    if (e.name === 'AbortError' || e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+      status.textContent = 'Cannot reach MP — enter voltage manually. (MP REST API must be enabled: Config → Planner → tick "Enable REST API")';
+    } else {
+      status.textContent = 'MP responded but voltage not found. Enter manually.';
+    }
+  }
+}
+
+// ══════════════════════════════════════
+// TLOG PARSER
+// ══════════════════════════════════════
+function parseTlog() {
+  const file = document.getElementById('tlog-file').files[0];
+  const status = document.getElementById('tlog-status');
+  if (!file) { status.textContent = 'Select a .tlog file first.'; return; }
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Parsing...';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const buf = new Uint8Array(ev.target.result);
+      const result = mavlinkExtractBattery(buf);
+      if (!result) { status.style.color='var(--amber)'; status.textContent='No battery data found in file. Is this an ArduPilot .tlog?'; return; }
+      document.getElementById('bl-start').value = result.startV.toFixed(2);
+      document.getElementById('bl-min').value = result.minV.toFixed(2);
+      document.getElementById('bl-rest').value = result.endV.toFixed(2);
+      document.getElementById('bl-time').value = Math.round(result.durationMin);
+      document.getElementById('bl-date').value = result.date;
+      status.style.color = 'var(--green)';
+      status.textContent = `✓ Extracted: start ${result.startV.toFixed(2)}V · min ${result.minV.toFixed(2)}V · end ${result.endV.toFixed(2)}V · ${Math.round(result.durationMin)} min`;
+    } catch(e) {
+      status.style.color = 'var(--red)';
+      status.textContent = 'Parse error: ' + e.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function mavlinkExtractBattery(buf) {
+  // MAVLink v1: STX=0xFE, v2: STX=0xFD
+  // SYS_STATUS msg_id=1: payload[14..15] = voltage_battery (uint16 mV)
+  // BATTERY_STATUS msg_id=147: payload[10..11] = voltages[0] (uint16 mV, first cell pack voltage sum)
+  const voltages = [];
+  const timestamps = [];
+  let i = 0;
+  const len = buf.length;
+
+  while (i < len - 8) {
+    const stx = buf[i];
+    if (stx === 0xFE) {
+      // MAVLink v1
+      const paylen = buf[i+1];
+      const msgid = buf[i+5];
+      const frameLen = 8 + paylen;
+      if (i + frameLen > len) { i++; continue; }
+      const payload = buf.slice(i+6, i+6+paylen);
+      if (msgid === 1 && paylen >= 16) {
+        // SYS_STATUS: voltage_battery at bytes 14-15 (little-endian uint16)
+        const mV = payload[14] | (payload[15] << 8);
+        if (mV > 0 && mV < 65535) voltages.push(mV);
+      }
+      if (msgid === 147 && paylen >= 12) {
+        // BATTERY_STATUS: voltages[0] at bytes 10-11
+        const mV = payload[10] | (payload[11] << 8);
+        if (mV > 0 && mV < 65535) voltages.push(mV);
+      }
+      // Timestamp prepended in .tlog: 8 bytes before STX (big-endian uint64 microseconds)
+      // Actually in ArduPilot tlogs, timestamp is prepended as 8 bytes before each packet
+      i += frameLen;
+    } else if (stx === 0xFD) {
+      // MAVLink v2
+      if (i + 10 > len) { i++; continue; }
+      const paylen = buf[i+1];
+      const msgid = buf[i+7] | (buf[i+8] << 8) | (buf[i+9] << 16);
+      const frameLen = 12 + paylen;
+      if (i + frameLen > len) { i++; continue; }
+      const payload = buf.slice(i+10, i+10+paylen);
+      if (msgid === 1 && paylen >= 16) {
+        const mV = payload[14] | (payload[15] << 8);
+        if (mV > 0 && mV < 65535) voltages.push(mV);
+      }
+      if (msgid === 147 && paylen >= 12) {
+        const mV = payload[10] | (payload[11] << 8);
+        if (mV > 0 && mV < 65535) voltages.push(mV);
+      }
+      i += frameLen;
+    } else {
+      i++;
+    }
+  }
+
+  if (voltages.length < 2) return null;
+
+  const toV = mV => mV / 1000;
+  // Filter out noise: only values in reasonable 6S range (18–30V)
+  const valid = voltages.filter(v => v >= 18000 && v <= 30000);
+  if (valid.length < 2) return null;
+
+  const startV = toV(valid[0]);
+  const endV = toV(valid[valid.length - 1]);
+  const minV = toV(Math.min(...valid));
+  // Approximate duration: assume ~1Hz voltage samples
+  const durationMin = valid.length / 60;
+  const date = new Date().toISOString().split('T')[0];
+
+  return { startV, minV, endV, durationMin, date };
+}
+
+// Render archive on load
+pfRenderArchive();
+</script>
+</body>
+</html>

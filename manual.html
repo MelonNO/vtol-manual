@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HEEWING T2 — MANUAL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
+:root {
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2a2a2a; --border2:#333;
+  --text:#e8e8e8; --muted:#777; --accent:#f97316; --amber:#facc15; --red:#ef4444;
+  --green:#22c55e; --dim:#444; --mono:'Share Tech Mono',monospace; --head:'Oswald',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:15px;line-height:1.65;}
+header{background:var(--surface);border-bottom:2px solid var(--accent);}
+.hdr-top{display:flex;align-items:stretch;border-bottom:1px solid var(--border2);}
+.hdr-badge{background:var(--surface2);color:var(--accent);font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:3px;writing-mode:vertical-rl;padding:14px 10px;display:flex;align-items:center;border-right:1px solid var(--border2);}
+.hdr-main{flex:1;padding:16px 28px;}
+.hdr-doc-id{font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:5px;}
+.hdr-title{font-family:var(--head);font-size:24px;font-weight:700;color:var(--accent);letter-spacing:2px;line-height:1;}
+.hdr-sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:6px;}
+.hdr-meta{display:flex;gap:28px;padding:10px 28px 10px 58px;font-size:11px;color:var(--muted);letter-spacing:1px;flex-wrap:wrap;}
+.hdr-meta span strong{color:var(--text);}
+nav{background:var(--surface2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;align-items:center;}
+.nav-tools-btn{background:none;border:none;border-right:1px solid var(--border2);color:var(--muted);font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:1.5px;padding:14px 20px;cursor:pointer;white-space:nowrap;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;}
+.nav-tools-btn:hover{color:var(--accent);}
+nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:14px 18px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;}
+nav button:hover{color:var(--text);}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+.content{max-width:1000px;margin:0 auto;padding:32px 28px 60px;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeSlideIn .2s ease both;}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+/* ── SECTION TITLE ── */
+.section-title{font-family:var(--head);font-size:16px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2);padding-bottom:8px;margin:36px 0 16px;}
+.section-title:first-child{margin-top:0;}
+p{color:var(--muted);margin-bottom:12px;font-size:15px;}
+p strong,p b{color:var(--text);}
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border2);border-left:4px solid var(--dim);padding:20px 22px;margin-bottom:16px;}
+.card.accent{border-left-color:var(--accent);}
+.card.amber{border-left-color:var(--amber);}
+.card.danger{border-left-color:var(--red);background:#1a0e0e;}
+.card-title{font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:12px;}
+.card.amber .card-title{color:var(--amber);}
+.card.danger .card-title{color:var(--red);}
+/* ── TABLE ── */
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px;}
+th{text-align:left;padding:10px 14px;font-family:var(--head);font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2);}
+td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text);}
+td:first-child{color:var(--muted);}
+td code{background:var(--surface2);border:1px solid var(--border2);padding:2px 7px;border-radius:2px;color:var(--accent);font-size:13px;}
+tr:last-child td{border-bottom:none;}
+.val{color:var(--accent);font-weight:bold;}
+.warn-val{color:var(--amber);font-weight:bold;}
+.crit-val{color:var(--red);font-weight:bold;}
+/* ── ALERT ── */
+.alert{padding:12px 18px;margin:14px 0;font-size:14px;border-left:4px solid;letter-spacing:.3px;}
+.alert-danger{border-color:var(--red);background:#1f1010;color:#f87171;}
+.alert-warn{border-color:var(--amber);background:#1f1a08;color:#facc15;}
+.alert-info{border-color:var(--accent);background:#1f1208;color:var(--accent);}
+.alert::before{font-weight:bold;margin-right:8px;}
+.alert-danger::before{content:'⚠ CAUTION:';color:var(--red);}
+.alert-warn::before{content:'⚡ WARNING:';color:var(--amber);}
+.alert-info::before{content:'▶ NOTE:';}
+/* ── STEPS ── */
+.step{display:flex;gap:16px;margin-bottom:14px;align-items:flex-start;}
+.step-n{font-family:var(--head);font-size:18px;font-weight:700;color:var(--accent);min-width:28px;padding-top:2px;}
+.step-body{flex:1;}
+.step-body strong{color:var(--text);display:block;margin-bottom:4px;font-size:15px;}
+.step-body p{margin:0;font-size:14px;}
+/* ── CHAIN ── */
+.chain-wrap{margin:16px 0;overflow-x:auto;}
+.chain{display:flex;align-items:center;gap:6px;min-width:max-content;padding:4px 0;}
+.cn{background:var(--surface2);border:1px solid var(--border2);border-radius:2px;padding:10px 14px;font-size:12px;text-align:center;min-width:90px;}
+.cn .cl{display:block;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;}
+.cn .cv{font-weight:bold;color:var(--text);}
+.cn .cf{display:block;font-size:10px;margin-top:3px;font-weight:bold;}
+.ca{color:var(--dim);font-size:18px;margin:0 2px;}
+.ctrl .cn{border-color:#c2410c;}.ctrl .cf{color:#f97316;}
+.vid .cn{border-color:#991b1b;}.vid .cf{color:#ef4444;}
+.f868{background:#1c1008;color:#f97316;}
+.f24{background:#141a08;color:#84cc16;}
+.f58{background:#1a0a0a;color:#ef4444;}
+/* ── MODE BADGE ── */
+.mbadge{display:inline-block;font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;padding:3px 9px;border-radius:2px;}
+.m-qhov{background:#14230f;color:#22c55e;border:1px solid #166534;}
+.m-fbwb,.m-fbwa{background:#0f1a2e;color:#60a5fa;border:1px solid #1e40af;}
+.m-auto{background:#1c1208;color:#f97316;border:1px solid #c2410c;}
+.m-man{background:#1c1208;color:#fb923c;border:1px solid #9a3412;}
+.m-rtl{background:#1f0f0f;color:#ef4444;border:1px solid #991b1b;}
+/* ── EMERG ── */
+.emerg-hdr{font-family:var(--head);font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-bottom:1px solid var(--red);padding-bottom:8px;margin-bottom:12px;}
+.proc-step{display:flex;gap:14px;margin-bottom:10px;font-size:14px;}
+.proc-step .n{color:var(--red);font-weight:bold;min-width:22px;}
+.proc-step .t{color:var(--text);}
+/* ── PRE-ARM SEARCH ── */
+#prearm-search{width:100%;padding:12px 16px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;margin-bottom:18px;outline:none;}
+#prearm-search:focus{border-color:var(--accent);}
+footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:40px;}
+/* ── TWO-COL LAYOUT ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.stat-box{background:var(--surface);border:1px solid var(--border2);padding:14px 18px;}
+.stat-label{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;}
+.stat-val{font-family:var(--head);font-size:22px;font-weight:700;color:var(--accent);}
+.stat-val.warn{color:var(--amber);}
+.stat-val.crit{color:var(--red);}
+@media(max-width:600px){
+  .hdr-badge{writing-mode:horizontal-tb;padding:8px 14px;}
+  .hdr-title{font-size:18px;}
+  .hdr-meta{padding:8px 14px;gap:8px 16px;font-size:10px;}
+  .content{padding:18px 14px 40px;}
+  nav button,.nav-tools-btn{padding:12px 12px;font-size:12px;letter-spacing:.5px;}
+  .chain{flex-wrap:wrap;}
+  .cn{min-width:70px;font-size:11px;}
+  .step{flex-direction:column;gap:8px;}
+  table{font-size:13px;}
+  th,td{padding:8px 10px;}
+  .two-col{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-top">
+    <div class="hdr-badge">MANUAL</div>
+    <div class="hdr-main">
+      <div class="hdr-doc-id">DOC-RC-001 · REV A · HEEWING T2 VTOL · ARDUPLANE</div>
+      <div class="hdr-title">RELAY CARRIER — OPERATIONS MANUAL</div>
+      <div class="hdr-sub">SYSTEMS · COMMUNICATIONS · PROCEDURES · EMERGENCY · REFERENCE</div>
+    </div>
+  </div>
+  <div class="hdr-meta">
+    <span><strong>PLATFORM</strong> Heewing T2 VTOL</span>
+    <span><strong>FW</strong> ArduPlane / QuadPlane</span>
+    <span><strong>BATT</strong> 6S 7000mAh</span>
+    <span><strong>CRIT VOLT</strong> 22.2V</span>
+    <span><strong>RTL ALT</strong> 120m AGL</span>
+    <span><strong>CRUISE</strong> 13 m/s</span>
+  </div>
+</header>
+
+<nav id="nav">
+  <a class="nav-tools-btn" href="index.html">◀ TOOLS</a>
+  <button onclick="switchTab('overview',this)">Overview</button>
+  <button onclick="switchTab('comms',this)">RF & Comms</button>
+  <button onclick="switchTab('flightmodes',this)">Flight Modes</button>
+  <button onclick="switchTab('aircraft',this)">Aircraft</button>
+  <button onclick="switchTab('mission',this)">Mission</button>
+  <button onclick="switchTab('procedures',this)">Procedures</button>
+  <button onclick="switchTab('emergency',this)">Emergency</button>
+  <button onclick="switchTab('prearm',this)">Pre-Arm Ref</button>
+  <button onclick="switchTab('abbrev',this)">Abbreviations</button>
+</nav>
+
+<div class="content">
+
+<!-- ═══ OVERVIEW ═══ -->
+<div id="tab-overview" class="tab-panel">
+
+  <div class="section-title">Aircraft & Mission</div>
+  <p>The Heewing T2 is a <strong>fixed-wing tilt-rotor VTOL</strong> operating as an airborne relay carrier. Its mission is to extend the effective range and altitude of FPV sub-drones by acting as a relay node — bridging ground-station control and video links to one or more FPV aircraft operating beyond direct line-of-sight.</p>
+  <p>The carrier takes off vertically (VTOL), transitions to fixed-wing cruise, loiters at altitude over the FPV operating area, and relays both RC control (ELRS 868MHz → 2.4GHz) and FPV video (5.8GHz VTX → IP stream via SIYI HM30) back to the ground station.</p>
+
+  <div class="section-title">Key Performance Figures</div>
+  <div class="two-col">
+    <div class="stat-box"><div class="stat-label">Cruise speed</div><div class="stat-val">13 m/s</div></div>
+    <div class="stat-box"><div class="stat-label">Min airspeed (stall prevent)</div><div class="stat-val warn">11 m/s</div></div>
+    <div class="stat-box"><div class="stat-label">Max airspeed</div><div class="stat-val">22 m/s</div></div>
+    <div class="stat-box"><div class="stat-label">Critical battery voltage</div><div class="stat-val crit">22.2V</div></div>
+    <div class="stat-box"><div class="stat-label">RTL altitude (fixed-wing)</div><div class="stat-val">120m AGL</div></div>
+    <div class="stat-box"><div class="stat-label">VTOL RTL altitude</div><div class="stat-val">70m AGL</div></div>
+    <div class="stat-box"><div class="stat-label">Hover thrust (learned)</div><div class="stat-val">27.2%</div></div>
+    <div class="stat-box"><div class="stat-label">Cruise throttle</div><div class="stat-val">35%</div></div>
+  </div>
+
+  <div class="section-title">Crew Roles</div>
+  <table>
+    <tr><th>Role</th><th>Station</th><th>Responsibilities</th></tr>
+    <tr><td>Carrier Pilot</td><td>Primary laptop + Radiomaster Nomad (915MHz)</td><td>
+      <strong>Takeoff/transition:</strong> QHOVER arm → climb → FBWB transition → AUTO.<br>
+      <strong>Relay phase:</strong> Monitors battery, RSSI, altitude. Adjusts carrier orbit to keep FPV inside the relay bubble — carrier orbits around FPV operating area with FPV on near side. Monitors SIYI camera. May switch any mode at any time.<br>
+      <strong>Recovery:</strong> Takes back Mission Planner for descent/landing.
+    </td></tr>
+    <tr><td>FPV Pilot / Co-Pilot</td><td>Second screen + FPV TX (2.4GHz via relay) + MPV.net</td><td>
+      <strong>Takeoff/transition:</strong> Monitors critical telemetry in MP, advances carrier mission from VTOL_TKOFF to WP2 once transition confirmed.<br>
+      <strong>Relay phase:</strong> Operates 7"+ FPV quad via relay. Video in MPV.net (RTSP). Calls battery state and position to Carrier Pilot verbally.<br>
+      <strong>Recovery:</strong> Returns FPV first, then assists Carrier Pilot with MP.
+    </td></tr>
+  </table>
+  <div class="alert alert-info">Both pilots co-located — direct verbal comms. Carrier Pilot has no telemetry visibility of the FPV sub-drone. All FPV status relayed verbally by the FPV pilot.</div>
+
+  <div class="alert alert-warn">BATT_LOW_VOLT is not set. No automated low-battery warning exists before the critical failsafe at 22.2V. Monitor carrier voltage manually. Use the Battery Log tool to determine your safe return trigger.</div>
+
+</div>
+
+<!-- ═══ RF & COMMS ═══ -->
+<div id="tab-comms" class="tab-panel">
+
+  <div class="section-title">FPV Relay Control Chain</div>
+  <div class="chain-wrap">
+    <div class="chain ctrl">
+      <div class="cn"><span class="cl">Ground relay TX</span><span class="cv">Radiomaster Nomad</span><span class="cf f868">868 MHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier RX</span><span class="cv">Radiomaster DBR4 RX</span><span class="cf f868">868 MHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier relay TX</span><span class="cv">Radiomaster Nomad</span><span class="cf f24">2.4 GHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">FPV RX</span><span class="cv">ELRS RX</span><span class="cf f24">2.4 GHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">FPV FC</span><span class="cv">Betaflight</span></div>
+    </div>
+  </div>
+  <p>Carrier-mounted <strong>Radiomaster Nomad</strong> acts as relay TX to the FPV on 2.4GHz. Its RX input is a <strong>Radiomaster DBR4</strong> receiving the 868MHz ground link. This relay chain has <strong>zero interface with ArduPlane</strong> — the FC has no awareness of relay link state or FPV status.</p>
+  <div class="alert alert-info">Relay bind procedure: hold LEFT button on carrier Nomad for 3 seconds to enter bind mode. Required every flight.</div>
+
+  <div class="section-title">Carrier Pilot Control Link (Redundancy)</div>
+  <div class="chain-wrap">
+    <div class="chain ctrl">
+      <div class="cn"><span class="cl">Carrier Pilot TX</span><span class="cv">Radiomaster Nomad</span><span class="cf" style="color:#a070d0">915 MHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier FC RX</span><span class="cv">ELRS RX</span><span class="cf" style="color:#a070d0">915 MHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier FC</span><span class="cv">ArduPlane</span></div>
+    </div>
+  </div>
+  <p>Redundancy link — used for takeoff, landing, and SIYI HM30 link failure. Primary carrier control in cruise is via <strong>SIYI HM30</strong> datalink (Mission Planner GCS). 3-position mode switch: QHOVER / FBWB / AUTO. Left button: RTL.</p>
+
+  <div class="section-title">Video Link Architecture</div>
+  <div class="chain-wrap">
+    <div class="chain vid">
+      <div class="cn"><span class="cl">FPV drone</span><span class="cv">5.8G VTX</span><span class="cf f58">5.8 GHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">5.8G VRX</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">CVBS→HDMI</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">SIYI HDMI→IP</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">SIYI Switch</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">SIYI Air Unit</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Ground</span><span class="cv">HM30 + Mast</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">PC</span><span class="cv">MPV.net / GStreamer</span></div>
+    </div>
+  </div>
+  <p>HM30 ground unit on portable mast, powered by 6S 3000mAh. Ethernet cable to laptop. Video viewed in MPV.net (RTSP) or GStreamer inside Mission Planner on second screen (USB-C).</p>
+
+  <div class="section-title">Frequency Summary</div>
+  <table>
+    <tr><th>Link</th><th>Frequency</th><th>Hardware</th><th>Purpose</th></tr>
+    <tr><td>FPV relay ground→carrier</td><td>868 MHz (ELRS)</td><td>Nomad TX → DBR4 RX</td><td>RC signal for FPV relay hop</td></tr>
+    <tr><td>FPV relay carrier→FPV</td><td>2.4 GHz (ELRS)</td><td>Nomad TX → ELRS RX</td><td>RC to FPV sub-drone</td></tr>
+    <tr><td>Carrier pilot control</td><td>915 MHz (ELRS)</td><td>Nomad TX → ELRS RX</td><td>Redundancy carrier RC</td></tr>
+    <tr><td>Carrier GCS / primary</td><td>Digital (SIYI HM30)</td><td>HM30 air unit → ground unit</td><td>Mission Planner + video IP link</td></tr>
+    <tr><td>FPV video to carrier</td><td>5.8 GHz analog</td><td>VTX → VRX</td><td>FPV analog video received on carrier</td></tr>
+    <tr><td>Video to ground</td><td>Digital (SIYI IP)</td><td>SIYI chain → HM30 → PC</td><td>Encoded video stream to MPV.net</td></tr>
+  </table>
+
+  <div class="section-title">Network Configuration</div>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Laptop subnet</td><td><code>192.168.144.X</code> / <code>255.255.255.0</code></td></tr>
+    <tr><td>SIYI HM30 ground unit IP</td><td><code>192.168.144.12</code></td></tr>
+    <tr><td>SIYI air unit IP</td><td><code>192.168.144.11</code></td></tr>
+    <tr><td>Mission Planner UDPCI IP</td><td><code>192.168.144.12</code></td></tr>
+    <tr><td>Mission Planner UDPCI port</td><td><code>19856</code></td></tr>
+    <tr><td>Carrier camera RTSP (GStreamer/MP)</td><td><code>rtsp://192.168.144.26:8554/main.264</code></td></tr>
+    <tr><td>FPV video RTSP (MPV.net)</td><td><code>rtsp://192.168.144.25:8554/main.264</code></td></tr>
+  </table>
+
+</div>
+
+<!-- ═══ FLIGHT MODES ═══ -->
+<div id="tab-flightmodes" class="tab-panel">
+
+  <div class="section-title">Mode Switch — Radiomaster Nomad</div>
+  <p>The physical Nomad controller has a <strong>3-position mode switch only</strong>. The left button is mapped to RTL for emergency use.</p>
+  <table>
+    <tr><th>Source</th><th>Input</th><th>Mode</th><th>Use</th></tr>
+    <tr><td>Nomad switch</td><td>Position 1</td><td><span class="mbadge m-qhov">QHOVER</span></td><td>Takeoff, landing, VTOL hold. Altitude locked. Default arm mode.</td></tr>
+    <tr><td>Nomad switch</td><td>Position 2</td><td><span class="mbadge m-fbwb">FBWB</span></td><td>Fixed-wing cruise, altitude hold. Used for transition and pre-AUTO.</td></tr>
+    <tr><td>Nomad switch</td><td>Position 3</td><td><span class="mbadge m-auto">AUTO</span></td><td>Mission execution. Activated after transition confirmed.</td></tr>
+    <tr><td>Nomad left button</td><td>Hold (emergency)</td><td><span class="mbadge m-rtl">RTL</span></td><td>Emergency return to home at 120m AGL.</td></tr>
+    <tr><td>GCS only</td><td>Mission Planner</td><td>GUIDED</td><td>Position-controlled flight. Carrier Pilot uses during relay orbit adjustments.</td></tr>
+  </table>
+  <div class="alert alert-danger">MANUAL mode is accessible via GCS only. It removes all stabilisation. The T2 requires stabilisation to fly — MANUAL in flight will result in loss of control. Only use MANUAL on the ground for servo checks.</div>
+
+  <div class="section-title">Failsafe Configuration</div>
+  <table>
+    <tr><th>Trigger</th><th>Threshold</th><th>Action</th></tr>
+    <tr><td>RC short loss</td><td><code>FS_SHORT_TIMEOUT = 1.5s</code></td><td>Switch to <span class="mbadge m-fbwa">FBWA</span> — aircraft continues flight</td></tr>
+    <tr><td>RC long loss</td><td><code>FS_LONG_TIMEOUT = 5s</code></td><td><span class="mbadge m-rtl">RTL</span> at 120m AGL</td></tr>
+    <tr><td>Battery critical</td><td><code>BATT_CRT_VOLT = 22.2V</code> (3.7V/cell)</td><td>Loiter → QLand at current position (<code>BATT_FS_CRT_ACT=6</code>)</td></tr>
+    <tr><td>Battery low</td><td><span class="warn-val">NOT CONFIGURED</span> — <code>BATT_LOW_VOLT=0</code></td><td>No warning. Monitor voltage manually.</td></tr>
+    <tr><td>GCS (SIYI) loss</td><td><code>FS_GCS_ENABL=2</code></td><td>Active in AUTO mode only → RTL</td></tr>
+    <tr><td>Throttle failsafe</td><td><code>THR_FS_VALUE=950</code></td><td>RC link loss confirmed by throttle channel drop</td></tr>
+  </table>
+  <div class="alert alert-danger">No low-battery warning is configured (BATT_LOW_VOLT=0). The first automated response is the critical failsafe at 22.2V → Loiter to QLand at current position. Aircraft will NOT return home. Initiate manual RTL at 24V minimum.</div>
+
+  <div class="section-title">VTOL Assist</div>
+  <p>VTOL assist activates automatically in fixed-wing modes when airspeed drops below <span class="val">9 m/s</span> or when altitude is below <span class="val">25m AGL</span>. If VTOL assist triggers unexpectedly during cruise, check for airspeed sensor failure or gusty conditions.</p>
+
+</div>
+
+<!-- ═══ AIRCRAFT ═══ -->
+<div id="tab-aircraft" class="tab-panel">
+
+  <div class="section-title">Tilt-Rotor Configuration</div>
+  <p>The T2 uses a <strong>front-pair tilting rotor</strong> design. The two front motors tilt forward to provide both VTOL lift and fixed-wing thrust — they are the primary propulsion in both flight modes. The two rear motors provide VTOL lift only and stop when the aircraft transitions to fixed-wing flight.</p>
+  <table>
+    <tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr>
+    <tr><td><code>Q_TILT_MASK</code></td><td class="val">3</td><td>Front motor pair (motors 1 & 2) tilt</td></tr>
+    <tr><td><code>Q_TILT_TYPE</code></td><td class="val">2</td><td>Tilt-rotor type</td></tr>
+    <tr><td><code>Q_TILT_MAX</code></td><td class="val">80°</td><td>Maximum forward tilt angle</td></tr>
+    <tr><td><code>Q_TILT_RATE_UP/DN</code></td><td class="val">40 deg/s</td><td>Tilt rotation speed</td></tr>
+    <tr><td><code>Q_FRAME_CLASS</code></td><td class="val">7</td><td>Frame class</td></tr>
+    <tr><td><code>Q_FRAME_TYPE</code></td><td class="val">1 (X)</td><td>Frame geometry</td></tr>
+    <tr><td><code>Q_M_THST_HOVER</code></td><td class="val">0.272</td><td>Learned hover thrust (~27.2% throttle)</td></tr>
+  </table>
+
+  <div class="section-title">Transition Parameters</div>
+  <table>
+    <tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr>
+    <tr><td><code>Q_TRANSITION_MS</code></td><td class="val">3000 ms</td><td>Forward transition time window</td></tr>
+    <tr><td><code>Q_TRANS_FAIL</code></td><td class="warn-val">4s</td><td>Auto-abort timeout if airspeed not reached</td></tr>
+    <tr><td><code>Q_TRANS_FAIL_ACT</code></td><td class="val">0 = QHOVER</td><td>Falls back to QHOVER on transition failure</td></tr>
+    <tr><td><code>Q_BACKTRANS_MS</code></td><td class="val">10000 ms</td><td>Back-transition window (FW → VTOL)</td></tr>
+    <tr><td><code>Q_ASSIST_SPEED</code></td><td class="warn-val">9 m/s</td><td>VTOL assist activates in FW modes below this speed</td></tr>
+    <tr><td><code>Q_ASSIST_ALT</code></td><td class="val">25m AGL</td><td>VTOL assist activates below this altitude</td></tr>
+  </table>
+
+  <div class="section-title">Fixed-Wing Performance</div>
+  <table>
+    <tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr>
+    <tr><td><code>AIRSPEED_CRUISE</code></td><td class="val">13 m/s</td><td>Target cruise speed (46.8 km/h)</td></tr>
+    <tr><td><code>AIRSPEED_MIN</code></td><td class="warn-val">11 m/s</td><td>Stall prevention threshold</td></tr>
+    <tr><td><code>AIRSPEED_MAX</code></td><td class="val">22 m/s</td><td>Maximum airspeed (79 km/h)</td></tr>
+    <tr><td><code>TECS_CLMB_MAX</code></td><td class="val">5 m/s</td><td>Maximum climb rate</td></tr>
+    <tr><td><code>TECS_SINK_MAX</code></td><td class="val">5 m/s</td><td>Maximum sink rate</td></tr>
+    <tr><td><code>TRIM_THROTTLE</code></td><td class="val">35%</td><td>Cruise throttle setting</td></tr>
+  </table>
+
+  <div class="section-title">Battery & Power</div>
+  <table>
+    <tr><th>Parameter</th><th>Value</th><th>Notes</th></tr>
+    <tr><td>Carrier battery</td><td class="val">6S 7000mAh</td><td>Single pack powers all carrier systems</td></tr>
+    <tr><td>Mast battery</td><td class="val">6S 3000mAh</td><td>Powers HM30 ground unit only</td></tr>
+    <tr><td><code>BATT_CRT_VOLT</code></td><td class="crit-val">22.2V</td><td>3.7V/cell nominal — triggers Loiter→QLand</td></tr>
+    <tr><td><code>BATT_LOW_VOLT</code></td><td class="warn-val">0 — NOT SET</td><td>No warning voltage configured</td></tr>
+    <tr><td><code>RTL_ALTITUDE</code></td><td class="val">120m</td><td>Fixed-wing RTL climb altitude</td></tr>
+    <tr><td><code>Q_RTL_ALT</code></td><td class="val">70m</td><td>VTOL RTL hover altitude</td></tr>
+    <tr><td><code>Q_RTL_ALT_MIN</code></td><td class="val">35m</td><td>Minimum VTOL RTL altitude</td></tr>
+  </table>
+
+</div>
+
+<!-- ═══ MISSION ═══ -->
+<div id="tab-mission" class="tab-panel">
+
+  <div class="section-title">Minimum Mission Structure</div>
+  <p>These 7 waypoints must be loaded and verified before every flight. The altitude profile below shows the intended flight path.</p>
+
+  <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:860px;display:block;margin:20px 0;font-family:'Share Tech Mono',monospace">
+    <line x1="30" y1="260" x2="830" y2="260" stroke="#333" stroke-width="1"/>
+    <text x="18" y="264" fill="#666" font-size="9" text-anchor="middle">GND</text>
+    <line x1="30" y1="190" x2="36" y2="190" stroke="#333" stroke-width="1"/>
+    <text x="18" y="194" fill="#666" font-size="9" text-anchor="middle">~30m</text>
+    <line x1="30" y1="130" x2="36" y2="130" stroke="#333" stroke-width="1"/>
+    <text x="18" y="134" fill="#666" font-size="9" text-anchor="middle">~80m</text>
+    <line x1="30" y1="70" x2="36" y2="70" stroke="#333" stroke-width="1"/>
+    <text x="18" y="74" fill="#666" font-size="9" text-anchor="middle">relay</text>
+    <polyline points="100,260 100,190 220,190 310,70 430,70 520,130 620,190 720,190 720,260" fill="none" stroke="#f97316" stroke-width="2.5"/>
+    <line x1="100" y1="260" x2="100" y2="190" stroke="#f97316" stroke-width="2" stroke-dasharray="5,3"/>
+    <line x1="720" y1="190" x2="720" y2="260" stroke="#f97316" stroke-width="2" stroke-dasharray="5,3"/>
+    <circle cx="100" cy="260" r="8" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="100" cy="190" r="8" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="220" cy="190" r="8" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="310" cy="70" r="8" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="430" cy="70" r="8" fill="#f97316" stroke="#f97316" stroke-width="2"/>
+    <circle cx="520" cy="130" r="8" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="620" cy="190" r="8" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="720" cy="190" r="8" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="720" cy="260" r="8" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <text x="100" y="282" fill="#f97316" font-size="10" text-anchor="middle">WP1</text>
+    <text x="100" y="173" fill="#f97316" font-size="10" text-anchor="middle">WP2</text>
+    <text x="220" y="173" fill="#f97316" font-size="10" text-anchor="middle">WP3</text>
+    <text x="310" y="53" fill="#f97316" font-size="10" text-anchor="middle">WP4</text>
+    <text x="430" y="53" fill="#fff" font-size="10" text-anchor="middle" font-weight="bold">WP5</text>
+    <text x="520" y="113" fill="#f97316" font-size="10" text-anchor="middle">WP6</text>
+    <text x="620" y="173" fill="#f97316" font-size="10" text-anchor="middle">WP7</text>
+    <text x="720" y="173" fill="#f97316" font-size="10" text-anchor="middle">WP8</text>
+    <text x="720" y="282" fill="#f97316" font-size="10" text-anchor="middle">WP9</text>
+    <text x="100" y="296" fill="#666" font-size="9" text-anchor="middle">VTOL_TKOFF</text>
+    <text x="220" y="296" fill="#666" font-size="9" text-anchor="middle">WAYPOINT</text>
+    <text x="310" y="296" fill="#666" font-size="9" text-anchor="middle">LOITER_ALT</text>
+    <text x="430" y="296" fill="#aaa" font-size="9" text-anchor="middle">SORTIE WP</text>
+    <text x="520" y="296" fill="#666" font-size="9" text-anchor="middle">LOITER_ALT</text>
+    <text x="620" y="296" fill="#666" font-size="9" text-anchor="middle">WAYPOINT</text>
+    <text x="720" y="296" fill="#666" font-size="9" text-anchor="middle">VTOL_LAND</text>
+    <text x="78" y="228" fill="#666" font-size="9" transform="rotate(-90,78,228)">VTOL↑</text>
+    <text x="738" y="228" fill="#666" font-size="9" transform="rotate(-90,738,228)">VTOL↓</text>
+  </svg>
+
+  <table>
+    <tr><th>WP</th><th>Type</th><th>Purpose</th><th>Pilot action</th></tr>
+    <tr><td>1</td><td>VTOL_TAKEOFF</td><td>Vertical takeoff</td><td>Arm, hold QHOVER until transition altitude achieved</td></tr>
+    <tr><td>2</td><td>WAYPOINT</td><td>Transition safety altitude</td><td>Co-pilot advances mission from WP1 once transition confirmed. Altitude must give clearance if transition is incomplete.</td></tr>
+    <tr><td>3</td><td>LOITER_TO_ALT</td><td>Climb to relay altitude</td><td>Autonomous. Monitor airspeed and climb rate.</td></tr>
+    <tr><td>4</td><td>WAYPOINT</td><td>Mission start point</td><td>Sortie-specific. Pilots configure this per flight before departure.</td></tr>
+    <tr><td>5</td><td>LOITER_TO_ALT</td><td>Descend to approach altitude</td><td>Autonomous on return leg.</td></tr>
+    <tr><td>6</td><td>WAYPOINT</td><td>Slope-in toward landing zone</td><td>Low altitude — confirm landing zone clear before this WP.</td></tr>
+    <tr><td>7</td><td>VTOL_LAND</td><td>Vertical landing</td><td>Monitor descent, ready to override to QHOVER.</td></tr>
+  </table>
+
+  <div class="section-title">Transition — Normal vs Problem</div>
+  <table>
+    <tr><th>Parameter</th><th style="color:var(--green)">Normal</th><th style="color:var(--red)">Abort (switch QHOVER)</th></tr>
+    <tr><td>Airspeed build</td><td>Reaches 13 m/s within 3s</td><td>No build after 3s — Q_TRANS_FAIL auto-aborts at 4s</td></tr>
+    <tr><td>Altitude loss</td><td>Up to ~5m — expected and normal</td><td>Loss &gt;10m → QHOVER immediately</td></tr>
+    <tr><td>Pitch attitude</td><td>Slight nose-down (1–3°) as speed builds</td><td>Aggressive dive → QHOVER immediately</td></tr>
+    <tr><td>Front tilt motors</td><td>Smoothly rotate forward over ~3s</td><td>One-sided tilt, jerk, or stall sound → QHOVER</td></tr>
+    <tr><td>Cruise motor</td><td>Spools up and builds thrust audibly</td><td>No spool or absent → QHOVER, check ESC</td></tr>
+    <tr><td>Transition complete</td><td>VTOL motors stop. Aircraft in FW flight.</td><td>VTOL motors still running at cruise alt → investigate</td></tr>
+    <tr><td>Back-transition</td><td>10s window, tilt smoothly returns vertical</td><td>Oscillation during back-transition → QHOVER override</td></tr>
+  </table>
+  <div class="alert alert-warn">Do not wait for the 4s auto-abort. If transition looks wrong at 2–3s, switch QHOVER immediately. An aborted transition near transition altitude is recoverable — a stall is not.</div>
+
+</div>
+
+<!-- ═══ PROCEDURES ═══ -->
+<div id="tab-procedures" class="tab-panel">
+
+  <div class="section-title">Power-Up Sequence</div>
+  <div class="alert alert-danger">Power up in this order every time. Reversing the sequence risks motor spin on unexpected link establishment.</div>
+  <div class="card accent">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>SIYI HM30 ground unit</strong><p>Power mast unit (6S 3000mAh). Confirm HM30 LED blue. Open MPV.net — no video expected yet.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>FPV sub-drone</strong><p>Power FPV. Confirm ELRS RX 2.4GHz connected. VTX begins transmitting 5.8GHz.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Carrier drone</strong><p>Connect single 6S pack — all carrier systems power on together (FC, DBR4 relay TX, 5.8G VRX, CVBS→HDMI, SIYI chain). Wait for ArduPlane boot tone. ELRS 2.4GHz relay link establishes to FPV. SIYI air unit links to HM30. VRX acquires FPV signal → video appears in MPV.net.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>ELRS 915MHz TX (last)</strong><p>Power physical Nomad controller. ELRS 915MHz link to carrier establishes. Confirm in Mission Planner — RC inputs visible, no pre-arm errors.</p></div></div>
+  </div>
+
+  <div class="section-title">Takeoff — VTOL Phase</div>
+  <div class="card accent">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Mode: <span class="mbadge m-qhov">QHOVER</span></strong><p>Nomad switch position 1. Confirm in Mission Planner HUD.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Arm</strong><p>Stick arm or GCS arm. All 4 motors spool to min arm thrust. Confirm no pre-arm messages.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Hover check at 2–3m</strong><p>Confirm stable hover, no oscillation. Confirm SIYI link, ELRS RSSI acceptable. Co-pilot confirms telemetry nominal in MP.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Climb to transition altitude</strong><p>Climb in QHOVER to ≥25m AGL. Wind vane active — aircraft weathervanes into wind automatically.</p></div></div>
+  </div>
+
+  <div class="section-title">Transition — VTOL → Fixed Wing</div>
+  <div class="alert alert-danger">Highest-risk phase. If pitch-down aggressive or airspeed does not build within 3s: revert to QHOVER immediately. Q_TRANS_FAIL auto-aborts at 4s — do not wait for it.</div>
+  <div class="card amber">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Switch to <span class="mbadge m-fbwb">FBWB</span></strong><p>Nomad switch position 2. Front tilt motors begin rotating forward. Cruise motor spools.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Monitor 3s transition window</strong><p>Target 13 m/s. Minimum 11 m/s. If no acceleration: QHOVER immediately.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Transition confirmed</strong><p>VTOL motors stop. Aircraft in fixed-wing flight. Co-pilot advances mission to WP2.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Switch to <span class="mbadge m-auto">AUTO</span></strong><p>Nomad switch position 3. Carrier Pilot takes over MP monitoring. Co-pilot clears to operate FPV.</p></div></div>
+  </div>
+
+  <div class="section-title">Relay Operations</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Loiter established — FPV handover</strong><p>Carrier in AUTO loiter. Carrier Pilot confirms relay RSSI and video in MPV.net. Co-pilot takes FPV TX and begins operating sub-drone.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier Pilot: orbit management</strong><p>Primary duty — keep FPV inside relay bubble. Carrier orbits around the FPV operating area, FPV on the near side. If FPV approaches relay edge: call "RELAY EDGE" and vector carrier in via GUIDED mode.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Battery discipline</strong><p>No BATT_LOW_VOLT configured — manual voltage monitoring only. Target RTL at <span class="warn-val">24.0V</span> (~4.0V/cell). Hard limit: RTL before <span class="crit-val">22.8V</span>. At 22.2V: automated Loiter→QLand at current position.</p></div></div>
+  </div>
+  <div class="alert alert-warn">FPV pilot verbal callouts are the Carrier Pilot's only FPV status source. Establish a call cadence: battery level, position, issues — every 2–3 minutes minimum.</div>
+
+  <div class="section-title">Recovery</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Recall FPV</strong><p>Co-pilot returns FPV sub-drone first where possible.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier return</strong><p>Mission WP5 → WP6 → WP7 (VTOL_LAND). Or manual RTL via Nomad left button.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Back-transition</strong><p>10s window. Front motors tilt back to vertical. If oscillation appears: switch QHOVER manually.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>VTOL land</strong><p>Final descent at Q_LAND_FINAL_SPD = 0.2 m/s. Confirm landing zone clear. Disarm on touchdown.</p></div></div>
+  </div>
+
+</div>
+
+<!-- ═══ EMERGENCY ═══ -->
+<div id="tab-emergency" class="tab-panel">
+
+  <div class="alert alert-danger">Memorise these actions. In-flight response time is measured in seconds.</div>
+
+  <div class="card danger" style="margin-top:16px">
+    <div class="emerg-hdr">RC Link Loss — 915MHz (Ground → Carrier)</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">Short loss (≤1.5s): ArduPlane switches to <span class="mbadge m-fbwa">FBWA</span> automatically. Regain link and resume.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Long loss (&gt;5s): RTL triggers at 120m AGL. Do NOT power-cycle TX in flight — reconnect on live link can cause RC spike.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">SIYI HM30 GCS still available: send mode commands via Mission Planner. GCS failsafe only active in AUTO mode.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">Relay Link Loss — 2.4GHz (Carrier → FPV)</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">FPV failsafe activates. Co-pilot ceases all inputs immediately.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot holds carrier loiter — sub-drone may be RTH-ing toward carrier position.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">If relay does not recover: co-pilot monitors FPV failsafe landing. Carrier Pilot recovers carrier independently.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">Video Loss — 5.8GHz or SIYI Chain</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">Co-pilot: zero inputs on FPV TX. Sub-drone to hover/stabilise.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot: descend carrier to reduce path loss. Wait 10 seconds.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">Not recovered: co-pilot activates FPV RTH. Carrier Pilot recovers carrier independently.</div></div>
+    <div class="proc-step"><div class="n">4</div><div class="t">Check: 5.8G VRX channel match, CVBS→HDMI converter power, SIYI air unit link to HM30.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">Transition Failure — VTOL → FW</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">No airspeed build within 3s or excessive pitch-down: <span class="mbadge m-qhov">QHOVER</span> immediately.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t"><code>Q_TRANS_FAIL=4s</code> — ArduPlane auto-aborts at 4s. Do not wait for automatic abort.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">Land in VTOL. Inspect tilt servo travel, cruise motor ESC, battery voltage before next attempt.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">Battery Critical — Carrier</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">No BATT_LOW_VOLT set. First automated action: <code>22.2V</code> → Loiter to QLand at <strong>current position</strong>. Will NOT return home.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Initiate manual RTL at 24V. If dropping rapidly: Nomad left button → RTL immediately.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">If Loiter→QLand triggers: confirm area below is clear. Aircraft descending vertically from current position.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">GCS Link Loss (SIYI HM30)</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">Switch to physical ELRS 915MHz Nomad immediately. Confirm carrier responds to RC inputs.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">In AUTO: GCS failsafe triggers RTL. In FBWB/QHOVER: no failsafe — fly manually with Nomad switch.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">Mode changes via Nomad 3-position switch (QHOVER / FBWB / AUTO) or left button for RTL only. No MP available.</div></div>
+  </div>
+
+</div>
+
+<!-- ═══ PRE-ARM REFERENCE ═══ -->
+<div id="tab-prearm" class="tab-panel">
+  <div class="section-title">Pre-Arm Error Reference</div>
+  <p>Type any part of the error message to filter the table.</p>
+  <input type="text" id="prearm-search" placeholder="Search error message..." oninput="filterPrearm()">
+  <table id="prearm-table">
+    <tr><th>Message</th><th>Cause</th><th>Fix</th></tr>
+    <tr><td><code>GPS: not healthy</code></td><td>No GPS signal or module not responding</td><td>Wait for GPS lock. Check GPS cable. Verify GPS_TYPE set correctly.</td></tr>
+    <tr><td><code>GPS: HDOP not acceptable</code></td><td>Position accuracy too low</td><td>Wait for better fix. Move away from buildings. AHRS_GPS_MINSATS=6 must be met.</td></tr>
+    <tr><td><code>GPS: speed error too high</code></td><td>GPS velocity noise excessive</td><td>Wait for stable fix. Check for RF interference near GPS antenna.</td></tr>
+    <tr><td><code>GPS: yaw error too high</code></td><td>GPS heading disagrees with compass</td><td>Re-do compass calibration. Check compass orientation parameter.</td></tr>
+    <tr><td><code>Compass not calibrated</code></td><td>Compass calibration never run</td><td>Initial Setup → Mandatory Hardware → Compass → Start. Rotate through all axes.</td></tr>
+    <tr><td><code>Compass offsets too high</code></td><td>Large offsets — magnetic interference during calibration</td><td>Re-calibrate away from metal objects. Move compass away from power cables.</td></tr>
+    <tr><td><code>Compass variance</code></td><td>Compass readings inconsistent</td><td>Move away from metal. Check current-carrying cables near compass location.</td></tr>
+    <tr><td><code>INS not calibrated</code></td><td>Accelerometer calibration not done</td><td>Initial Setup → Mandatory Hardware → Accel Calibration.</td></tr>
+    <tr><td><code>Accels not healthy</code></td><td>IMU accelerometer reporting errors</td><td>Power cycle. If persistent, FC hardware issue — check connections.</td></tr>
+    <tr><td><code>Gyros not calibrated</code></td><td>Gyro calibration failed at startup</td><td>Keep aircraft completely still during power-on gyro calibration. Re-power on flat surface.</td></tr>
+    <tr><td><code>Gyros not healthy</code></td><td>Gyro errors</td><td>Power cycle. Check FC vibration isolation mounts.</td></tr>
+    <tr><td><code>Barometer not healthy</code></td><td>Baro sensor failure</td><td>Power cycle. Check for blocked baro port or extreme temperature change.</td></tr>
+    <tr><td><code>Airspeed not healthy</code></td><td>Pitot sensor not responding</td><td>Check pitot tube connector. Verify ARSPD_TYPE=4 for your sensor.</td></tr>
+    <tr><td><code>Airspeed not calibrated</code></td><td>Pitot calibration not run this session</td><td>Preflight_Calibration → Do Action. Pitot cover must be on and no wind during calibration.</td></tr>
+    <tr><td><code>Airspeed too high</code></td><td>Reads &gt;2 m/s at rest — wind or leak</td><td>Shield pitot from wind. Re-run calibration. Check for leak or blockage in pitot tube.</td></tr>
+    <tr><td><code>RC not calibrated</code></td><td>RC calibration not done</td><td>Initial Setup → Mandatory Hardware → Radio Calibration.</td></tr>
+    <tr><td><code>RC failsafe on</code></td><td>RC signal below THR_FS_VALUE at power-up</td><td>Power TX before aircraft. Or raise throttle above failsafe. THR_FS_VALUE=950.</td></tr>
+    <tr><td><code>Throttle below failsafe</code></td><td>Throttle channel below THR_FS_VALUE</td><td>Move throttle up. Confirm TX powered and bound to aircraft.</td></tr>
+    <tr><td><code>Need 3D fix</code></td><td>GPS does not have 3D position lock</td><td>Wait for 3D fix (≥6 sats). Move to open sky away from structures.</td></tr>
+    <tr><td><code>EKF position variance</code></td><td>EKF position estimate uncertain</td><td>Stand completely still for 30–60s after power-on. Check GPS and compass health.</td></tr>
+    <tr><td><code>EKF not started</code></td><td>EKF filter not initialised</td><td>Wait — usually resolves after GPS locks. Check AHRS_EKF_TYPE=3.</td></tr>
+    <tr><td><code>Bad AHRS</code></td><td>Attitude/heading reference error</td><td>Power cycle. Keep completely still on power-up during initialisation.</td></tr>
+    <tr><td><code>Hardware safety switch</code></td><td>Safety switch not pressed or activated</td><td>Press and hold safety switch until LED solid. Or set BRD_SAFETY_DEFLT=0 to disable.</td></tr>
+    <tr><td><code>Logging failed</code></td><td>SD card missing, full, or corrupt</td><td>Insert/replace SD card. Format if full. Check LOG_BACKEND_TYPE setting.</td></tr>
+    <tr><td><code>Battery failsafe on</code></td><td>Battery voltage below threshold at startup</td><td>Charge battery. Verify BATT_CRT_VOLT=22.2V is correct for your pack.</td></tr>
+    <tr><td><code>Motors check failed</code></td><td>VTOL motor test not passed</td><td>Run motor test in Mission Planner. Check ESC calibration and motor wiring.</td></tr>
+    <tr><td><code>VTOL: not configured</code></td><td>Q_ENABLE not set to 1</td><td>Set Q_ENABLE=1 and reboot.</td></tr>
+    <tr><td><code>VTOL: check frame class/type</code></td><td>Q_FRAME_CLASS or Q_FRAME_TYPE incorrect</td><td>Verify Q_FRAME_CLASS=7, Q_FRAME_TYPE=1 for this aircraft.</td></tr>
+    <tr><td><code>Fence requires position</code></td><td>Geofence enabled but no GPS position yet</td><td>Wait for GPS lock, or temporarily disable fence with FENCE_ENABLE=0.</td></tr>
+    <tr><td><code>Mission library init failed</code></td><td>Mission storage corrupt or empty</td><td>Clear existing mission and reload in Mission Planner.</td></tr>
+  </table>
+</div>
+
+
+<!-- ═══ ABBREVIATIONS ═══ -->
+<div id="tab-abbrev" class="tab-panel">
+  <div class="section-title">Abbreviations & Glossary</div>
+  <p>Type any term to filter.</p>
+  <input type="text" id="abbrev-search" placeholder="Search abbreviation or term..." oninput="filterAbbrev()" style="width:100%;padding:12px 16px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;margin-bottom:18px;outline:none;">
+
+  <div class="section-title">ArduPilot / Mission Planner</div>
+  <table id="abbrev-table-ardupilot">
+    <tr><th>Term</th><th>Full Name</th><th>Description</th></tr>
+    <tr><td><code>AHRS</code></td><td>Attitude and Heading Reference System</td><td>Computes aircraft attitude (roll, pitch, yaw) by fusing IMU, GPS and compass data. ArduPilot uses EKF3 as its AHRS backend.</td></tr>
+    <tr><td><code>EKF</code></td><td>Extended Kalman Filter</td><td>Mathematical filter that fuses all sensor inputs to produce a best-estimate of position, velocity and attitude. EKF3 is the current ArduPilot standard (AHRS_EKF_TYPE=3).</td></tr>
+    <tr><td><code>IMU</code></td><td>Inertial Measurement Unit</td><td>Sensor package containing accelerometers and gyroscopes. Measures linear acceleration and angular rate.</td></tr>
+    <tr><td><code>INS</code></td><td>Inertial Navigation System</td><td>Navigation using IMU data. In ArduPilot, INS parameters control accelerometer and gyro filtering and calibration.</td></tr>
+    <tr><td><code>BARO</code></td><td>Barometer</td><td>Pressure sensor used to estimate altitude. Subject to temperature and wind effects. ArduPilot blends baro with GPS altitude.</td></tr>
+    <tr><td><code>MAG</code></td><td>Magnetometer (Compass)</td><td>Measures magnetic field for heading reference. Must be calibrated and isolated from magnetic interference.</td></tr>
+    <tr><td><code>ARSPD</code></td><td>Airspeed (sensor)</td><td>Pitot-static airspeed sensor. Measures differential pressure between pitot tube and static port to calculate indicated airspeed.</td></tr>
+    <tr><td><code>TECS</code></td><td>Total Energy Control System</td><td>ArduPilot's fixed-wing throttle and pitch controller. Manages the tradeoff between kinetic energy (speed) and potential energy (altitude).</td></tr>
+    <tr><td><code>NAVL1</code></td><td>Navigation L1 Controller</td><td>Lateral guidance law used in fixed-wing AUTO mode. Controls heading to follow waypoints and loiter patterns.</td></tr>
+    <tr><td><code>GCS</code></td><td>Ground Control Station</td><td>Software (Mission Planner, QGroundControl) used to plan missions, monitor telemetry and send commands to the aircraft.</td></tr>
+    <tr><td><code>MAVLink</code></td><td>Micro Air Vehicle Link</td><td>Lightweight messaging protocol used for communication between ArduPilot and GCS. Carries telemetry, commands and parameters.</td></tr>
+    <tr><td><code>PID</code></td><td>Proportional Integral Derivative</td><td>Control algorithm. ArduPilot uses PID controllers for attitude stabilisation — P reacts to current error, I accumulates over time, D damps rapid changes.</td></tr>
+    <tr><td><code>QuadPlane</code></td><td>Quadrotor + Plane hybrid</td><td>ArduPilot firmware mode for VTOL fixed-wing aircraft. Combines multirotor VTOL capability with fixed-wing cruise. Parameters prefixed with Q_.</td></tr>
+    <tr><td><code>FS</code></td><td>Failsafe</td><td>Automated response to a loss of signal or low battery. Configured via FS_ parameters in ArduPilot.</td></tr>
+    <tr><td><code>HDOP</code></td><td>Horizontal Dilution of Precision</td><td>Measure of GPS positional accuracy based on satellite geometry. Lower is better. ArduPilot requires HDOP &lt;2.0 for arming in most configs.</td></tr>
+    <tr><td><code>SITL</code></td><td>Software In The Loop</td><td>Simulation mode where ArduPilot runs on a PC without real hardware, for testing and development.</td></tr>
+    <tr><td><code>SBUS</code></td><td>Serial Bus</td><td>Futaba RC protocol for connecting receivers to flight controllers. Inverted UART at 100kbps.</td></tr>
+    <tr><td><code>CRSF</code></td><td>Crossfire Serial (TBS protocol)</td><td>High-speed bidirectional serial RC protocol used by TBS Crossfire and ExpressLRS receivers.</td></tr>
+    <tr><td><code>WP</code></td><td>Waypoint</td><td>A geographic point defined by latitude, longitude, and altitude that the aircraft navigates to in AUTO mode.</td></tr>
+  </table>
+
+  <div class="section-title">Flight Modes</div>
+  <table id="abbrev-table-modes">
+    <tr><th>Mode</th><th>Full Name</th><th>Description</th></tr>
+    <tr><td><code>QHOVER</code></td><td>Quadplane Hover</td><td>VTOL hover mode with altitude hold. Throttle controls climb/descent rate. Used for takeoff and landing on this aircraft.</td></tr>
+    <tr><td><code>QLOITER</code></td><td>Quadplane Loiter</td><td>VTOL GPS position hold. Aircraft hovers at a fixed point. GCS-only on this aircraft.</td></tr>
+    <tr><td><code>QSTABILIZE</code></td><td>Quadplane Stabilise</td><td>VTOL mode with attitude stabilisation but manual throttle. More demanding to fly than QHOVER.</td></tr>
+    <tr><td><code>FBWA</code></td><td>Fly-By-Wire A</td><td>Fixed-wing mode. Bank and pitch are limited to safe angles. Throttle manual. Used during failsafe short-loss recovery.</td></tr>
+    <tr><td><code>FBWB</code></td><td>Fly-By-Wire B</td><td>Fixed-wing mode with altitude hold. Elevator controls climb/descent rate. Used for transition and cruise on this aircraft.</td></tr>
+    <tr><td><code>AUTO</code></td><td>Autonomous Mission</td><td>Aircraft executes a pre-loaded waypoint mission. Used for relay loiter on this aircraft.</td></tr>
+    <tr><td><code>GUIDED</code></td><td>Guided Mode</td><td>GCS sends real-time position targets. Carrier Pilot uses this for orbit adjustments during relay phase.</td></tr>
+    <tr><td><code>RTL</code></td><td>Return to Launch</td><td>Aircraft climbs to RTL_ALTITUDE and flies back to the home position. Triggered manually or by failsafe.</td></tr>
+    <tr><td><code>LOITER</code></td><td>Loiter</td><td>Fixed-wing mode. Aircraft circles a point at fixed altitude and radius.</td></tr>
+    <tr><td><code>MANUAL</code></td><td>Manual</td><td>Direct RC passthrough — no stabilisation. Ground-only on this aircraft. Used for servo checks.</td></tr>
+    <tr><td><code>QLAND</code></td><td>Quadplane Land</td><td>VTOL auto-land at the current position. Triggered by battery critical failsafe on this aircraft.</td></tr>
+  </table>
+
+  <div class="section-title">Sensors & Electronics</div>
+  <table id="abbrev-table-electronics">
+    <tr><th>Term</th><th>Full Name</th><th>Description</th></tr>
+    <tr><td><code>ESC</code></td><td>Electronic Speed Controller</td><td>Converts flight controller PWM/DSHOT signals into motor power. One per motor.</td></tr>
+    <tr><td><code>FC</code></td><td>Flight Controller</td><td>The autopilot computer running ArduPilot firmware. Controls all flight surfaces and motors.</td></tr>
+    <tr><td><code>BEC</code></td><td>Battery Elimination Circuit</td><td>Voltage regulator that steps battery voltage down to 5V (or other) to power FC and servos.</td></tr>
+    <tr><td><code>PWM</code></td><td>Pulse Width Modulation</td><td>Traditional RC servo/ESC signal. Pulse width between 1000–2000µs represents min–max command.</td></tr>
+    <tr><td><code>DSHOT</code></td><td>Digital Shot</td><td>Digital ESC protocol. More precise and noise-resistant than PWM. No calibration required.</td></tr>
+    <tr><td><code>UART</code></td><td>Universal Asynchronous Receiver-Transmitter</td><td>Serial communication interface. Used to connect GPS, telemetry radios, ELRS receivers, and other peripherals to the FC.</td></tr>
+    <tr><td><code>I2C</code></td><td>Inter-Integrated Circuit</td><td>Two-wire serial bus used for short-range peripherals such as compass and airspeed sensors.</td></tr>
+    <tr><td><code>CAN</code></td><td>Controller Area Network</td><td>Robust serial bus used for ESCs (UAVCAN/DroneCAN) and advanced peripherals.</td></tr>
+    <tr><td><code>LiPo</code></td><td>Lithium Polymer</td><td>Rechargeable battery chemistry used in UAVs. Nominal cell voltage 3.7V, full charge 4.2V, storage 3.8V.</td></tr>
+    <tr><td><code>6S</code></td><td>6-cell LiPo</td><td>Six LiPo cells in series. Nominal 22.2V, full 25.2V, critical 22.2V on this aircraft.</td></tr>
+    <tr><td><code>mAh</code></td><td>Milliampere-hour</td><td>Battery capacity unit. Higher mAh = more energy stored.</td></tr>
+    <tr><td><code>CVBS</code></td><td>Composite Video Baseband Signal</td><td>Analog video signal format. Used between the 5.8GHz VRX and the HDMI converter in the video chain on this aircraft.</td></tr>
+    <tr><td><code>HDMI</code></td><td>High-Definition Multimedia Interface</td><td>Digital audio/video interface. Used between CVBS converter and SIYI HDMI→IP encoder.</td></tr>
+  </table>
+
+  <div class="section-title">Communications & RF</div>
+  <table id="abbrev-table-comms">
+    <tr><th>Term</th><th>Full Name</th><th>Description</th></tr>
+    <tr><td><code>ELRS</code></td><td>ExpressLRS</td><td>Open-source long-range RC link. Extremely low latency. Used for both carrier control (915MHz) and FPV relay (868MHz / 2.4GHz) on this aircraft.</td></tr>
+    <tr><td><code>RF</code></td><td>Radio Frequency</td><td>Electromagnetic signals used for wireless communication. All RC links, video links and telemetry are RF systems.</td></tr>
+    <tr><td><code>RSSI</code></td><td>Received Signal Strength Indicator</td><td>Measure of received signal power. Higher (less negative) RSSI = stronger link. Used to assess relay link quality.</td></tr>
+    <tr><td><code>TX</code></td><td>Transmitter</td><td>The device sending an RF signal. Also used to refer to a handheld RC radio controller.</td></tr>
+    <tr><td><code>RX</code></td><td>Receiver</td><td>The device receiving an RF signal. Connects to the flight controller and decodes RC commands.</td></tr>
+    <tr><td><code>VTX</code></td><td>Video Transmitter</td><td>Device that transmits analog or digital video over RF. On the FPV sub-drone (5.8GHz analog).</td></tr>
+    <tr><td><code>VRX</code></td><td>Video Receiver</td><td>Device that receives RF video signal. On the carrier drone, receives FPV 5.8GHz signal.</td></tr>
+    <tr><td><code>RTSP</code></td><td>Real Time Streaming Protocol</td><td>Network protocol for streaming video. Used to receive video from the SIYI system in MPV.net and GStreamer.</td></tr>
+    <tr><td><code>UDP</code></td><td>User Datagram Protocol</td><td>Connectionless network protocol. Used for MAVLink telemetry (UDPCI) and video streaming.</td></tr>
+    <tr><td><code>UDPCI</code></td><td>UDP Client Input</td><td>Mission Planner connection type. MP acts as UDP client, connecting to a known IP:port.</td></tr>
+    <tr><td><code>MHz</code></td><td>Megahertz</td><td>Unit of frequency. 868MHz and 915MHz are sub-GHz ELRS bands. 5800MHz (5.8GHz) is the FPV video band.</td></tr>
+    <tr><td><code>GHz</code></td><td>Gigahertz</td><td>1GHz = 1000MHz. 2.4GHz is the ELRS relay band to the FPV sub-drone.</td></tr>
+    <tr><td><code>IP</code></td><td>Internet Protocol</td><td>Network addressing standard. All SIYI devices and the laptop share the 192.168.144.x subnet.</td></tr>
+    <tr><td><code>FPV</code></td><td>First Person View</td><td>Flying a drone using a live video feed from a camera on the aircraft, rather than direct visual observation.</td></tr>
+  </table>
+
+  <div class="section-title">General Aviation & Operations</div>
+  <table id="abbrev-table-aviation">
+    <tr><th>Term</th><th>Full Name</th><th>Description</th></tr>
+    <tr><td><code>VTOL</code></td><td>Vertical Takeoff and Landing</td><td>Aircraft that can take off and land vertically, like a helicopter, but also fly efficiently in fixed-wing mode.</td></tr>
+    <tr><td><code>AGL</code></td><td>Above Ground Level</td><td>Altitude measured from the terrain beneath the aircraft. Different from MSL which is measured from sea level.</td></tr>
+    <tr><td><code>MSL</code></td><td>Mean Sea Level</td><td>Standard altitude reference. ArduPilot primarily uses AGL for relative altitude during flight.</td></tr>
+    <tr><td><code>BVLOS</code></td><td>Beyond Visual Line of Sight</td><td>Operation where the aircraft is flown beyond the range of unaided visual observation. Requires special authorisation in most jurisdictions.</td></tr>
+    <tr><td><code>VLOS</code></td><td>Visual Line of Sight</td><td>Standard operating requirement — pilot must be able to see the aircraft with unaided eyes at all times.</td></tr>
+    <tr><td><code>NOTAM</code></td><td>Notice to Airmen</td><td>Official notice containing information about airspace restrictions, hazards, or changes. Must be checked before every flight.</td></tr>
+    <tr><td><code>RTH</code></td><td>Return to Home</td><td>Automated function where the aircraft flies back to its launch/home point. Equivalent to RTL in ArduPilot.</td></tr>
+    <tr><td><code>PIC</code></td><td>Pilot in Command</td><td>The person with final authority and responsibility for the operation of the aircraft. Called "Carrier Pilot" in this manual.</td></tr>
+    <tr><td><code>CG</code></td><td>Centre of Gravity</td><td>The point at which the aircraft balances. Incorrect CG causes pitch instability and can prevent safe flight.</td></tr>
+    <tr><td><code>THR</code></td><td>Throttle</td><td>Power control input. In ArduPilot parameter names (e.g. THR_FAILSAFE, TRIM_THROTTLE).</td></tr>
+    <tr><td><code>m/s</code></td><td>Metres per second</td><td>SI unit of speed. ArduPilot uses m/s internally for all speed values.</td></tr>
+  </table>
+</div>
+
+</div><!-- /content -->
+
+<footer>DOC-RC-001 · HEEWING T2 VTOL RELAY CARRIER · ARDUPLANE · OPERATIONS MANUAL</footer>
+
+<script>
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+function filterAbbrev() {
+  const q = document.getElementById('abbrev-search').value.toLowerCase();
+  ['abbrev-table-ardupilot','abbrev-table-modes','abbrev-table-electronics','abbrev-table-comms','abbrev-table-aviation'].forEach(id => {
+    const t = document.getElementById(id);
+    if (!t) return;
+    t.querySelectorAll('tr:not(:first-child)').forEach(row => {
+      row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+}
+
+function filterPrearm() {
+  const q = document.getElementById('prearm-search').value.toLowerCase();
+  document.querySelectorAll('#prearm-table tr:not(:first-child)').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('tab-overview').classList.add('active');
+  document.querySelector('nav button[onclick*="overview"]').classList.add('active');
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+</script>
+</body>
+</html>

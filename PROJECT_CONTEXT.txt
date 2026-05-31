@@ -1,0 +1,381 @@
+================================================================
+PROJECT CONTEXT — HEEWING T2 VTOL RELAY CARRIER
+================================================================
+This file gives you complete context about this project.
+All files are in the same folder as this document.
+================================================================
+
+
+WHAT THIS PROJECT IS
+--------------------
+A two-page web application (HTML/CSS/JS, no frameworks, no build
+step) that serves as an operational manual and flight tools suite
+for a custom FPV relay carrier drone system built on a Heewing T2
+VTOL running ArduPlane/QuadPlane firmware.
+
+The app is designed to be hosted on GitHub Pages and used in the
+field on both laptop and mobile phone. It works fully offline via
+a service worker (sw.js).
+
+
+FILES IN THIS FOLDER
+--------------------
+index.html        — Flight Tools page (checklists, battery log, weather)
+manual.html       — Reference manual (systems, procedures, emergency, etc.)
+sw.js             — Service worker for offline caching
+git-setup.ps1     — One-time git initialisation and first push to GitHub
+watch-push.ps1    — Auto-push watcher (run while working, auto-commits on save)
+GIT-SETUP-GUIDE.txt — Plain-English setup instructions for git/GitHub Pages
+
+The old monolithic file (VTOL_Relay_Carrier_Operating_Manual.html)
+is also present but superseded by index.html + manual.html.
+
+
+DESIGN LANGUAGE
+---------------
+- Dark theme: black (#0f0f0f) background, orange (#f97316) accent
+- Fonts: Oswald (headings), Share Tech Mono (body) — loaded from Google Fonts
+- Military/operational aesthetic — uppercase section headers, monospace data
+- Fully responsive, mobile-first touch targets
+- Animations: tab fade-in, checklist item spring pop, emergency button pulse
+- No frameworks, no dependencies, all vanilla JS
+
+
+================================================================
+PAGE 1: index.html — FLIGHT TOOLS
+================================================================
+
+TABS
+----
+- Pre-Flight       — interactive checklist with timer + archive
+- Turnaround       — between-flight checklist
+- Post-Flight      — disarm/teardown/inspection procedure
+- Battery Log      — voltage tracking with analysis + .tlog parser
+- (Weather tab also present using Open-Meteo free API)
+
+NAV
+---
+- Orange "MANUAL ▶" link in nav → navigates to manual.html
+- Red pulsing "⚠ EMERGENCY" fixed floating button → opens emergency
+  procedures as a full-screen modal overlay
+
+PREFLIGHT CHECKLIST STRUCTURE
+------------------------------
+Section A — SITE
+  - Airspace verified & pilots briefed (combined)
+  - Wind within limits
+  - Landing zone clear
+
+Section B — VTOL BUILD & POWER-ON
+  - Airframe inspected
+  - Pitot cover on
+  - Battery secured & power on (combined — power on early for GPS fix)
+  - Props tight, rotation correct
+
+Section C — GROUND STATION
+  - Mast up and powered
+  - Ethernet connected
+  - HM30 linked, battery OK
+  - Subnet verified (192.168.144.X / 255.255.255.0)
+  - Mission Planner connected [UDPCI, IP 192.168.144.12, Port 19856]
+    → IP and port are copyable extras in detail pane
+  - GStreamer configured [copyable pipeline string]
+  - mpv.conf verified [copyable config block]
+  - MPV stream open [copyable RTSP URL: rtsp://192.168.144.25:8554/main.264]
+  - All devices charged
+
+Section D — CARRIER DRONE
+  - Compass calibrated
+  - Home position set
+  - Mission verified
+  - Failsafe params verified [copyable parameter block]
+  - Servo check (MANUAL mode — GCS only, never in flight)
+  - Mode cycle verified (QHOVER/FBWB/AUTO + tilt servo check)
+  - Pitot calibrated, cover removed
+  - Correct AUTO waypoint selected
+
+Section E — FPV SUB-DRONE
+  - FPV battery connected
+  - FPV props checked
+  - VTX on, video confirmed in MPV
+  - Relay link bound (hold LEFT button on carrier Nomad 3s)
+
+CHECKLIST UI
+------------
+Each item row is split 50/50:
+- Left half: tap/click to check (checkbox + short title ≤5 words)
+- Right half: tap/click to expand full detail + notes
+- Detail pane spans full width when open
+- Copy-to-clipboard blocks for long strings (RTSP URLs, GStreamer pipeline, etc.)
+- Progress bar + GO/NO-GO banner
+- EXPAND ALL / RESET buttons
+- Staggered fade-in animation on section load
+
+PREFLIGHT TIMER
+---------------
+- START/STOP button in checklist header
+- Shows MM:SS elapsed, turns amber after 20 min
+- On STOP: prompts to archive session with notes
+- Archive stored in localStorage, shown below checklist
+- Tracks date, duration, GO/NO-GO status, pilot notes
+
+TURNAROUND CHECKLIST (between flights)
+---------------------------------------
+Section T1 — CARRIER BATTERY & INSPECTION
+  - Airframe inspected
+  - Battery swapped (remove used → charger, install fresh)
+  - Power on, GPS acquiring
+
+Section T2 — CARRIER PRE-ARM
+  - Home position reset
+  - Mission verified
+  - Correct AUTO waypoint selected
+  - Servo check (MANUAL)
+  - Pitot calibrated, cover removed
+  - Mode cycle verified
+  - GStreamer restarted
+  - MPV stream restarted [copyable URL]
+
+Section T3 — FPV SUB-DRONE
+  - FPV battery swapped
+  - FPV props checked
+  - VTX on, video confirmed
+  - Relay link bound
+
+BATTERY LOG
+-----------
+- Log new flight with: date, sortie name, start voltage, lowest
+  landing voltage, resting voltage, flight time, notes
+- "MP" button next to each voltage field attempts to fetch live
+  voltage from Mission Planner REST API at localhost:20199
+  (works on the laptop running MP, fails gracefully on mobile)
+- .tlog file parser: upload ArduPilot .tlog binary → extracts
+  start V, min V, end V, flight time → pre-fills form
+  (pure JS MAVLink v1/v2 binary parser, no server needed)
+- Analysis section: lowest min V seen, avg sag, worst sag,
+  recommended BATT_LOW_VOLT based on real flight data
+- Entries stored in localStorage, deletable individually
+
+
+================================================================
+PAGE 2: manual.html — OPERATIONS MANUAL
+================================================================
+
+TABS
+----
+- Overview        — mission profile, key performance figures, crew roles
+- RF & Comms      — all link chain diagrams, frequency table, network config
+- Flight Modes    — mode switch table, failsafe config, VTOL assist
+- Aircraft        — tilt-rotor config, transition params, FW performance, battery
+- Mission         — SVG altitude profile diagram, waypoint table, transition guide
+- Procedures      — power-up, takeoff, transition, relay ops, recovery
+- Emergency       — 6 emergency scenario cards
+- Pre-Arm Ref     — searchable table of ~30 ArduPlane pre-arm error messages
+- Abbreviations   — searchable glossary ~60 terms across 5 categories
+
+NAV
+---
+- Grey "◀ TOOLS" link → navigates back to index.html
+- No emergency FAB (emergency is in tools, not manual)
+
+
+================================================================
+AIRCRAFT & SYSTEM DETAILS
+================================================================
+
+PLATFORM
+--------
+Heewing T2 VTOL
+- Tilt-rotor QuadPlane: 2 front motors tilt 0–80° for VTOL lift
+  and forward thrust; 2 rear motors provide VTOL lift only
+- Flight controller: Heewing FC running ArduPlane (QuadPlane)
+- Q_FRAME_CLASS=7, Q_FRAME_TYPE=1 (X)
+- Q_TILT_MASK=3 (front pair), Q_TILT_TYPE=2, Q_TILT_MAX=80°
+
+KEY PARAMETERS (from loaded .param file)
+-----------------------------------------
+AIRSPEED_CRUISE     = 13 m/s
+AIRSPEED_MIN        = 11 m/s  (stall prevention)
+AIRSPEED_MAX        = 22 m/s
+Q_TRANSITION_MS     = 3000 ms
+Q_TRANS_FAIL        = 4s      (auto-abort timeout)
+Q_TRANS_FAIL_ACT    = 0       (falls back to QHOVER)
+Q_BACKTRANS_MS      = 10000 ms
+Q_ASSIST_SPEED      = 9 m/s   (VTOL assist threshold)
+Q_ASSIST_ALT        = 25m AGL
+Q_M_THST_HOVER      = 0.272   (learned hover thrust)
+Q_TILT_RATE_UP/DN   = 40 deg/s
+TRIM_THROTTLE       = 35%
+RTL_ALTITUDE        = 120m
+Q_RTL_ALT           = 70m
+Q_RTL_ALT_MIN       = 35m
+BATT_CAPACITY       = 7000 mAh (6S pack)
+BATT_CRT_VOLT       = 22.2V   (3.7V/cell nominal — triggers Loiter→QLand)
+BATT_LOW_VOLT       = 0       ← NOT SET (known issue, flagged throughout)
+BATT_FS_CRT_ACT     = 6       (Loiter to QLand — NOT terminate)
+FS_SHORT_ACTN       = 0       (short RC loss → FBWA)
+FS_SHORT_TIMEOUT    = 1.5s
+FS_LONG_ACTN        = 1       (long RC loss → RTL)
+FS_LONG_TIMEOUT     = 5s
+FS_GCS_ENABL        = 2       (GCS failsafe in AUTO only)
+THR_FAILSAFE        = 2
+THR_FS_VALUE        = 950
+FLTMODE_CH          = 6
+FLTMODE1            = 18      (QHOVER)
+FLTMODE2            = 11      (QLOITER — GCS only in practice)
+FLTMODE3/4          = 6       (FBWB)
+FLTMODE5            = 0       (MANUAL — GCS only, never in flight)
+FLTMODE6            = 10      (AUTO)
+
+FLIGHT MODE SWITCH (physical Nomad controller)
+-----------------------------------------------
+3-position switch only:
+  Position 1 → QHOVER
+  Position 2 → FBWB
+  Position 3 → AUTO
+Left button (hold) → RTL (emergency)
+QLOITER and MANUAL are GCS-only
+
+BATTERY
+-------
+Main carrier pack: 6S 7000mAh LiPo
+- All carrier systems on single pack (FC, relay Nomad, SIYI chain, VRX)
+- Nothing powered separately on the carrier
+- Return trigger: manual at 24V (4.0V/cell) — no automated low warning
+- Critical: 22.2V → automated Loiter→QLand at current position (not RTH)
+
+Mast battery: 6S 3000mAh — powers HM30 ground unit only
+
+
+CONTROL LINK CHAIN (FPV relay)
+--------------------------------
+Ground relay TX:    Radiomaster Nomad       → 868 MHz →
+Carrier RX:         Radiomaster DBR4 RX     → 868 MHz →
+Carrier relay TX:   Radiomaster Nomad       → 2.4 GHz →
+FPV RX:             ELRS RX                 → 2.4 GHz →
+FPV FC:             Betaflight
+
+Notes:
+- Relay chain has ZERO interface with ArduPlane FC
+- Bind procedure: hold LEFT button on carrier Nomad 3s → bind mode
+- Required every preflight
+
+CARRIER PILOT REDUNDANCY LINK
+-------------------------------
+Carrier Pilot TX:   Radiomaster Nomad → 915 MHz → ELRS RX → ArduPlane
+- Used for takeoff, landing, SIYI HM30 failure
+- Primary carrier control in cruise = SIYI HM30 GCS (Mission Planner)
+
+VIDEO LINK CHAIN
+-----------------
+FPV VTX (5.8GHz analog)
+  → Carrier 5.8G VRX
+  → CVBS→HDMI converter
+  → SIYI HDMI→IP converter
+  → SIYI switch
+  → SIYI air unit
+  → SIYI HM30 ground unit (on mast, 6S 3000mAh, ethernet to laptop)
+  → PC: MPV.net (RTSP) or GStreamer inside Mission Planner
+
+NETWORK ADDRESSES
+-----------------
+Laptop subnet:              192.168.144.X / 255.255.255.0
+SIYI HM30 ground unit IP:   192.168.144.12
+SIYI air unit IP:           192.168.144.11
+Mission Planner UDPCI:      IP 192.168.144.12, Port 19856
+Carrier camera RTSP:        rtsp://192.168.144.26:8554/main.264
+FPV video RTSP:             rtsp://192.168.144.25:8554/main.264
+
+GSTREAMER PIPELINE (Mission Planner video source)
+--------------------------------------------------
+rtspsrc location=rtsp://192.168.144.26:8554/main.264 latency=41 udp-reconnect=1 timeout=0 do-retransmission=false ! application/x-rtp ! decodebin3 ! queue max-size-buffers=1 leaky=2 ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink sync=false
+
+MPV.NET CONFIG (mpv.conf)
+--------------------------
+profile=low-latency
+no-cache
+untimed
+hwdec=auto
+rtsp-transport=udp
+
+CREW
+----
+Carrier Pilot:
+  - Station: primary laptop + Radiomaster Nomad (915MHz)
+  - Takeoff/transition: QHOVER → FBWB → AUTO
+  - Relay phase: orbit management, keeps FPV in relay bubble
+  - Has NO telemetry visibility of FPV sub-drone
+
+FPV Pilot / Co-Pilot:
+  - Station: second screen + FPV TX (2.4GHz via relay) + MPV.net
+  - Takeoff: co-pilot role, advances mission WP1→WP2 post-transition
+  - Relay phase: operates 7"+ FPV quad, verbal callouts to carrier pilot
+  - Both pilots co-located, verbal comms only
+
+FPV SUB-DRONE
+--------------
+7"+ GPS quad running Betaflight
+GPS Rescue (RTH) failsafe configured on relay link loss
+
+MINIMUM MISSION STRUCTURE (7 waypoints)
+-----------------------------------------
+WP1: VTOL_TAKEOFF     — arm, QHOVER to transition alt
+WP2: WAYPOINT         — transition safety alt, co-pilot advances here
+WP3: LOITER_TO_ALT    — climb to relay altitude (autonomous)
+WP4: WAYPOINT         — sortie-specific mission start
+WP5: LOITER_TO_ALT    — descend to approach altitude (autonomous)
+WP6: WAYPOINT         — slope-in toward landing zone
+WP7: VTOL_LAND        — vertical landing
+
+
+================================================================
+KNOWN ISSUES / FLAGS
+================================================================
+1. BATT_LOW_VOLT = 0 (not set) — no low-voltage warning before
+   critical failsafe at 22.2V. Battery log analysis calculates
+   a recommended value from real flight data.
+
+2. FENCE_ENABLE = 0 — geofence disabled. Already configured
+   (ALT_MAX=100m, RADIUS=300m) but not enabled.
+
+3. BATT_FS_CRT_ACT = 6 = Loiter to QLand (NOT terminate).
+   Aircraft lands where it is, does NOT return home.
+
+
+================================================================
+GITHUB / DEPLOYMENT
+================================================================
+Target: GitHub Pages
+Files to upload: index.html, manual.html, sw.js
+URL pattern: https://USERNAME.github.io/REPO-NAME/
+
+Service worker (sw.js) caches both pages for offline use.
+Cache version: vtol-manual-v2
+
+Git scripts in this folder:
+  git-setup.ps1    — run once to init and push
+  watch-push.ps1   — run while working to auto-push on save
+
+Node.js / npm was not yet installed at time of writing.
+PowerShell execution policy fix needed:
+  Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+
+================================================================
+STYLE CONVENTIONS TO MAINTAIN
+================================================================
+- All CSS uses CSS variables defined in :root — never hardcode colours
+- Accent: #f97316 (orange), Red: #ef4444, Green: #22c55e, Amber: #facc15
+- Checklist items: { s:'short title ≤5 words', t:'full detail text',
+  n:'note text', w:true/false (amber warning), copy:true (copyable block),
+  extras:[{label,val}] (multiple copyable values) }
+- Checklist stored in localStorage keys: vtol_cl2 (preflight),
+  vtol_cl3 (turnaround), vtol_battlog (battery log),
+  vtol_pf_archive (preflight timer archive)
+- Two separate checklist renderers: buildChecklist() is generic,
+  called with (data, containerId, storageKey, secProgPrefix, overallFn)
+- Emergency content is in index.html (modal), not manual.html
+
+================================================================
+END OF CONTEXT
+================================================================

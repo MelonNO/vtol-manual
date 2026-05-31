@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HEEWING T2 — RELAY CARRIER OPS MANUAL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
+
+:root {
+  --bg:       #0f0f0f;
+  --surface:  #1a1a1a;
+  --surface2: #222222;
+  --border:   #2a2a2a;
+  --border2:  #333333;
+  --text:     #e8e8e8;
+  --muted:    #666666;
+  --accent:   #f97316;
+  --amber:    #facc15;
+  --red:      #ef4444;
+  --green:    #22c55e;
+  --dim:      #444444;
+  --mono: 'Share Tech Mono', monospace;
+  --head: 'Oswald', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--mono);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--accent);
+  padding: 0;
+}
+.hdr-top {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border2);
+}
+.hdr-classification {
+  background: var(--red);
+  color: #fff;
+  font-family: var(--head);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+}
+.hdr-main {
+  flex: 1;
+  padding: 14px 24px;
+}
+.hdr-doc-id {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+.hdr-title {
+  font-family: var(--head);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 2px;
+  line-height: 1;
+}
+.hdr-sub {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-top: 5px;
+}
+.hdr-meta {
+  display: flex;
+  gap: 32px;
+  padding: 8px 24px 8px 52px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.hdr-meta span strong { color: var(--text); }
+
+/* ── NAV ── */
+nav {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border2);
+  display: flex;
+  overflow-x: auto;
+  padding: 0 8px;
+}
+nav button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: var(--head);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  padding: 10px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  text-transform: uppercase;
+  transition: all .15s;
+}
+nav button:hover { color: var(--text); }
+nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+/* Emergency button removed from nav — now a fixed floating button */
+
+/* ── LAYOUT ── */
+.content { max-width: 960px; margin: 0 auto; padding: 28px 24px; padding-bottom: 90px; }
+
+/* ── FIXED EMERGENCY BUTTON ── */
+#emerg-fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 900;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  font-family: var(--head);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 14px 22px;
+  cursor: pointer;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(239,68,68,.4);
+  transition: background .15s, transform .1s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulseFab 2.5s ease-in-out infinite;
+}
+#emerg-fab:hover { background: #dc2626; animation: none; box-shadow: 0 4px 28px rgba(239,68,68,.7); }
+#emerg-fab:active { transform: scale(.96); }
+
+/* ── MOBILE ── */
+@media (max-width: 600px) {
+  .hdr-top { flex-direction: column; }
+  .hdr-classification { writing-mode: horizontal-tb; padding: 6px 12px; font-size: 10px; }
+  .hdr-title { font-size: 15px; }
+  .hdr-meta { flex-wrap: wrap; gap: 8px 16px; padding: 8px 12px; font-size: 9px; }
+  .content { padding: 16px 12px 90px; }
+  nav { padding: 0 4px; }
+  nav button { padding: 10px 10px; font-size: 11px; letter-spacing: .5px; }
+  .card { padding: 12px; }
+  table { font-size: 11px; }
+  th, td { padding: 6px 8px; }
+  .cl-hdr { flex-wrap: wrap; gap: 8px; }
+  .cl-hdr-title { font-size: 14px; }
+  .cl-reset { font-size: 10px; padding: 5px 8px; }
+  .ci-left { padding: 10px 8px; gap: 8px; }
+  .ci-right { padding: 10px 10px; }
+  .ci-short { font-size: 12px; }
+  .ci-box { width: 22px; height: 22px; font-size: 13px; flex-shrink: 0; }
+  .expand-icon { font-size: 16px; }
+  .step { flex-direction: column; gap: 8px; }
+  .chain { flex-wrap: wrap; }
+  .cn { min-width: 70px; font-size: 10px; }
+  #emerg-fab { bottom: 16px; right: 16px; font-size: 13px; padding: 14px 18px; }
+  .emerg-modal-inner { padding: 16px; }
+}
+/* ── ANIMATIONS ── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; }
+  to   { opacity: 1; max-height: 600px; }
+}
+@keyframes checkPop {
+  0%   { transform: scale(0); }
+  60%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+@keyframes progressFill {
+  from { width: 0; }
+}
+@keyframes pulseFab {
+  0%, 100% { box-shadow: 0 4px 20px rgba(239,68,68,.4); }
+  50%       { box-shadow: 0 4px 32px rgba(239,68,68,.8), 0 0 0 6px rgba(239,68,68,.15); }
+}
+@keyframes goNogoBanner {
+  from { opacity: 0; transform: scaleX(.95); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+@keyframes scanline {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 40px; }
+}
+
+.tab-panel { display: none; }
+.tab-panel.active {
+  display: block;
+  animation: fadeSlideIn .2s ease both;
+}
+
+/* ── TYPOGRAPHY ── */
+.section-title {
+  font-family: var(--head);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border2);
+  padding-bottom: 6px;
+  margin: 28px 0 14px;
+}
+.section-title:first-child { margin-top: 0; }
+
+p { color: var(--muted); margin-bottom: 10px; }
+p strong, p b { color: var(--text); }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--dim);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.card.accent  { border-left-color: var(--accent); }
+.card.amber   { border-left-color: var(--amber); }
+.card.danger  { border-left-color: var(--red); background: #1a0e0e; }
+
+.card-title {
+  font-family: var(--head);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.card.amber  .card-title { color: var(--amber); }
+.card.danger .card-title { color: var(--red); }
+
+/* ── TABLE ── */
+table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; }
+th {
+  text-align: left;
+  padding: 6px 10px;
+  font-family: var(--head);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border2);
+}
+td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+}
+td:first-child { color: var(--muted); }
+td code {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  padding: 1px 5px;
+  border-radius: 2px;
+  color: var(--accent);
+  font-size: 11px;
+}
+tr:last-child td { border-bottom: none; }
+.val { color: var(--accent); font-weight: bold; }
+.warn-val { color: var(--amber); font-weight: bold; }
+.crit-val { color: var(--red); font-weight: bold; }
+
+/* ── ALERT BOXES ── */
+.alert {
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 12px;
+  border-left: 3px solid;
+  letter-spacing: .3px;
+}
+.alert-danger  { border-color: var(--red);   background: #1f1010; color: #f87171; }
+.alert-warn    { border-color: var(--amber);  background: #1f1a08; color: #facc15; }
+.alert-info    { border-color: var(--accent); background: #1f1208; color: var(--accent); }
+.alert::before { font-weight: bold; margin-right: 8px; }
+.alert-danger::before  { content: '⚠ CAUTION:'; color: var(--red); }
+.alert-warn::before    { content: '⚡ WARNING:'; color: var(--amber); }
+.alert-info::before    { content: '▶ NOTE:'; }
+
+/* ── STEPS ── */
+.step-list { counter-reset: step-counter; }
+.step {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 12px;
+  align-items: flex-start;
+}
+.step-n {
+  font-family: var(--head);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 24px;
+  padding-top: 1px;
+}
+.step-body { flex: 1; }
+.step-body strong { color: var(--text); display: block; margin-bottom: 2px; }
+.step-body p { margin: 0; font-size: 12px; }
+
+/* ── CHAIN DIAGRAM ── */
+.chain-wrap { margin: 14px 0; overflow-x: auto; }
+.chain {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: max-content;
+  padding: 4px 0;
+}
+.cn {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  padding: 7px 10px;
+  font-size: 11px;
+  text-align: center;
+  min-width: 80px;
+}
+.cn .cl { display: block; font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+.cn .cv { font-weight: bold; color: var(--text); }
+.cn .cf { display: block; font-size: 9px; margin-top: 2px; font-weight: bold; }
+.ca { color: var(--dim); font-size: 14px; margin: 0 2px; }
+.ctrl .cn { border-color: #c2410c; }
+.ctrl .cf { color: #f97316; }
+.vid  .cn { border-color: #991b1b; }
+.vid  .cf { color: #ef4444; }
+
+/* ── FREQ TAGS ── */
+.ftag {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 2px;
+  letter-spacing: .5px;
+}
+.f868 { background: #1c1008; color: #f97316; }
+.f24  { background: #141a08; color: #84cc16; }
+.f58  { background: #1a0a0a; color: #ef4444; }
+
+/* ── MODE BADGE ── */
+.mbadge {
+  display: inline-block;
+  font-family: var(--head);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  border-radius: 2px;
+}
+.m-qhov  { background: #14230f; color: #22c55e; border: 1px solid #166534; }
+.m-qloit { background: #14230f; color: #22c55e; border: 1px solid #166534; }
+.m-fbwb  { background: #0f1a2e; color: #60a5fa; border: 1px solid #1e40af; }
+.m-auto  { background: #1c1208; color: #f97316; border: 1px solid #c2410c; }
+.m-man   { background: #1c1208; color: #fb923c; border: 1px solid #9a3412; }
+.m-rtl   { background: #1f0f0f; color: #ef4444; border: 1px solid #991b1b; }
+
+/* ══════════════════════════════════════
+   CHECKLIST
+══════════════════════════════════════ */
+.cl-hdr {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.cl-hdr-title {
+  font-family: var(--head);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+.cl-progress-wrap { flex: 1; }
+.cl-progress {
+  height: 4px;
+  background: var(--surface2);
+  border-radius: 0;
+}
+.cl-progress-bar {
+  height: 100%;
+  background: var(--green);
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.cl-progress-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  margin-top: 3px;
+}
+.cl-reset {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 12px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+.cl-reset:hover { border-color: var(--amber); color: var(--amber); }
+
+/* section block */
+.cl-section {
+  margin-bottom: 20px;
+  animation: fadeSlideIn .25s ease both;
+}
+.cl-section:nth-child(1) { animation-delay: .05s; }
+.cl-section:nth-child(2) { animation-delay: .10s; }
+.cl-section:nth-child(3) { animation-delay: .15s; }
+.cl-section:nth-child(4) { animation-delay: .20s; }
+.cl-section:nth-child(5) { animation-delay: .25s; }
+.cl-section-hdr {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border2);
+  margin-bottom: 2px;
+}
+.cl-section-name {
+  font-family: var(--head);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.cl-section-prog {
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: auto;
+  letter-spacing: 1px;
+}
+
+/* item */
+.ci {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  min-height: 38px;
+}
+.ci:last-child { border-bottom: none; }
+.ci.done { opacity: .5; }
+
+/* Left half — tap to check */
+.ci-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 50%;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-right: 1px solid var(--border);
+  transition: background .1s;
+  user-select: none;
+}
+.ci-left:hover { background: var(--surface2); }
+.ci { transition: opacity .2s; }
+.ci.done .ci-left .ci-short { text-decoration: line-through; }
+
+/* Right half — tap to expand */
+.ci-right {
+  display: flex;
+  align-items: center;
+  width: 50%;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background .1s;
+  gap: 8px;
+  user-select: none;
+}
+.ci-right:hover { background: var(--surface2); }
+.ci-right.open { background: #1c1208; }
+.ci-right .expand-icon {
+  font-size: 14px;
+  color: var(--dim);
+  flex-shrink: 0;
+  transition: transform .15s, color .15s;
+}
+.ci-right.open .expand-icon { transform: rotate(90deg); color: var(--accent); }
+.ci-right .expand-hint {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .5px;
+  flex: 1;
+}
+.ci-right.open .expand-hint { color: var(--accent); }
+
+.ci-box {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--dim);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all .15s;
+}
+.ci.done .ci-box {
+  background: var(--green);
+  border-color: var(--green);
+  color: #000;
+  font-weight: bold;
+  animation: checkPop .25s cubic-bezier(.34,1.56,.64,1) both;
+}
+.ci.done .ci-box::after { content: '✓'; }
+
+.ci-short { color: var(--text); font-size: 12px; flex: 1; }
+
+.ci-detail {
+  display: none;
+  margin: 0 0 2px 0;
+  padding: 10px 16px;
+  background: #1a1108;
+  border-bottom: 1px solid var(--border2);
+  border-left: 2px solid var(--accent);
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+}
+.ci-detail.visible {
+  display: block;
+  animation: slideDown .2s ease both;
+}
+.ci-detail-text { color: var(--text); margin-bottom: 4px; line-height: 1.5; }
+
+.ci-note { display: block; font-size: 11px; color: var(--muted); margin-top: 4px; }
+.ci-note.w { color: var(--amber); }
+.ci-note.c { color: var(--red); }
+.ci-note code {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  padding: 1px 4px;
+  color: var(--accent);
+  font-size: 10px;
+}
+
+/* go/no-go banner */
+.go-nogo {
+  margin-top: 18px;
+  padding: 12px 18px;
+  font-family: var(--head);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  display: none;
+  border: 1px solid;
+}
+.go-nogo.go   { display: block; color: var(--green); border-color: var(--green); background: #0a1f0d; animation: goNogoBanner .3s ease both; }
+.go-nogo.nogo { display: block; color: var(--red);   border-color: var(--red);   background: #1f0a0a; animation: goNogoBanner .3s ease both; }
+
+/* ── EMERG cards ── */
+.emerg-hdr {
+  font-family: var(--head);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--red);
+  border-bottom: 1px solid var(--red);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  opacity: .8;
+}
+.proc-step {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.proc-step .n { color: var(--red); font-weight: bold; min-width: 18px; }
+.proc-step .t { color: var(--text); }
+
+/* copyable value */
+.ci-note.copy-val {
+  display: block;
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  padding: 5px 8px;
+  margin-top: 5px;
+  word-break: break-all;
+  white-space: pre;
+  cursor: pointer;
+  user-select: all;
+}
+.ci-note.copy-val::before { content: '⎘ '; opacity: .6; }
+.ci-note.copy-val.copied { border-color: var(--green); color: var(--green); }
+
+/* footer */
+footer {
+  border-top: 1px solid var(--border2);
+  padding: 10px 24px;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-align: center;
+  margin-top: 40px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-top">
+    <div class="hdr-classification">OPERATIONAL</div>
+    <div class="hdr-main">
+      <div class="hdr-doc-id">DOC-RC-001 · REV A · HEEWING T2 VTOL · ARDUPLANE</div>
+      <div class="hdr-title">RELAY CARRIER — OPERATING MANUAL</div>
+      <div class="hdr-sub">FPV RELAY MISSION · TILT-ROTOR QUADPLANE · SIYI HM30 DATALINK · ELRS 868/2.4GHz RELAY</div>
+    </div>
+  </div>
+  <div class="hdr-meta">
+    <span><strong>PLATFORM</strong> Heewing T2 VTOL</span>
+    <span><strong>FW</strong> ArduPlane / QuadPlane</span>
+    <span><strong>BATT</strong> 6S 7000mAh</span>
+    <span><strong>CRIT VOLT</strong> 22.2V</span>
+    <span><strong>RTL ALT</strong> 120m AGL</span>
+    <span><strong>CRUISE</strong> 13 m/s</span>
+  </div>
+</header>
+
+<nav id="nav">
+  <button onclick="switchTab('preflight', this)">Pre-Flight</button>
+  <button onclick="switchTab('turnaround', this)">Turnaround</button>
+  <button onclick="switchTab('postflight', this)">Post-Flight</button>
+  <button onclick="switchTab('procedures', this)">Procedures</button>
+  <button class="active" onclick="switchTab('overview', this)">Systems</button>
+  <button onclick="switchTab('prearm', this)">Pre-Arm Ref</button>
+  <button onclick="switchTab('battlog', this)">Battery Log</button>
+</nav>
+
+<button id="emerg-fab" onclick="openEmerg()">⚠ EMERGENCY</button>
+
+<!-- Emergency Modal -->
+<div id="emerg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;overflow-y:auto">
+  <div class="emerg-modal-inner" style="max-width:860px;margin:0 auto;padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-bottom:2px solid var(--red);padding-bottom:12px">
+      <span style="font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:3px;color:var(--red)">⚠ EMERGENCY PROCEDURES</span>
+      <button onclick="closeEmerg()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:6px 14px;cursor:pointer;letter-spacing:1px">CLOSE ✕</button>
+    </div>
+    <div id="emerg-content"></div>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ═══════════════════ SYSTEMS ═══════════════════ -->
+<div id="tab-overview" class="tab-panel">
+
+  <div class="section-title">FPV Relay Control Chain</div>
+  <div class="chain-wrap">
+    <div class="chain ctrl">
+      <div class="cn"><span class="cl">Ground relay TX</span><span class="cv">Radiomaster Nomad</span><span class="cf f868">868 MHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier RX</span><span class="cv">Radiomaster DBR4 RX</span><span class="cf f868">868 MHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier relay TX</span><span class="cv">Radiomaster Nomad</span><span class="cf f24">2.4 GHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">FPV RX</span><span class="cv">ELRS RX</span><span class="cf f24">2.4 GHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">FPV FC</span><span class="cv">Betaflight</span></div>
+    </div>
+  </div>
+  <p style="font-size:11px;margin-bottom:10px">FPV relay chain only. The carrier-mounted <strong>Radiomaster Nomad</strong> acts as relay TX to the FPV on 2.4 GHz; its RX input is a <strong>Radiomaster DBR4</strong> receiving the 868 MHz ground link. This entire relay chain has zero interface with ArduPlane — the FC has no awareness of relay link state or FPV status.</p>
+
+  <div class="section-title">Carrier Pilot Control Link (Redundancy)</div>
+  <div class="chain-wrap">
+    <div class="chain ctrl">
+      <div class="cn"><span class="cl">Carrier Pilot TX</span><span class="cv">Radiomaster Nomad</span><span class="cf" style="color:#a070d0">915 MHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier FC RX</span><span class="cv">ELRS RX</span><span class="cf" style="color:#a070d0">915 MHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier FC</span><span class="cv">ArduPlane</span></div>
+    </div>
+  </div>
+  <p style="font-size:11px">Redundancy link — used for takeoff, landing, and SIYI HM30 link failure. Primary carrier control in cruise is via <strong>SIYI HM30</strong> datalink (Mission Planner GCS). 3-position mode switch: QHOVER / FBWB / AUTO. Left button: RTL.</p>
+
+  <div class="section-title">Video Link Architecture</div>
+  <div class="chain-wrap">
+    <div class="chain vid">
+      <div class="cn"><span class="cl">FPV drone</span><span class="cv">5.8G VTX</span><span class="cf f58">5.8 GHz</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">5.8G VRX</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">CVBS→HDMI</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">SIYI HDMI→IP</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">SIYI Switch</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Carrier</span><span class="cv">SIYI Air Unit</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">Ground</span><span class="cv">HM30 + Mast</span></div>
+      <span class="ca">→</span>
+      <div class="cn"><span class="cl">PC</span><span class="cv">MPV.net / GStream</span></div>
+    </div>
+  </div>
+  <p style="font-size:11px">HM30 ground unit mounted on portable mast. Powered by dedicated 6S 3000mAh strapped to mast. Ethernet cable to laptop. Video viewed in MPV.net (RTSP) or GStreamer inside Mission Planner on second screen (USB-C).</p>
+
+  <div class="section-title">Flight Modes</div>
+  <p style="font-size:12px;margin-bottom:8px">Physical Nomad controller has a <strong>3-position mode switch</strong> only. QLOITER and MANUAL are param-configured but only reachable via Mission Planner GCS — not from the stick.</p>
+  <table>
+    <tr><th>Source</th><th>Position / Input</th><th>Mode</th><th>Use</th></tr>
+    <tr><td>Nomad switch</td><td>Position 1</td><td><span class="mbadge m-qhov">QHOVER</span></td><td>Takeoff, landing, VTOL hold. Altitude locked.</td></tr>
+    <tr><td>Nomad switch</td><td>Position 2</td><td><span class="mbadge m-fbwb">FBWB</span></td><td>Fixed-wing cruise, altitude hold. Used for transition and pre-AUTO.</td></tr>
+    <tr><td>Nomad switch</td><td>Position 3</td><td><span class="mbadge m-auto">AUTO</span></td><td>Mission execution. Activated after transition confirmed.</td></tr>
+    <tr><td>Nomad left button</td><td>Hold (emergency)</td><td><span class="mbadge m-rtl">RTL</span></td><td>Emergency return. Climbs to 120m AGL and returns home.</td></tr>
+  </table>
+
+  <div class="section-title">Failsafe Configuration</div>
+  <table>
+    <tr><th>Trigger</th><th>Threshold</th><th>Action</th></tr>
+    <tr><td>RC short loss</td><td><code>FS_SHORT_TIMEOUT</code> = 1.5 s</td><td>Switch to <span class="mbadge m-fbwb">FBWA</span> — continues flight</td></tr>
+    <tr><td>RC long loss</td><td><code>FS_LONG_TIMEOUT</code> = 5 s</td><td><span class="mbadge m-rtl">RTL</span> at 120m AGL</td></tr>
+    <tr><td>Battery critical</td><td><code>BATT_CRT_VOLT</code> = <span class="crit-val">22.2V</span> (3.7V/cell)</td><td>Loiter → QLand (<code>BATT_FS_CRT_ACT=6</code>)</td></tr>
+    <tr><td>Battery low</td><td><span class="warn-val">NOT CONFIGURED</span> — <code>BATT_LOW_VOLT=0</code></td><td>No warning before critical. Monitor manually.</td></tr>
+    <tr><td>GCS loss</td><td><code>FS_GCS_ENABL=2</code></td><td>Active in AUTO only → RTL</td></tr>
+    <tr><td>THR failsafe</td><td><code>THR_FS_VALUE=950</code></td><td>RC loss confirmed by throttle channel drop</td></tr>
+  </table>
+  <div class="alert alert-danger">BATT_LOW_VOLT is not set. There is no low-battery warning before the critical failsafe at 22.2V. A 6S pack at 22.2V is at nominal — this is very late to be triggering. Recommend setting BATT_LOW_VOLT to ~23.1V (3.85V/cell) to get a RTL warning with flight time remaining. Initiating manual return at ~24V (4.0V/cell) is advised.</div>
+
+  <div class="section-title">Tilt-Rotor Configuration</div>
+  <p>T2 uses front-pair tilting rotors (<code>Q_TILT_MASK=3</code>, <code>Q_TILT_TYPE=2</code>, max 80°). Front motors provide both VTOL lift and forward thrust. Rear pair provides VTOL lift only. Transition time <code>Q_TRANSITION_MS=3000ms</code>; fail-timeout <code>Q_TRANS_FAIL=4s</code>. Back-transition: <code>Q_BACKTRANS_MS=10000ms</code>.</p>
+  <p>VTOL assist activates below <span class="val">9 m/s</span> airspeed or below <span class="val">25m AGL</span> in fixed-wing modes. Hover thrust learned: <code>Q_M_THST_HOVER=0.272</code> (~27% throttle).</p>
+
+  <div class="section-title">Crew Roles</div>
+  <table>
+    <tr><th>Role</th><th>Station</th><th>Responsibilities</th></tr>
+    <tr><td>Carrier Carrier Pilot</td><td>Primary laptop + Radiomaster Nomad (868MHz)</td><td>
+      <strong>Takeoff/transition:</strong> QHOVER arm → climb → FBWB transition → AUTO. Hands off Mission Planner to co-pilot once in AUTO.<br>
+      <strong>Relay phase:</strong> Monitors carrier battery, RSSI, altitude. Actively adjusts carrier orbit so that the FPV remains within the relay bubble — carrier orbits around the FPV's operating area, keeping it on the near side. Monitors SIYI IP camera feed for situational awareness. May switch to GUIDED or any mode at any time to adjust position.<br>
+      <strong>Recovery:</strong> Takes back Mission Planner for descent/landing.
+    </td></tr>
+    <tr><td>FPV Pilot / Co-Pilot</td><td>Second screen + FPV TX (2.4GHz via relay) + MPV.net</td><td>
+      <strong>Takeoff/transition:</strong> Co-pilot role — monitors critical telemetry in Mission Planner, advances carrier mission from VTOL_TKOFF waypoint to WP2 once transition is confirmed.<br>
+      <strong>Relay phase:</strong> Operates 7"+ FPV quad via relay link. Video viewed in MPV.net (RTSP stream). Calls battery state and position to carrier Carrier Pilot verbally so carrier can adjust orbit.<br>
+      <strong>Recovery:</strong> Returns FPV first where possible, then assists carrier Carrier Pilot with MP during descent.
+    </td></tr>
+  </table>
+  <div class="alert alert-info">Both pilots are co-located — direct verbal comms. No radio link required between crew. Carrier Carrier Pilot has no telemetry visibility of the FPV sub-drone; all FPV status is relayed verbally by the FPV pilot.</div>
+
+  <div class="section-title">Minimum Mission Structure</div>
+  <p>The carrier must have these waypoints loaded before every flight. The altitude profile shows the intended path.</p>
+
+  <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:860px;display:block;margin:20px 0;font-family:'Share Tech Mono',monospace">
+    <defs>
+      <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#f97316"/>
+      </marker>
+    </defs>
+    <line x1="30" y1="260" x2="830" y2="260" stroke="#333" stroke-width="1"/>
+    <text x="18" y="264" fill="#666" font-size="9" text-anchor="middle">GND</text>
+    <line x1="30" y1="190" x2="36" y2="190" stroke="#333" stroke-width="1"/>
+    <text x="18" y="194" fill="#666" font-size="9" text-anchor="middle">~30m</text>
+    <line x1="30" y1="130" x2="36" y2="130" stroke="#333" stroke-width="1"/>
+    <text x="18" y="134" fill="#666" font-size="9" text-anchor="middle">~80m</text>
+    <line x1="30" y1="70" x2="36" y2="70" stroke="#333" stroke-width="1"/>
+    <text x="18" y="74" fill="#666" font-size="9" text-anchor="middle">relay</text>
+    <polyline points="100,260 100,190 220,190 310,70 430,70 520,130 620,190 720,190 720,260" fill="none" stroke="#f97316" stroke-width="2"/>
+    <line x1="100" y1="260" x2="100" y2="190" stroke="#f97316" stroke-width="2" stroke-dasharray="4,3"/>
+    <line x1="720" y1="190" x2="720" y2="260" stroke="#f97316" stroke-width="2" stroke-dasharray="4,3"/>
+    <circle cx="100" cy="260" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="100" cy="190" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="220" cy="190" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="310" cy="70"  r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="430" cy="70"  r="7" fill="#f97316" stroke="#f97316" stroke-width="2"/>
+    <circle cx="520" cy="130" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="620" cy="190" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="720" cy="190" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="720" cy="260" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <text x="100" y="280" fill="#f97316" font-size="9" text-anchor="middle">WP1</text>
+    <text x="100" y="175" fill="#f97316" font-size="9" text-anchor="middle">WP2</text>
+    <text x="220" y="175" fill="#f97316" font-size="9" text-anchor="middle">WP3</text>
+    <text x="310" y="55"  fill="#f97316" font-size="9" text-anchor="middle">WP4</text>
+    <text x="430" y="55"  fill="#fff"    font-size="9" text-anchor="middle" font-weight="bold">WP5</text>
+    <text x="520" y="115" fill="#f97316" font-size="9" text-anchor="middle">WP6</text>
+    <text x="620" y="175" fill="#f97316" font-size="9" text-anchor="middle">WP7</text>
+    <text x="720" y="175" fill="#f97316" font-size="9" text-anchor="middle">WP8</text>
+    <text x="720" y="280" fill="#f97316" font-size="9" text-anchor="middle">WP9</text>
+    <text x="100" y="295" fill="#666" font-size="8" text-anchor="middle">VTOL_TKOFF</text>
+    <text x="220" y="295" fill="#666" font-size="8" text-anchor="middle">WAYPOINT</text>
+    <text x="310" y="295" fill="#666" font-size="8" text-anchor="middle">LOITER_ALT</text>
+    <text x="430" y="295" fill="#aaa" font-size="8" text-anchor="middle">SORTIE WP</text>
+    <text x="520" y="295" fill="#666" font-size="8" text-anchor="middle">LOITER_ALT</text>
+    <text x="620" y="295" fill="#666" font-size="8" text-anchor="middle">WAYPOINT</text>
+    <text x="720" y="295" fill="#666" font-size="8" text-anchor="middle">VTOL_LAND</text>
+    <text x="78" y="225" fill="#666" font-size="8" transform="rotate(-90,78,225)">VTOL↑</text>
+    <text x="738" y="225" fill="#666" font-size="8" transform="rotate(-90,738,225)">VTOL↓</text>
+  </svg>
+
+  <table>
+    <tr><th>WP</th><th>Type</th><th>Purpose</th><th>Action required</th></tr>
+    <tr><td>1</td><td>VTOL_TAKEOFF</td><td>Vertical takeoff</td><td>Arm, hold QHOVER until transition altitude</td></tr>
+    <tr><td>2</td><td>WAYPOINT</td><td>Transition safety altitude</td><td>Co-pilot: advance mission from WP1 once transition complete. Must give clearance for incomplete transition.</td></tr>
+    <tr><td>3</td><td>LOITER_TO_ALT</td><td>Climb to relay altitude</td><td>Autonomous. Monitor climb and airspeed.</td></tr>
+    <tr><td>4</td><td>WAYPOINT</td><td>Mission start / loiter point</td><td>Sortie-specific. Configure per flight.</td></tr>
+    <tr><td>5</td><td>LOITER_TO_ALT</td><td>Descend to approach altitude</td><td>Autonomous descent on return.</td></tr>
+    <tr><td>6</td><td>WAYPOINT</td><td>Slope-in toward landing zone</td><td>Low altitude — confirm landing zone clear.</td></tr>
+    <tr><td>7</td><td>VTOL_LAND</td><td>Vertical landing</td><td>Monitor descent, ready to override to QHOVER.</td></tr>
+  </table>
+
+  <div class="section-title">Transition — Normal vs Problem</div>
+  <table>
+    <tr><th>Parameter</th><th style="color:var(--green)">Normal</th><th style="color:var(--red)">Abort</th></tr>
+    <tr><td>Airspeed build</td><td>Reaches 13 m/s within 3s</td><td>No build after 3s → auto-abort QHOVER</td></tr>
+    <tr><td>Altitude loss</td><td>Up to ~5m — expected</td><td>&gt;10m loss → QHOVER immediately</td></tr>
+    <tr><td>Pitch attitude</td><td>Slight nose-down (1–3°)</td><td>Aggressive dive → QHOVER</td></tr>
+    <tr><td>Front tilt motors</td><td>Smoothly rotate forward over ~3s</td><td>One-sided tilt, jerk, stall sound → QHOVER</td></tr>
+    <tr><td>Cruise motor</td><td>Spools up audibly</td><td>No spool → QHOVER, check ESC</td></tr>
+    <tr><td>Transition complete</td><td>VTOL motors stop, FW flight</td><td>VTOL motors still on at cruise alt → investigate</td></tr>
+    <tr><td>Back-transition</td><td>10s, tilt smoothly returns vertical</td><td>Oscillation → QHOVER override</td></tr>
+  </table>
+  <div class="alert alert-warn">VTOL assist activates automatically below 9 m/s or 25m AGL in fixed-wing modes. If assist triggers unexpectedly in cruise, check for airspeed sensor failure or gusty conditions.</div>
+
+</div>
+
+<!-- ═══════════════════ PREFLIGHT ═══════════════════ -->
+<div id="tab-preflight" class="tab-panel">
+
+  <div class="cl-hdr">
+    <div class="cl-hdr-title">Pre-Flight Check</div>
+    <div class="cl-progress-wrap">
+      <div class="cl-progress"><div class="cl-progress-bar" id="pb"></div></div>
+      <div class="cl-progress-label" id="pl">0 / 0 ITEMS COMPLETE</div>
+    </div>
+    <button class="cl-reset" id="expand-btn" onclick="toggleExpandAll()">EXPAND ALL</button>
+    <button class="cl-reset" onclick="resetCL()">RESET</button>
+  </div>
+
+  <div id="cl-container"></div>
+  <div id="go-nogo" class="go-nogo"></div>
+</div>
+
+<!-- ═══════════════════ TURNAROUND ═══════════════════ -->
+<div id="tab-turnaround" class="tab-panel">
+
+  <div class="cl-hdr">
+    <div class="cl-hdr-title">Turnaround Check</div>
+    <div class="cl-progress-wrap">
+      <div class="cl-progress"><div class="cl-progress-bar" id="pb2"></div></div>
+      <div class="cl-progress-label" id="pl2">0 / 0 ITEMS COMPLETE</div>
+    </div>
+    <button class="cl-reset" id="expand-btn2" onclick="toggleExpandAll2()">EXPAND ALL</button>
+    <button class="cl-reset" onclick="resetCL2()">RESET</button>
+  </div>
+
+  <div id="cl-container2"></div>
+  <div id="go-nogo2" class="go-nogo"></div>
+</div>
+
+<!-- ═══════════════════ PROCEDURES ═══════════════════ -->
+<div id="tab-procedures" class="tab-panel">
+
+  <div class="section-title">Power-Up Sequence</div>
+  <div class="alert alert-danger">Power up in this order every time. Reversing sequence risks arming motors unexpectedly on link establishment.</div>
+  <div class="card accent">
+    <div class="card-title">Sequence</div>
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>SIYI HM30 ground unit</strong><p>Power mast unit (6S 3000mAh). Confirm HM30 link LED. Open MPV.net — no video expected yet.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>FPV sub-drone</strong><p>Power FPV. Confirm Betaflight boots, ELRS RX 2.4GHz shows connected. VTX begins transmitting 5.8GHz.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Carrier drone</strong><p>Connect single 6S pack — all carrier systems power on together (FC, DBR4 relay TX, 5.8G VRX, CVBS→HDMI, SIYI chain). Wait for ArduPlane boot tone. DBR4 establishes ELRS 2.4GHz link to FPV. SIYI air unit links to HM30. 5.8G VRX acquires FPV signal → video appears in MPV.net.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>ELRS 915MHz TX (last)</strong><p>Power physical RC controller. ELRS 915MHz link to carrier establishes. Confirm in Mission Planner — RC inputs visible, no pre-arm errors.</p></div></div>
+  </div>
+
+  <div class="section-title">Mission Setup (Pre-Arm)</div>
+  <div class="card">
+    <div class="card-title">Minimum Required Waypoints</div>
+    <p style="font-size:12px">Load and verify before arming. Mission must be confirmed on map before takeoff.</p>
+    <table>
+      <tr><th>#</th><th>Type</th><th>Purpose</th></tr>
+      <tr><td>1</td><td>VTOL_TAKEOFF</td><td>Vertical takeoff to transition altitude. Carrier Pilot transitions manually after this.</td></tr>
+      <tr><td>2</td><td>WAYPOINT</td><td>First FW waypoint — set at safe altitude in case transition not complete at WP1 exit. Co-pilot advances mission here post-transition.</td></tr>
+      <tr><td>3</td><td>LOITER_TO_ALT</td><td>Climb to operational relay altitude.</td></tr>
+      <tr><td>4</td><td>WAYPOINT</td><td>Mission start point — pilots configure sortie-specific waypoints here.</td></tr>
+      <tr><td>5</td><td>LOITER_TO_ALT</td><td>Descend to approach altitude for recovery.</td></tr>
+      <tr><td>6</td><td>WAYPOINT</td><td>Low-altitude slope-in toward landing site.</td></tr>
+      <tr><td>7</td><td>VTOL_LAND</td><td>Vertical landing.</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Takeoff — VTOL Phase</div>
+  <div class="card accent">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Mode: <span class="mbadge m-qhov">QHOVER</span></strong><p>Confirm switch position 1. Confirm mode in Mission Planner HUD.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Arm</strong><p>Stick arm or GCS arm. All 4 motors spool to Q_M_SPIN_ARM. Confirm no pre-arm messages.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Hover check at 2–3m</strong><p>Confirm stable hover, no oscillation (roll P=0.25, pitch P=0.25 — oscillation at low alt = land immediately). Confirm SIYI link stable, ELRS 868 RSSI acceptable. Co-pilot confirms telemetry nominal in MP.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Climb to transition altitude</strong><p>Climb in QHOVER to ≥25m AGL before transitioning. Wind vane active (<code>Q_WVANE_ENABLE=1</code>) — aircraft will weathervane into wind automatically.</p></div></div>
+  </div>
+
+  <div class="section-title">Transition — VTOL → Fixed Wing</div>
+  <div class="alert alert-danger">Transition is the highest-risk phase. Front tilt motors rotate forward. Altitude loss is normal but must not exceed ~5m. If aircraft pitches down aggressively or airspeed does not build within 4s (Q_TRANS_FAIL=4s): revert to QHOVER immediately.</div>
+  <div class="card amber">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Switch to <span class="mbadge m-fbwb">FBWB</span></strong><p>switch position 2. Front tilt motors begin rotating forward. Cruise motor spools.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Monitor 3s transition window</strong><p>Target airspeed 13 m/s (cruise). Min airspeed 11 m/s. If no acceleration: QHOVER immediately.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Transition confirmed</strong><p>VTOL motors stop. Tilt locked forward. Aircraft in fixed-wing flight. Co-pilot advances mission to WP2 in Mission Planner if in AUTO.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Switch to <span class="mbadge m-auto">AUTO</span></strong><p>switch position 3. Carrier enters mission. Carrier Pilot takes over MP monitoring. Co-pilot clears to operate FPV sub-drone.</p></div></div>
+  </div>
+
+  <div class="section-title">Relay Operations</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Loiter established — FPV handover</strong><p>Carrier in AUTO mission loiter. Carrier Carrier Pilot confirms relay RSSI to FPV and video stream in MPV.net. Verbal confirmation between pilots. Co-pilot takes FPV TX and begins operating sub-drone.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier Carrier Pilot: orbit management</strong><p>Primary duty is keeping the FPV inside the relay bubble. Monitor FPV position relative to carrier via video feed and verbal calls from FPV pilot. Adjust carrier orbit using GUIDED mode or waypoint edits so the carrier orbits around the FPV's operating area with FPV kept on the near (close) side of the orbit. If FPV approaches relay range edge: call "RELAY EDGE" and vector carrier to close distance before switching to GUIDED.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Carrier Carrier Pilot: continuous monitoring</strong><p>Watch carrier battery voltage (no low-voltage warning — manual only), carrier altitude, SIYI HM30 link quality, and SIYI IP camera for situational awareness. Carrier Pilot may switch to GUIDED, FBWB, or any mode at any time without consultation.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Battery discipline</strong><p>No <code>BATT_LOW_VOLT</code> configured — voltage monitoring is manual. Target RTL initiation at <span class="warn-val">24.0V</span> (~4.0V/cell). Hard limit: RTL before <span class="crit-val">22.8V</span>. At <code>22.2V</code>: automated Loiter→QLand at current position.</p></div></div>
+  </div>
+  <div class="alert alert-warn">FPV pilot verbal callouts are the carrier Carrier Pilot's only source of FPV status. Establish a call cadence: battery level, position, and any issues every 2–3 minutes minimum.</div>
+
+  <div class="section-title">Recovery</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Recall FPV</strong><p>Co-pilot returns FPV sub-drone first where possible. Confirm landed or safe loiter.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier return</strong><p>Mission WP5 (LOITER_TO_ALT down) → WP6 (slope-in) → WP7 (VTOL_LAND). Or manual RTL via CH5 switch.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Back-transition</strong><p>10s back-transition window (<code>Q_BACKTRANS_MS=10000</code>). Front motors tilt back to vertical. Monitor for smooth transition — if oscillation appears: switch QHOVER manually.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>QLAND / QHOVER land</strong><p>Final descent. Confirm landing zone clear. Disarm on touchdown. <code>Q_LAND_FINAL_ALT=1.5m</code> → final descent at <code>Q_LAND_FINAL_SPD=0.2 m/s</code>.</p></div></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ EMERGENCY ═══════════════════ -->
+<div id="tab-emergency" class="tab-panel">
+
+  <div class="alert alert-danger">Memorise these actions. In-flight response time is measured in seconds.</div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">RC Link Loss — 868MHz (Ground → Carrier)</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">Short loss (≤1.5s): ArduPlane switches to <span class="mbadge m-fbwb">FBWA</span> automatically. Regain link and resume.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Long loss (>5s): ArduPlane triggers RTL at 120m AGL. Do NOT power-cycle TX during flight — reconnect on live link can cause RC spike.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">GCS (SIYI HM30) still available: send mode commands via Mission Planner. GCS failsafe only active in AUTO mode.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">Relay Link Loss — 2.4GHz (Carrier → FPV)</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">FPV Betaflight failsafe activates. Co-pilot ceases inputs immediately.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot holds carrier loiter position — do not reposition carrier aggressively, sub-drone may be RTH-ing toward last known carrier position.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">If relay does not recover: co-pilot monitors FPV failsafe landing. Carrier Pilot initiates carrier recovery independently.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">Video Loss — 5.8GHz or SIYI Chain</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">Co-pilot: zero inputs on FPV TX. Sub-drone to hover/stabilise.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot: descend carrier altitude to reduce path loss. Wait 10s.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">Not recovered: co-pilot activates FPV sub-drone RTH. Carrier Pilot recovers carrier independently.</div></div>
+    <div class="proc-step"><div class="n">4</div><div class="t">Check: 5.8G VRX channel match, CVBS→HDMI converter power, SIYI air unit link to HM30.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">Transition Failure — VTOL → FW</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">If airspeed not building within 3s or pitch-down excessive: <span class="mbadge m-qhov">QHOVER</span> immediately.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t"><code>Q_TRANS_FAIL=4s</code> — ArduPlane will abort transition automatically at 4s if airspeed threshold not met. Do not wait.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">Return to land in VTOL. Inspect: tilt servo travel, cruise motor ESC, <code>Q_TILT_MAX</code>, battery voltage.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">Battery Critical — Carrier</div>
+    <div class="proc-step"><div class="n">1</div><div class="t"><span class="crit-val">No BATT_LOW_VOLT set</span> — first automated action is <code>BATT_CRT_VOLT=22.2V</code> → <code>BATT_FS_CRT_ACT=6</code> (Loiter to QLand). Aircraft will loiter to bleed airspeed then descend vertically. It will NOT return home — it lands where it is.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Do not allow voltage to reach 22.2V in flight. Return manually at 24V. If voltage drops rapidly: immediate RTL via Nomad left button before critical threshold.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">If Loiter→QLand triggers unexpectedly: confirm landing zone below is clear. Aircraft is committed to descending vertically from current position.</div></div>
+  </div>
+
+  <div class="card danger">
+    <div class="emerg-hdr">GCS Link Loss (SIYI HM30)</div>
+    <div class="proc-step"><div class="n">1</div><div class="t">Switch to physical ELRS 915MHz TX immediately. Confirm carrier responds to RC inputs.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">In AUTO: <code>FS_GCS_ENABL=2</code> triggers RTL only when in AUTO. In FBWB/QHOVER: GCS loss does not trigger failsafe — fly manually.</div></div>
+    <div class="proc-step"><div class="n">3</div><div class="t">Note: no Mission Planner available for mode changes via GCS — use Nomad 3-position switch (QHOVER / FBWB / AUTO) or left button for RTL.</div></div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ POST-FLIGHT ═══════════════════ -->
+<div id="tab-postflight" class="tab-panel">
+
+  <div class="section-title">Immediate Post-Landing</div>
+  <div class="card accent">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Disarm carrier</strong><p>Confirm disarmed in Mission Planner. All motors stopped. Do not approach until disarmed.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Disarm FPV sub-drone</strong><p>Co-pilot confirms FPV disarmed. Props stopped.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Disconnect carrier battery</strong><p>Disconnect 6S pack immediately after disarm. All carrier systems — FC, relay Nomad, SIYI chain, VRX — power down simultaneously. Record landing voltage.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Disconnect FPV battery</strong><p>Record FPV landing voltage.</p></div></div>
+  </div>
+
+  <div class="section-title">Ground Station Teardown</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Check mast battery voltage</strong><p>Disconnect and measure the 6S 3000mAh mast battery. Record voltage. If below <span class="warn-val">21.0V</span> (3.5V/cell): charge immediately, do not store discharged. Label if marginal.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Power down SIYI HM30 ground unit</strong><p>Power down HM30 on mast. Disconnect ethernet cable. Remove mast battery safely.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Lower and secure mast</strong><p>Confirm HM30 and cabling secured before transport.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Close Mission Planner</strong><p>Save log if required. Close MP and GStreamer/MPV.net.</p></div></div>
+  </div>
+
+  <div class="section-title">Inspection</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Carrier airframe</strong><p>Inspect tilt motor mounts, wing joins, prop blades, and all connectors. Check for any heat or unusual smell from ESCs or motors.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier battery</strong><p>Check for puffing, heat, or damage. Store at storage voltage (22.2V / 3.7V/cell) if not flying within 24h.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Video chain</strong><p>Check CVBS→HDMI converter and SIYI HDMI→IP for heat. Inspect VRX antenna condition.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>FPV sub-drone</strong><p>Inspect props, motors, and frame. Check for damage from any FPV flying.</p></div></div>
+  </div>
+
+  <div class="section-title">Log Entry</div>
+  <div class="card">
+    <div class="card-title">Record per flight</div>
+    <table>
+      <tr><th>Item</th><th>Notes</th></tr>
+      <tr><td>Date / location</td><td></td></tr>
+      <tr><td>Carrier flight time</td><td>From ArduPlane STAT_FLTTIME — check MP</td></tr>
+      <tr><td>Carrier battery: start / land voltage</td><td>Land voltage critical for battery health tracking</td></tr>
+      <tr><td>Mast battery: land voltage</td><td>3000mAh 6S — check every flight</td></tr>
+      <tr><td>Relay link quality notes</td><td>Any dropouts, video freezes, RSSI issues</td></tr>
+      <tr><td>Carrier incidents / anomalies</td><td>Transition behaviour, VTOL assist events, any failsafe triggers</td></tr>
+      <tr><td>FPV pilot notes</td><td>Relay range observed, video latency issues, sub-drone behaviour</td></tr>
+    </table>
+  </div>
+
+</div>
+
+
+  <p>The carrier must have these 7 waypoints loaded before every flight. The altitude profile below shows the intended flight path.</p>
+
+  <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:860px;display:block;margin:20px 0;font-family:'Share Tech Mono',monospace">
+    <defs>
+      <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#f97316"/>
+      </marker>
+    </defs>
+    <!-- Ground line -->
+    <line x1="30" y1="260" x2="830" y2="260" stroke="#333" stroke-width="1"/>
+    <!-- Altitude labels -->
+    <text x="18" y="264" fill="#666" font-size="9" text-anchor="middle">GND</text>
+    <line x1="30" y1="190" x2="36" y2="190" stroke="#333" stroke-width="1"/>
+    <text x="18" y="194" fill="#666" font-size="9" text-anchor="middle">~30m</text>
+    <line x1="30" y1="130" x2="36" y2="130" stroke="#333" stroke-width="1"/>
+    <text x="18" y="134" fill="#666" font-size="9" text-anchor="middle">~80m</text>
+    <line x1="30" y1="70" x2="36" y2="70" stroke="#333" stroke-width="1"/>
+    <text x="18" y="74" fill="#666" font-size="9" text-anchor="middle">relay</text>
+    <!-- Flight path -->
+    <polyline points="100,260 100,190 220,190 310,70 430,70 520,130 620,190 720,190 720,260"
+      fill="none" stroke="#f97316" stroke-width="2" stroke-dasharray="0" marker-mid="url(#arr)"/>
+    <!-- Vertical VTOL segments -->
+    <line x1="100" y1="260" x2="100" y2="190" stroke="#f97316" stroke-width="2" stroke-dasharray="4,3"/>
+    <line x1="720" y1="190" x2="720" y2="260" stroke="#f97316" stroke-width="2" stroke-dasharray="4,3"/>
+    <!-- WP nodes -->
+    <circle cx="100" cy="260" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="100" cy="190" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="220" cy="190" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="310" cy="70"  r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="430" cy="70"  r="7" fill="#f97316" stroke="#f97316" stroke-width="2"/>
+    <circle cx="520" cy="130" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="620" cy="190" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="720" cy="190" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <circle cx="720" cy="260" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2"/>
+    <!-- WP labels -->
+    <text x="100" y="280" fill="#f97316" font-size="9" text-anchor="middle">WP1</text>
+    <text x="100" y="175" fill="#f97316" font-size="9" text-anchor="middle">WP2</text>
+    <text x="220" y="175" fill="#f97316" font-size="9" text-anchor="middle">WP3</text>
+    <text x="310" y="55"  fill="#f97316" font-size="9" text-anchor="middle">WP4</text>
+    <text x="430" y="55"  fill="#fff"    font-size="9" text-anchor="middle" font-weight="bold">WP5</text>
+    <text x="520" y="115" fill="#f97316" font-size="9" text-anchor="middle">WP6</text>
+    <text x="620" y="175" fill="#f97316" font-size="9" text-anchor="middle">WP7</text>
+    <text x="720" y="175" fill="#f97316" font-size="9" text-anchor="middle">WP8</text>
+    <text x="720" y="280" fill="#f97316" font-size="9" text-anchor="middle">WP9</text>
+    <!-- WP type labels -->
+    <text x="100" y="295" fill="#666" font-size="8" text-anchor="middle">VTOL_TKOFF</text>
+    <text x="220" y="295" fill="#666" font-size="8" text-anchor="middle">WAYPOINT</text>
+    <text x="310" y="295" fill="#666" font-size="8" text-anchor="middle">LOITER_ALT</text>
+    <text x="430" y="295" fill="#aaa" font-size="8" text-anchor="middle">SORTIE WP</text>
+    <text x="520" y="295" fill="#666" font-size="8" text-anchor="middle">LOITER_ALT</text>
+    <text x="620" y="295" fill="#666" font-size="8" text-anchor="middle">WAYPOINT</text>
+    <text x="720" y="295" fill="#666" font-size="8" text-anchor="middle">VTOL_LAND</text>
+    <!-- Annotations -->
+    <text x="155" y="183" fill="#666" font-size="8">transition</text>
+    <text x="155" y="193" fill="#666" font-size="8">safety alt</text>
+    <text x="430" y="83" fill="#aaa" font-size="8" text-anchor="middle">▼ sortie-specific</text>
+    <!-- VTOL labels -->
+    <text x="78" y="225" fill="#666" font-size="8" transform="rotate(-90,78,225)">VTOL↑</text>
+    <text x="738" y="225" fill="#666" font-size="8" transform="rotate(-90,738,225)">VTOL↓</text>
+  </svg>
+
+  <table>
+    <tr><th>WP</th><th>Type</th><th>Purpose</th><th>Action required</th></tr>
+    <tr><td>1</td><td>VTOL_TAKEOFF</td><td>Vertical takeoff</td><td>Carrier Pilot: arm, hold QHOVER until transition alt</td></tr>
+    <tr><td>2</td><td>WAYPOINT</td><td>Transition safety altitude</td><td>Co-pilot: advance mission from WP1 to WP2 once transition complete. Must be high enough that incomplete transition has clearance.</td></tr>
+    <tr><td>3</td><td>LOITER_TO_ALT</td><td>Climb to relay altitude</td><td>Autonomous. Monitor climb rate and airspeed.</td></tr>
+    <tr><td>4</td><td>WAYPOINT</td><td>Mission start / loiter point</td><td>Sortie-specific. Configure per flight.</td></tr>
+    <tr><td>5</td><td>LOITER_TO_ALT</td><td>Descend to approach altitude</td><td>Autonomous descent on return.</td></tr>
+    <tr><td>6</td><td>WAYPOINT</td><td>Slope-in toward landing zone</td><td>Low altitude — confirm landing zone clear before this WP.</td></tr>
+    <tr><td>7</td><td>VTOL_LAND</td><td>Vertical landing</td><td>Carrier Pilot: monitor descent, ready to override to QHOVER.</td></tr>
+  </table>
+
+  <div class="section-title">VTOL → Fixed-Wing Transition — Normal vs Problem</div>
+  <table>
+    <tr><th>Parameter</th><th style="color:var(--green)">Normal</th><th style="color:var(--red)">Abort / Problem</th></tr>
+    <tr><td>Airspeed build</td><td>Reaches 13 m/s within 3s</td><td>No build after 3s → auto-abort to QHOVER</td></tr>
+    <tr><td>Altitude loss</td><td>Up to ~5m — expected</td><td>&gt;10m loss → switch QHOVER immediately</td></tr>
+    <tr><td>Pitch attitude</td><td>Slight nose-down (1–3°) as speed builds</td><td>Aggressive pitch-down / dive → QHOVER</td></tr>
+    <tr><td>Front tilt motors</td><td>Smoothly rotate forward over ~3s</td><td>One-sided tilt, jerk, or stall sound → QHOVER</td></tr>
+    <tr><td>Cruise motor</td><td>Spools up and builds thrust audibly</td><td>No spool / motor absent → QHOVER, check ESC</td></tr>
+    <tr><td>Transition complete</td><td>VTOL motors stop, aircraft in FW flight</td><td>VTOL motors still running at cruise alt → investigate</td></tr>
+    <tr><td>Back-transition</td><td>10s window, tilt smoothly back to vertical</td><td>Oscillation on back-transition → QHOVER override</td></tr>
+  </table>
+
+  <div class="alert alert-warn">VTOL assist activates automatically below 9 m/s or 25m AGL in fixed-wing modes. If assist triggers unexpectedly in cruise, check for airspeed sensor failure or gusty conditions.</div>
+
+<!-- ═══════════════════ PRE-ARM REFERENCE ═══════════════════ -->
+<div id="tab-prearm" class="tab-panel">
+  <div class="section-title">Pre-Arm Error Reference</div>
+  <p>Searchable reference for ArduPlane pre-arm messages. Type any part of the error text.</p>
+  <input type="text" id="prearm-search" placeholder="Search error message..." oninput="filterPrearm()" style="width:100%;padding:10px 14px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;margin-bottom:16px;outline:none">
+  <table id="prearm-table">
+    <tr><th>Message</th><th>Cause</th><th>Fix</th></tr>
+    <tr><td><code>GPS: not healthy</code></td><td>No GPS signal or GPS module not responding</td><td>Wait for GPS lock. Check GPS cable. Verify GPS_TYPE set correctly.</td></tr>
+    <tr><td><code>GPS: HDOP not acceptable</code></td><td>Position accuracy too low (HDOP &gt; threshold)</td><td>Wait for better fix. Move away from buildings/obstructions. AHRS_GPS_MINSATS=6 must be met.</td></tr>
+    <tr><td><code>GPS: speed error too high</code></td><td>GPS velocity noise excessive</td><td>Wait for stable fix. Check for RF interference near GPS.</td></tr>
+    <tr><td><code>GPS: yaw error too high</code></td><td>Heading from GPS disagrees with compass</td><td>Re-do compass calibration. Check compass orientation.</td></tr>
+    <tr><td><code>Compass not calibrated</code></td><td>Compass calibration has not been run</td><td>Run compass calibration: Initial Setup → Mandatory Hardware → Compass → Start.</td></tr>
+    <tr><td><code>Compass offsets too high</code></td><td>Calibration produced large offsets — likely interference</td><td>Re-calibrate away from metal objects and electronics. Check compass placement.</td></tr>
+    <tr><td><code>Compass variance</code></td><td>Compass readings inconsistent — likely magnetic interference</td><td>Move aircraft away from metal. Check for current-carrying cables near compass.</td></tr>
+    <tr><td><code>INS not calibrated</code></td><td>Accelerometer calibration not done</td><td>Run accel calibration: Initial Setup → Mandatory Hardware → Accel Calibration.</td></tr>
+    <tr><td><code>Accels not healthy</code></td><td>IMU accelerometer reporting errors</td><td>Power cycle. If persistent, FC hardware issue.</td></tr>
+    <tr><td><code>Gyros not calibrated</code></td><td>Gyro calibration failed or not run</td><td>Keep aircraft still on power-up during gyro calibration. Re-power on flat surface.</td></tr>
+    <tr><td><code>Gyros not healthy</code></td><td>Gyro reporting errors</td><td>Power cycle. Check FC for vibration mount issues.</td></tr>
+    <tr><td><code>Barometer not healthy</code></td><td>Baro sensor failure</td><td>Power cycle. Check for blocked baro port or extreme temperature.</td></tr>
+    <tr><td><code>Airspeed not healthy</code></td><td>Pitot/airspeed sensor not responding</td><td>Check pitot tube connection. Verify ARSPD_TYPE set correctly (4 for your sensor).</td></tr>
+    <tr><td><code>Airspeed not calibrated</code></td><td>Pitot calibration not run this session</td><td>Run Preflight_Calibration → Do Action. Ensure pitot cover is on and no wind.</td></tr>
+    <tr><td><code>Airspeed too high</code></td><td>Airspeed reads &gt;2 m/s at rest — wind or blocked tube</td><td>Shield pitot from wind. Re-run calibration. Check for leak in pitot tube.</td></tr>
+    <tr><td><code>RC not calibrated</code></td><td>RC calibration not done</td><td>Radio Calibration: Initial Setup → Mandatory Hardware → Radio Calibration.</td></tr>
+    <tr><td><code>RC failsafe on</code></td><td>RC signal below THR_FS_VALUE (950) at power-up</td><td>Power TX before aircraft, or increase throttle above failsafe value before arming.</td></tr>
+    <tr><td><code>Throttle below failsafe</code></td><td>Throttle channel reads below THR_FS_VALUE</td><td>Move throttle up. Check TX is on and bound. THR_FS_VALUE=950.</td></tr>
+    <tr><td><code>Need 3D fix</code></td><td>GPS does not have 3D lock</td><td>Wait for 3D fix (≥6 sats). Move to open sky.</td></tr>
+    <tr><td><code>EKF position variance</code></td><td>EKF position estimate has high uncertainty</td><td>Wait for EKF to converge. Stand still for 30–60s after power-on. Check GPS and compass health.</td></tr>
+    <tr><td><code>EKF not started</code></td><td>EKF filter has not initialised</td><td>Wait. Usually resolves once GPS locks. Check AHRS_EKF_TYPE=3.</td></tr>
+    <tr><td><code>Bad AHRS</code></td><td>Attitude/heading reference system error</td><td>Power cycle. Keep still on power-up. Check all sensors healthy.</td></tr>
+    <tr><td><code>Hardware safety switch</code></td><td>Safety switch has not been pressed</td><td>Press and hold safety switch until LED solid. Or set BRD_SAFETY_DEFLT=0 to disable.</td></tr>
+    <tr><td><code>Logging failed</code></td><td>SD card not present or full</td><td>Insert/replace SD card. Format if full. Check LOG_BACKEND_TYPE.</td></tr>
+    <tr><td><code>Battery failsafe on</code></td><td>Battery voltage below failsafe threshold at startup</td><td>Charge battery. Verify BATT_CRT_VOLT=22.2V is correct.</td></tr>
+    <tr><td><code>Motors check failed</code></td><td>VTOL motor test not passed</td><td>Run motor test in Mission Planner. Check ESC calibration and motor connections.</td></tr>
+    <tr><td><code>VTOL: not configured</code></td><td>Q_ENABLE not set to 1</td><td>Set Q_ENABLE=1 and reboot.</td></tr>
+    <tr><td><code>VTOL: check frame class/type</code></td><td>Q_FRAME_CLASS or Q_FRAME_TYPE mismatch</td><td>Verify Q_FRAME_CLASS=7, Q_FRAME_TYPE=1 for this aircraft.</td></tr>
+    <tr><td><code>Fence requires position</code></td><td>Geofence enabled but no GPS position</td><td>Wait for GPS lock, or disable fence with FENCE_ENABLE=0.</td></tr>
+    <tr><td><code>Mission library init failed</code></td><td>Mission storage corrupt or empty</td><td>Clear and reload mission in Mission Planner.</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════ BATTERY LOG ═══════════════════ -->
+<div id="tab-battlog" class="tab-panel">
+  <div class="section-title">Battery Voltage Log</div>
+  <p>Track voltage across flights to determine the minimum safe landing voltage for this aircraft. Each entry helps build a picture of voltage sag under load.</p>
+
+  <div class="card accent" style="margin-bottom:20px">
+    <div class="card-title">Log New Flight</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label style="display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">DATE</label>
+        <input type="date" id="bl-date" style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">FLIGHT #</label>
+        <input type="text" id="bl-flight" placeholder="e.g. sortie 3" style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">VOLTAGE AT POWER-ON (V)</label>
+        <input type="number" id="bl-start" step="0.1" placeholder="e.g. 25.1" style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">LOWEST VOLTAGE DURING LANDING (V)</label>
+        <input type="number" id="bl-min" step="0.1" placeholder="e.g. 22.8" style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">VOLTAGE AFTER LANDING / RESTING (V)</label>
+        <input type="number" id="bl-rest" step="0.1" placeholder="e.g. 23.2" style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none">
+      </div>
+      <div>
+        <label style="display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">FLIGHT TIME (min)</label>
+        <input type="number" id="bl-time" step="1" placeholder="e.g. 18" style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none">
+      </div>
+    </div>
+    <div>
+      <label style="display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">NOTES</label>
+      <input type="text" id="bl-notes" placeholder="Wind, conditions, anomalies..." style="width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none;margin-bottom:12px">
+    </div>
+    <button onclick="logBattery()" style="padding:10px 20px;background:var(--accent);border:none;color:#000;font-family:var(--head);font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer">SAVE ENTRY</button>
+  </div>
+
+  <div id="bl-analysis" style="display:none;margin-bottom:20px"></div>
+
+  <div class="section-title">Flight Log</div>
+  <div id="bl-log-empty" style="color:var(--muted);font-size:12px;padding:12px 0">No entries yet. Log your first flight above.</div>
+  <table id="bl-log-table" style="display:none">
+    <tr><th>Date</th><th>Flight</th><th>Start V</th><th>Min V (landing)</th><th>Rest V</th><th>Sag</th><th>Time</th><th>Notes</th><th></th></tr>
+  </table>
+</div>
+
+</div><!-- /content -->
+
+<footer>
+  DOC-RC-001 · HEEWING T2 VTOL RELAY CARRIER · ARDUPLANE · PARAMS LOADED FROM FLIGHT CONFIG
+</footer>
+
+<script>
+// ── Tab switch
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button:not(.emerg-btn)').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── Emergency modal
+function openEmerg() {
+  document.getElementById('emerg-content').innerHTML = document.getElementById('tab-emergency').innerHTML;
+  document.getElementById('emerg-modal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeEmerg() {
+  document.getElementById('emerg-modal').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEmerg(); });
+
+// ── Checklist data — specific to this aircraft/setup
+const CL = [
+  {
+    id: 'A', name: 'SITE',
+    items: [
+      { s: 'Airspace verified', t: 'Airspace verified — NOTAMs checked, operation permitted in this area.' },
+      { s: 'Wind within limits', t: 'Wind within limits — crosswind acceptable for VTOL.', n: 'Wind vane active — carrier will weathervane into wind automatically.' },
+      { s: 'Landing zone clear', t: 'VTOL landing zone clear — 5m radius, level, no obstacles.' },
+      { s: 'Pilots briefed', t: 'Both pilots briefed — roles confirmed, emergency actions known.', w: true },
+    ]
+  },
+  {
+    id: 'B', name: 'VTOL BUILD & POWER-ON',
+    items: [
+      { s: 'Airframe inspected', t: 'Carrier drone assembled and inspected — no cracks at tilt motor mounts or wing joins.' },
+      { s: 'Pitot cover on', t: 'Pitot cover installed.', n: 'Leave cover on until pitot calibration step. Cover prevents false airspeed readings during handling.', w: true },
+      { s: 'Battery secured', t: 'Battery secured — strap tight, no movement.' },
+      { s: 'Props tight, rotation correct', t: 'All props tight — correct rotation direction confirmed for all 4 motors.', n: 'Front pair: check both tilt motor props. Rear pair: check fixed lift motor props.', w: true },
+      { s: 'Power on, GPS acquiring', t: 'Power on carrier drone — allow GPS to acquire fix while ground station is built.', n: 'Power on early to maximise GPS fix quality before flight. Do not arm yet.' },
+    ]
+  },
+  {
+    id: 'C', name: 'GROUND STATION',
+    items: [
+      { s: 'Mast up and powered', t: 'HM30 mast erected and powered — 6S 3000mAh secured to mast.' },
+      { s: 'Ethernet connected', t: 'Ethernet cable connected mast → laptop.' },
+      { s: 'HM30 linked, battery OK', t: 'HM30 ground unit linked — verify LED is blue. Check mast battery voltage.' },
+      { s: 'Subnet verified', t: 'Ethernet network adapter on correct subnet.', n: 'IP must be <code>192.168.144.X</code> — subnet mask <code>255.255.255.0</code>' },
+      { s: 'Mission Planner open', t: 'Mission Planner open — second screen connected via USB-C. In MP connection dropdown select <strong>UDPCI</strong>, then connect using the IP and port below.', extras: [{label:'IP', val:'192.168.144.12'},{label:'Port', val:'19856'}] },
+      { s: 'GStreamer configured', t: 'GStreamer configured in Mission Planner: right-click avionics screen → Video → Set GStreamer Source. Paste pipeline:', n: 'rtspsrc location=rtsp://192.168.144.26:8554/main.264 latency=41 udp-reconnect=1 timeout=0 do-retransmission=false ! application/x-rtp ! decodebin3 ! queue max-size-buffers=1 leaky=2 ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink sync=false', copy: true },
+      { s: 'mpv.conf verified', t: 'MPV.net — verify mpv.conf contains correct low-latency config:', n: 'profile=low-latency\nno-cache\nuntimed\nhwdec=auto\nrtsp-transport=udp', copy: true },
+      { s: 'MPV stream open', t: 'MPV.net — open stream: copy URL below, right-click screen → File → Open URL or file from clipboard', n: 'rtsp://192.168.144.25:8554/main.264', copy: true },
+      { s: 'All devices charged', t: 'All controllers, TX units and EcoFlow charged and ready.' },
+    ]
+  },
+  {
+    id: 'D', name: 'CARRIER DRONE',
+    items: [
+      { s: 'Compass calibrated', t: 'Compass calibration — Mission Planner: Initial Setup → Mandatory Hardware → Compass → Start. Rotate through all axes until complete. Verify no compass errors.' },
+      { s: 'GPS lock confirmed', t: 'GPS lock confirmed — ≥6 satellites, HDOP <2.0.' },
+      { s: 'No pre-arm errors', t: 'Telemetry streaming in Mission Planner — no pre-arm errors.', n: 'Resolve ALL pre-arm messages before proceeding.', w: true },
+      { s: 'Home position set', t: 'Home position set correctly — verify on map.' },
+      { s: 'Battery voltage OK', t: 'Battery voltage nominal — above 25.0V (≥4.16V/cell).', n: 'No low-voltage warning configured — manual check required every flight.', w: true },
+      { s: 'Mission verified', t: 'Mission loaded and verified on map — all 7 waypoints in correct positions.' },
+      { s: 'Failsafe params verified', t: 'Failsafe parameters verified in Mission Planner Full Parameter List:', n: 'THR_FAILSAFE = 2  (RC failsafe enabled)\nTHR_FS_VALUE = 950  (throttle loss threshold)\nFS_SHORT_ACTN = 0  (short loss → FBWA)\nFS_SHORT_TIMEOUT = 1.5  (seconds)\nFS_LONG_ACTN = 1  (long loss → RTL)\nFS_LONG_TIMEOUT = 5  (seconds)\nBATT_CRT_VOLT = 22.2  (critical voltage, V)\nBATT_FS_CRT_ACT = 6  (critical → Loiter to QLand)\nFS_GCS_ENABL = 2  (GCS failsafe in AUTO only)', w: true, copy: true },
+      { s: 'Servo check (MANUAL)', t: 'Servo check — switch to MANUAL via Mission Planner GCS, verify ailerons, elevator and rudder move fully and in correct direction.', n: 'MANUAL removes all stabilisation. Ground only — disarmed. Switch back to QHOVER when done. MANUAL must never be used in flight.', w: true },
+      { s: 'Mode cycle verified', t: 'Mode cycle check — cycle through all 3 Nomad switch positions, confirm QHOVER / FBWB / AUTO update in Mission Planner. Verify tilt servos rotate forward when switching to FBWB.' },
+      { s: 'Pitot calibrated, cover removed', t: 'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated" in Messages tab. Confirm airspeed stable and below 2 m/s. Then remove pitot cover.', w: true },
+      { s: 'Correct AUTO waypoint selected', t: 'Verify the correct starting waypoint is selected for AUTO mode. If launching without a co-pilot, WP 1 (VTOL_TAKEOFF) must NOT be the active waypoint — the pilot cannot manage the MP waypoint transition alone during takeoff.', w: true },
+    ]
+  },
+  {
+    id: 'E', name: 'FPV SUB-DRONE',
+    items: [
+      { s: 'FPV battery connected', t: 'FPV battery connected — voltage nominal.' },
+      { s: 'FPV props checked', t: 'FPV props tight — correct rotation direction.', n: '7"+ quad — check motor bell screws and prop nuts.' },
+      { s: 'VTX on, video confirmed', t: '5.8GHz VTX powered — correct channel and band. Verify FPV video feed visible in MPV.net.', n: 'Channel must match carrier VRX. MPV must show live FPV view — not static or blank.', w: true },
+      { s: 'Relay link bound', t: 'Bind FPV RX to carrier relay Nomad: hold LEFT button on carrier Nomad for 3s. Confirm ELRS 2.4GHz relay link established.', n: 'Required every preflight. Bind to carrier Nomad only — not the ground TX.', w: true },
+    ]
+  }
+];
+
+function toggleExpandAll() {
+  const btn = document.getElementById('expand-btn');
+  const expanded = btn.textContent === 'COLLAPSE';
+  document.querySelectorAll('.ci-detail').forEach(d => d.classList.toggle('visible', !expanded));
+  document.querySelectorAll('.ci-right').forEach(r => {
+    r.classList.toggle('open', !expanded);
+    const h = r.querySelector('.expand-hint');
+    if (h) h.textContent = !expanded ? 'CLOSE' : 'DETAILS';
+  });
+  btn.textContent = expanded ? 'EXPAND ALL' : 'COLLAPSE';
+}
+
+function copyVal(el, e) {
+  e.stopPropagation();
+  navigator.clipboard.writeText(el.innerText.replace(/^⎘ /, '')).then(() => {
+    el.classList.add('copied');
+    setTimeout(() => el.classList.remove('copied'), 1500);
+  });
+}
+
+function buildCL() {
+  const c = document.getElementById('cl-container');
+  c.innerHTML = '';
+  const saved = JSON.parse(localStorage.getItem('vtol_cl2') || '{}');
+
+  CL.forEach(sec => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cl-section';
+    wrap.id = 'cls-' + sec.id;
+
+    const hdr = document.createElement('div');
+    hdr.className = 'cl-section-hdr';
+    hdr.innerHTML = `<span class="cl-section-name">${sec.id}. ${sec.name}</span><span class="cl-section-prog" id="csp-${sec.id}"></span>`;
+    wrap.appendChild(hdr);
+
+    sec.items.forEach((item, i) => {
+      const key = `${sec.id}-${i}`;
+      const done = saved[key] || false;
+      const hasDetail = item.t || item.n || (item.extras && item.extras.length);
+
+      // Row
+      const row = document.createElement('div');
+      row.className = 'ci' + (done ? ' done' : '');
+      row.dataset.key = key;
+      row.dataset.sec = sec.id;
+
+      const noteClass = item.copy ? ' copy-val' : (item.w ? ' w' : '');
+      const noteHtml = item.n
+        ? `<span class="ci-note${noteClass}"${item.copy ? ` onclick="copyVal(this,event)"` : ''}>${item.n}</span>`
+        : '';
+      const extrasHtml = (item.extras || []).map(e =>
+        `<div style="margin-top:6px"><span style="font-size:10px;color:var(--muted);letter-spacing:1px">${e.label}</span><span class="ci-note copy-val" onclick="copyVal(this,event)">${e.val}</span></div>`
+      ).join('');
+      const detailHtml = hasDetail
+        ? `<div class="ci-detail" id="det-${key}"><span class="ci-detail-text">${item.t || ''}</span>${noteHtml}${extrasHtml}</div>`
+        : '';
+
+      row.innerHTML = `
+        <div class="ci-left" onclick="toggleCI(this.closest('.ci'), event)">
+          <div class="ci-box"></div>
+          <span class="ci-short">${item.s || item.t}</span>
+        </div>
+        <div class="ci-right${hasDetail ? '' : ' no-detail'}" id="right-${key}" ${hasDetail ? `onclick="toggleDetail('${key}', this, event)"` : ''}>
+          ${hasDetail ? `<span class="expand-icon">▶</span><span class="expand-hint">DETAILS</span>` : ''}
+        </div>
+      `;
+      wrap.appendChild(row);
+
+      // Detail pane (sibling, not child, so checkbox click doesn't trigger it)
+      if (hasDetail) {
+        const det = document.createElement('div');
+        det.innerHTML = detailHtml;
+        wrap.appendChild(det.firstChild);
+      }
+    });
+
+    c.appendChild(wrap);
+    updateSecProg(sec.id);
+  });
+
+  updateOverall();
+}
+
+function toggleCI(el, e) {
+  if (e) e.stopPropagation();
+  el.classList.toggle('done');
+  const saved = JSON.parse(localStorage.getItem('vtol_cl2') || '{}');
+  saved[el.dataset.key] = el.classList.contains('done');
+  localStorage.setItem('vtol_cl2', JSON.stringify(saved));
+  updateSecProg(el.dataset.sec);
+  updateOverall();
+}
+
+function toggleDetail(key, rightEl, e) {
+  if (e) e.stopPropagation();
+  const det = document.getElementById('det-' + key);
+  if (!det) return;
+  const open = det.classList.toggle('visible');
+  rightEl.classList.toggle('open', open);
+  const hint = rightEl.querySelector('.expand-hint');
+  if (hint) hint.textContent = open ? 'CLOSE' : 'DETAILS';
+}
+
+function updateSecProg(id) {
+  const sec = document.getElementById('cls-' + id);
+  const all = sec.querySelectorAll('.ci').length;
+  const done = sec.querySelectorAll('.ci.done').length;
+  const el = document.getElementById('csp-' + id);
+  if (el) el.textContent = `${done}/${all}`;
+}
+
+function updateOverall() {
+  const all = document.querySelectorAll('#cl-container .ci');
+  const done = document.querySelectorAll('#cl-container .ci.done');
+  const pct = all.length ? (done.length / all.length) * 100 : 0;
+  document.getElementById('pb').style.width = pct + '%';
+  document.getElementById('pl').textContent = `${done.length} / ${all.length} ITEMS COMPLETE`;
+
+  const gn = document.getElementById('go-nogo');
+  if (done.length === all.length && all.length > 0) {
+    gn.className = 'go-nogo go';
+    gn.textContent = '// GO — ALL ITEMS COMPLETE — CLEAR TO ARM //';
+  } else if (done.length > 0) {
+    gn.className = 'go-nogo nogo';
+    gn.textContent = `// NO-GO — ${all.length - done.length} ITEMS REMAINING //`;
+  } else {
+    gn.className = 'go-nogo';
+  }
+}
+
+function resetCL() {
+  if (!confirm('Reset checklist?')) return;
+  localStorage.removeItem('vtol_cl2');
+  buildCL();
+}
+
+buildCL();
+
+// ══════════════════════════════════
+// TURNAROUND CHECKLIST
+// ══════════════════════════════════
+const CL2 = [
+  {
+    id: 'T1', name: 'CARRIER — BATTERY & INSPECTION',
+    items: [
+      { s: 'Airframe inspected', t: 'Quick visual inspection — check tilt motor mounts, wing joins, props for damage from previous flight.' },
+      { s: 'Battery swapped', t: 'Remove used battery and record landing voltage. Place on charger immediately. Install fully charged battery — strap tight, verify voltage above 25.0V (≥4.16V/cell).', n: 'Used batteries must be set to charge before the next flight begins.', w: true },
+      { s: 'Power on, GPS acquiring', t: 'Power on carrier drone. Allow GPS to re-acquire fix before proceeding.' },
+    ]
+  },
+  {
+    id: 'T2', name: 'CARRIER — PRE-ARM',
+    items: [
+      { s: 'GPS lock confirmed', t: 'GPS lock confirmed — ≥6 satellites, HDOP <2.0.' },
+      { s: 'No pre-arm errors', t: 'No pre-arm errors in Mission Planner.', n: 'Resolve ALL messages before proceeding.', w: true },
+      { s: 'Home position reset', t: 'Home position updated on map — verify correct location.' },
+      { s: 'Mission verified', t: 'Mission still loaded and correct — all 7 waypoints in correct positions.' },
+      { s: 'Correct AUTO waypoint selected', t: 'Verify correct starting waypoint for AUTO. If no co-pilot, WP 1 must NOT be active.', w: true },
+      { s: 'Servo check (MANUAL)', t: 'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and in correct direction. Switch back to QHOVER when done.', n: 'MANUAL must never be used in flight.', w: true },
+      { s: 'Pitot calibrated, cover removed', t: 'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated" in Messages. Confirm airspeed stable and below 2 m/s. Remove pitot cover.', w: true },
+      { s: 'Mode cycle verified', t: 'Cycle through all 3 Nomad switch positions, confirm QHOVER / FBWB / AUTO update in Mission Planner. Verify tilt servos rotate forward on FBWB.' },
+      { s: 'GStreamer restarted', t: 'GStreamer stream must be restarted in Mission Planner after power cycle. Right-click avionics screen → Video → Set GStreamer Source → confirm pipeline is set → start stream.' },
+      { s: 'MPV stream restarted', t: 'MPV.net stream must be reopened. Copy URL, right-click screen → File → Open URL or file from clipboard.', n: 'rtsp://192.168.144.25:8554/main.264', copy: true },
+    ]
+  },
+  {
+    id: 'T3', name: 'FPV SUB-DRONE',
+    items: [
+      { s: 'FPV battery swapped', t: 'Remove used FPV battery, place on charger. Install fresh pack. Verify voltage nominal.' },
+      { s: 'FPV props checked', t: 'Quick visual — props undamaged, tight.' },
+      { s: 'VTX on, video confirmed', t: '5.8GHz VTX powered. Verify FPV feed visible in MPV.net.', n: 'Must show live FPV view — not static or blank.', w: true },
+      { s: 'Relay link bound', t: 'Re-bind FPV RX to carrier relay Nomad: hold LEFT button on carrier Nomad for 3s. Confirm ELRS 2.4GHz relay link established.', n: 'Required every flight — bind to carrier Nomad only.', w: true },
+    ]
+  }
+];
+
+function buildCL2() {
+  const c = document.getElementById('cl-container2');
+  c.innerHTML = '';
+  const saved = JSON.parse(localStorage.getItem('vtol_cl3') || '{}');
+  CL2.forEach(sec => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cl-section';
+    wrap.id = 'cls2-' + sec.id;
+    const hdr = document.createElement('div');
+    hdr.className = 'cl-section-hdr';
+    hdr.innerHTML = `<span class="cl-section-name">${sec.id}. ${sec.name}</span><span class="cl-section-prog" id="csp2-${sec.id}"></span>`;
+    wrap.appendChild(hdr);
+    sec.items.forEach((item, i) => {
+      const key = `${sec.id}-${i}`;
+      const done = saved[key] || false;
+      const hasDetail = item.t || item.n || (item.extras && item.extras.length);
+      const row = document.createElement('div');
+      row.className = 'ci' + (done ? ' done' : '');
+      row.dataset.key = key;
+      row.dataset.sec = sec.id;
+      const noteClass = item.copy ? ' copy-val' : (item.w ? ' w' : '');
+      const noteHtml = item.n ? `<span class="ci-note${noteClass}"${item.copy ? ` onclick="copyVal(this,event)"` : ''}>${item.n}</span>` : '';
+      const extrasHtml = (item.extras || []).map(e => `<div style="margin-top:6px"><span style="font-size:10px;color:var(--muted);letter-spacing:1px">${e.label}</span><span class="ci-note copy-val" onclick="copyVal(this,event)">${e.val}</span></div>`).join('');
+      const detailHtml = hasDetail ? `<div class="ci-detail" id="det2-${key}"><span class="ci-detail-text">${item.t || ''}</span>${noteHtml}${extrasHtml}</div>` : '';
+      row.innerHTML = `
+        <div class="ci-left" onclick="toggleCI2(this.closest('.ci'), event)"><div class="ci-box"></div><span class="ci-short">${item.s || item.t}</span></div>
+        <div class="ci-right${hasDetail ? '' : ' no-detail'}" id="right2-${key}" ${hasDetail ? `onclick="toggleDetail2('${key}', this, event)"` : ''}>${hasDetail ? `<span class="expand-icon">▶</span><span class="expand-hint">DETAILS</span>` : ''}</div>`;
+      wrap.appendChild(row);
+      if (hasDetail) { const d = document.createElement('div'); d.innerHTML = detailHtml; wrap.appendChild(d.firstChild); }
+    });
+    c.appendChild(wrap);
+    updateSecProg2(sec.id);
+  });
+  updateOverall2();
+}
+
+function toggleCI2(el, e) {
+  if (e) e.stopPropagation();
+  el.classList.toggle('done');
+  const saved = JSON.parse(localStorage.getItem('vtol_cl3') || '{}');
+  saved[el.dataset.key] = el.classList.contains('done');
+  localStorage.setItem('vtol_cl3', JSON.stringify(saved));
+  updateSecProg2(el.dataset.sec);
+  updateOverall2();
+}
+
+function toggleDetail2(key, r, e) {
+  if (e) e.stopPropagation();
+  const det = document.getElementById('det2-' + key);
+  if (!det) return;
+  const open = det.classList.toggle('visible');
+  r.classList.toggle('open', open);
+  const h = r.querySelector('.expand-hint');
+  if (h) h.textContent = open ? 'CLOSE' : 'DETAILS';
+}
+
+function updateSecProg2(id) {
+  const sec = document.getElementById('cls2-' + id);
+  if (!sec) return;
+  const all = sec.querySelectorAll('.ci').length;
+  const done = sec.querySelectorAll('.ci.done').length;
+  const el = document.getElementById('csp2-' + id);
+  if (el) el.textContent = `${done}/${all}`;
+}
+
+function updateOverall2() {
+  const all = document.querySelectorAll('#cl-container2 .ci');
+  const done = document.querySelectorAll('#cl-container2 .ci.done');
+  const pct = all.length ? (done.length / all.length) * 100 : 0;
+  document.getElementById('pb2').style.width = pct + '%';
+  document.getElementById('pl2').textContent = `${done.length} / ${all.length} ITEMS COMPLETE`;
+  const gn = document.getElementById('go-nogo2');
+  if (done.length === all.length && all.length > 0) {
+    gn.className = 'go-nogo go'; gn.textContent = '// GO — TURNAROUND COMPLETE — CLEAR TO ARM //';
+  } else if (done.length > 0) {
+    gn.className = 'go-nogo nogo'; gn.textContent = `// NO-GO — ${all.length - done.length} ITEMS REMAINING //`;
+  } else { gn.className = 'go-nogo'; }
+}
+
+function toggleExpandAll2() {
+  const btn = document.getElementById('expand-btn2');
+  const expanded = btn.textContent === 'COLLAPSE';
+  document.querySelectorAll('#cl-container2 .ci-detail').forEach(d => d.classList.toggle('visible', !expanded));
+  document.querySelectorAll('#cl-container2 .ci-right').forEach(r => {
+    r.classList.toggle('open', !expanded);
+    const h = r.querySelector('.expand-hint');
+    if (h) h.textContent = !expanded ? 'CLOSE' : 'DETAILS';
+  });
+  btn.textContent = expanded ? 'EXPAND ALL' : 'COLLAPSE';
+}
+
+function resetCL2() {
+  if (!confirm('Reset turnaround checklist?')) return;
+  localStorage.removeItem('vtol_cl3');
+  buildCL2();
+}
+
+// Set preflight as default active tab
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button:not(.emerg-btn)').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-preflight').classList.add('active');
+  document.querySelector('nav button[onclick*="preflight"]').classList.add('active');
+});
+
+buildCL2();
+
+// ══════════════════════════════════
+// PRE-ARM SEARCH
+// ══════════════════════════════════
+function filterPrearm() {
+  const q = document.getElementById('prearm-search').value.toLowerCase();
+  document.querySelectorAll('#prearm-table tr:not(:first-child)').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// ══════════════════════════════════
+// BATTERY LOG
+// ══════════════════════════════════
+function loadBattLog() {
+  return JSON.parse(localStorage.getItem('vtol_battlog') || '[]');
+}
+function saveBattLog(entries) {
+  localStorage.setItem('vtol_battlog', JSON.stringify(entries));
+}
+
+function logBattery() {
+  const date  = document.getElementById('bl-date').value;
+  const flight= document.getElementById('bl-flight').value;
+  const start = parseFloat(document.getElementById('bl-start').value);
+  const min   = parseFloat(document.getElementById('bl-min').value);
+  const rest  = parseFloat(document.getElementById('bl-rest').value);
+  const time  = document.getElementById('bl-time').value;
+  const notes = document.getElementById('bl-notes').value;
+
+  if (!date || isNaN(start) || isNaN(min) || isNaN(rest)) {
+    alert('Please fill in date, start voltage, min landing voltage, and resting voltage.');
+    return;
+  }
+  const entry = { date, flight, start, min, rest, time, notes, sag: +(start - min).toFixed(2) };
+  const entries = loadBattLog();
+  entries.unshift(entry);
+  saveBattLog(entries);
+  renderBattLog();
+  ['bl-flight','bl-start','bl-min','bl-rest','bl-time','bl-notes'].forEach(id => document.getElementById(id).value = '');
+}
+
+function deleteBattEntry(idx) {
+  if (!confirm('Delete this entry?')) return;
+  const entries = loadBattLog();
+  entries.splice(idx, 1);
+  saveBattLog(entries);
+  renderBattLog();
+}
+
+function renderBattLog() {
+  const entries = loadBattLog();
+  const empty = document.getElementById('bl-log-empty');
+  const table = document.getElementById('bl-log-table');
+  const analysis = document.getElementById('bl-analysis');
+
+  if (!entries.length) {
+    empty.style.display = '';
+    table.style.display = 'none';
+    analysis.style.display = 'none';
+    return;
+  }
+
+  empty.style.display = 'none';
+  table.style.display = '';
+
+  // Build table rows
+  const head = '<tr><th>Date</th><th>Flight</th><th>Start V</th><th>Min V</th><th>Rest V</th><th>Sag</th><th>Min</th><th>Notes</th><th></th></tr>';
+  const rows = entries.map((e, i) => {
+    const sagColor = e.sag > 2 ? 'var(--red)' : e.sag > 1.2 ? 'var(--amber)' : 'var(--green)';
+    const minColor = e.min < 22.5 ? 'color:var(--red);font-weight:bold' : e.min < 23.0 ? 'color:var(--amber)' : '';
+    return `<tr>
+      <td>${e.date}</td>
+      <td>${e.flight||'—'}</td>
+      <td>${e.start}V</td>
+      <td style="${minColor}">${e.min}V</td>
+      <td>${e.rest}V</td>
+      <td style="color:${sagColor}">${e.sag}V</td>
+      <td>${e.time||'—'}</td>
+      <td style="color:var(--muted);font-size:11px">${e.notes||'—'}</td>
+      <td><button onclick="deleteBattEntry(${i})" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td>
+    </tr>`;
+  }).join('');
+  table.innerHTML = head + rows;
+
+  // Analysis
+  const mins = entries.map(e => e.min);
+  const sags = entries.map(e => e.sag);
+  const lowestMin = Math.min(...mins);
+  const avgSag = (sags.reduce((a,b) => a+b, 0) / sags.length).toFixed(2);
+  const worstSag = Math.max(...sags).toFixed(2);
+  const safeReturn = (lowestMin + parseFloat(worstSag) + 0.5).toFixed(1);
+
+  analysis.style.display = '';
+  analysis.innerHTML = `
+    <div class="card amber">
+      <div class="card-title">Analysis — ${entries.length} flight${entries.length>1?'s':''}</div>
+      <table>
+        <tr><th>Metric</th><th>Value</th><th>Meaning</th></tr>
+        <tr><td>Lowest min voltage seen</td><td style="color:var(--red);font-weight:bold">${lowestMin}V</td><td>Lowest your pack has dropped during landing</td></tr>
+        <tr><td>Average voltage sag</td><td style="color:var(--amber)">${avgSag}V</td><td>Typical drop from start to landing low point</td></tr>
+        <tr><td>Worst voltage sag</td><td style="color:var(--red)">${worstSag}V</td><td>Most sag observed — use this for safety margin</td></tr>
+        <tr><td>Recommended return trigger</td><td style="color:var(--accent);font-weight:bold">${safeReturn}V</td><td>Lowest observed min + worst sag + 0.5V safety margin</td></tr>
+      </table>
+      <div class="alert alert-warn" style="margin-top:10px">BATT_LOW_VOLT is currently not set. Based on your flight data, consider setting it to <strong>${safeReturn}V</strong> to get a warning before critical.</div>
+    </div>`;
+}
+
+// Set today's date as default
+document.addEventListener('DOMContentLoaded', () => {
+  const d = document.getElementById('bl-date');
+  if (d) d.valueAsDate = new Date();
+  renderBattLog();
+});
+
+// ══════════════════════════════════
+// SERVICE WORKER REGISTRATION
+// ══════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
