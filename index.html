@@ -1270,6 +1270,234 @@ function mavlinkExtractBattery(buf) {
   return { startV, minV, endV, durationMin, date };
 }
 
+// ══════════════════════════════════════
+// TELEMETRY ANALYSIS TAB
+// ══════════════════════════════════════
+const PLANE_MODES = {0:'MANUAL',1:'CIRCLE',2:'STABILIZE',3:'TRAINING',4:'ACRO',5:'FBWA',6:'FBWB',7:'CRUISE',8:'AUTOTUNE',10:'AUTO',11:'RTL',12:'LOITER',13:'TAKEOFF',15:'GUIDED',17:'QSTABILIZE',18:'QHOVER',19:'QLOITER',20:'QLAND',21:'QRTL',23:'QACRO',25:'LOITER_QLAND'};
+const SEV_COLOR = ['var(--red)','var(--red)','var(--red)','var(--red)','var(--amber)','var(--text)','var(--muted)','var(--muted)'];
+const SEV_LABEL = ['EMERGENCY','ALERT','CRITICAL','ERROR','WARNING','NOTICE','INFO','DEBUG'];
+
+function rf32le(p, o) {
+  const ab = new ArrayBuffer(4); const v = new DataView(ab);
+  for (let k=0;k<4;k++) v.setUint8(k, p[o+k]||0);
+  return v.getFloat32(0, true);
+}
+
+function mavlinkExtractAll(buf) {
+  // Date from first timestamp (8-byte BE uint64 microseconds before first STX)
+  let flightDate = null, startTimeMs = null;
+  for (let j=8; j<Math.min(buf.length,500); j++) {
+    if (buf[j]===0xFE || buf[j]===0xFD) {
+      const hi=((buf[j-8]<<24)|(buf[j-7]<<16)|(buf[j-6]<<8)|buf[j-5])>>>0;
+      const lo=((buf[j-4]<<24)|(buf[j-3]<<16)|(buf[j-2]<<8)|buf[j-1])>>>0;
+      const ms=(hi*4294967296+lo)/1000;
+      const d=new Date(ms);
+      if (d.getFullYear()>=2015&&d.getFullYear()<=2040){flightDate=d.toISOString().split('T')[0];startTimeMs=ms;}
+      break;
+    }
+  }
+
+  const volts=[], alts=[], speeds=[], sats=[], texts=[], modes=[];
+  let heartbeats=0, i=0;
+
+  while (i<buf.length-8) {
+    const stx=buf[i];
+    if (stx===0xFE) {
+      const paylen=buf[i+1], msgid=buf[i+5], flen=8+paylen;
+      if (i+flen>buf.length){i++;continue;}
+      const p=buf.slice(i+6,i+6+paylen);
+      _tlogMsg(msgid,p,volts,alts,speeds,sats,texts,modes);
+      if (msgid===0) heartbeats++;
+      i+=flen;
+    } else if (stx===0xFD) {
+      if (i+10>buf.length){i++;continue;}
+      const paylen=buf[i+1], msgid=buf[i+7]|(buf[i+8]<<8)|(buf[i+9]<<16), flen=12+paylen;
+      if (i+flen>buf.length){i++;continue;}
+      const p=buf.slice(i+10,i+10+paylen);
+      _tlogMsg(msgid,p,volts,alts,speeds,sats,texts,modes);
+      if (msgid===0) heartbeats++;
+      i+=flen;
+    } else { i++; }
+  }
+
+  return {flightDate, startTimeMs, volts, alts, speeds, sats, texts, modes, heartbeats};
+}
+
+function _tlogMsg(msgid,p,volts,alts,speeds,sats,texts,modes) {
+  if (msgid===1 && p.length>=16) {
+    const mV=p[14]|(p[15]<<8); if(mV>5000&&mV<60000) volts.push(mV/1000);
+  }
+  if (msgid===147 && p.length>=12) {
+    const mV=p[10]|(p[11]<<8); if(mV>5000&&mV<60000) volts.push(mV/1000);
+  }
+  if (msgid===74 && p.length>=20) {
+    const spd=rf32le(p,0), alt=rf32le(p,8);
+    if(spd>=0&&spd<150) speeds.push(spd);
+    if(alt>-100&&alt<8000) alts.push(alt);
+  }
+  if (msgid===24 && p.length>=30) {
+    const sv=p[29]; if(sv>0&&sv<50) sats.push(sv);
+  }
+  if (msgid===253 && p.length>=2) {
+    const sev=p[0];
+    const text=Array.from(p.slice(1,Math.min(51,p.length))).map(c=>String.fromCharCode(c)).join('').replace(/\0/g,'').trim();
+    if(text.length>1) texts.push({sev,text});
+  }
+  if (msgid===0 && p.length>=4) {
+    const mode=p[0]|(p[1]<<8)|(p[2]<<16)|(p[3]<<24);
+    if(!modes.length||modes[modes.length-1]!==mode) modes.push(mode);
+  }
+}
+
+function tlogChart(values, color, minLabel, maxLabel, height) {
+  height = height || 80;
+  if (!values.length) return '<div style="color:var(--muted);font-size:12px;padding:8px">No data</div>';
+  let pts = values;
+  if (pts.length > 500) {
+    const step = pts.length/500;
+    pts = Array.from({length:500},(_,i)=>values[Math.min(Math.round(i*step),values.length-1)]);
+  }
+  const minV=Math.min(...pts), maxV=Math.max(...pts), range=maxV-minV||0.1;
+  const W=600, H=height, ml=44, mb=4, mt=4, mr=8, cW=W-ml-mr, cH=H-mt-mb;
+  const poly=pts.map((v,i)=>{
+    const x=ml+(i/(pts.length-1))*cW;
+    const y=mt+cH-((v-minV)/range)*cH;
+    return x.toFixed(1)+','+y.toFixed(1);
+  }).join(' ');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block;background:var(--surface)">'
+    +'<rect x="'+ml+'" y="'+mt+'" width="'+cW+'" height="'+cH+'" fill="none" stroke="var(--border2)" stroke-width="0.5"/>'
+    +'<text x="'+(ml-2)+'" y="'+(mt+8)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+maxLabel+'</text>'
+    +'<text x="'+(ml-2)+'" y="'+(mt+cH)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+minLabel+'</text>'
+    +'<polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round"/>'
+    +'</svg>';
+}
+
+function parseTlogFull() {
+  const file = document.getElementById('tlog-full-file').files[0];
+  const status = document.getElementById('tlog-full-status');
+  const result = document.getElementById('tlog-full-result');
+  if (!file) { status.textContent='Select a .tlog file first.'; return; }
+  status.style.color='var(--muted)'; status.textContent='Parsing…';
+  result.innerHTML='';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const buf = new Uint8Array(ev.target.result);
+      const d = mavlinkExtractAll(buf);
+      status.style.color='var(--green)';
+      status.textContent='Parsed '+buf.length+' bytes — '+d.volts.length+' voltage samples, '+d.alts.length+' altitude samples, '+d.texts.length+' status messages';
+      renderTlogResult(d, file.name);
+    } catch(e) {
+      status.style.color='var(--red)'; status.textContent='Parse error: '+e.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderTlogResult(d, filename) {
+  const out = document.getElementById('tlog-full-result');
+  const bt = loadBattType();
+  const cells = bt.cells, chem = BATT_CHEM[bt.chem]||BATT_CHEM.lipo;
+
+  // Duration estimate from heartbeats (1 Hz) or voltage samples (~2 Hz)
+  const durSec = d.heartbeats > 30 ? d.heartbeats : Math.round(d.volts.length / 2);
+  const durMin = (durSec / 60).toFixed(1);
+  const startStr = d.startTimeMs ? new Date(d.startTimeMs).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+
+  // Battery stats
+  const vv = d.volts.filter(v=>v>cells*chem.critical*0.9&&v<cells*chem.full*1.05);
+  const startV = vv.length ? vv[0].toFixed(2) : '—';
+  const endV   = vv.length ? vv[vv.length-1].toFixed(2) : '—';
+  const minV   = vv.length ? Math.min(...vv).toFixed(2) : '—';
+  const sag    = vv.length ? (vv[0]-Math.min(...vv)).toFixed(2) : '—';
+
+  // Altitude stats
+  const validAlts = d.alts.filter(a=>a>-50&&a<5000);
+  const maxAlt = validAlts.length ? Math.max(...validAlts).toFixed(0) : '—';
+  const avgAlt = validAlts.length ? (validAlts.reduce((a,b)=>a+b,0)/validAlts.length).toFixed(0) : '—';
+
+  // Airspeed stats
+  const validSpd = d.speeds.filter(s=>s>0&&s<100);
+  const maxSpd = validSpd.length ? Math.max(...validSpd).toFixed(1) : '—';
+  const avgSpd = validSpd.length ? (validSpd.reduce((a,b)=>a+b,0)/validSpd.length).toFixed(1) : '—';
+
+  // GPS stats
+  const avgSat = d.sats.length ? Math.round(d.sats.reduce((a,b)=>a+b,0)/d.sats.length) : '—';
+  const minSat = d.sats.length ? Math.min(...d.sats) : '—';
+
+  // Unique flight modes
+  const modeNames = [...new Set(d.modes)].map(m=>PLANE_MODES[m]||('MODE_'+m));
+
+  // Status messages — severity < 6 (skip INFO/DEBUG)
+  const importantTexts = d.texts.filter(t=>t.sev<=5);
+  const uniqueTexts = [];
+  const seenTexts = new Set();
+  importantTexts.forEach(function(t){
+    const k = t.sev+'|'+t.text;
+    if(!seenTexts.has(k)){seenTexts.add(k);uniqueTexts.push(t);}
+  });
+
+  // Charts
+  const voltChart = vv.length>2 ? tlogChart(vv,'var(--accent)',minV+'V',startV+'V',70) : '';
+  const altChart  = validAlts.length>2 ? tlogChart(validAlts,'var(--green)','0m',maxAlt+'m',70) : '';
+  const spdChart  = validSpd.length>2 ? tlogChart(validSpd,'#60a5fa','0 m/s',maxSpd+' m/s',70) : '';
+
+  out.innerHTML =
+    // Header
+    '<div style="margin-bottom:16px">' +
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:3px">FILE</div>' +
+      '<div style="font-family:var(--head);font-size:18px;font-weight:700;color:var(--text);letter-spacing:1px">'+filename+'</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+(d.flightDate||'Unknown date')+' &nbsp;·&nbsp; Start: '+startStr+' &nbsp;·&nbsp; Est. duration: '+durMin+' min &nbsp;·&nbsp; '+cells+'S '+chem.name+'</div>' +
+    '</div>' +
+
+    // 4 stat cards
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px">' +
+      _tlogCard('BATTERY', 'var(--accent)',
+        'Start: <b>'+startV+'V</b> &nbsp;·&nbsp; Min: <b style="color:var(--red)">'+minV+'V</b><br>End: <b>'+endV+'V</b> &nbsp;·&nbsp; Sag: <b style="color:var(--amber)">'+sag+'V</b>') +
+      _tlogCard('ALTITUDE', 'var(--green)',
+        'Max: <b>'+maxAlt+'m</b> &nbsp;·&nbsp; Avg: <b>'+avgAlt+'m</b>') +
+      _tlogCard('AIRSPEED', '#60a5fa',
+        'Max: <b>'+maxSpd+' m/s</b> &nbsp;·&nbsp; Avg: <b>'+avgSpd+' m/s</b><br><span style="font-size:11px;color:var(--muted)">T2 cruise target: 13 m/s</span>') +
+      _tlogCard('GPS', avgSat>=8?'var(--green)':'var(--amber)',
+        'Avg sats: <b>'+avgSat+'</b> &nbsp;·&nbsp; Min sats: <b>'+minSat+'</b>') +
+    '</div>' +
+
+    // Charts
+    (voltChart ? '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">BATTERY VOLTAGE</div>' +
+      '<div style="border:1px solid var(--border2);margin-bottom:16px">'+voltChart+'</div>' : '') +
+    (altChart ? '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">ALTITUDE (m MSL)</div>' +
+      '<div style="border:1px solid var(--border2);margin-bottom:16px">'+altChart+'</div>' : '') +
+    (spdChart ? '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">AIRSPEED (m/s)</div>' +
+      '<div style="border:1px solid var(--border2);margin-bottom:16px">'+spdChart+'</div>' : '') +
+
+    // Flight modes
+    (modeNames.length ? '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">FLIGHT MODES USED</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+
+      modeNames.map(m=>'<span style="font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;padding:4px 10px;background:var(--surface);border:1px solid var(--border2);color:var(--accent)">'+m+'</span>').join('')+
+      '</div>' : '') +
+
+    // Status messages
+    (uniqueTexts.length ?
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">STATUS MESSAGES ('+uniqueTexts.length+')</div>' +
+      '<div style="background:var(--surface);border:1px solid var(--border2);margin-bottom:16px">' +
+      uniqueTexts.map(function(t){
+        const c=SEV_COLOR[Math.min(t.sev,7)];
+        const l=SEV_LABEL[Math.min(t.sev,7)];
+        return '<div style="display:flex;align-items:baseline;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border)">' +
+          '<span style="font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1px;color:'+c+';min-width:72px;flex-shrink:0">'+l+'</span>' +
+          '<span style="font-size:13px;color:var(--text)">'+t.text+'</span>' +
+          '</div>';
+      }).join('')+
+      '</div>' : '<div style="font-size:13px;color:var(--green);margin-bottom:16px">No warnings or errors in log.</div>');
+}
+
+function _tlogCard(title, color, body) {
+  return '<div style="background:var(--surface);border:1px solid var(--border2);border-left:3px solid '+color+';padding:14px 16px">' +
+    '<div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:'+color+';margin-bottom:8px">'+title+'</div>' +
+    '<div style="font-size:14px;color:var(--muted);line-height:1.8">'+body+'</div>' +
+  '</div>';
+}
+
 // Initialise on load
 vtolInit();
 
