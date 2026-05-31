@@ -1148,7 +1148,7 @@ async function fetchWeather() {
       var fws = windStat(fw, fg), fps = precipStat(fc, fp);
       var rowC = (fws.s === 'NO-GO' || fps.s === 'NO-GO') ? 'var(--red)' : (fws.s === 'CAUTION' || fps.s === 'CAUTION') ? 'var(--amber)' : 'var(--green)';
       var timeStr = h.time[fi].slice(11, 16);
-      fcastRows += '<div style="display:grid;grid-template-columns:55px 1fr 45px 60px 1fr;padding:9px 12px;border-bottom:1px solid var(--border);font-size:13px;align-items:center">' +
+      fcastRows += '<div style="display:grid;grid-template-columns:65px 1fr 50px 70px 1fr;padding:11px 14px;border-bottom:1px solid var(--border);font-size:14px;align-items:center">' +
         '<span style="color:' + rowC + ';font-family:var(--head);font-weight:700">' + timeStr + '</span>' +
         '<span style="color:var(--text)">' + fw.toFixed(1) + ' m/s G' + fg.toFixed(1) + '</span>' +
         '<span style="color:var(--muted)">' + compass(fd) + '</span>' +
