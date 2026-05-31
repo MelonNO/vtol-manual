@@ -988,6 +988,13 @@ function wxDeleteFavorite(idx) {
   vtolData.weatherFavorites.splice(idx, 1);
   vtolSaveData(); wxRenderFavorites();
 }
+function wxRenameFavorite(idx) {
+  var fav = vtolData.weatherFavorites[idx]; if (!fav) return;
+  var name = prompt('Rename location:', fav.name);
+  if (name === null || !name.trim()) return;
+  vtolData.weatherFavorites[idx].name = name.trim();
+  vtolSaveData(); wxRenderFavorites();
+}
 function wxRenderFavorites() {
   var el = document.getElementById('wx-favorites'); if (!el) return;
   if (!vtolData.weatherFavorites.length) {
@@ -995,10 +1002,11 @@ function wxRenderFavorites() {
     return;
   }
   el.innerHTML = vtolData.weatherFavorites.map(function(f,i){
-    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">' +
+    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">' +
       '<button onclick="wxLoadFavorite('+i+')" style="flex:1;text-align:left;background:none;border:none;color:var(--text);cursor:pointer;font-family:var(--mono);font-size:14px;padding:0">'+f.name+'</button>' +
       '<span style="font-size:11px;color:var(--muted);white-space:nowrap">'+f.lat.toFixed(3)+', '+f.lon.toFixed(3)+'</span>' +
-      '<button onclick="wxDeleteFavorite('+i+')" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0">✕</button>' +
+      '<button onclick="wxRenameFavorite('+i+')" title="Rename" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:12px;padding:3px 8px;cursor:pointer;flex-shrink:0">&#x270E;</button>' +
+      '<button onclick="wxDeleteFavorite('+i+')" title="Remove" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0">&#x2715;</button>' +
     '</div>';
   }).join('');
 }
