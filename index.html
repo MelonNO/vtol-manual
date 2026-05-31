@@ -1548,8 +1548,8 @@ function renderBinResult(d, filename) {
           +row(lbl('End',endV+'V'),lbl('Sag',sag+'V','var(--amber)'))+'\n'
           +(mAhUsed!=='—'?row(lbl('Used',mAhUsed+' mAh'))+'\n':'')
           +(maxCurr!=='—'?row(lbl('Avg I',avgCurr+'A'),lbl('Max I',maxCurr+'A')):''))
-      +sc('ALTITUDE AGL','var(--green)',
-          row(lbl('Max',maxAlt+'m'))+'\n'+row(lbl('Base',baseAlt.toFixed(0)+'m MSL')))
+      +sc(d.pos.relHome.length>2?'ALTITUDE AGL':'ALTITUDE REL.','var(--green)',
+          row(lbl('Max',maxAlt+'m'))+'\n'+(d.pos.relHome.length>2?'<span style="font-size:11px;color:var(--muted)">EKF relative to home</span>':row(lbl('Base',baseAlt.toFixed(0)+'m MSL'))))
       +sc('AIRSPEED','#60a5fa',
           row(lbl('Max',maxSpd+' m/s'),lbl('Avg',avgSpd+' m/s'))+'\n'
           +'<span style="font-size:11px">Cruise target: 13 m/s</span>')
