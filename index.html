@@ -341,13 +341,31 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 <div id="tab-weather" class="tab-panel">
   <div class="section-title" style="margin-top:0">Weather Check</div>
   <p>Live conditions via Open-Meteo. T2 limits: <strong>GO ≤5 m/s</strong> · <strong>CAUTION 5–8 m/s</strong> · <strong>NO-GO &gt;8 m/s</strong> wind or any gusts &gt;10 m/s.</p>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--surface);border:1px solid var(--border2);margin-bottom:14px">
+    <div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">DATA FILE</div>
+    <div class="vtol-file-status" style="flex:1;font-size:11px;letter-spacing:1px"></div>
+    <button class="cl-reset vtol-link-btn" onclick="vtolLinkFile()">LINK FILE</button>
+    <button class="cl-reset" onclick="vtolExportData()">EXPORT</button>
+    <button class="cl-reset" onclick="vtolImportData()">IMPORT</button>
+  </div>
+  <div style="margin-bottom:16px">
+    <div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">SAVED LOCATIONS</div>
+    <div id="wx-favorites"></div>
+  </div>
   <div class="card accent" style="margin-bottom:20px">
-    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
-      <div style="flex:1;min-width:140px"><label class="bl-label">LATITUDE</label><input type="number" id="wx-lat" class="bl-input" step="0.0001" placeholder="e.g. 59.9139"></div>
-      <div style="flex:1;min-width:140px"><label class="bl-label">LONGITUDE</label><input type="number" id="wx-lon" class="bl-input" step="0.0001" placeholder="e.g. 10.7522"></div>
-      <div style="display:flex;gap:8px;flex-shrink:0">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <div style="flex:1;min-width:220px">
+        <label class="bl-label">PASTE COORDINATES (Google Maps format or lat, lon)</label>
+        <input type="text" id="wx-paste" class="bl-input" placeholder="e.g. 59.9139, 10.7522  or  59.9139 10.7522" oninput="wxParsePaste(this.value)">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:120px"><label class="bl-label">LATITUDE</label><input type="number" id="wx-lat" class="bl-input" step="0.0001" placeholder="59.9139"></div>
+      <div style="flex:1;min-width:120px"><label class="bl-label">LONGITUDE</label><input type="number" id="wx-lon" class="bl-input" step="0.0001" placeholder="10.7522"></div>
+      <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <button class="bl-btn" onclick="getLocation()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border2)">USE GPS</button>
         <button class="bl-btn" onclick="fetchWeather()">FETCH</button>
+        <button class="bl-btn" onclick="wxSaveFavorite()" style="background:var(--surface2);color:var(--amber);border:1px solid var(--amber)">SAVE &#x2605;</button>
       </div>
     </div>
   </div>
