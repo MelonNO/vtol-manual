@@ -1558,7 +1558,7 @@ function renderBinResult(d, filename) {
     +'</div>'
 
     +(voltChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">BATTERY VOLTAGE (V)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+voltChart+'</div>':'')
-    +(altChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">ALTITUDE RELATIVE TO LAUNCH (m)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+altChart+'</div>':'')
+    +(altChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">'+altLabel+'</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+altChart+'</div>':'')
     +(arspChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">AIRSPEED (m/s)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+arspChart+'</div>':'')
 
     +(modeSegs.length?
