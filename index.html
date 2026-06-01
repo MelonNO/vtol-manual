@@ -1198,38 +1198,40 @@ function parseTlog() {
 }
 
 function mavlinkExtractBattery(buf) {
-  // MAVLink v1: STX=0xFE, v2: STX=0xFD
-  // SYS_STATUS msg_id=1: payload[14..15] = voltage_battery (uint16 mV)
-  // BATTERY_STATUS msg_id=147: payload[10..11] = voltages[0] (uint16 mV, first cell pack voltage sum)
   const voltages = [];
-  const timestamps = [];
+  let firstTsMs = null, lastTsMs = null;
   let i = 0;
   const len = buf.length;
+
+  function readTs(pos) {
+    if (pos < 8) return null;
+    const hi = ((buf[pos-8]<<24)|(buf[pos-7]<<16)|(buf[pos-6]<<8)|buf[pos-5]) >>> 0;
+    const lo = ((buf[pos-4]<<24)|(buf[pos-3]<<16)|(buf[pos-2]<<8)|buf[pos-1]) >>> 0;
+    const ms = (hi * 4294967296 + lo) / 1000;
+    const d = new Date(ms);
+    return (d.getFullYear() >= 2015 && d.getFullYear() <= 2040) ? ms : null;
+  }
 
   while (i < len - 8) {
     const stx = buf[i];
     if (stx === 0xFE) {
-      // MAVLink v1
       const paylen = buf[i+1];
       const msgid = buf[i+5];
       const frameLen = 8 + paylen;
       if (i + frameLen > len) { i++; continue; }
       const payload = buf.slice(i+6, i+6+paylen);
       if (msgid === 1 && paylen >= 16) {
-        // SYS_STATUS: voltage_battery at bytes 14-15 (little-endian uint16)
         const mV = payload[14] | (payload[15] << 8);
         if (mV > 0 && mV < 65535) voltages.push(mV);
       }
       if (msgid === 147 && paylen >= 12) {
-        // BATTERY_STATUS: voltages[0] at bytes 10-11
         const mV = payload[10] | (payload[11] << 8);
         if (mV > 0 && mV < 65535) voltages.push(mV);
       }
-      // Timestamp prepended in .tlog: 8 bytes before STX (big-endian uint64 microseconds)
-      // Actually in ArduPilot tlogs, timestamp is prepended as 8 bytes before each packet
+      const ts = readTs(i);
+      if (ts !== null) { if (firstTsMs === null) firstTsMs = ts; lastTsMs = ts; }
       i += frameLen;
     } else if (stx === 0xFD) {
-      // MAVLink v2
       if (i + 10 > len) { i++; continue; }
       const paylen = buf[i+1];
       const msgid = buf[i+7] | (buf[i+8] << 8) | (buf[i+9] << 16);
@@ -1244,6 +1246,8 @@ function mavlinkExtractBattery(buf) {
         const mV = payload[10] | (payload[11] << 8);
         if (mV > 0 && mV < 65535) voltages.push(mV);
       }
+      const ts = readTs(i);
+      if (ts !== null) { if (firstTsMs === null) firstTsMs = ts; lastTsMs = ts; }
       i += frameLen;
     } else {
       i++;
@@ -1253,27 +1257,24 @@ function mavlinkExtractBattery(buf) {
   if (voltages.length < 2) return null;
 
   const toV = mV => mV / 1000;
-  // Filter out noise: only values in reasonable 6S range (18–30V)
   const valid = voltages.filter(v => v >= 18000 && v <= 30000);
   if (valid.length < 2) return null;
 
   const startV = toV(valid[0]);
   const endV = toV(valid[valid.length - 1]);
   const minV = toV(Math.min(...valid));
-  // Approximate duration: assume ~1Hz voltage samples
-  const durationMin = valid.length / 60;
-  // Extract actual flight date from first .tlog timestamp (8-byte big-endian uint64 microseconds)
-  let date = new Date().toISOString().split('T')[0];
-  for (let j = 8; j < Math.min(buf.length, 500); j++) {
-    if (buf[j] === 0xFE || buf[j] === 0xFD) {
-      const hi = ((buf[j-8]<<24)|(buf[j-7]<<16)|(buf[j-6]<<8)|buf[j-5]) >>> 0;
-      const lo = ((buf[j-4]<<24)|(buf[j-3]<<16)|(buf[j-2]<<8)|buf[j-1]) >>> 0;
-      const ms = (hi * 4294967296 + lo) / 1000;
-      const d = new Date(ms);
-      if (d.getFullYear() >= 2015 && d.getFullYear() <= 2040) date = d.toISOString().split('T')[0];
-      break;
-    }
+
+  // Use actual timestamps when available; fall back to sample-count approximation
+  let durationMin;
+  if (firstTsMs !== null && lastTsMs !== null && lastTsMs > firstTsMs) {
+    durationMin = (lastTsMs - firstTsMs) / 60000;
+  } else {
+    durationMin = valid.length / 60;
   }
+
+  const date = firstTsMs !== null
+    ? new Date(firstTsMs).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
 
   return { startV, minV, endV, durationMin, date };
 }
