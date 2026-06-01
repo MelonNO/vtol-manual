@@ -163,15 +163,146 @@ THINGS TO DO / KNOWN GAPS
 
 
 ================================================================
-HOW TO WORK ON THIS IN CLAUDE CODE CLI
+HOW TO START A NEW SESSION (UPDATED)
 ================================================================
 1. cd into the folder containing these files
 2. Run: claude
-3. Paste the contents of PROJECT_CONTEXT.txt at the start
-   (or say "read PROJECT_CONTEXT.txt before we start")
-4. Make requests as normal — Claude Code can read/edit files
-   and run git commands directly
+3. Claude Code will automatically read CLAUDE.md — no need to
+   paste PROJECT_CONTEXT.txt manually anymore. CLAUDE.md contains
+   all architecture, decisions, and key values.
+4. Say "read SESSION_NOTES.txt" if you want historical context
+   about specific decisions.
+5. Run watch-push.ps1 in a separate terminal to auto-push saves.
 
 The watch-push.ps1 script will auto-push any changes Claude Code
 makes to the files, since it watches the same folder.
+================================================================
+
+
+================================================================
+SESSION 2 — MAJOR CHANGES (2026-06-02)
+================================================================
+
+MANUAL.HTML — NEW TABS ADDED
+------------------------------
+New chapters added (all accessible via grouped dropdown nav):
+  Crew Training   — prerequisites, sign-off criteria, pre-mission brief
+  FPV Sub-Drone   — hardware config, GPS Rescue params, OSD triggers,
+                    relay bind procedure (separated from Crew Training)
+  Maintenance     — per-flight, 5-flight, 10-flight, 25-flight intervals,
+                    carrier + FPV + battery schedules, incident inspection
+  Callouts        — full verbal callout protocol, all phases, abort calls
+  Mission Planning — site assessment, relay altitude guide, orbit geometry,
+                    7-WP template, transition planning, wind table
+
+MANUAL.HTML — NAV RESTRUCTURE
+------------------------------
+14 flat tabs replaced with 6 grouped dropdown items:
+  Overview | Aircraft▾ | Operations▾ | Planning▾ | Reference▾ | ⚠Emergency
+Eliminates horizontal scrolling. Emergency always directly accessible.
+New JS: toggleNavGroup(), selectNavItem(), click-outside handler.
+manGoTo() updated to handle both direct and grouped tabs.
+
+AIRCRAFT CORRECTION
+--------------------
+Motor count corrected: 3 motors (not 4).
+  M1, M2 — wing tilt motors (0°→80°), VTOL lift + FW thrust
+  M4     — tail vertical lift, VTOL only, stops in FW cruise
+Tricopter naming convention (no M3). SVG diagram corrected.
+
+ORBIT GEOMETRY CORRECTION
+---------------------------
+FPV sub-drone must stay INSIDE the carrier orbit, not outside.
+Relay antennas face inward. FPV outside orbit = link loss.
+Orbit SVG redrawn: green fill inside orbit, FPV area at center,
+antenna-inward arrow on carrier, "OUTSIDE ORBIT = LINK LOSS" label.
+
+EMERGENCY PROCEDURES REWRITE
+------------------------------
+All 6 scenarios restructured into two tiers:
+  IMMEDIATE — short phrases (≤5 words), memorised, always visible
+  CLEAN-UP  — detailed steps, collapsible amber section, looked up
+toggleCleanup() function added. Same structure in both files.
+Both index.html (modal) and manual.html (tab) updated.
+
+BATTERY CHEMISTRY — THRESHOLDS CORRECTED
+------------------------------------------
+Based on detailed LiPo electrochemistry (SEI/copper dissolution):
+  lipo.critical: 3.50 → 3.10 V/cell  (deep SEI damage zone)
+  lipo.low:      3.60 → 3.35 V/cell  (longevity recommendation floor)
+Health assessment: HEALTHY ≥ 3.45V/cell for 6S landing at 21.0V+
+BATT_LOW_VOLT formula floor: chem.critical*cells+1.0 → hardcoded 23.0V
+  (chemistry floor irrelevant; operational constraint is BATT_CRT 22.2V)
+
+STORAGE VOLTAGE CORRECTED
+---------------------------
+22.2V (3.7V/cell) → 22.8V (3.8V/cell) everywhere storage is mentioned.
+Reason: 22.2V = BATT_CRT operational threshold, not storage SoC.
+Optimal storage = 3.80–3.85V/cell (40–60% capacity).
+Updated: maintenance tables, post-flight checklist, analysis table.
+Added row: "Storage target 22.8V / 3.80V/cell" in battery analysis.
+
+MANUAL RTL TRIGGER UPDATED
+----------------------------
+Manual RTL: 24V → 23.0V (was too conservative — only 40-50% capacity used)
+Hard limit: 22.8V → 22.5V
+Battery gauge SVG zones updated to match.
+Updated: emergency modal, flight modes alert, procedures tab,
+         callouts table, crew training, emergency tab.
+
+UI IMPROVEMENTS — index.html
+------------------------------
+Checklist:
+  - Done items collapse to 28px, auto-close detail pane on check
+  - Section colour coding (A=blue, B=orange, C=green, D=purple, E=rose)
+  - Coloured letter badge on section headers
+  - Warning items (w:true): amber left border + ! badge
+  - GO banner: larger (24px), pulsing green border animation
+
+Battery log:
+  - Inline voltage profile sparkline per table row (battSparkline)
+  - Row heat-map background by min voltage severity
+  - Min voltage trend chart (battTrendSVG) above analysis cards
+
+Weather tab:
+  - Wind compass SVG (windCompassSVG) in wind card showing direction
+  - Offline cache: successful fetches saved to vtol_wx_cache localStorage
+
+Mobile:
+  - Fixed bottom nav (52px height, border-top active indicator)
+  - Swipe left/right to change tabs
+  - Emergency FAB repositioned above nav
+
+Emergency modal (index.html):
+  - Pill quick-jump buttons (RC LOSS / RELAY LOSS / VIDEO / etc.)
+  - Two-tier immediate/clean-up structure
+
+GRAPHICS ADDED — manual.html
+------------------------------
+Aircraft tab:
+  - Motor configuration top-down diagram (M1/M2 tilt, M4 fixed)
+  - Battery voltage reference gauge (SVG bar chart, 6 zones)
+
+Flight Modes tab:
+  - RC failsafe cascade timeline (0→1.5s FBWA → 5s RTL)
+
+Mission Planning tab:
+  - Side-view LOS diagram (why relay altitude matters)
+  - Top-down orbit geometry diagram (FPV inside orbit)
+
+Crew Training / FPV Sub-Drone tab:
+  - GPS Rescue trajectory diagram (link lost → climb → cruise → cut)
+
+BUG FIXES
+----------
+- AbortSignal.timeout() → AbortController + setTimeout (browser compat)
+- .tlog duration now uses actual packet timestamps (not sample-count approx)
+- Weather tab shows cached data when offline (not just error)
+- Emergency clean-up sections toggleable (not permanently visible)
+
+KNOWN GAPS (STILL OPEN)
+------------------------
+- BATT_LOW_VOLT not set in ArduPlane — needs FC param change (~23.0V)
+- FENCE_ENABLE = 0 — intentional for now
+- BATT_FS_CRT_ACT = 6 — QLand at current position, NOT RTL home
 ================================================================
