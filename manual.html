@@ -28,6 +28,20 @@ nav{background:var(--surface2);border-bottom:1px solid var(--border2);display:fl
 nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:14px 18px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;}
 nav button:hover{color:var(--text);}
 nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+/* ── GROUPED DROPDOWN NAV ── */
+.nav-group{position:relative;display:flex;align-items:stretch;}
+.nav-group-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:14px 16px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;display:flex;align-items:center;gap:5px;}
+.nav-group-btn:hover{color:var(--text);}
+.nav-group-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.nav-dropdown{display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--border2);border-top:2px solid var(--accent);z-index:600;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.6);}
+.nav-dropdown.open{display:block;}
+.nav-dropdown button{display:block;width:100%;background:none;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:var(--head);font-size:12px;font-weight:600;letter-spacing:1.5px;padding:11px 18px;cursor:pointer;text-align:left;text-transform:uppercase;transition:background .1s,color .1s;white-space:nowrap;}
+.nav-dropdown button:last-child{border-bottom:none;}
+.nav-dropdown button:hover{background:var(--surface2);color:var(--text);}
+.nav-dropdown button.active{color:var(--accent);background:#1c1208;}
+.nav-emerg{color:var(--red) !important;}
+.nav-emerg:hover{color:#ff6b6b !important;}
+.nav-emerg.active{border-bottom-color:var(--red) !important;color:var(--red) !important;}
 .content{max-width:1000px;margin:0 auto;padding:32px 28px 60px;}
 .tab-panel{display:none;}
 .tab-panel.active{display:block;animation:fadeSlideIn .2s ease both;}
