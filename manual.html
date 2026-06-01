@@ -1676,8 +1676,13 @@ function manSearch(query) {
 function manGoTo(tabId){
   document.getElementById('man-search').value='';
   document.getElementById('man-search-wrap').style.display='none';
-  var btn=document.querySelector('button[onclick*="\''+tabId+'\'"]');
-  switchTab(tabId,btn);
+  var groupBtn = document.querySelector('.nav-dropdown button[onclick*="\''+tabId+'\'"]');
+  if (groupBtn) {
+    selectNavItem(tabId, groupBtn, null);
+  } else {
+    var btn = document.querySelector('nav button[onclick*="\''+tabId+'\'"]');
+    switchTab(tabId, btn);
+  }
   window.scrollTo(0,0);
 }
 
