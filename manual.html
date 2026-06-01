@@ -534,7 +534,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="card">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Loiter established — FPV handover</strong><p>Carrier in AUTO loiter. Carrier Pilot confirms relay RSSI and video in MPV.net. Co-pilot takes FPV TX and begins operating sub-drone.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier Pilot: orbit management</strong><p>Primary duty — keep FPV inside relay bubble. Carrier orbits around the FPV operating area, FPV on the near side. If FPV approaches relay edge: call "RELAY EDGE" and vector carrier in via GUIDED mode.</p></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Battery discipline</strong><p>No BATT_LOW_VOLT configured — manual voltage monitoring only. Target RTL at <span class="warn-val">24.0V</span> (~4.0V/cell). Hard limit: RTL before <span class="crit-val">22.8V</span>. At 22.2V: automated Loiter→QLand at current position.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Battery discipline</strong><p>No BATT_LOW_VOLT configured — manual voltage monitoring only. Target RTL at <span class="warn-val">23.0V</span> (3.83V/cell). Hard limit: RTL in progress before <span class="crit-val">22.5V</span>. At 22.2V: automated Loiter→QLand at current position.</p></div></div>
   </div>
   <div class="alert alert-warn">FPV pilot verbal callouts are the Carrier Pilot's only FPV status source. Establish a call cadence: battery level, position, issues — every 2–3 minutes minimum.</div>
 
