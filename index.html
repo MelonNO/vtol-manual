@@ -540,6 +540,14 @@ function buildChecklist(CL_data, containerId, storageKey, secProgPrefix, overall
 function toggleCI(el, e) {
   if (e) e.stopPropagation();
   el.classList.toggle('done');
+  if (el.classList.contains('done')) {
+    const det = document.getElementById('det-' + el.dataset.key);
+    if (det && det.classList.contains('visible')) {
+      det.classList.remove('visible');
+      const right = el.querySelector('.ci-right');
+      if (right) { right.classList.remove('open'); const h = right.querySelector('.expand-hint'); if (h) h.textContent = 'DETAILS'; }
+    }
+  }
   const saved = JSON.parse(localStorage.getItem(el.dataset.store) || '{}');
   saved[el.dataset.key] = el.classList.contains('done');
   localStorage.setItem(el.dataset.store, JSON.stringify(saved));
