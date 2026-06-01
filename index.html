@@ -2083,8 +2083,18 @@ async function fetchWeather() {
       '</div></div>' +
       '<div style="font-size:11px;color:var(--muted);letter-spacing:1px">SOURCE: OPEN-METEO · OSM NOMINATIM · ' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '</div>';
 
+    try { localStorage.setItem('vtol_wx_cache', JSON.stringify({ lat, lon, locName, html: out.innerHTML, ts: Date.now() })); } catch(_) {}
+
   } catch(e) {
-    out.innerHTML = '<div class="alert alert-danger">Failed to fetch weather: ' + e.message + '</div>';
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem('vtol_wx_cache')); } catch(_) {}
+    if (cached && cached.html) {
+      const age = Math.round((Date.now() - cached.ts) / 60000);
+      const ageStr = age < 60 ? age + ' min ago' : Math.round(age / 60) + 'h ago';
+      out.innerHTML = '<div class="alert alert-warn" style="margin-bottom:14px">OFFLINE — showing cached data from ' + ageStr + '</div>' + cached.html;
+    } else {
+      out.innerHTML = '<div class="alert alert-danger">Failed to fetch weather: ' + e.message + '. No cached data — connect to the internet and fetch once to enable offline use.</div>';
+    }
   }
 }
 </script>
