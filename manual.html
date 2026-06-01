@@ -700,6 +700,365 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </table>
 </div>
 
+
+<!-- ═══ CREW TRAINING ═══ -->
+<div id="tab-crew" class="tab-panel">
+
+  <div class="section-title">Role Overview</div>
+  <p>This system requires <strong>two trained operators</strong> working co-located with verbal communications only. No radio or earpiece between pilots — both must be within normal speaking distance throughout the sortie.</p>
+  <div class="alert alert-warn">Neither role may be filled by an untrained operator. A solo Carrier Pilot sortie is permitted only for carrier-only test flights with no relay operations.</div>
+
+  <div class="section-title">Carrier Pilot — Prerequisites</div>
+  <div class="card accent">
+    <table>
+      <tr><th>Area</th><th>Minimum Standard</th></tr>
+      <tr><td>Fixed-wing RC</td><td>Comfortable manual flight of a fixed-wing aircraft — can hold level flight, turn, and land without assistance. Simulator hours accepted: 50h+ fixed-wing recommended.</td></tr>
+      <tr><td>VTOL operations</td><td>5 independent VTOL flights with full transition cycle (QHOVER → FBWB → cruise → back-transition → VTOL_LAND) before first relay sortie.</td></tr>
+      <tr><td>Mission Planner</td><td>Can load, verify and edit a mission. Can send GCS mode commands. Can read all key telemetry: airspeed, altitude, battery voltage, RSSI, flight mode.</td></tr>
+      <tr><td>Emergency procedures</td><td>All 6 emergency scenarios known without reference to this manual. Can identify a transition failure within 3 seconds.</td></tr>
+      <tr><td>Carrier controller</td><td>Familiar with 3-position switch assignment (QHOVER / FBWB / AUTO) and left-button RTL. Has practised the hold-left-button action until it is automatic.</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Carrier Pilot — Sign-Off Criteria</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Solo VTOL check (3 flights)</strong><p>3 consecutive flights: QHOVER arm → climb → FBWB transition → AUTO cruise → back-transition → VTOL_LAND. No aborts. Demonstrates battery management (manual RTL initiated at 24V or above).</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Mission Planner proficiency</strong><p>Successfully uploads a 7-waypoint mission, verifies waypoint altitudes, and sends a GCS mode command during an actual flight.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Emergency verbal recitation</strong><p>Verbally walks through all 6 emergency scenarios with a qualified observer. No notes permitted. Observer confirms all actions are correct.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Supervised relay sortie</strong><p>First relay operation conducted with a qualified observer present (not the FPV Pilot). Observer may not intervene except for safety.</p></div></div>
+  </div>
+
+  <div class="section-title">FPV Pilot — Prerequisites</div>
+  <div class="card accent">
+    <table>
+      <tr><th>Area</th><th>Minimum Standard</th></tr>
+      <tr><td>FPV quad experience</td><td>Comfortable flying in Angle/GPS mode. Can hold stable position and hover at altitude for extended periods. Must have GPS-mode experience — not acro-only.</td></tr>
+      <tr><td>OSD literacy</td><td>Can read and respond to all OSD elements without hesitation: battery voltage, GPS sats, RSSI / link quality, home distance/direction, altitude, flight mode.</td></tr>
+      <tr><td>GPS Rescue awareness</td><td>Understands rescue parameters: activates after 2.5s link loss, climbs 30m above current position, returns to home at 100m AGL at 7.5 m/s. Knows <strong>not</strong> to apply stick inputs once rescue triggers — doing so can disable it mid-flight.</td></tr>
+      <tr><td>Callout discipline</td><td>Has practised all callouts with the Carrier Pilot on the ground. Calls must be timely and use agreed phrasing — no improvisation during flight.</td></tr>
+      <tr><td>Relay bind procedure</td><td>Can complete the relay bind (hold LEFT button on carrier Nomad for 3s) solo and confirm ELRS 2.4GHz link before carrier takeoff.</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">FPV Pilot — Sign-Off Criteria</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>GPS Rescue test</strong><p>Demonstrates GPS Rescue activation and autonomous return in a safe environment — deliberate TX power-off at a safe altitude, observe full autonomous return and landing. Does not touch sticks during rescue.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Relay bind solo</strong><p>Completes the full relay bind procedure without assistance and confirms video feed in MPV.net before carrier takeoff.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Callout rehearsal</strong><p>Runs through the full sortie callout script with the Carrier Pilot in a ground briefing. Both pilots agree on phrasing for all critical calls.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Supervised relay sortie</strong><p>First relay sortie with qualified observer. Observer monitors callout discipline and response to any abnormal events.</p></div></div>
+  </div>
+
+  <div class="section-title">FPV Sub-Drone — Configuration Reference</div>
+  <div class="card">
+    <div class="card-title">System</div>
+    <table>
+      <tr><th>Item</th><th>Value</th></tr>
+      <tr><td>Flight controller</td><td>Matek F405 STD (clone) · Betaflight 4.5.2</td></tr>
+      <tr><td>Battery</td><td>6S 1300mAh LiPo</td></tr>
+      <tr><td>VTX</td><td>Raceband R5 · 5806 MHz · 25mW (constant — same power armed and disarmed)</td></tr>
+      <tr><td>RX protocol</td><td>ELRS 2.4GHz · CRSF · bound to carrier relay Nomad every preflight</td></tr>
+      <tr><td>Motors</td><td>1960KV · 14-pole · DSHOT300 · bidirectional DSHOT enabled</td></tr>
+      <tr><td>Gyro / rates</td><td>ACTUAL rate type · 67°/s max rate all axes</td></tr>
+    </table>
+  </div>
+  <div class="card amber">
+    <div class="card-title">GPS Rescue Parameters</div>
+    <table>
+      <tr><th>Parameter</th><th>Value</th><th>Implication</th></tr>
+      <tr><td>Activation delay</td><td class="warn-val">2.5s</td><td>Link must be lost for 2.5s before rescue activates (1.5s stage 1 + 1s stage 2)</td></tr>
+      <tr><td>Minimum satellites</td><td class="warn-val">8</td><td>If below 8 sats, GPS Rescue will NOT activate — FPV descends on failsafe throttle instead</td></tr>
+      <tr><td>Altitude mode</td><td>CURRENT_ALT</td><td>Climbs 30m above wherever the FPV is when link is lost</td></tr>
+      <tr><td>Return altitude</td><td>100m AGL</td><td>Cruises home at 100m above launch point</td></tr>
+      <tr><td>Return speed</td><td>7.5 m/s</td><td>Horizontal return ground speed</td></tr>
+      <tr><td>Descent start</td><td>20m from home</td><td>Begins vertical descent when within 20m of home point horizontally</td></tr>
+      <tr><td>Descent rate</td><td>1.5 m/s</td><td>Slow controlled descent toward landing</td></tr>
+      <tr><td>Disarm altitude</td><td>4m AGL</td><td>Motors cut at 4m — FPV will drop the last 4m to ground</td></tr>
+      <tr><td>Min start distance</td><td>15m</td><td>Won't activate if already within 15m of home — will descend in place instead</td></tr>
+    </table>
+    <div class="alert alert-danger" style="margin-top:12px">If GPS Rescue activates, <strong>do not touch the FPV TX sticks</strong>. Stick input above the threshold (30%) disables the rescue and returns control to the pilot — at night or BVLOS this means losing the aircraft.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">OSD Elements — Key Triggers</div>
+    <table>
+      <tr><th>OSD Element</th><th>Call when...</th><th>Callout</th></tr>
+      <tr><td>Battery voltage</td><td>Below 21.0V (3.5V/cell)</td><td>"FPV BATT LOW — RETURNING"</td></tr>
+      <tr><td>GPS satellites</td><td>Below 8 sats</td><td>"FPV SATS LOW" — GPS Rescue may not work</td></tr>
+      <tr><td>Link quality</td><td>LQ below 70% or RSSI below -90dBm</td><td>"FPV LINK WEAK"</td></tr>
+      <tr><td>Home distance</td><td>Approaching max intended range</td><td>Use as situational awareness — call if unexpectedly far</td></tr>
+      <tr><td>Flight mode</td><td>Any unexpected mode change</td><td>"FPV MODE CHANGE — [mode name]"</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Joint Crew — Pre-Mission Brief</div>
+  <div class="card">
+    <p>Required before every sortie, regardless of crew experience level. Both pilots must agree on go/no-go before any equipment is powered.</p>
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Mission review</strong><p>Both pilots walk through the uploaded mission: launch point, transition corridor, relay altitude, FPV operating area, return profile.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Weather go/no-go</strong><p>Check weather tab. Both pilots agree. If either pilot is not satisfied — no flight.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Emergency refresh</strong><p>Name the most likely emergency for today's conditions (e.g. wind = transition failure). Agree on abort criteria for the sortie.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Communication check</strong><p>Confirm both pilots can hear each other clearly from their operating positions before committing to flight.</p></div></div>
+  </div>
+
+</div>
+
+<!-- ═══ MAINTENANCE ═══ -->
+<div id="tab-maintenance" class="tab-panel">
+
+  <div class="section-title">Schedule Overview</div>
+  <p>Maintenance is tracked by <strong>flight count</strong> using the Battery Log on the Tools page. Pre-flight and post-flight inspections are covered in the operational checklists and are not repeated here.</p>
+  <div class="alert alert-danger">After any hard landing, tip-over, transition failure, or prop strike — complete the Incident Inspection below before the next flight, regardless of scheduled interval.</div>
+
+  <div class="section-title">Carrier — Every 5 Flights</div>
+  <div class="card">
+    <table>
+      <tr><th>Item</th><th>Action</th><th>Reject if...</th></tr>
+      <tr><td>Props (all 4)</td><td>Inspect leading edges and tips for nicks, chips, or cracks. Gently flex each blade — no delamination or crunch.</td><td>Any nick deeper than 1mm, visible crack, or delamination — replace the full pair</td></tr>
+      <tr><td>Motor shafts</td><td>Hold the prop and try to wobble the shaft laterally on all 4 motors. Spin by hand — should turn smoothly with no grit.</td><td>Any lateral play, grinding, or rough rotation</td></tr>
+      <tr><td>Tilt servos</td><td>Move tilt arms through full 0–80° range with power off. Check for slop at both ends and mid-travel. Listen for any mechanical scraping.</td><td>More than ~2° of slop, any binding, or audible grinding</td></tr>
+      <tr><td>Battery strap</td><td>Pull test — strap must not slip under firm hand tension. Check velcro face condition.</td><td>Any slippage or significant velcro degradation</td></tr>
+      <tr><td>Pitot tube</td><td>Visual check — tube clear, not bent or cracked at root, static port not blocked.</td><td>Any blockage, crack, or loose mount</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Carrier — Every 10 Flights</div>
+  <div class="card">
+    <table>
+      <tr><th>Item</th><th>Action</th><th>Reject if...</th></tr>
+      <tr><td>ESC heat</td><td>Immediately after a flight, check each ESC by touch. Warm is normal. Too hot to hold finger = investigate wiring, cooling, and throttle logs.</td><td>Any ESC too hot to hold — do not fly again until root cause found</td></tr>
+      <tr><td>All connectors</td><td>Check XT60 main connector, all JST / XT30 sub-connectors, balance leads. Look for black marks (arcing), loose fit, or melted plastic.</td><td>Any arcing marks, loose connector, or melted housing</td></tr>
+      <tr><td>Relay Nomad on carrier</td><td>Check physical mount security. Check USB-C connector for play. Inspect ELRS TX antenna — not cracked or kinked past 90°.</td><td>Loose mount, damaged antenna, USB connector wobble</td></tr>
+      <tr><td>DBR4 RX antennas</td><td>Verify antenna orientations are perpendicular to each other. Check coax for tight kinks.</td><td>Kinked coax, cracked antenna housing, antennas pointing same direction</td></tr>
+      <tr><td>Wing joins</td><td>Check wing bolt snugness (snug, not loose). Try to rock wing panel against fuselage — there should be no play.</td><td>Any wing movement relative to fuselage</td></tr>
+      <tr><td>SIYI video chain</td><td>Check CVBS→HDMI and HDMI→IP converters for heat damage. Inspect all connectors in the chain. Verify RTSP stream for artefacts on a recent flight recording.</td><td>Heat discolouration, persistent artefacts in stream, any loose connector</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Carrier — Every 25 Flights or Monthly</div>
+  <div class="card">
+    <table>
+      <tr><th>Item</th><th>Action</th></tr>
+      <tr><td>Control surface pushrods</td><td>Check all rod ends (aileron, elevator, rudder) for axial play. Rotate each through full travel. Any play = replace or tighten rod end.</td></tr>
+      <tr><td>Motor bell screws</td><td>Check prop mounting screws on all 4 motors are torqued. Apply fresh threadlock to any that have been repeatedly loosening.</td></tr>
+      <tr><td>Tilt motor mounting frame</td><td>Inspect for cracks around screw holes. Check for heat discolouration on motor cans and ESC housings.</td></tr>
+      <tr><td>Flight controller mount</td><td>Check foam dampeners — not crushed, split, or delaminating. All FC connector ports fully seated.</td></tr>
+      <tr><td>GPS module</td><td>Check GPS mast for physical damage. Verify compass calibration offsets are stable compared to previous records.</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">FPV Sub-Drone — Every 5 Flights</div>
+  <div class="card">
+    <table>
+      <tr><th>Item</th><th>Action</th><th>Reject if...</th></tr>
+      <tr><td>Props (all 4)</td><td>Inspect and flex all blades. Check prop nut torque.</td><td>Any nick, crack, or looseness</td></tr>
+      <tr><td>Motor bell screws</td><td>Check all 4 motor mounting screws. Check prop nut lock nuts.</td><td>Any looseness — re-torque and apply threadlock</td></tr>
+      <tr><td>GPS module mount</td><td>Check GPS puck for secure mounting. Vibration cracks the foam mount over time on 7" quads.</td><td>GPS puck movement, cracked mount, loose cable</td></tr>
+      <tr><td>VTX antenna</td><td>Check 5.8GHz antenna connector at the VTX. Check antenna not cracked or bent sharply at base.</td><td>Loose SMA/MMCX connector, cracked antenna body</td></tr>
+      <tr><td>Frame arms</td><td>Inspect arm-to-body joints for cracks — highest-stress point on a 7" in any impact.</td><td>Any crack — replace arm before next flight</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Battery Maintenance</div>
+  <div class="card amber">
+    <div class="card-title">Carrier — 6S 7000mAh LiPo</div>
+    <table>
+      <tr><th>When</th><th>Action</th></tr>
+      <tr><td>After every flight</td><td>Inspect for puffing, heat, unusual smell. At rest (30 min after flight): all cells within 0.05V of each other.</td></tr>
+      <tr><td>Storage ≥48h</td><td>Store at 22.2V pack (3.7V/cell). Never store below 21.0V (3.5V/cell).</td></tr>
+      <tr><td>Charge rate</td><td>Maximum 1C (7A). Preferred 0.5C (3.5A) for longevity.</td></tr>
+      <tr><td>Retire when</td><td>Any cell imbalance &gt;0.1V at rest, visible puffing at any state of charge, capacity below ~6000mAh measured, or any over-discharge below 19.8V (3.3V/cell).</td></tr>
+    </table>
+  </div>
+  <div class="card amber">
+    <div class="card-title">FPV — 6S 1300mAh LiPo</div>
+    <table>
+      <tr><th>When</th><th>Action</th></tr>
+      <tr><td>After every flight</td><td>Inspect for puffing. OSD warning triggers at 21.0V — land before this in relay ops.</td></tr>
+      <tr><td>Storage ≥48h</td><td>Store at 22.2V (3.7V/cell). Small packs puff quickly if stored discharged.</td></tr>
+      <tr><td>Charge rate</td><td>Maximum 1C (1.3A). Do not exceed 2C charge on 1300mAh packs.</td></tr>
+      <tr><td>Retire when</td><td>Visible puffing at any state, cell imbalance &gt;0.1V, or noticeably elevated internal resistance versus new.</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Incident Inspection</div>
+  <div class="card danger">
+    <div class="card-title">After Hard Landing / Prop Strike / Transition Failure / Tip-Over</div>
+    <p>Complete all items below before next flight. Log the incident with date, description, and any repairs made in the Battery Log notes field.</p>
+    <table>
+      <tr><th>Item</th><th>Check</th></tr>
+      <tr><td>All involved props</td><td>Replace immediately — never re-use props from a prop strike even if they look undamaged</td></tr>
+      <tr><td>Motor shafts</td><td>Check all shafts for any bend — a bent shaft means motor replacement, not continued use</td></tr>
+      <tr><td>Tilt servo linkages</td><td>Full tilt mechanism check: rods, rod ends, servo horns, servo gears</td></tr>
+      <tr><td>Airframe structure</td><td>Full visual — new cracks especially around servo mounts, wing roots, motor mounts</td></tr>
+      <tr><td>Battery</td><td>Inspect for impact damage or puffing — retire if any doubt</td></tr>
+      <tr><td>FC bench test</td><td>Power up on bench — confirm all sensor readings nominal before returning to flight</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<!-- ═══ CALLOUTS ═══ -->
+<div id="tab-callouts" class="tab-panel">
+
+  <div class="section-title">Communication Protocol</div>
+  <p>Both pilots are co-located at all times. All in-flight communication is <strong>direct verbal only</strong> — no radio, earpiece, or messaging during flight.</p>
+  <div class="two-col" style="margin:16px 0">
+    <div class="stat-box"><div class="stat-label">Brief</div><div style="font-size:14px;color:var(--text);margin-top:6px">One to five words per call. No narration during active flight phases — save it for post-flight debrief.</div></div>
+    <div class="stat-box"><div class="stat-label">Timely</div><div style="font-size:14px;color:var(--text);margin-top:6px">Call when the condition occurs. Early warning is always preferable to a late report.</div></div>
+    <div class="stat-box"><div class="stat-label">Unambiguous</div><div style="font-size:14px;color:var(--text);margin-top:6px">Use the exact phrases listed below. Both pilots rehearse these before every new crew pairing.</div></div>
+    <div class="stat-box"><div class="stat-label">Acknowledged</div><div style="font-size:14px;color:var(--text);margin-top:6px">Recipient always acknowledges with "COPY" or by repeating the key word. Silence is not acceptance.</div></div>
+  </div>
+  <div class="alert alert-info">The FPV Pilot carries most of the in-flight callout burden. The Carrier Pilot's attention is on the carrier aircraft — FPV Pilot is the eyes for FPV sub-drone status.</div>
+
+  <div class="section-title">Pre-Arm & Setup</div>
+  <table>
+    <tr><th style="width:30%">Trigger</th><th style="width:25%">Who calls</th><th>Callout</th></tr>
+    <tr><td>Carrier powered on, GPS acquiring</td><td>Carrier Pilot</td><td><strong>"CARRIER POWER ON"</strong></td></tr>
+    <tr><td>MP connected, telemetry live</td><td>Carrier Pilot</td><td><strong>"MP LIVE"</strong></td></tr>
+    <tr><td>FPV bound to relay, video in MPV</td><td>FPV Pilot</td><td><strong>"FPV READY"</strong></td></tr>
+    <tr><td>Preflight checklist GO</td><td>Carrier Pilot</td><td><strong>"CHECKLIST GO"</strong></td></tr>
+    <tr><td>FPV Pilot ready to fly</td><td>FPV Pilot</td><td><strong>"FPV GO"</strong></td></tr>
+    <tr><td>Both GO — about to arm carrier</td><td>Carrier Pilot</td><td><strong>"ARMING"</strong></td></tr>
+    <tr><td>Carrier armed confirmed in MP</td><td>FPV Pilot (monitors MP)</td><td><strong>"ARMED"</strong></td></tr>
+  </table>
+
+  <div class="section-title">Takeoff & Transition</div>
+  <table>
+    <tr><th style="width:30%">Trigger</th><th style="width:25%">Who calls</th><th>Callout</th></tr>
+    <tr><td>VTOL takeoff / mission start</td><td>Carrier Pilot</td><td><strong>"TAKING OFF"</strong></td></tr>
+    <tr><td>Carrier airborne, stable hover</td><td>FPV Pilot (monitors MP)</td><td><strong>"STABLE"</strong></td></tr>
+    <tr><td>Transition commencing</td><td>Carrier Pilot</td><td><strong>"TRANSITIONING"</strong></td></tr>
+    <tr><td>Airspeed &gt;11 m/s, wings level</td><td>FPV Pilot (monitors MP)</td><td><strong>"CLEAN TRANSITION"</strong></td></tr>
+    <tr><td>Co-pilot advancing mission WP1→WP2</td><td>FPV Pilot</td><td><strong>"ADVANCING WAYPOINT"</strong></td></tr>
+    <tr><td>No airspeed build after 2s</td><td>Either pilot</td><td><strong>"TRANSITION FAIL — QHOVER"</strong> (Carrier Pilot acts immediately)</td></tr>
+    <tr><td>Carrier at relay altitude, loitering</td><td>FPV Pilot (monitors MP)</td><td><strong>"CARRIER ON STATION"</strong></td></tr>
+  </table>
+
+  <div class="section-title">Relay Operations</div>
+  <table>
+    <tr><th style="width:30%">Trigger</th><th style="width:25%">Who calls</th><th>Callout</th></tr>
+    <tr><td>FPV armed and airborne</td><td>FPV Pilot</td><td><strong>"FPV AIRBORNE"</strong></td></tr>
+    <tr><td>Relay link confirmed stable</td><td>FPV Pilot</td><td><strong>"RELAY SOLID"</strong></td></tr>
+    <tr><td>FPV battery at 21.0V (3.5V/cell)</td><td>FPV Pilot</td><td><strong>"FPV BATT LOW — RETURNING"</strong> — begin return immediately</td></tr>
+    <tr><td>Link quality LQ &lt;70% or RSSI &lt; -90dBm</td><td>FPV Pilot</td><td><strong>"FPV LINK WEAK"</strong></td></tr>
+    <tr><td>FPV video lost</td><td>FPV Pilot</td><td><strong>"NO VIDEO"</strong></td></tr>
+    <tr><td>GPS sats below 8</td><td>FPV Pilot</td><td><strong>"FPV SATS LOW"</strong> — GPS Rescue may not work</td></tr>
+    <tr><td>Carrier battery at 24V</td><td>Carrier Pilot</td><td><strong>"CARRIER BATT — RTL SOON"</strong> — FPV Pilot initiates FPV return</td></tr>
+    <tr><td>FPV heading back to home</td><td>FPV Pilot</td><td><strong>"FPV RETURNING"</strong></td></tr>
+    <tr><td>FPV landed and disarmed</td><td>FPV Pilot</td><td><strong>"FPV LANDED"</strong></td></tr>
+  </table>
+
+  <div class="section-title">Carrier Recovery</div>
+  <table>
+    <tr><th style="width:30%">Trigger</th><th style="width:25%">Who calls</th><th>Callout</th></tr>
+    <tr><td>Initiating carrier RTL</td><td>Carrier Pilot</td><td><strong>"CARRIER RTL"</strong></td></tr>
+    <tr><td>Carrier back-transitioning</td><td>Carrier Pilot</td><td><strong>"BACK-TRANSITIONING"</strong></td></tr>
+    <tr><td>Carrier in final VTOL descent</td><td>Carrier Pilot</td><td><strong>"DESCENDING"</strong></td></tr>
+    <tr><td>Landing zone clear, all clear below</td><td>FPV Pilot</td><td><strong>"ZONE CLEAR"</strong></td></tr>
+    <tr><td>Carrier touchdown</td><td>Carrier Pilot</td><td><strong>"LANDED"</strong></td></tr>
+    <tr><td>Carrier disarmed, props stopped</td><td>Carrier Pilot</td><td><strong>"SAFE"</strong></td></tr>
+  </table>
+
+  <div class="section-title">Abort Calls</div>
+  <div class="card danger">
+    <div class="card-title">Either Pilot May Call an Abort</div>
+    <p>Any abort call is acted on immediately by the Carrier Pilot — no discussion in the air. Debrief after landing.</p>
+    <table>
+      <tr><th style="width:35%">Callout</th><th>Meaning &amp; immediate action</th></tr>
+      <tr><td><strong>"ABORT ABORT ABORT"</strong></td><td>Full mission abort. Carrier Pilot: QHOVER if in VTOL phase, or RTL if in cruise. FPV Pilot: land FPV immediately using GPS Return.</td></tr>
+      <tr><td><strong>"CARRIER RTL NOW"</strong></td><td>Carrier emergency RTL — Carrier Pilot activates by any means available (MP GCS or Nomad left button hold).</td></tr>
+      <tr><td><strong>"FPV FAILSAFE"</strong></td><td>FPV GPS Rescue has activated. Carrier Pilot holds loiter. FPV Pilot monitors OSD — <strong>do not touch FPV TX sticks</strong>.</td></tr>
+      <tr><td><strong>"CLEAR THE ZONE"</strong></td><td>Aircraft descending into landing zone — all personnel move clear immediately, no exceptions.</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<!-- ═══ MISSION PLANNING ═══ -->
+<div id="tab-missionplan" class="tab-panel">
+
+  <div class="section-title">Pre-Mission Site Assessment</div>
+  <p>The mission must be planned and uploaded before arriving on site wherever possible. Review all items below before committing to a flight day.</p>
+  <div class="card">
+    <table>
+      <tr><th>Item</th><th>Check</th></tr>
+      <tr><td>Airspace</td><td>NOTAMs checked. No active TFR, restricted area, or CTR conflict. Check for temporary airspace (events, emergency operations, glider areas).</td></tr>
+      <tr><td>Terrain</td><td>Identify the highest terrain between the launch site, the relay loiter point, and the FPV operating area. Relay altitude must clear this by at least 30m.</td></tr>
+      <tr><td>Landing zone</td><td>Identify and mark the exact VTOL landing point. Clear 5m radius, level, firm surface. GPS accuracy is ±2m — size the marked zone accordingly.</td></tr>
+      <tr><td>Obstacles</td><td>Map any structures or trees near the mission path. The transition corridor from WP1 to WP2 must be clear to at least 60m AGL.</td></tr>
+      <tr><td>Line of sight</td><td>Carrier Pilot must maintain VLOS to the carrier during takeoff and landing. Note where the carrier will disappear beyond visual range during relay phase.</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Relay Altitude &amp; Orbit Geometry</div>
+  <p>The carrier must maintain RF line-of-sight <strong>simultaneously</strong> to the ground station and to the FPV operating area. Altitude is the primary tool.</p>
+  <div class="card accent">
+    <div class="card-title">Relay Altitude — Guide</div>
+    <table>
+      <tr><th>Terrain between carrier and ground</th><th>Recommended relay altitude</th></tr>
+      <tr><td>Open flat ground, distance &lt;1km</td><td>60–80m AGL</td></tr>
+      <tr><td>Low rolling terrain (&lt;20m relief)</td><td>80–100m AGL</td></tr>
+      <tr><td>Moderate terrain (20–50m relief)</td><td>100–140m AGL</td></tr>
+      <tr><td>Significant terrain or urban (&gt;50m obstacles)</td><td>Requires site-specific analysis — do not estimate</td></tr>
+    </table>
+    <div class="alert alert-warn" style="margin-top:12px">The carrier→FPV link (2.4GHz) has less diffraction margin than 868MHz. If link budget is the constraint, increase relay altitude first before adjusting orbit radius.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Orbit Geometry</div>
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Orbit radius</strong><p>150–250m loiter radius works well for relay geometry while allowing orbit adjustments. Smaller radii tighten turns and increase bank angle — reduce radius in calm conditions only.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Orbit position</strong><p>Centre the orbit over the FPV operating area centroid. The carrier should have the FPV sub-drone on its near side at all times — keeps both RF links as short and direct as possible.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Avoid body-shadowing geometry</strong><p>If the carrier passes directly between the ground station and the FPV aircraft, both RF links may experience a brief null. Plan orbit direction to minimise time in this geometry.</p></div></div>
+  </div>
+
+  <div class="section-title">Waypoint Planning — 7-WP Template</div>
+  <p>All altitudes are <strong>relative to home point (AGL)</strong> unless stated otherwise. Verify in Mission Planner 3D view before upload.</p>
+  <div class="card accent">
+    <table>
+      <tr><th>WP</th><th>Type</th><th>Altitude</th><th>Planning notes</th></tr>
+      <tr><td><code>WP1</code></td><td>VTOL_TAKEOFF</td><td>20–30m AGL</td><td>Set at exact physical launch position — this sets the home point. Height sufficient to clear ground obstacles before transition begins.</td></tr>
+      <tr><td><code>WP2</code></td><td>WAYPOINT</td><td>50–80m AGL</td><td>Transition safety altitude. Position 100–200m downwind of launch in the cruise direction. Co-pilot advances mission here after confirming clean transition. Ensure 300m+ of clear airspace beyond for acceleration.</td></tr>
+      <tr><td><code>WP3</code></td><td>LOITER_TO_ALT</td><td>Relay altitude</td><td>Autonomous climb to relay altitude. Place over or near the FPV operating area. Fully autonomous — no pilot action until altitude reached. Set LOITER_TO_ALT heading=1 so aircraft exits toward WP4 automatically.</td></tr>
+      <tr><td><code>WP4</code></td><td>WAYPOINT</td><td>Relay altitude</td><td>Initial orbit centre for relay ops. Carrier Pilot orbits here manually as needed during the sortie.</td></tr>
+      <tr><td><code>WP5</code></td><td>LOITER_TO_ALT</td><td>30–40m AGL</td><td>Autonomous descent to approach altitude. Position 400m+ upwind of landing zone. Aircraft descends while loitering — fully autonomous. Do not interrupt.</td></tr>
+      <tr><td><code>WP6</code></td><td>WAYPOINT</td><td>20–25m AGL</td><td>Slope approach point — on the final approach path to WP7, ideally into-wind. Creates a stable approach angle for back-transition.</td></tr>
+      <tr><td><code>WP7</code></td><td>VTOL_LAND</td><td>0m (ground)</td><td>Exact landing target. Aircraft enters VTOL descent at this point and descends vertically. GPS accuracy ±2m — size landing zone accordingly.</td></tr>
+    </table>
+  </div>
+  <div class="alert alert-warn">After uploading: download the mission back from the FC and compare against the planned waypoints in Mission Planner. This confirms a successful write — upload failures are silent.</div>
+
+  <div class="section-title">Transition Planning</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Wind direction relative to WP2</strong><p>Crosswind or slightly downwind is the preferred transition corridor. A headwind transition is fine — a tailwind transition requires more airspeed margin, so add 10m altitude to WP2.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Obstacle clearance</strong><p>The corridor from WP1 to WP2 must be completely clear to at least 60m AGL. The aircraft gains altitude slowly during the VTOL→FW transition — this is the most vulnerable phase.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Q_TRANS_FAIL=4s abort window</strong><p>If transition doesn't complete within 4s of AUTO reaching WP2, ArduPlane aborts to QHOVER. In strong headwind, the airspeed sensor may be slow to register — increase WP2 altitude to give more time inside the abort window.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Back-transition glide (Q_BACKTRANS_MS=10s)</strong><p>The aircraft travels approximately 100–130m forward at cruise speed during the 10s back-transition. Plan WP5→WP6 to account for this before vertical VTOL descent begins at WP7.</p></div></div>
+  </div>
+
+  <div class="section-title">Wind Considerations</div>
+  <div class="card">
+    <table>
+      <tr><th>Condition</th><th>Effect</th><th>Mitigation</th></tr>
+      <tr><td>0–5 m/s surface wind</td><td>Minimal impact across all phases</td><td>Normal mission profile</td></tr>
+      <tr><td>5–8 m/s</td><td>VTOL drift increases. Transition may be slower into wind. Hover battery draw increases.</td><td>Increase WP2 altitude to 60–80m. Plan landing directly into wind. Monitor battery closely.</td></tr>
+      <tr><td>&gt;8 m/s or gusts &gt;10 m/s</td><td>VTOL stability significantly degraded. Loiter orbit drifts downwind. Q_ASSIST_SPEED triggers at 9 m/s drawing higher current from VTOL motors.</td><td><span class="crit-val">No-go</span> per T2 limits. Abort or relocate to a sheltered site.</td></tr>
+      <tr><td>Wind shear (calm surface, elevated wind)</td><td>Aircraft may encounter significantly different wind at transition altitude. Can cause unexpected pitch upset during transition.</td><td>Increase WP2 altitude. Watch airspeed through transition carefully. Abort at first sign of pitch instability.</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Pre-Upload Mission Checklist</div>
+  <div class="card accent">
+    <table>
+      <tr><th>Item</th><th>Verify</th></tr>
+      <tr><td>Waypoint count</td><td>Exactly 7 WPs for standard mission. Confirm in Mission Planner waypoint list.</td></tr>
+      <tr><td>WP1 position</td><td>Matches physical launch point within 5m. Home is set here — VTOL_LAND (WP7) should be within 10m of WP1.</td></tr>
+      <tr><td>All altitudes relative</td><td>All WP altitudes shown as AGL relative to home — not MSL. Check MP altitude units.</td></tr>
+      <tr><td>WP3 exit heading</td><td>LOITER_TO_ALT heading=1 so aircraft exits toward WP4 automatically when relay altitude is reached.</td></tr>
+      <tr><td>WP7 landing point</td><td>GPS-verified against physical marker. Clear 5m radius in all directions.</td></tr>
+      <tr><td>Mission verify round-trip</td><td>Download mission from FC after upload — compare against planned to confirm successful write.</td></tr>
+      <tr><td>Active waypoint selection</td><td>If no co-pilot for WP1→WP2 advance, set starting WP to WP2 — WP1 must NOT be the active waypoint.</td></tr>
+    </table>
+  </div>
+
+</div>
+
 </div><!-- /content -->
 
 <footer>DOC-RC-001 · HEEWING T2 VTOL RELAY CARRIER · ARDUPLANE · OPERATIONS MANUAL</footer>
