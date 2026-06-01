@@ -95,6 +95,21 @@ tr:last-child td{border-bottom:none;}
 .proc-step{display:flex;gap:14px;margin-bottom:10px;font-size:14px;}
 .proc-step .n{color:var(--red);font-weight:bold;min-width:22px;}
 .proc-step .t{color:var(--text);}
+/* ── EMERGENCY IMMEDIATE / CLEAN-UP ── */
+.emerg-imm{background:#180808;border-left:3px solid var(--red);padding:14px 18px;margin-bottom:4px;}
+.emerg-imm-badge{font-family:var(--head);font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);border:1px solid #5a0000;display:inline-block;padding:2px 10px;margin-bottom:12px;}
+.emerg-imm-step{display:flex;gap:16px;align-items:baseline;padding:8px 0;border-bottom:1px solid #2a1010;font-size:16px;font-weight:700;color:var(--text);}
+.emerg-imm-step:last-child{border-bottom:none;}
+.emerg-imm-step .n{color:var(--red);font-family:var(--head);font-size:17px;font-weight:700;min-width:26px;}
+.emerg-cleanup-btn{margin-top:12px;background:none;border:1px solid #332200;color:#facc1555;font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1.5px;padding:8px 16px;cursor:pointer;text-transform:uppercase;width:100%;text-align:left;transition:all .15s;}
+.emerg-cleanup-btn:hover,.emerg-cleanup-btn.open{border-color:var(--amber);color:var(--amber);}
+.emerg-cleanup{display:none;margin-top:8px;padding:14px 18px;background:#1a1206;border-left:3px solid var(--amber);}
+.emerg-cleanup.visible{display:block;}
+.emerg-cu-label{font-family:var(--head);font-size:9px;font-weight:700;letter-spacing:2px;color:var(--amber);border:1px solid #4a3000;display:inline-block;padding:2px 10px;margin-bottom:10px;}
+.emerg-cu-step{display:flex;gap:12px;padding:6px 0;font-size:13px;border-bottom:1px solid #221808;}
+.emerg-cu-step:last-child{border-bottom:none;}
+.emerg-cu-step .n{color:var(--amber);font-weight:bold;min-width:18px;flex-shrink:0;}
+.emerg-cu-step .t{color:var(--text);line-height:1.55;}
 /* ── PRE-ARM SEARCH ── */
 #prearm-search{width:100%;padding:12px 16px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;margin-bottom:18px;outline:none;}
 #prearm-search:focus{border-color:var(--accent);}
