@@ -1,0 +1,2338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HEEWING T2 — FLIGHT TOOLS</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
+:root {
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2a2a2a; --border2:#333;
+  --text:#e8e8e8; --muted:#666; --accent:#f97316; --amber:#facc15; --red:#ef4444;
+  --green:#22c55e; --dim:#444; --mono:'Share Tech Mono',monospace; --head:'Oswald',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;}
+header{background:var(--surface);border-bottom:2px solid var(--accent);}
+.hdr-top{display:flex;align-items:stretch;border-bottom:1px solid var(--border2);}
+.hdr-badge{background:var(--accent);color:#000;font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:3px;writing-mode:vertical-rl;padding:12px 8px;display:flex;align-items:center;}
+.hdr-main{flex:1;padding:14px 24px;}
+.hdr-doc-id{font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px;}
+.hdr-title{font-family:var(--head);font-size:22px;font-weight:700;color:var(--accent);letter-spacing:2px;line-height:1;}
+.hdr-sub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:5px;}
+.hdr-meta{display:flex;gap:32px;padding:8px 24px 8px 52px;font-size:10px;color:var(--muted);letter-spacing:1px;flex-wrap:wrap;}
+.hdr-meta span strong{color:var(--text);}
+nav{background:var(--surface2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;padding:0 8px;align-items:center;}
+nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:12px 18px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;}
+nav button:hover{color:var(--text);}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+.nav-manual-btn{margin-left:auto;background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;padding:6px 14px;cursor:pointer;white-space:nowrap;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;}
+.nav-manual-btn:hover{background:var(--accent);color:#000;}
+.content{max-width:960px;margin:0 auto;padding:28px 24px;padding-bottom:100px;}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;animation:fadeSlideIn .2s ease both;}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideDown{from{opacity:0;max-height:0;}to{opacity:1;max-height:600px;}}
+@keyframes checkPop{0%{transform:scale(0);}60%{transform:scale(1.3);}100%{transform:scale(1);}}
+@keyframes pulseFab{0%,100%{box-shadow:0 4px 20px rgba(239,68,68,.4);}50%{box-shadow:0 4px 32px rgba(239,68,68,.8),0 0 0 6px rgba(239,68,68,.15);}}
+@keyframes goNogoBanner{from{opacity:0;transform:scaleX(.95);}to{opacity:1;transform:scaleX(1);}}
+@keyframes pulseGoBorder{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}50%{box-shadow:0 0 0 8px rgba(34,197,94,.18);}}
+#emerg-fab{position:fixed;bottom:20px;right:20px;z-index:900;background:var(--red);color:#fff;border:none;font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px 22px;cursor:pointer;border-radius:4px;box-shadow:0 4px 20px rgba(239,68,68,.4);transition:background .15s,transform .1s;display:flex;align-items:center;gap:8px;animation:pulseFab 2.5s ease-in-out infinite;}
+#emerg-fab:hover{background:#dc2626;animation:none;box-shadow:0 4px 28px rgba(239,68,68,.7);}
+#emerg-fab:active{transform:scale(.96);}
+.section-title{font-family:var(--head);font-size:15px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2);padding-bottom:6px;margin:28px 0 14px;}
+.section-title:first-child{margin-top:0;}
+p{color:var(--muted);margin-bottom:10px;}
+p strong,p b{color:var(--text);}
+.card{background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--dim);padding:16px 18px;margin-bottom:14px;}
+.card.accent{border-left-color:var(--accent);}
+.card.amber{border-left-color:var(--amber);}
+.card.danger{border-left-color:var(--red);background:#1a0e0e;}
+.card-title{font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+.card.amber .card-title{color:var(--amber);}
+.card.danger .card-title{color:var(--red);}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px;}
+th{text-align:left;padding:8px 12px;font-family:var(--head);font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2);}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text);}
+td:first-child{color:var(--muted);}
+td code{background:var(--surface2);border:1px solid var(--border2);padding:2px 6px;border-radius:2px;color:var(--accent);font-size:13px;}
+tr:last-child td{border-bottom:none;}
+.val{color:var(--accent);font-weight:bold;}
+.warn-val{color:var(--amber);font-weight:bold;}
+.crit-val{color:var(--red);font-weight:bold;}
+.alert{padding:10px 14px;margin:10px 0;font-size:12px;border-left:3px solid;letter-spacing:.3px;}
+.alert-danger{border-color:var(--red);background:#1f1010;color:#f87171;}
+.alert-warn{border-color:var(--amber);background:#1f1a08;color:#facc15;}
+.alert-info{border-color:var(--accent);background:#1f1208;color:var(--accent);}
+.alert::before{font-weight:bold;margin-right:8px;}
+.alert-danger::before{content:'⚠ CAUTION:';color:var(--red);}
+.alert-warn::before{content:'⚡ WARNING:';color:var(--amber);}
+.alert-info::before{content:'▶ NOTE:';}
+.step{display:flex;gap:14px;margin-bottom:12px;align-items:flex-start;}
+.step-n{font-family:var(--head);font-size:14px;font-weight:700;color:var(--accent);min-width:24px;padding-top:1px;}
+.step-body{flex:1;}
+.step-body strong{color:var(--text);display:block;margin-bottom:2px;}
+.step-body p{margin:0;font-size:12px;}
+.emerg-hdr{font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--red);border-bottom:1px solid var(--red);padding-bottom:6px;margin-bottom:10px;opacity:.8;}
+.proc-step{display:flex;gap:12px;margin-bottom:8px;font-size:12px;}
+.proc-step .n{color:var(--red);font-weight:bold;min-width:18px;}
+.proc-step .t{color:var(--text);}
+.emerg-imm{background:#180808;border-left:3px solid var(--red);padding:10px 14px;margin-bottom:4px;}
+.emerg-imm-badge{font-family:var(--head);font-size:9px;font-weight:700;letter-spacing:2px;color:var(--red);border:1px solid #5a0000;display:inline-block;padding:2px 8px;margin-bottom:10px;}
+.emerg-imm-step{display:flex;gap:12px;align-items:baseline;padding:7px 0;border-bottom:1px solid #2a1010;font-size:15px;font-weight:700;color:var(--text);}
+.emerg-imm-step:last-child{border-bottom:none;}
+.emerg-imm-step .n{color:var(--red);font-family:var(--head);font-size:16px;font-weight:700;min-width:24px;}
+.emerg-cleanup-btn{margin-top:10px;background:none;border:1px solid #332200;color:#facc1555;font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1.5px;padding:7px 14px;cursor:pointer;text-transform:uppercase;width:100%;text-align:left;transition:all .15s;}
+.emerg-cleanup-btn:hover,.emerg-cleanup-btn.open{border-color:var(--amber);color:var(--amber);}
+.emerg-cleanup{display:none;margin-top:8px;padding:12px 14px;background:#1a1206;border-left:3px solid var(--amber);}
+.emerg-cleanup.visible{display:block;}
+.emerg-cu-label{font-family:var(--head);font-size:9px;font-weight:700;letter-spacing:2px;color:var(--amber);border:1px solid #4a3000;display:inline-block;padding:2px 8px;margin-bottom:8px;}
+.emerg-cu-step{display:flex;gap:10px;padding:5px 0;font-size:12px;border-bottom:1px solid #221808;}
+.emerg-cu-step:last-child{border-bottom:none;}
+.emerg-cu-step .n{color:var(--amber);font-weight:bold;min-width:16px;flex-shrink:0;}
+.emerg-cu-step .t{color:var(--text);line-height:1.5;}
+.mbadge{display:inline-block;font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:2px;}
+.m-qhov{background:#14230f;color:#22c55e;border:1px solid #166534;}
+.m-fbwb{background:#0f1a2e;color:#60a5fa;border:1px solid #1e40af;}
+.m-auto{background:#1c1208;color:#f97316;border:1px solid #c2410c;}
+.m-rtl{background:#1f0f0f;color:#ef4444;border:1px solid #991b1b;}
+/* ── CHECKLIST ── */
+.cl-hdr{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;position:sticky;top:0;z-index:100;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--border2);}
+.cl-hdr-title{font-family:var(--head);font-size:22px;font-weight:700;letter-spacing:3px;color:var(--accent);text-transform:uppercase;}
+.cl-progress-wrap{flex:1;min-width:100px;}
+.cl-progress{height:4px;background:var(--surface2);}
+.cl-progress-bar{height:100%;background:var(--green);transition:width .5s cubic-bezier(.4,0,.2,1);}
+.cl-progress-label{font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:3px;}
+.cl-reset{background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:13px;padding:8px 16px;cursor:pointer;letter-spacing:1px;}
+.cl-reset:hover{border-color:var(--amber);color:var(--amber);}
+.cl-section{margin-bottom:20px;animation:fadeSlideIn .25s ease both;}
+.cl-section:nth-child(1){animation-delay:.05s;}
+.cl-section:nth-child(2){animation-delay:.10s;}
+.cl-section:nth-child(3){animation-delay:.15s;}
+.cl-section:nth-child(4){animation-delay:.20s;}
+.cl-section:nth-child(5){animation-delay:.25s;}
+.cl-section-hdr{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:2px solid var(--border2);margin-bottom:4px;}
+.cl-section-letter{font-family:var(--head);font-size:13px;font-weight:700;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:0;}
+.cl-section-name{font-family:var(--head);font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;flex:1;}
+.cl-section-prog{font-size:9px;color:var(--muted);letter-spacing:1px;padding:3px 9px;background:var(--surface2);border:1px solid var(--border2);}
+.ci.warn-item .ci-left{border-left:3px solid var(--amber);padding-left:13px;}
+.ci-warn-dot{font-family:var(--head);font-size:9px;font-weight:700;color:var(--amber);border:1px solid #5a3a00;background:#1f1500;width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;letter-spacing:0;}
+.ci.done .ci-warn-dot{display:none;}
+.ci{display:flex;align-items:stretch;border-bottom:1px solid var(--border);min-height:50px;transition:opacity .2s;}
+.ci:last-child{border-bottom:none;}
+.ci.done{opacity:.4;min-height:0;max-height:28px;overflow:hidden;}
+.ci.done .ci-left{padding:5px 16px;}
+.ci.done .ci-right{display:none;}
+.ci-left{display:flex;align-items:center;gap:12px;width:50%;padding:12px 16px;cursor:pointer;border-right:1px solid var(--border);transition:background .1s;user-select:none;}
+.ci-left:hover{background:var(--surface2);}
+.ci.done .ci-left .ci-short{text-decoration:line-through;}
+.ci-right{display:flex;align-items:center;width:50%;padding:12px 16px;cursor:pointer;transition:background .1s;gap:10px;user-select:none;}
+.ci-right:hover{background:var(--surface2);}
+.ci-right.open{background:#1c1208;}
+.ci-right .expand-icon{font-size:18px;color:var(--dim);flex-shrink:0;transition:transform .15s,color .15s;}
+.ci-right.open .expand-icon{transform:rotate(90deg);color:var(--accent);}
+.ci-right .expand-hint{font-size:12px;color:var(--muted);letter-spacing:.5px;flex:1;}
+.ci-right.open .expand-hint{color:var(--accent);}
+.ci-box{width:24px;height:24px;border:2px solid var(--dim);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .15s;}
+.ci.done .ci-box{background:var(--green);border-color:var(--green);color:#000;font-weight:bold;animation:checkPop .25s cubic-bezier(.34,1.56,.64,1) both;}
+.ci.done .ci-box::after{content:'✓';}
+.ci-short{color:var(--text);font-size:15px;flex:1;}
+.ci-detail{display:none;margin:0 0 2px;padding:14px 20px;background:#1a1108;border-bottom:1px solid var(--border2);border-left:3px solid var(--accent);font-size:14px;color:var(--muted);overflow:hidden;}
+.ci-detail.visible{display:block;animation:slideDown .2s ease both;}
+.ci-detail-text{color:var(--text);margin-bottom:4px;line-height:1.5;}
+.ci-note{display:block;font-size:13px;color:var(--muted);margin-top:6px;}
+.ci-note.w{color:var(--amber);}
+.ci-note.c{color:var(--red);}
+.ci-note code{background:var(--bg);border:1px solid var(--border2);padding:2px 5px;color:var(--accent);font-size:12px;}
+.ci-note.copy-val{display:block;font-size:13px;color:var(--accent);background:var(--surface2);border:1px solid var(--border2);padding:5px 8px;margin-top:5px;word-break:break-all;white-space:pre;cursor:pointer;user-select:all;}
+.ci-note.copy-val::before{content:'⎘ ';opacity:.6;}
+.ci-note.copy-val.copied{border-color:var(--green);color:var(--green);}
+.go-nogo{margin-top:18px;padding:20px 24px;font-family:var(--head);font-size:24px;font-weight:700;letter-spacing:4px;text-transform:uppercase;display:none;border:2px solid;text-align:center;}
+.go-nogo.go{display:block;color:var(--green);border-color:var(--green);background:#0a1f0d;animation:goNogoBanner .3s ease both,pulseGoBorder 2.5s ease-in-out infinite;}
+.go-nogo.nogo{display:block;color:var(--red);border-color:var(--red);background:#1f0a0a;animation:goNogoBanner .3s ease both;}
+/* battery log inputs */
+.bl-label{display:block;font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
+.bl-input{width:100%;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:13px;outline:none;}
+.bl-input:focus{border-color:var(--accent);}
+.bl-btn{padding:10px 20px;background:var(--accent);border:none;color:#000;font-family:var(--head);font-size:13px;font-weight:700;letter-spacing:1px;cursor:pointer;}
+.bl-btn:hover{background:#ea6b0a;}
+footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:40px;}
+@media(max-width:600px){
+  .hdr-badge{writing-mode:horizontal-tb;padding:6px 12px;font-size:10px;}
+  .hdr-title{font-size:15px;}
+  .hdr-meta{padding:8px 12px;gap:8px 16px;font-size:9px;}
+  .content{padding:16px 12px 140px;}
+  nav{position:fixed;bottom:0;left:0;right:0;z-index:800;border-top:2px solid var(--border2);border-bottom:none;padding:0;}
+  nav button{padding:10px 8px 8px;font-size:10px;letter-spacing:.3px;min-height:52px;border-bottom:none;border-top:2px solid transparent;}
+  nav button.active{border-bottom:none;border-top-color:var(--accent);}
+  .nav-manual-btn{min-height:52px;margin-left:0;border:none;border-left:1px solid var(--border2);padding:10px 12px 8px;font-size:10px;}
+  .ci-left,.ci-right{padding:10px 8px;}
+  .ci-box{width:22px;height:22px;font-size:13px;}
+  #emerg-fab{bottom:68px;right:16px;font-size:13px;padding:12px 16px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-top">
+    <div class="hdr-badge">TOOLS</div>
+    <div class="hdr-main">
+      <div class="hdr-doc-id">HEEWING T2 VTOL · ARDUPLANE · ELRS 915/868/2.4GHz · SIYI HM30</div>
+      <div class="hdr-title">RELAY CARRIER — FLIGHT TOOLS</div>
+      <div class="hdr-sub">CHECKLISTS · BATTERY LOG · EMERGENCY PROCEDURES</div>
+    </div>
+  </div>
+  <div class="hdr-meta">
+    <span><strong>PLATFORM</strong> Heewing T2 VTOL</span>
+    <span><strong>BATT</strong> 6S 7000mAh</span>
+    <span><strong>CRIT VOLT</strong> 22.2V</span>
+    <span><strong>RTL ALT</strong> 120m AGL</span>
+    <span><strong>CRUISE</strong> 13 m/s</span>
+  </div>
+</header>
+
+<nav id="nav">
+  <button onclick="switchTab('preflight',this)">Pre-Flight</button>
+  <button onclick="switchTab('turnaround',this)">Turnaround</button>
+  <button onclick="switchTab('postflight',this)">Post-Flight</button>
+  <button onclick="switchTab('battlog',this)">Battery Log</button>
+  <button onclick="switchTab('tlog',this)">Telemetry</button>
+  <button onclick="switchTab('weather',this)">Weather</button>
+  <a class="nav-manual-btn" href="manual.html">MANUAL ▶</a>
+</nav>
+
+<button id="emerg-fab" onclick="openEmerg()">⚠ EMERGENCY</button>
+
+<div id="emerg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999;overflow-y:auto">
+  <div style="max-width:860px;margin:0 auto;padding:24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-bottom:2px solid var(--red);padding-bottom:12px">
+      <span style="font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:3px;color:var(--red)">⚠ EMERGENCY PROCEDURES</span>
+      <button onclick="closeEmerg()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:6px 14px;cursor:pointer;letter-spacing:1px">CLOSE ✕</button>
+    </div>
+    <div class="alert alert-danger">Memorise the <strong>immediate actions</strong>. Perform them without reference. When stable, open the clean-up section.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px">
+      <button onclick="emergJump('emerg-rc')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">RC LOSS</button>
+      <button onclick="emergJump('emerg-relay')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">RELAY LOSS</button>
+      <button onclick="emergJump('emerg-video')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">VIDEO LOSS</button>
+      <button onclick="emergJump('emerg-trans')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">TRANSITION</button>
+      <button onclick="emergJump('emerg-batt')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">BATTERY</button>
+      <button onclick="emergJump('emerg-gcs')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">GCS LOSS</button>
+    </div>
+    <div id="emerg-rc" class="card danger" style="margin-top:14px">
+      <div class="emerg-hdr">RC Link Loss — 915MHz (Carrier Control)</div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>WAIT — do not touch TX</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>1.5s: <span class="mbadge m-fbwb">FBWA</span> AUTO — monitor MP</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>5s: <span class="mbadge m-rtl">RTL</span> AUTO — 120m AGL</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>GCS STILL LIVE: MP mode commands</div></div>
+        <div class="emerg-imm-step"><div class="n">5</div><div>NO TX POWER-CYCLE in flight</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Confirm RTL altitude in MP — should show 120m AGL before descent begins.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Monitor airspeed — must stay above 11 m/s. Use MP GCS for mode commands if needed.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Monitor battery — extended RTL draws higher current during VTOL descent phase.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">If link recovers: assess battery and position before resuming AUTO mission.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">After landing: inspect TX/RX antennas, check bind, log the incident.</div></div>
+      </div>
+    </div>
+    <div id="emerg-relay" class="card danger">
+      <div class="emerg-hdr">Relay Link Loss — 2.4GHz (FPV Sub-Drone)</div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>FPV PILOT: HANDS OFF — now</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>CARRIER: HOLD LOITER</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>GPS RESCUE fires in 2.5s — wait</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>DO NOT touch FPV TX sticks</div></div>
+        <div class="emerg-imm-step"><div class="n">5</div><div>WATCH OSD: need 8+ GPS sats</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">GPS Rescue: climbs 30m, cruises home at 100m AGL / 7.5 m/s, motor cut at 4m.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Monitor using SIYI carrier camera if FPV is in view.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Keep carrier loitering until FPV lands — sub-drone may be returning toward carrier position.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Confirm FPV disarmed before approach on ground.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Check relay bind was completed pre-flight. Inspect carrier Nomad relay TX antenna.</div></div>
+      </div>
+    </div>
+    <div id="emerg-video" class="card danger">
+      <div class="emerg-hdr">Video Loss — 5.8GHz or SIYI Chain</div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>FPV PILOT: ZERO INPUTS — hover</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>CARRIER: DESCEND — reduce range</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>WAIT 10 SECONDS</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>STILL LOST: FPV return home</div></div>
+        <div class="emerg-imm-step"><div class="n">5</div><div>CARRIER: independent recovery</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check CVBS→HDMI converter — connector, power light on, no heat damage.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check SIYI HDMI→IP encoder — connected to SIYI switch, LED status normal.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Verify FPV VTX channel: Raceband R5 / 5806 MHz.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Check 5.8G VRX antenna orientation on carrier.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Restart GStreamer and MPV stream. Verify video in MPV.net before FPV re-arms.</div></div>
+      </div>
+    </div>
+    <div id="emerg-trans" class="card danger">
+      <div class="emerg-hdr">Transition Failure — VTOL → FW</div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div><span class="mbadge m-qhov">QHOVER</span> — switch now</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>GAIN ALTITUDE — full VTOL power</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>HOLD — assess before any retry</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check pitot — airspeed reading in MP? Zero = blocked/disconnected. Do not retry without airspeed data.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check tilt servos — switch to FBWB and observe in MP. Do front rotors tilt forward?</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Check battery — sufficient for another transition attempt plus VTOL recovery?</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Check wind — clear corridor ahead? Crosswind/tailwind can prevent successful transition.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">If retrying: climb to 60m+ in QHOVER first. Clear 300m corridor ahead. Monitor airspeed immediately on AUTO.</div></div>
+        <div class="emerg-cu-step"><div class="n">6</div><div class="t">Log failure phase: no airspeed build in 3s vs pitch-down upset. Note battery voltage.</div></div>
+      </div>
+    </div>
+    <div id="emerg-batt" class="card danger">
+      <div class="emerg-hdr">Battery Critical — Carrier</div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>23.0V → <span class="mbadge m-rtl">RTL</span> NOW — left button</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>22.5V → RTL MUST BE ACTIVE</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>22.2V → AUTOLAND HERE — not home</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>CLEAR AREA BELOW</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Log landing voltage in battery log — note start voltage and any anomalies.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Inspect battery for puffing, heat, smell. If any present — quarantine, do not charge.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Allow pack to cool 30 minutes minimum before charging.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Review: was RTL initiated on time? Use battery log analysis to check sag vs previous flights.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Set BATT_LOW_VOLT using the battery log recommendation in the Tools page.</div></div>
+      </div>
+    </div>
+    <div id="emerg-gcs" class="card danger">
+      <div class="emerg-hdr">GCS Link Loss (SIYI HM30)</div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>SWITCH — 915MHz Nomad TX now</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>CONFIRM carrier responds</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>AUTO: GCS failsafe → RTL fires</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>OTHER: Nomad switch + left button</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check ethernet cable — mast to laptop. Reseat both ends.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check HM30 ground unit LED — blue = linked. If not: check mast battery and HM30 power.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Check mast battery voltage — below 21.0V may cause HM30 brownout.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Restart MP UDPCI: IP 192.168.144.12 / Port 19856.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Do not re-enter AUTO until GCS telemetry stable for 30+ seconds.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- PRE-FLIGHT -->
+<div id="tab-preflight" class="tab-panel">
+  <div class="cl-hdr">
+    <div class="cl-hdr-title">Pre-Flight Check</div>
+    <div class="cl-progress-wrap">
+      <div class="cl-progress"><div class="cl-progress-bar" id="pb"></div></div>
+      <div class="cl-progress-label" id="pl">0 / 0 ITEMS COMPLETE</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+      <div id="pf-timer" style="font-family:var(--mono);font-size:20px;font-weight:bold;color:var(--muted);letter-spacing:3px;min-width:72px;text-align:center;transition:color .3s">00:00</div>
+      <button class="cl-reset" id="pf-start-btn" onclick="pfTimerToggle()" style="border-color:var(--accent);color:var(--accent)">START</button>
+      <button class="cl-reset" onclick="pfTimerReset()" title="Reset timer">↺</button>
+    </div>
+    <button class="cl-reset" id="expand-btn" onclick="toggleExpandAll()">EXPAND ALL</button>
+    <button class="cl-reset" onclick="resetCL()">RESET</button>
+  </div>
+  <div id="cl-container"></div>
+  <div id="go-nogo" class="go-nogo"></div>
+  <div style="margin-top:28px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--surface);border:1px solid var(--border2);margin-bottom:12px">
+      <div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">DATA FILE</div>
+      <div class="vtol-file-status" style="flex:1;font-size:11px;letter-spacing:1px"></div>
+      <button class="cl-reset vtol-link-btn" onclick="vtolLinkFile()">LINK FILE</button>
+      <button class="cl-reset" onclick="vtolExportData()">EXPORT</button>
+      <button class="cl-reset" onclick="vtolImportData()">IMPORT</button>
+      <div style="width:1px;background:var(--border2);align-self:stretch;margin:0 2px"></div>
+      <div class="vtol-sync-status" style="font-size:11px;letter-spacing:1px"></div>
+      <button class="cl-reset vtol-sync-setup-btn" onclick="vtolSetupSync()">SETUP SYNC</button>
+      <button class="cl-reset vtol-sync-btn" onclick="vtolSyncNow()" style="display:none">SYNC NOW</button>
+    </div>
+    <div id="pf-archive-wrap" style="display:none">
+      <div class="section-title" style="margin-top:0">Preflight Archive</div>
+      <div id="pf-archive-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TURNAROUND -->
+<div id="tab-turnaround" class="tab-panel">
+  <div class="cl-hdr">
+    <div class="cl-hdr-title">Turnaround Check</div>
+    <div class="cl-progress-wrap">
+      <div class="cl-progress"><div class="cl-progress-bar" id="pb2"></div></div>
+      <div class="cl-progress-label" id="pl2">0 / 0 ITEMS COMPLETE</div>
+    </div>
+    <button class="cl-reset" id="expand-btn2" onclick="toggleExpandAll2()">EXPAND ALL</button>
+    <button class="cl-reset" onclick="resetCL2()">RESET</button>
+  </div>
+  <div id="cl-container2"></div>
+  <div id="go-nogo2" class="go-nogo"></div>
+</div>
+
+<!-- POST-FLIGHT -->
+<div id="tab-postflight" class="tab-panel">
+  <div class="section-title">Immediate Post-Landing</div>
+  <div class="card accent">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Disarm carrier</strong><p>Confirm disarmed in Mission Planner. All motors stopped. Do not approach until disarmed.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Disarm FPV sub-drone</strong><p>Co-pilot confirms FPV disarmed. Props stopped.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Disconnect carrier battery</strong><p>Disconnect 6S pack. All systems power down. Record landing voltage.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Disconnect FPV battery</strong><p>Record FPV landing voltage.</p></div></div>
+  </div>
+  <div class="section-title">Ground Station Teardown</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Check mast battery voltage</strong><p>Disconnect and measure 6S 3000mAh mast battery. Below <span class="warn-val">21.0V</span>: charge immediately, do not store discharged.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Power down HM30 ground unit</strong><p>Disconnect ethernet. Remove mast battery safely.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Lower and secure mast</strong><p>Confirm HM30 and cabling secured before transport.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Close Mission Planner</strong><p>Save log if required.</p></div></div>
+  </div>
+  <div class="section-title">Inspection</div>
+  <div class="card">
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Carrier airframe</strong><p>Inspect tilt motor mounts, wing joins, prop blades, connectors. Check for heat or smell from ESCs/motors.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier battery</strong><p>Check for puffing, heat, damage. Store at 22.8V (3.8V/cell) if not flying within 48h. Never store discharged — BATT_CRT voltage (22.2V) is not a storage target.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Video chain</strong><p>Check CVBS→HDMI and SIYI HDMI→IP for heat. Inspect VRX antenna.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>FPV sub-drone</strong><p>Inspect props, motors, frame.</p></div></div>
+  </div>
+</div>
+
+<!-- BATTERY LOG -->
+<div id="tab-battlog" class="tab-panel">
+  <div class="section-title" style="margin-top:0">Auto-Read from .tlog</div>
+  <p>Upload an ArduPilot <strong>.tlog</strong> file from Mission Planner to automatically extract battery voltages and flight time.</p>
+  <div class="card" style="margin-bottom:20px">
+    <label class="bl-label" style="margin-bottom:8px;display:block">SELECT .TLOG FILE</label>
+    <input type="file" id="tlog-file" accept=".tlog,.log" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
+    <div id="tlog-status" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
+    <button class="bl-btn" onclick="parseTlog()">READ TLOG</button>
+  </div>
+
+  <div class="section-title">Log New Flight</div>
+  <p>Fields auto-filled from .tlog above, or enter manually.</p>
+  <div class="card accent" style="margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div><label class="bl-label">DATE</label><input type="date" id="bl-date" class="bl-input"></div>
+      <div><label class="bl-label">FLIGHT / SORTIE</label><input type="text" id="bl-flight" class="bl-input" placeholder="e.g. sortie 3"></div>
+      <div><label class="bl-label">VOLTAGE AT POWER-ON (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-start" class="bl-input" step="0.1" placeholder="e.g. 25.1" style="flex:1"><button onclick="fetchVoltage('bl-start')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label">LOWEST VOLTAGE DURING LANDING (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-min" class="bl-input" step="0.1" placeholder="e.g. 22.8" style="flex:1"><button onclick="fetchVoltage('bl-min')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label">RESTING VOLTAGE AFTER LANDING (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-rest" class="bl-input" step="0.1" placeholder="e.g. 23.2" style="flex:1"><button onclick="fetchVoltage('bl-rest')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label">FLIGHT TIME (min)</label><input type="number" id="bl-time" class="bl-input" step="1" placeholder="e.g. 18"></div>
+    </div>
+    <div style="margin-bottom:12px"><label class="bl-label">NOTES</label><input type="text" id="bl-notes" class="bl-input" placeholder="Wind, conditions, anomalies..."></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button class="bl-btn" onclick="logBattery()">SAVE ENTRY</button>
+      <span style="font-size:12px;color:var(--muted)">MP buttons fetch live voltage from Mission Planner (laptop only — requires MP running with REST API on port 20199)</span>
+    </div>
+    <div id="mp-fetch-status" style="font-size:13px;margin-top:8px;display:none"></div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Battery Configuration</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+      <div>
+        <label class="bl-label">CELL COUNT</label>
+        <select id="bl-cells" class="bl-input" onchange="saveBattType();renderBattLog()" style="width:auto;cursor:pointer;background:var(--surface2)">
+          <option value="3">3S (11.1V nom)</option><option value="4">4S (14.8V nom)</option>
+          <option value="5">5S (18.5V nom)</option><option value="6">6S (22.2V nom)</option>
+          <option value="7">7S (25.9V nom)</option><option value="8">8S (29.6V nom)</option>
+        </select>
+      </div>
+      <div>
+        <label class="bl-label">CHEMISTRY</label>
+        <select id="bl-chem" class="bl-input" onchange="saveBattType();renderBattLog()" style="width:auto;cursor:pointer;background:var(--surface2)">
+          <option value="lipo">LiPo (4.2V full · 3.7V nom)</option>
+          <option value="liion">Li-Ion (4.2V full · 3.6V nom)</option>
+          <option value="life">LiFe / A123 (3.65V full · 3.3V nom)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div id="bl-analysis"></div>
+  <div class="section-title">Flight Log</div>
+  <div id="bl-log-empty" style="color:var(--muted);font-size:14px;padding:12px 0">No entries yet.</div>
+  <div style="overflow-x:auto"><table id="bl-log-table" style="display:none">
+    <tr><th>Date</th><th>Flight</th><th>Start V</th><th>Min V</th><th>Rest V</th><th>Sag</th><th>Min</th><th>Notes</th><th></th></tr>
+  </table></div>
+</div>
+
+<!-- TELEMETRY ANALYSIS -->
+<div id="tab-tlog" class="tab-panel">
+  <div class="section-title" style="margin-top:0">DataFlash Log Analysis</div>
+  <p>Upload an ArduPilot <strong>.bin</strong> DataFlash log from the flight controller SD card. Richer and more complete than .tlog — extracts battery, altitude, airspeed, GPS, flight modes, and status messages.</p>
+  <div class="card accent" style="margin-bottom:20px">
+    <label class="bl-label" style="margin-bottom:8px;display:block">SELECT .BIN FILE</label>
+    <input type="file" id="bin-file" accept=".bin,.BIN" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
+    <button class="bl-btn" onclick="parseBinFull()">ANALYSE</button>
+    <div id="bin-status" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
+  </div>
+  <div id="bin-result"></div>
+</div>
+
+<!-- WEATHER -->
+<div id="tab-weather" class="tab-panel">
+  <div class="section-title" style="margin-top:0">Weather Check</div>
+  <p>Live conditions via Open-Meteo. T2 limits: <strong>GO ≤5 m/s</strong> · <strong>CAUTION 5–8 m/s</strong> · <strong>NO-GO &gt;8 m/s</strong> wind or any gusts &gt;10 m/s.</p>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;background:var(--surface);border:1px solid var(--border2);margin-bottom:14px">
+    <div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">DATA FILE</div>
+    <div class="vtol-file-status" style="flex:1;font-size:11px;letter-spacing:1px"></div>
+    <button class="cl-reset vtol-link-btn" onclick="vtolLinkFile()">LINK FILE</button>
+    <button class="cl-reset" onclick="vtolExportData()">EXPORT</button>
+    <button class="cl-reset" onclick="vtolImportData()">IMPORT</button>
+  </div>
+  <div style="margin-bottom:16px">
+    <div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">SAVED LOCATIONS</div>
+    <div id="wx-favorites"></div>
+  </div>
+  <div class="card accent" style="margin-bottom:20px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
+      <div style="flex:1;min-width:220px">
+        <label class="bl-label">PASTE COORDINATES (Google Maps format or lat, lon)</label>
+        <input type="text" id="wx-paste" class="bl-input" placeholder="e.g. 59.9139, 10.7522  or  59.9139 10.7522" oninput="wxParsePaste(this.value)">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div style="flex:1;min-width:120px"><label class="bl-label">LATITUDE</label><input type="number" id="wx-lat" class="bl-input" step="0.0001" placeholder="59.9139"></div>
+      <div style="flex:1;min-width:120px"><label class="bl-label">LONGITUDE</label><input type="number" id="wx-lon" class="bl-input" step="0.0001" placeholder="10.7522"></div>
+      <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <button class="bl-btn" onclick="getLocation()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border2)">USE GPS</button>
+        <button class="bl-btn" onclick="fetchWeather()">FETCH</button>
+        <button class="bl-btn" onclick="wxSaveFavorite()" style="background:var(--surface2);color:var(--amber);border:1px solid var(--amber)">SAVE &#x2605;</button>
+      </div>
+    </div>
+  </div>
+  <div id="wx-result"></div>
+</div>
+
+</div><!-- /content -->
+
+<footer>HEEWING T2 VTOL RELAY CARRIER · FLIGHT TOOLS · ARDUPLANE</footer>
+
+<script>
+function toggleCleanup(btn) {
+  var el = btn.nextElementSibling;
+  var open = el.classList.toggle('visible');
+  btn.classList.toggle('open', open);
+  btn.innerHTML = (open ? '▼' : '▶') + ' &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE';
+}
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  localStorage.setItem('vtol_active_tab', name);
+}
+function openEmerg() { document.getElementById('emerg-modal').style.display='block'; document.body.style.overflow='hidden'; }
+function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow=''; }
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeEmerg(); });
+
+// ── CHECKLIST SECTION COLOURS ──
+const SEC_COLORS = {
+  A:'#60a5fa', B:'#f97316', C:'#22c55e', D:'#a78bfa', E:'#f43f5e',
+  T1:'#f97316', T2:'#a78bfa', T3:'#f43f5e'
+};
+
+// ── CHECKLIST 1 ──
+const CL = [
+  { id:'A', name:'SITE', items:[
+    { s:'Airspace verified & pilots briefed', t:'Airspace verified — NOTAMs checked, operation permitted. Both pilots briefed on roles and emergency actions.', w:true },
+    { s:'Wind within limits', t:'Wind within limits — crosswind acceptable for VTOL.', n:'Wind vane active — carrier will weathervane into wind automatically.' },
+    { s:'Landing zone clear', t:'VTOL landing zone clear — 5m radius, level, no obstacles.' },
+  ]},
+  { id:'B', name:'VTOL BUILD & POWER-ON', items:[
+    { s:'Airframe inspected', t:'Carrier drone assembled and inspected — no cracks at tilt motor mounts or wing joins.' },
+    { s:'Pitot cover on', t:'Pitot cover installed.', n:'Leave on until pitot calibration step.', w:true },
+    { s:'Battery secured & power on', t:'Battery secured — strap tight, no movement. Power on carrier drone immediately to allow GPS fix acquisition while ground station is being set up.', n:'Power on early for best GPS fix quality. Do not arm yet.' },
+    { s:'Props tight, rotation correct', t:'All props tight — correct rotation direction confirmed for all 4 motors.', n:'Front pair: both tilt motor props. Rear pair: fixed lift motor props.', w:true },
+  ]},
+  { id:'C', name:'GROUND STATION', items:[
+    { s:'Mast up and powered', t:'HM30 mast erected and powered — 6S 3000mAh secured to mast.' },
+    { s:'Ethernet connected', t:'Ethernet cable connected mast → laptop.' },
+    { s:'HM30 linked, battery OK', t:'HM30 ground unit linked — verify LED is blue. Check mast battery voltage.' },
+    { s:'Subnet verified', t:'Ethernet network adapter on correct subnet.', n:'IP must be <code>192.168.144.X</code> — subnet mask <code>255.255.255.0</code>' },
+    { s:'Mission Planner connected', t:'Mission Planner open — second screen via USB-C. Select <strong>UDPCI</strong> in MP connection dropdown.', extras:[{label:'IP',val:'192.168.144.12'},{label:'Port',val:'19856'}] },
+    { s:'GStreamer configured', t:'GStreamer: right-click avionics screen → Video → Set GStreamer Source. Paste pipeline:', n:'rtspsrc location=rtsp://192.168.144.26:8554/main.264 latency=41 udp-reconnect=1 timeout=0 do-retransmission=false ! application/x-rtp ! decodebin3 ! queue max-size-buffers=1 leaky=2 ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink sync=false', copy:true },
+    { s:'mpv.conf verified', t:'MPV.net — verify mpv.conf contains correct low-latency config:', n:'profile=low-latency\nno-cache\nuntimed\nhwdec=auto\nrtsp-transport=udp', copy:true },
+    { s:'MPV stream open', t:'MPV.net — open stream: copy URL, right-click screen → File → Open URL or file from clipboard', n:'rtsp://192.168.144.25:8554/main.264', copy:true },
+    { s:'All devices charged', t:'All controllers, TX units and EcoFlow charged and ready.' },
+  ]},
+  { id:'D', name:'CARRIER DRONE', items:[
+    { s:'Compass calibrated', t:'Compass calibration — Mission Planner: Initial Setup → Mandatory Hardware → Compass → Start. Rotate through all axes. Verify no compass errors.' },
+    { s:'Home position set', t:'Home position set correctly — verify on map.' },
+    { s:'Mission verified', t:'Mission loaded and verified on map — all 7 waypoints in correct positions.' },
+    { s:'Failsafe params verified', t:'Failsafe parameters verified in Mission Planner Full Parameter List:', n:'THR_FAILSAFE = 2  (RC failsafe enabled)\nTHR_FS_VALUE = 950  (throttle loss threshold)\nFS_SHORT_ACTN = 0  (short loss → FBWA)\nFS_SHORT_TIMEOUT = 1.5  (seconds)\nFS_LONG_ACTN = 1  (long loss → RTL)\nFS_LONG_TIMEOUT = 5  (seconds)\nBATT_CRT_VOLT = 22.2  (critical voltage, V)\nBATT_FS_CRT_ACT = 6  (critical → Loiter to QLand)\nFS_GCS_ENABL = 2  (GCS failsafe in AUTO only)', w:true, copy:true },
+    { s:'Servo check (MANUAL)', t:'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and in correct direction. Switch back to QHOVER when done.', n:'MANUAL must never be used in flight.', w:true },
+    { s:'Mode cycle verified', t:'Cycle through all 3 Nomad switch positions, confirm QHOVER / FBWB / AUTO update in Mission Planner. Verify tilt servos rotate forward on FBWB.' },
+    { s:'Pitot calibrated, cover removed', t:'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated" in Messages. Confirm airspeed stable and below 2 m/s. Remove pitot cover.', w:true },
+    { s:'Correct AUTO waypoint selected', t:'Verify correct starting waypoint for AUTO mode. If launching without co-pilot, WP 1 must NOT be the active waypoint.', w:true },
+  ]},
+  { id:'E', name:'FPV SUB-DRONE', items:[
+    { s:'FPV battery connected', t:'FPV battery connected — voltage nominal.' },
+    { s:'FPV props checked', t:'FPV props tight — correct rotation direction.', n:'7"+ quad — check motor bell screws and prop nuts.' },
+    { s:'VTX on, video confirmed', t:'5.8GHz VTX powered — correct channel and band. Verify FPV video feed visible in MPV.net.', n:'Must show live FPV view — not static or blank.', w:true },
+    { s:'Relay link bound', t:'Bind FPV RX to carrier relay Nomad: hold LEFT button on carrier Nomad for 3s. Confirm ELRS 2.4GHz relay link established.', n:'Required every preflight. Bind to carrier Nomad only — not the ground TX.', w:true },
+  ]}
+];
+
+const CL2 = [
+  { id:'T1', name:'CARRIER — BATTERY & INSPECTION', items:[
+    { s:'Airframe inspected', t:'Quick visual — check tilt motor mounts, wing joins, props for damage from previous flight.' },
+    { s:'Battery swapped', t:'Remove used battery, record landing voltage, place on charger immediately. Install fresh battery — strap tight, verify above 25.0V.', n:'Used batteries must be set to charge before the next flight begins.', w:true },
+    { s:'Power on, GPS acquiring', t:'Power on carrier drone. Allow GPS to re-acquire fix before proceeding.' },
+  ]},
+  { id:'T2', name:'CARRIER — PRE-ARM', items:[
+    { s:'Home position reset', t:'Home position updated on map — verify correct location.' },
+    { s:'Mission verified', t:'Mission still loaded and correct — all 7 waypoints in correct positions.' },
+    { s:'Correct AUTO waypoint selected', t:'Verify correct starting waypoint for AUTO. If no co-pilot, WP 1 must NOT be active.', w:true },
+    { s:'Servo check (MANUAL)', t:'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and correctly. Switch back to QHOVER when done.', n:'MANUAL must never be used in flight.', w:true },
+    { s:'Pitot calibrated, cover removed', t:'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated". Confirm airspeed below 2 m/s. Remove pitot cover.', w:true },
+    { s:'Mode cycle verified', t:'Cycle all 3 Nomad switch positions. Confirm QHOVER / FBWB / AUTO in Mission Planner. Verify tilt servos rotate on FBWB.' },
+    { s:'GStreamer restarted', t:'GStreamer must be restarted after power cycle. Right-click avionics → Video → Set GStreamer Source → confirm pipeline → start.' },
+    { s:'MPV stream restarted', t:'MPV.net stream must be reopened. Copy URL, right-click screen → File → Open URL or file from clipboard.', n:'rtsp://192.168.144.25:8554/main.264', copy:true },
+  ]},
+  { id:'T3', name:'FPV SUB-DRONE', items:[
+    { s:'FPV battery swapped', t:'Remove used FPV battery, place on charger. Install fresh pack. Verify voltage nominal.' },
+    { s:'FPV props checked', t:'Quick visual — props undamaged, tight.' },
+    { s:'VTX on, video confirmed', t:'5.8GHz VTX powered. Verify FPV feed visible in MPV.net.', n:'Must show live FPV view — not static or blank.', w:true },
+    { s:'Relay link bound', t:'Re-bind FPV RX to carrier relay Nomad: hold LEFT button for 3s. Confirm ELRS 2.4GHz link established.', n:'Required every flight — bind to carrier Nomad only.', w:true },
+  ]}
+];
+
+function buildChecklist(CL_data, containerId, storageKey, secProgPrefix, overallFn) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  const saved = JSON.parse(localStorage.getItem(storageKey) || '{}');
+  CL_data.forEach(sec => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cl-section';
+    wrap.id = 'cls-' + sec.id;
+    const sc = SEC_COLORS[sec.id] || 'var(--accent)';
+    wrap.innerHTML = `<div class="cl-section-hdr" style="border-bottom-color:${sc}44"><span class="cl-section-letter" style="background:${sc}22;border:1px solid ${sc}66;color:${sc}">${sec.id}</span><span class="cl-section-name" style="color:${sc}">${sec.name}</span><span class="cl-section-prog" id="${secProgPrefix}${sec.id}"></span></div>`;
+    sec.items.forEach((item, i) => {
+      const key = `${sec.id}-${i}`;
+      const done = saved[key] || false;
+      const hasDetail = item.t || item.n || (item.extras && item.extras.length);
+      const noteClass = item.copy ? ' copy-val' : (item.w ? ' w' : '');
+      const noteHtml = item.n ? `<span class="ci-note${noteClass}"${item.copy ? ` onclick="copyVal(this,event)"` : ''}>${item.n}</span>` : '';
+      const extrasHtml = (item.extras||[]).map(e => `<div style="margin-top:6px"><span style="font-size:10px;color:var(--muted);letter-spacing:1px">${e.label}</span><span class="ci-note copy-val" onclick="copyVal(this,event)">${e.val}</span></div>`).join('');
+      const detailHtml = hasDetail ? `<div class="ci-detail" id="det-${sec.id}-${i}"><span class="ci-detail-text">${item.t||''}</span>${noteHtml}${extrasHtml}</div>` : '';
+      const row = document.createElement('div');
+      row.className = 'ci' + (done ? ' done' : '') + (item.w ? ' warn-item' : '');
+      row.dataset.key = key; row.dataset.sec = sec.id; row.dataset.store = storageKey; row.dataset.prefix = secProgPrefix; row.dataset.overall = overallFn;
+      const warnDot = item.w ? '<span class="ci-warn-dot">!</span>' : '';
+      row.innerHTML = `<div class="ci-left" onclick="toggleCI(this.closest('.ci'),event)"><div class="ci-box"></div><span class="ci-short">${item.s||item.t}</span>${warnDot}</div><div class="ci-right${hasDetail?'':' no-detail'}" id="right-${sec.id}-${i}" ${hasDetail?`onclick="toggleDetail('${sec.id}-${i}',this,event)"`:''}>${hasDetail?`<span class="expand-icon">▶</span><span class="expand-hint">DETAILS</span>`:''}</div>`;
+      wrap.appendChild(row);
+      if (hasDetail) { const d = document.createElement('div'); d.innerHTML = detailHtml; wrap.appendChild(d.firstChild); }
+    });
+    c.appendChild(wrap);
+    updateSecProg(sec.id, secProgPrefix, containerId);
+  });
+  window[overallFn]();
+}
+
+function toggleCI(el, e) {
+  if (e) e.stopPropagation();
+  el.classList.toggle('done');
+  if (el.classList.contains('done')) {
+    const det = document.getElementById('det-' + el.dataset.key);
+    if (det && det.classList.contains('visible')) {
+      det.classList.remove('visible');
+      const right = el.querySelector('.ci-right');
+      if (right) { right.classList.remove('open'); const h = right.querySelector('.expand-hint'); if (h) h.textContent = 'DETAILS'; }
+    }
+  }
+  const saved = JSON.parse(localStorage.getItem(el.dataset.store) || '{}');
+  saved[el.dataset.key] = el.classList.contains('done');
+  localStorage.setItem(el.dataset.store, JSON.stringify(saved));
+  updateSecProg(el.dataset.sec, el.dataset.prefix, el.closest('[id^="cl-container"]') ? el.closest('[id^="cl-container"]').id : 'cl-container');
+  window[el.dataset.overall]();
+}
+
+function updateSecProg(id, prefix, containerId) {
+  const c = document.getElementById(containerId || 'cl-container');
+  const sec = c ? c.querySelector('#cls-' + id) : document.getElementById('cls-' + id);
+  if (!sec) return;
+  const all = sec.querySelectorAll('.ci').length;
+  const done = sec.querySelectorAll('.ci.done').length;
+  const el = document.getElementById(prefix + id);
+  if (el) el.textContent = `${done}/${all}`;
+}
+
+function toggleDetail(key, r, e) {
+  if (e) e.stopPropagation();
+  const det = document.getElementById('det-' + key);
+  if (!det) return;
+  const open = det.classList.toggle('visible');
+  r.classList.toggle('open', open);
+  const h = r.querySelector('.expand-hint');
+  if (h) h.textContent = open ? 'CLOSE' : 'DETAILS';
+}
+
+function copyVal(el, e) {
+  e.stopPropagation();
+  navigator.clipboard.writeText(el.innerText.replace(/^⎘ /, '')).then(() => {
+    el.classList.add('copied');
+    setTimeout(() => el.classList.remove('copied'), 1500);
+  });
+}
+
+function updateOverall1() {
+  const all = document.querySelectorAll('#cl-container .ci');
+  const done = document.querySelectorAll('#cl-container .ci.done');
+  const pct = all.length ? (done.length / all.length) * 100 : 0;
+  document.getElementById('pb').style.width = pct + '%';
+  document.getElementById('pl').textContent = `${done.length} / ${all.length} ITEMS COMPLETE`;
+  const gn = document.getElementById('go-nogo');
+  if (done.length === all.length && all.length > 0) { gn.className = 'go-nogo go'; gn.textContent = '// GO — ALL ITEMS COMPLETE — CLEAR TO ARM //'; }
+  else if (done.length > 0) { gn.className = 'go-nogo nogo'; gn.textContent = `// NO-GO — ${all.length - done.length} ITEMS REMAINING //`; }
+  else { gn.className = 'go-nogo'; }
+}
+
+function updateOverall2() {
+  const all = document.querySelectorAll('#cl-container2 .ci');
+  const done = document.querySelectorAll('#cl-container2 .ci.done');
+  const pct = all.length ? (done.length / all.length) * 100 : 0;
+  document.getElementById('pb2').style.width = pct + '%';
+  document.getElementById('pl2').textContent = `${done.length} / ${all.length} ITEMS COMPLETE`;
+  const gn = document.getElementById('go-nogo2');
+  if (done.length === all.length && all.length > 0) { gn.className = 'go-nogo go'; gn.textContent = '// GO — TURNAROUND COMPLETE — CLEAR TO ARM //'; }
+  else if (done.length > 0) { gn.className = 'go-nogo nogo'; gn.textContent = `// NO-GO — ${all.length - done.length} ITEMS REMAINING //`; }
+  else { gn.className = 'go-nogo'; }
+}
+
+function toggleExpandAll() {
+  const btn = document.getElementById('expand-btn');
+  const expanded = btn.textContent === 'COLLAPSE';
+  document.querySelectorAll('#cl-container .ci-detail').forEach(d => d.classList.toggle('visible', !expanded));
+  document.querySelectorAll('#cl-container .ci-right').forEach(r => { r.classList.toggle('open', !expanded); const h = r.querySelector('.expand-hint'); if (h) h.textContent = !expanded ? 'CLOSE' : 'DETAILS'; });
+  btn.textContent = expanded ? 'EXPAND ALL' : 'COLLAPSE';
+}
+function toggleExpandAll2() {
+  const btn = document.getElementById('expand-btn2');
+  const expanded = btn.textContent === 'COLLAPSE';
+  document.querySelectorAll('#cl-container2 .ci-detail').forEach(d => d.classList.toggle('visible', !expanded));
+  document.querySelectorAll('#cl-container2 .ci-right').forEach(r => { r.classList.toggle('open', !expanded); const h = r.querySelector('.expand-hint'); if (h) h.textContent = !expanded ? 'CLOSE' : 'DETAILS'; });
+  btn.textContent = expanded ? 'EXPAND ALL' : 'COLLAPSE';
+}
+function resetCL() { if (!confirm('Reset preflight checklist?')) return; localStorage.removeItem('vtol_cl2'); buildChecklist(CL, 'cl-container', 'vtol_cl2', 'csp-', 'updateOverall1'); }
+function resetCL2() { if (!confirm('Reset turnaround checklist?')) return; localStorage.removeItem('vtol_cl3'); buildChecklist(CL2, 'cl-container2', 'vtol_cl3', 'csp2-', 'updateOverall2'); }
+
+// ── BATTERY TREND CHART ──
+function battTrendSVG(entries, cells, chem) {
+  if (entries.length < 2) return '';
+  const n = Math.min(entries.length, 12);
+  const recent = entries.slice(0, n).reverse();
+  const W = 680, H = 58, pad = 10;
+  const critV = chem.critical * cells, fullV = chem.full * cells;
+  const range = fullV - critV || 1;
+  function yv(v) { return H - pad - ((Math.max(critV, Math.min(fullV, v)) - critV) / range) * (H - pad * 2); }
+  const stepX = n > 1 ? (W - pad * 2) / (n - 1) : 0;
+  const pts = recent.map((e, i) => (pad + i * stepX).toFixed(1) + ',' + yv(e.min).toFixed(1)).join(' ');
+  const dots = recent.map((e, i) => {
+    const x = (pad + i * stepX).toFixed(1), y = yv(e.min).toFixed(1);
+    const c = e.min / cells < chem.critical + 0.05 ? 'var(--red)' : e.min / cells < chem.low + 0.10 ? 'var(--amber)' : 'var(--green)';
+    return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + c + '"/>';
+  }).join('');
+  const yCrit = yv(critV).toFixed(1), yRtl = yv(23.0).toFixed(1);
+  return '<div style="margin-bottom:14px">'
+    + '<div style="font-family:var(--head);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">MIN VOLTAGE TREND — LAST ' + n + ' FLIGHTS (oldest → newest)</div>'
+    + '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;display:block;background:var(--surface);border:1px solid var(--border2)">'
+    + '<line x1="' + pad + '" y1="' + yCrit + '" x2="' + (W-pad) + '" y2="' + yCrit + '" stroke="var(--red)" stroke-width="0.5" stroke-dasharray="3,5" opacity="0.5"/>'
+    + '<line x1="' + pad + '" y1="' + yRtl + '" x2="' + (W-pad) + '" y2="' + yRtl + '" stroke="var(--accent)" stroke-width="0.5" stroke-dasharray="3,5" opacity="0.5"/>'
+    + '<polyline points="' + pts + '" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" opacity="0.6"/>'
+    + dots + '</svg>'
+    + '<div style="display:flex;gap:16px;font-size:10px;color:var(--muted);margin-top:4px">'
+    + '<span>● <span style="color:var(--green)">healthy</span></span>'
+    + '<span>● <span style="color:var(--amber)">marginal</span></span>'
+    + '<span>● <span style="color:var(--red)">critical</span></span>'
+    + '<span style="margin-left:auto">— <span style="color:var(--accent)">23.0V RTL</span> &nbsp; — <span style="color:var(--red)">22.2V BATT_CRT</span></span>'
+    + '</div></div>';
+}
+
+// ── BATTERY SPARKLINE ──
+function battSparkline(sv, mv, rv, cells, chem) {
+  const full = chem.full * cells, crit = chem.critical * cells;
+  const range = full - crit || 1;
+  const W = 72, H = 26, pad = 5;
+  function y(v) { return H - pad - ((Math.max(crit, Math.min(full, v)) - crit) / range) * (H - pad * 2); }
+  const pts = [[pad, y(sv)], [W / 2, y(mv)], [W - pad, y(rv)]].map(p => p.join(',')).join(' ');
+  const c = mv / cells < chem.critical + 0.05 ? '#ef4444' : mv / cells < chem.low + 0.1 ? '#facc15' : '#f97316';
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">`
+    + `<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linejoin="round"/>`
+    + `<circle cx="${pad}" cy="${y(sv)}" r="2" fill="${c}"/>`
+    + `<circle cx="${W / 2}" cy="${y(mv)}" r="2.5" fill="${c}"/>`
+    + `<circle cx="${W - pad}" cy="${y(rv)}" r="2" fill="${c}"/>`
+    + `</svg>`;
+}
+
+// ── BATTERY LOG ──
+function loadBattLog() { return JSON.parse(localStorage.getItem('vtol_battlog') || '[]'); }
+function saveBattLog(e) { localStorage.setItem('vtol_battlog', JSON.stringify(e)); }
+function logBattery() {
+  const date=document.getElementById('bl-date').value, flight=document.getElementById('bl-flight').value;
+  const start=parseFloat(document.getElementById('bl-start').value), min=parseFloat(document.getElementById('bl-min').value);
+  const rest=parseFloat(document.getElementById('bl-rest').value), time=document.getElementById('bl-time').value;
+  const notes=document.getElementById('bl-notes').value;
+  if (!date||isNaN(start)||isNaN(min)||isNaN(rest)) { alert('Please fill in date, start V, min landing V, and resting V.'); return; }
+  const entries=loadBattLog(); entries.unshift({date,flight,start,min,rest,time,notes,sag:+(start-min).toFixed(2)});
+  saveBattLog(entries); renderBattLog();
+  ['bl-flight','bl-start','bl-min','bl-rest','bl-time','bl-notes'].forEach(id=>document.getElementById(id).value='');
+}
+function deleteBattEntry(idx) { if (!confirm('Delete this entry?')) return; const e=loadBattLog(); e.splice(idx,1); saveBattLog(e); renderBattLog(); }
+
+const BATT_CHEM = {
+  lipo:  { full:4.20, nominal:3.70, low:3.35, critical:3.10, name:'LiPo' },
+  liion: { full:4.20, nominal:3.60, low:3.20, critical:2.90, name:'Li-Ion' },
+  life:  { full:3.65, nominal:3.30, low:3.00, critical:2.70, name:'LiFe' }
+};
+function loadBattType() {
+  try { return JSON.parse(localStorage.getItem('vtol_batt_type')) || {cells:6, chem:'lipo'}; }
+  catch(e) { return {cells:6, chem:'lipo'}; }
+}
+function saveBattType() {
+  const cells = parseInt(document.getElementById('bl-cells').value);
+  const chem  = document.getElementById('bl-chem').value;
+  localStorage.setItem('vtol_batt_type', JSON.stringify({cells, chem}));
+}
+
+function renderBattLog() {
+  const entries=loadBattLog(), empty=document.getElementById('bl-log-empty'), table=document.getElementById('bl-log-table'), analysis=document.getElementById('bl-analysis');
+  if (!entries.length) { empty.style.display=''; table.style.display='none'; analysis.innerHTML=''; return; }
+  empty.style.display='none'; table.style.display='';
+  table.innerHTML='<tr><th>Date</th><th>Flight</th><th>Start V</th><th>Min V</th><th>Rest V</th><th>Sag</th><th>Min</th><th>Notes</th><th></th></tr>' +
+    entries.map((e,i) => {
+      const sagC=e.sag>2?'var(--red)':e.sag>1.2?'var(--amber)':'var(--green)';
+      const minS=e.min<22.5?'color:var(--red);font-weight:bold':e.min<23.0?'color:var(--amber)':'';
+      return `<tr><td>${e.date}</td><td>${e.flight||'—'}</td><td>${e.start}V</td><td style="${minS}">${e.min}V</td><td>${e.rest}V</td><td style="color:${sagC}">${e.sag}V</td><td>${e.time||'—'}</td><td style="color:var(--muted);font-size:11px">${e.notes||'—'}</td><td><button onclick="deleteBattEntry(${i})" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td></tr>`;
+    }).join('');
+  // Battery type
+  const bt = loadBattType();
+  const cells = bt.cells;
+  const chem  = BATT_CHEM[bt.chem] || BATT_CHEM.lipo;
+  const cellSel = document.getElementById('bl-cells');
+  const chemSel = document.getElementById('bl-chem');
+  if (cellSel) cellSel.value = String(cells);
+  if (chemSel) chemSel.value = bt.chem;
+
+  const mins = entries.map(e=>e.min), sags = entries.map(e=>e.sag), starts = entries.map(e=>e.start);
+  const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+  const avgMin = avg(mins), lowestMin = Math.min(...mins), avgSag = avg(sags);
+  const worstSag = Math.max(...sags), avgStart = avg(starts);
+
+  // Pack thresholds scaled to cell count
+  const critV = (chem.critical * cells).toFixed(1);
+  const lowV  = (chem.low      * cells).toFixed(1);
+  const fullV = (chem.full     * cells).toFixed(1);
+
+  // BATT_LOW_VOLT: avg landing + 0.8V return margin, never below critical + 1.0V.
+  // Previous formula (lowestMin + worstSag + 0.5) was wrong — it double-counted
+  // the full-flight sag, producing absurdly high values like 25V on a 6S pack.
+  const recRaw     = Math.max(avgMin + 0.8, 23.0); // floor = manual RTL trigger; chemistry floor is far lower and not the binding constraint here
+  const recBattLow = recRaw.toFixed(1);
+  const recPC      = (recRaw / cells).toFixed(2);
+  const marginV    = (recRaw - chem.critical * cells).toFixed(1);
+
+  // Table row colour for min voltage — use per-cell thresholds
+  const minRowStyle = (v) => v/cells < chem.critical + 0.05 ? 'color:var(--red);font-weight:bold' : v/cells < chem.low + 0.1 ? 'color:var(--amber)' : '';
+
+  // Rebuild table with per-cell column
+  table.innerHTML = `<tr><th>Date</th><th>Flight</th><th>Start V</th><th>Min V</th><th>V/cell</th><th>Rest V</th><th>Sag</th><th>Profile</th><th>Min</th><th>Notes</th><th></th></tr>` +
+    entries.map((e,i) => {
+      const sagC = e.sag > cells*0.35 ? 'var(--red)' : e.sag > cells*0.2 ? 'var(--amber)' : 'var(--green)';
+      const minSt = minRowStyle(e.min);
+      const vpc = (e.min/cells).toFixed(2);
+      const rowBg = e.min/cells < chem.critical+0.05 ? 'background:#1f0a0a' : e.min/cells < chem.low+0.1 ? 'background:#1f1a08' : '';
+      const spark = battSparkline(e.start, e.min, e.rest, cells, chem);
+      return `<tr style="${rowBg}"><td>${e.date}</td><td>${e.flight||'—'}</td><td>${e.start}V</td><td style="${minSt}">${e.min}V</td><td style="${minSt}">${vpc}V</td><td>${e.rest}V</td><td style="color:${sagC}">${e.sag}V</td><td style="padding:5px 12px">${spark}</td><td>${e.time||'—'}</td><td style="color:var(--muted);font-size:11px">${e.notes||'—'}</td><td><button onclick="deleteBattEntry(${i})" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td></tr>`;
+    }).join('');
+
+  // Health
+  let hColor, hText;
+  if      (avgMin/cells < chem.critical + 0.05) { hColor='var(--red)';   hText='CRITICAL — Landing voltage is deep in the SEI damage zone. This pack is being harmed. Inspect and consider retirement.'; }
+  else if (avgMin/cells < chem.low       + 0.05) { hColor='var(--red)';   hText='LOW — Landing voltage is below the longevity floor. Repeated use here accelerates capacity loss and IR rise.'; }
+  else if (avgMin/cells < chem.low       + 0.10) { hColor='var(--amber)'; hText='MARGINAL — Landing voltage is in the lower end of the acceptable range. Monitor for capacity fade.'; }
+  else                                            { hColor='var(--green)'; hText='HEALTHY — Landing voltages are within normal range for this chemistry.'; }
+
+  analysis.innerHTML = battTrendSVG(entries, cells, chem) + `
+  <div class="card amber" style="margin-bottom:14px">
+    <div class="card-title">Analysis — ${entries.length} flight${entries.length>1?'s':''} · ${cells}S ${chem.name}</div>
+    <table>
+      <tr><th>Metric</th><th>Pack</th><th>Per cell</th><th>Notes</th></tr>
+      <tr><td>Avg start voltage</td><td>${avgStart.toFixed(1)}V</td><td>${(avgStart/cells).toFixed(2)}V</td><td style="color:var(--muted)">Typical charge at power-on</td></tr>
+      <tr><td>Avg min at landing</td><td style="color:var(--amber)">${avgMin.toFixed(1)}V</td><td style="color:var(--amber)">${(avgMin/cells).toFixed(2)}V</td><td style="color:var(--muted)">Typical lowest voltage at touchdown</td></tr>
+      <tr><td>Lowest min seen</td><td style="color:var(--red);font-weight:bold">${lowestMin.toFixed(1)}V</td><td style="color:var(--red)">${(lowestMin/cells).toFixed(2)}V</td><td style="color:var(--muted)">Absolute worst recorded</td></tr>
+      <tr><td>Avg flight sag</td><td>${avgSag.toFixed(2)}V</td><td>${(avgSag/cells).toFixed(3)}V</td><td style="color:var(--muted)">Typical start→landing drop</td></tr>
+      <tr><td>Worst sag</td><td style="color:var(--amber)">${worstSag.toFixed(2)}V</td><td>${(worstSag/cells).toFixed(3)}V</td><td style="color:var(--muted)">Largest drop in one flight</td></tr>
+      <tr><th colspan="4" style="padding-top:10px;color:var(--muted)">THRESHOLDS — ${cells}S ${chem.name}</th></tr>
+      <tr><td>Full charge</td><td>${fullV}V</td><td>${chem.full}V</td><td style="color:var(--muted)">After a complete charge</td></tr>
+      <tr><td>Longevity floor</td><td>${lowV}V</td><td>${chem.low}V</td><td style="color:var(--amber)">SEI degradation accelerates below this — avoid as a habit</td></tr>
+      <tr><td>Hard floor</td><td style="color:var(--red)">${critV}V</td><td style="color:var(--red)">${chem.critical}V</td><td style="color:var(--red)">Deep SEI damage zone — consistent use here shortens pack life significantly</td></tr>
+      <tr><td>Storage target</td><td style="color:var(--green)">22.8V</td><td style="color:var(--green)">3.80V</td><td style="color:var(--muted)">Optimal SoC for storage ≥48h (40–60% capacity)</td></tr>
+    </table>
+  </div>
+  <div class="card accent" style="margin-bottom:14px">
+    <div class="card-title">Recommended BATT_LOW_VOLT</div>
+    <div style="font-family:var(--head);font-size:44px;font-weight:700;color:var(--accent);letter-spacing:3px;line-height:1;margin-bottom:8px">${recBattLow}V</div>
+    <div style="font-size:14px;color:var(--text);margin-bottom:6px">${recPC}V/cell &nbsp;·&nbsp; ${marginV}V above critical (${critV}V)</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Avg landing (${avgMin.toFixed(1)}V) + 0.8V return margin. When this triggers you still have ${marginV}V extra above the emergency threshold — enough for RTL and VTOL descent.</div>
+    <div class="alert alert-info" style="margin:0">Mission Planner: Full Parameter List → <strong>BATT_LOW_VOLT = ${recBattLow}</strong></div>
+  </div>
+  <div class="card" style="border-left-color:${hColor}">
+    <div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:${hColor};margin-bottom:4px">PACK HEALTH</div>
+    <div style="color:${hColor};font-size:14px">${hText}</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">Avg landing: ${avgMin.toFixed(1)}V (${(avgMin/cells).toFixed(2)}V/cell) · Chemistry floor: ${lowV}V (${chem.low}V/cell)</div>
+  </div>`;
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  const d = document.getElementById('bl-date');
+  if (d) d.valueAsDate = new Date();
+  renderBattLog();
+  // Restore last active tab, default to preflight
+  const savedTab = localStorage.getItem('vtol_active_tab') || 'preflight';
+  const tabEl = document.getElementById('tab-' + savedTab);
+  const tabBtn = document.querySelector('nav button[onclick*="\''+savedTab+'\'"]');
+  if (tabEl && tabBtn) {
+    tabEl.classList.add('active');
+    tabBtn.classList.add('active');
+  } else {
+    document.getElementById('tab-preflight').classList.add('active');
+    document.querySelector('nav button[onclick*="preflight"]').classList.add('active');
+  }
+});
+
+buildChecklist(CL,  'cl-container',  'vtol_cl2', 'csp-',  'updateOverall1');
+buildChecklist(CL2, 'cl-container2', 'vtol_cl3', 'csp2-', 'updateOverall2');
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+
+// ══════════════════════════════════════
+// PREFLIGHT TIMER
+// ══════════════════════════════════════
+let pfStart = null, pfElapsed = 0, pfInterval = null, pfRunning = false;
+
+// ── PERSISTENT DATA STORE ──
+var vtolData = { archive: [], weatherFavorites: [] };
+var vtolDataHandle = null, vtolDataHandlePending = null, wxCurrentLocName = '', vtolSyncTimer = null;
+
+function idbGet(key) {
+  return new Promise(function(res,rej){
+    var r=indexedDB.open('vtol-db',1);
+    r.onupgradeneeded=function(e){e.target.result.createObjectStore('kv');};
+    r.onerror=function(){rej(r.error);};
+    r.onsuccess=function(e){
+      var tx=e.target.result.transaction('kv','readonly');
+      var op=tx.objectStore('kv').get(key);
+      op.onsuccess=function(){res(op.result);}; op.onerror=function(){rej(op.error);};
+    };
+  });
+}
+function idbPut(key,val) {
+  return new Promise(function(res,rej){
+    var r=indexedDB.open('vtol-db',1);
+    r.onupgradeneeded=function(e){e.target.result.createObjectStore('kv');};
+    r.onerror=function(){rej(r.error);};
+    r.onsuccess=function(e){
+      var tx=e.target.result.transaction('kv','readwrite');
+      var op=tx.objectStore('kv').put(val,key);
+      op.onsuccess=function(){res();}; op.onerror=function(){rej(op.error);};
+    };
+  });
+}
+function vtolSaveLocal() {
+  localStorage.setItem('vtol_pf_archive', JSON.stringify(vtolData.archive));
+  localStorage.setItem('vtol_wx_fav', JSON.stringify(vtolData.weatherFavorites));
+}
+async function vtolWriteFile() {
+  var w=await vtolDataHandle.createWritable();
+  await w.write(JSON.stringify(vtolData,null,2)); await w.close();
+}
+async function vtolSaveData() {
+  vtolSaveLocal();
+  if (vtolDataHandle) { try { await vtolWriteFile(); } catch(e){console.warn('File write:',e);} }
+  if (vtolGetPAT()) vtolScheduleCloudPush();
+}
+async function vtolLoadData() {
+  if (vtolDataHandle) {
+    try {
+      var file=await vtolDataHandle.getFile(); var text=await file.text();
+      var d=text.trim()?JSON.parse(text):{};
+      vtolData.archive=d.archive||[]; vtolData.weatherFavorites=d.weatherFavorites||[];
+      vtolSaveLocal(); return;
+    } catch(e) {}
+  }
+  vtolData.archive=JSON.parse(localStorage.getItem('vtol_pf_archive')||'[]');
+  vtolData.weatherFavorites=JSON.parse(localStorage.getItem('vtol_wx_fav')||'[]');
+}
+function vtolUpdateFileStatus() {
+  document.querySelectorAll('.vtol-file-status').forEach(function(el){
+    if (!window.showSaveFilePicker) {
+      el.innerHTML='<span style="color:var(--muted)">FILE SYSTEM NOT SUPPORTED — EXPORT/IMPORT AVAILABLE</span>';
+    } else if (vtolDataHandle) {
+      el.innerHTML='<span style="color:var(--green)">&#x2713; '+vtolDataHandle.name+'</span>';
+    } else if (vtolDataHandlePending) {
+      el.innerHTML='<span style="color:var(--amber)">&#x26A0; NEEDS RECONNECT: '+vtolDataHandlePending.name+'</span>';
+    } else {
+      el.innerHTML='<span style="color:var(--amber)">&#x26A0; BROWSER CACHE ONLY — USE LINK FILE TO PERSIST</span>';
+    }
+  });
+  document.querySelectorAll('.vtol-link-btn').forEach(function(btn){
+    if (!window.showSaveFilePicker) { btn.style.display='none'; return; }
+    btn.textContent = (vtolDataHandlePending&&!vtolDataHandle) ? 'RECONNECT' : (vtolDataHandle ? 'CHANGE FILE' : 'LINK FILE');
+  });
+}
+async function vtolLinkFile() {
+  if (!window.showSaveFilePicker) return;
+  if (vtolDataHandlePending && !vtolDataHandle) {
+    try {
+      var perm=await vtolDataHandlePending.requestPermission({mode:'readwrite'});
+      if (perm==='granted') {
+        vtolDataHandle=vtolDataHandlePending; vtolDataHandlePending=null;
+        await vtolLoadData(); vtolUpdateFileStatus(); pfRenderArchive(); wxRenderFavorites();
+      }
+    } catch(e){alert('Reconnect failed: '+e.message);} return;
+  }
+  try {
+    var handle=await window.showSaveFilePicker({
+      suggestedName:'vtol-data.json',
+      types:[{description:'VTOL Data',accept:{'application/json':['.json']}}]
+    });
+    var existing={};
+    try { var f=await handle.getFile(); var t=await f.text(); if(t.trim()) existing=JSON.parse(t); } catch(e){}
+    if (existing.archive) {
+      existing.archive.forEach(function(e){ if(!vtolData.archive.find(function(a){return a.date===e.date;})) vtolData.archive.push(e); });
+      vtolData.archive.sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+    }
+    if (existing.weatherFavorites) {
+      existing.weatherFavorites.forEach(function(f){ if(!vtolData.weatherFavorites.find(function(v){return v.lat===f.lat&&v.lon===f.lon;})) vtolData.weatherFavorites.push(f); });
+    }
+    vtolDataHandle=handle; await vtolSaveData(); await idbPut('vtolDataHandle',handle);
+    vtolUpdateFileStatus(); pfRenderArchive(); wxRenderFavorites();
+  } catch(e){ if(e.name!=='AbortError') alert('Error: '+e.message); }
+}
+function vtolExportData() {
+  var blob=new Blob([JSON.stringify(vtolData,null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='vtol-data.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function vtolImportData() {
+  var inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=async function(e){
+    var f=e.target.files[0]; if(!f) return;
+    try {
+      var d=JSON.parse(await f.text());
+      if(d.archive) { d.archive.forEach(function(entry){ if(!vtolData.archive.find(function(a){return a.date===entry.date;})) vtolData.archive.unshift(entry); }); vtolData.archive.sort(function(a,b){return new Date(b.date)-new Date(a.date);}); }
+      if(d.weatherFavorites) { d.weatherFavorites.forEach(function(fav){ if(!vtolData.weatherFavorites.find(function(v){return v.lat===fav.lat&&v.lon===fav.lon;})) vtolData.weatherFavorites.push(fav); }); }
+      await vtolSaveData(); pfRenderArchive(); wxRenderFavorites(); alert('Imported successfully.');
+    } catch(err){alert('Import failed: '+err.message);}
+  }; inp.click();
+}
+async function vtolInit() {
+  if (window.showSaveFilePicker) {
+    try {
+      var handle=await idbGet('vtolDataHandle');
+      if(handle){ var perm=await handle.queryPermission({mode:'readwrite'}); if(perm==='granted'){vtolDataHandle=handle;}else{vtolDataHandlePending=handle;} }
+    } catch(e){}
+  }
+  await vtolLoadData(); vtolUpdateFileStatus();
+  if (vtolGetPAT()) {
+    vtolUpdateSyncStatus('syncing');
+    try { await vtolCloudPull(); vtolUpdateSyncStatus('synced'); }
+    catch(e) { vtolUpdateSyncStatus('error', e.message); }
+  } else { vtolUpdateSyncStatus('none'); }
+  pfRenderArchive(); wxRenderFavorites();
+}
+
+// ── CLOUD SYNC (GitHub Gist) ──
+function vtolGetPAT() { return localStorage.getItem('vtol_gh_pat') || ''; }
+
+function vtolUpdateSyncStatus(state, msg) {
+  var ts = state === 'synced' ? new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : null;
+  if (ts) localStorage.setItem('vtol_last_sync', ts);
+  document.querySelectorAll('.vtol-sync-status').forEach(function(el) {
+    if      (state==='syncing') el.innerHTML='<span style="color:var(--amber)">&#x21BB; SYNCING...</span>';
+    else if (state==='synced')  el.innerHTML='<span style="color:var(--green)">&#x2601; SYNCED '+ts+'</span>';
+    else if (state==='error')   el.innerHTML='<span style="color:var(--red)" title="'+(msg||'')+'">&#x26A0; SYNC ERROR</span>';
+    else {
+      var ls=localStorage.getItem('vtol_last_sync');
+      el.innerHTML = vtolGetPAT()
+        ? '<span style="color:var(--green)">&#x2601; '+(ls?'SYNCED '+ls:'READY')+'</span>'
+        : '<span style="color:var(--muted)">&#x2601; NOT SET UP</span>';
+    }
+  });
+  document.querySelectorAll('.vtol-sync-btn').forEach(function(btn){ btn.style.display=vtolGetPAT()?'':'none'; });
+  document.querySelectorAll('.vtol-sync-setup-btn').forEach(function(btn){ btn.textContent=vtolGetPAT()?'CHANGE TOKEN':'SETUP SYNC'; });
+}
+
+async function vtolGistFetch(method, endpoint, body) {
+  var opts = { method:method, headers:{'Authorization':'token '+vtolGetPAT(),'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  var resp = await fetch('https://api.github.com'+endpoint, opts);
+  if (!resp.ok) throw new Error('GitHub '+resp.status+' '+resp.statusText);
+  return resp.json();
+}
+
+async function vtolFindOrCreateGist() {
+  var id = localStorage.getItem('vtol_gh_gist_id') || '';
+  if (id) {
+    try { await vtolGistFetch('GET','/gists/'+id); return id; } catch(e) { localStorage.removeItem('vtol_gh_gist_id'); }
+  }
+  var list = await vtolGistFetch('GET','/gists');
+  var found = list.find(function(g){ return g.description==='VTOL Flight Data' && g.files['vtol-data.json']; });
+  if (found) { localStorage.setItem('vtol_gh_gist_id',found.id); return found.id; }
+  var created = await vtolGistFetch('POST','/gists',{ description:'VTOL Flight Data', public:false, files:{'vtol-data.json':{content:JSON.stringify(vtolData,null,2)}} });
+  localStorage.setItem('vtol_gh_gist_id',created.id); return created.id;
+}
+
+async function vtolCloudPull() {
+  var id = await vtolFindOrCreateGist();
+  var gist = await vtolGistFetch('GET','/gists/'+id);
+  var content = gist.files['vtol-data.json'] && gist.files['vtol-data.json'].content;
+  if (content) {
+    var remote = JSON.parse(content);
+    if (Array.isArray(remote.archive))          vtolData.archive = remote.archive;
+    if (Array.isArray(remote.weatherFavorites)) vtolData.weatherFavorites = remote.weatherFavorites;
+    vtolSaveLocal();
+  }
+}
+
+async function vtolCloudPush() {
+  if (!vtolGetPAT()) return;
+  vtolUpdateSyncStatus('syncing');
+  try {
+    var id = await vtolFindOrCreateGist();
+    await vtolGistFetch('PATCH','/gists/'+id,{ files:{'vtol-data.json':{content:JSON.stringify(vtolData,null,2)}} });
+    vtolUpdateSyncStatus('synced');
+  } catch(e) { vtolUpdateSyncStatus('error', e.message); }
+}
+
+function vtolScheduleCloudPush() {
+  if (vtolSyncTimer) clearTimeout(vtolSyncTimer);
+  vtolSyncTimer = setTimeout(vtolCloudPush, 3000);
+}
+
+async function vtolSetupSync() {
+  var hasPAT = !!vtolGetPAT();
+  var input = prompt(
+    'GitHub Personal Access Token\n\n' +
+    'Get one at: github.com → Settings → Developer settings\n' +
+    '→ Personal access tokens → Tokens (classic) → Generate new token\n' +
+    'Required scope: gist (tick only this box)\n\n' +
+    (hasPAT ? 'Token already configured. Paste a new token to replace, or leave blank to disconnect:' : 'Paste your token:'),
+    ''
+  );
+  if (input === null) return;
+  if (input.trim() === '') {
+    if (hasPAT && confirm('Disconnect cloud sync? Your local data will not be deleted.')) {
+      localStorage.removeItem('vtol_gh_pat'); localStorage.removeItem('vtol_gh_gist_id');
+      vtolUpdateSyncStatus('none');
+    }
+    return;
+  }
+  localStorage.setItem('vtol_gh_pat', input.trim());
+  localStorage.removeItem('vtol_gh_gist_id');
+  vtolUpdateSyncStatus('syncing');
+  try {
+    await vtolCloudPull(); await vtolCloudPush(); vtolUpdateSyncStatus('synced');
+    pfRenderArchive(); wxRenderFavorites();
+  } catch(e) {
+    vtolUpdateSyncStatus('error', e.message);
+    alert('Sync failed. Make sure the token has the "gist" scope.\nError: ' + e.message);
+    localStorage.removeItem('vtol_gh_pat');
+    vtolUpdateSyncStatus('none');
+  }
+}
+
+async function vtolSyncNow() {
+  if (!vtolGetPAT()) { vtolSetupSync(); return; }
+  vtolUpdateSyncStatus('syncing');
+  try {
+    await vtolCloudPull(); await vtolCloudPush(); vtolUpdateSyncStatus('synced');
+    pfRenderArchive(); wxRenderFavorites();
+  } catch(e) { vtolUpdateSyncStatus('error', e.message); }
+}
+
+function pfTimerToggle() {
+  const btn = document.getElementById('pf-start-btn');
+  const display = document.getElementById('pf-timer');
+  if (!pfRunning) {
+    pfStart = Date.now() - pfElapsed;
+    pfInterval = setInterval(() => {
+      pfElapsed = Date.now() - pfStart;
+      display.textContent = pfFmt(pfElapsed);
+      display.style.color = pfElapsed > 20*60000 ? 'var(--amber)' : 'var(--accent)';
+    }, 500);
+    pfRunning = true;
+    btn.textContent = 'STOP';
+    btn.style.borderColor = 'var(--red)';
+    btn.style.color = 'var(--red)';
+    display.style.color = 'var(--accent)';
+  } else {
+    clearInterval(pfInterval);
+    pfRunning = false;
+    btn.textContent = 'START';
+    btn.style.borderColor = 'var(--accent)';
+    btn.style.color = 'var(--accent)';
+    display.style.color = 'var(--muted)';
+    pfPromptArchive();
+  }
+}
+
+function pfTimerReset() {
+  clearInterval(pfInterval);
+  pfRunning = false; pfElapsed = 0; pfStart = null;
+  const display = document.getElementById('pf-timer');
+  display.textContent = '00:00';
+  display.style.color = 'var(--muted)';
+  const btn = document.getElementById('pf-start-btn');
+  btn.textContent = 'START';
+  btn.style.borderColor = 'var(--accent)';
+  btn.style.color = 'var(--accent)';
+}
+
+function pfFmt(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return String(m).padStart(2,'0') + ':' + String(s % 60).padStart(2,'0');
+}
+
+function pfPromptArchive() {
+  if (pfElapsed < 5000) return;
+  const goNogo = document.getElementById('go-nogo');
+  const status = goNogo.classList.contains('go') ? 'GO' : goNogo.classList.contains('nogo') ? 'NO-GO' : 'INCOMPLETE';
+  const note = prompt(`Archive preflight session?\nDuration: ${pfFmt(pfElapsed)} · Status: ${status}\n\nNotes (optional):`);
+  if (note === null) return;
+  pfSaveArchive({ date: new Date().toISOString(), duration: pfFmt(pfElapsed), durationMs: pfElapsed, status, notes: note });
+}
+
+function pfSaveArchive(entry) {
+  vtolData.archive.unshift(entry);
+  vtolSaveData();
+  pfRenderArchive();
+}
+
+function pfRenderArchive() {
+  const log = vtolData.archive;
+  const wrap = document.getElementById('pf-archive-wrap');
+  const list = document.getElementById('pf-archive-list');
+  if (!log.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  list.innerHTML = `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:14px">
+    <tr><th style="text-align:left;padding:8px 12px;font-family:var(--head);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2)">Date</th>
+    <th style="text-align:left;padding:8px 12px;font-family:var(--head);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2)">Duration</th>
+    <th style="text-align:left;padding:8px 12px;font-family:var(--head);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2)">Status</th>
+    <th style="text-align:left;padding:8px 12px;font-family:var(--head);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2)">Notes</th>
+    <th style="border-bottom:1px solid var(--border2)"></th></tr>
+    ${log.map((e,i) => {
+      const d = new Date(e.date);
+      const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      const sc = e.status==='GO' ? 'var(--green)' : e.status==='NO-GO' ? 'var(--red)' : 'var(--amber)';
+      return `<tr>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:var(--muted);font-size:13px">${dateStr}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono)">${e.duration}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:${sc};font-weight:bold;font-family:var(--head)">${e.status}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:var(--muted);font-size:13px">${e.notes||'—'}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border)"><button onclick="pfDeleteArchive(${i})" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td>
+      </tr>`;
+    }).join('')}
+  </table></div>`;
+}
+
+function pfDeleteArchive(idx) {
+  if (!confirm('Delete this entry?')) return;
+  vtolData.archive.splice(idx, 1);
+  vtolSaveData();
+  pfRenderArchive();
+}
+
+// ── WEATHER FAVORITES ──
+function wxParsePaste(val) {
+  var clean = val.trim().replace(/[^\d\s,.\-]/g,'');
+  var parts = clean.split(/[\s,]+/).filter(function(p){ return p.length > 0; });
+  if (parts.length >= 2) {
+    var lat = parseFloat(parts[0]), lon = parseFloat(parts[1]);
+    if (!isNaN(lat) && !isNaN(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      document.getElementById('wx-lat').value = lat.toFixed(4);
+      document.getElementById('wx-lon').value = lon.toFixed(4);
+    }
+  }
+}
+function wxSaveFavorite() {
+  var lat = parseFloat(document.getElementById('wx-lat').value);
+  var lon = parseFloat(document.getElementById('wx-lon').value);
+  if (isNaN(lat) || isNaN(lon)) { alert('Fetch weather first to get a location to save.'); return; }
+  if (vtolData.weatherFavorites.find(function(f){ return f.lat===lat && f.lon===lon; })) { alert('Location already saved.'); return; }
+  var defaultName = wxCurrentLocName || (lat.toFixed(4)+', '+lon.toFixed(4));
+  var name = prompt('Name this location:', defaultName);
+  if (name === null) return;
+  vtolData.weatherFavorites.push({ lat:lat, lon:lon, name:(name.trim()||defaultName) });
+  vtolSaveData();
+  wxRenderFavorites();
+}
+function wxLoadFavorite(idx) {
+  var fav = vtolData.weatherFavorites[idx]; if (!fav) return;
+  document.getElementById('wx-lat').value = fav.lat.toFixed(4);
+  document.getElementById('wx-lon').value = fav.lon.toFixed(4);
+  if (document.getElementById('wx-paste')) document.getElementById('wx-paste').value = '';
+  fetchWeather();
+}
+function wxDeleteFavorite(idx) {
+  if (!confirm('Remove this location?')) return;
+  vtolData.weatherFavorites.splice(idx, 1);
+  vtolSaveData(); wxRenderFavorites();
+}
+function wxRenameFavorite(idx) {
+  var fav = vtolData.weatherFavorites[idx]; if (!fav) return;
+  var name = prompt('Rename location:', fav.name);
+  if (name === null || !name.trim()) return;
+  vtolData.weatherFavorites[idx].name = name.trim();
+  vtolSaveData(); wxRenderFavorites();
+}
+function wxRenderFavorites() {
+  var el = document.getElementById('wx-favorites'); if (!el) return;
+  if (!vtolData.weatherFavorites.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0">No saved locations — fetch a location then press SAVE ★</div>';
+    return;
+  }
+  el.innerHTML = vtolData.weatherFavorites.map(function(f,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">' +
+      '<button onclick="wxLoadFavorite('+i+')" style="flex:1;text-align:left;background:none;border:none;color:var(--text);cursor:pointer;font-family:var(--mono);font-size:14px;padding:0">'+f.name+'</button>' +
+      '<span style="font-size:11px;color:var(--muted);white-space:nowrap">'+f.lat.toFixed(3)+', '+f.lon.toFixed(3)+'</span>' +
+      '<button onclick="wxRenameFavorite('+i+')" title="Rename" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:12px;padding:3px 8px;cursor:pointer;flex-shrink:0">&#x270E;</button>' +
+      '<button onclick="wxDeleteFavorite('+i+')" title="Remove" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0">&#x2715;</button>' +
+    '</div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════
+// MISSION PLANNER VOLTAGE FETCH
+// ══════════════════════════════════════
+async function fetchVoltage(fieldId) {
+  const status = document.getElementById('mp-fetch-status');
+  status.style.display = '';
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Fetching from Mission Planner...';
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 2000);
+  try {
+    const r = await fetch('http://localhost:20199/mavlink/SYS_STATUS', { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    const mV = data.voltage_battery || data.VOLTAGE_BATTERY;
+    if (!mV || mV === 65535) throw new Error('No valid voltage in response');
+    const v = (mV / 1000).toFixed(2);
+    document.getElementById(fieldId).value = v;
+    status.style.color = 'var(--green)';
+    status.textContent = `✓ Got ${v}V from Mission Planner`;
+    setTimeout(() => { status.style.display='none'; }, 3000);
+  } catch(e) {
+    clearTimeout(timeoutId);
+    status.style.color = 'var(--amber)';
+    if (e.name === 'AbortError' || e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
+      status.textContent = 'Cannot reach MP — enter voltage manually. (MP REST API must be enabled: Config → Planner → tick "Enable REST API")';
+    } else {
+      status.textContent = 'MP responded but voltage not found. Enter manually.';
+    }
+  }
+}
+
+// ══════════════════════════════════════
+// TLOG PARSER
+// ══════════════════════════════════════
+function parseTlog() {
+  const file = document.getElementById('tlog-file').files[0];
+  const status = document.getElementById('tlog-status');
+  if (!file) { status.textContent = 'Select a .tlog file first.'; return; }
+  status.style.color = 'var(--muted)';
+  status.textContent = 'Parsing...';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const buf = new Uint8Array(ev.target.result);
+      const result = mavlinkExtractBattery(buf);
+      if (!result) { status.style.color='var(--amber)'; status.textContent='No battery data found in file. Is this an ArduPilot .tlog?'; return; }
+      document.getElementById('bl-start').value = result.startV.toFixed(2);
+      document.getElementById('bl-min').value = result.minV.toFixed(2);
+      document.getElementById('bl-rest').value = result.endV.toFixed(2);
+      document.getElementById('bl-time').value = Math.round(result.durationMin);
+      document.getElementById('bl-date').value = result.date;
+      status.style.color = 'var(--green)';
+      status.textContent = `✓ Extracted: start ${result.startV.toFixed(2)}V · min ${result.minV.toFixed(2)}V · end ${result.endV.toFixed(2)}V · ${Math.round(result.durationMin)} min`;
+    } catch(e) {
+      status.style.color = 'var(--red)';
+      status.textContent = 'Parse error: ' + e.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function mavlinkExtractBattery(buf) {
+  const voltages = [];
+  let firstTsMs = null, lastTsMs = null;
+  let i = 0;
+  const len = buf.length;
+
+  function readTs(pos) {
+    if (pos < 8) return null;
+    const hi = ((buf[pos-8]<<24)|(buf[pos-7]<<16)|(buf[pos-6]<<8)|buf[pos-5]) >>> 0;
+    const lo = ((buf[pos-4]<<24)|(buf[pos-3]<<16)|(buf[pos-2]<<8)|buf[pos-1]) >>> 0;
+    const ms = (hi * 4294967296 + lo) / 1000;
+    const d = new Date(ms);
+    return (d.getFullYear() >= 2015 && d.getFullYear() <= 2040) ? ms : null;
+  }
+
+  while (i < len - 8) {
+    const stx = buf[i];
+    if (stx === 0xFE) {
+      const paylen = buf[i+1];
+      const msgid = buf[i+5];
+      const frameLen = 8 + paylen;
+      if (i + frameLen > len) { i++; continue; }
+      const payload = buf.slice(i+6, i+6+paylen);
+      if (msgid === 1 && paylen >= 16) {
+        const mV = payload[14] | (payload[15] << 8);
+        if (mV > 0 && mV < 65535) voltages.push(mV);
+      }
+      if (msgid === 147 && paylen >= 12) {
+        const mV = payload[10] | (payload[11] << 8);
+        if (mV > 0 && mV < 65535) voltages.push(mV);
+      }
+      const ts = readTs(i);
+      if (ts !== null) { if (firstTsMs === null) firstTsMs = ts; lastTsMs = ts; }
+      i += frameLen;
+    } else if (stx === 0xFD) {
+      if (i + 10 > len) { i++; continue; }
+      const paylen = buf[i+1];
+      const msgid = buf[i+7] | (buf[i+8] << 8) | (buf[i+9] << 16);
+      const frameLen = 12 + paylen;
+      if (i + frameLen > len) { i++; continue; }
+      const payload = buf.slice(i+10, i+10+paylen);
+      if (msgid === 1 && paylen >= 16) {
+        const mV = payload[14] | (payload[15] << 8);
+        if (mV > 0 && mV < 65535) voltages.push(mV);
+      }
+      if (msgid === 147 && paylen >= 12) {
+        const mV = payload[10] | (payload[11] << 8);
+        if (mV > 0 && mV < 65535) voltages.push(mV);
+      }
+      const ts = readTs(i);
+      if (ts !== null) { if (firstTsMs === null) firstTsMs = ts; lastTsMs = ts; }
+      i += frameLen;
+    } else {
+      i++;
+    }
+  }
+
+  if (voltages.length < 2) return null;
+
+  const toV = mV => mV / 1000;
+  const valid = voltages.filter(v => v >= 18000 && v <= 30000);
+  if (valid.length < 2) return null;
+
+  const startV = toV(valid[0]);
+  const endV = toV(valid[valid.length - 1]);
+  const minV = toV(Math.min(...valid));
+
+  // Use actual timestamps when available; fall back to sample-count approximation
+  let durationMin;
+  if (firstTsMs !== null && lastTsMs !== null && lastTsMs > firstTsMs) {
+    durationMin = (lastTsMs - firstTsMs) / 60000;
+  } else {
+    durationMin = valid.length / 60;
+  }
+
+  const date = firstTsMs !== null
+    ? new Date(firstTsMs).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
+
+  return { startV, minV, endV, durationMin, date };
+}
+
+// ══════════════════════════════════════
+// BIN (ArduPilot DataFlash) ANALYSIS
+// ══════════════════════════════════════
+const QPLANE_MODES = {0:'MANUAL',1:'CIRCLE',2:'STABILIZE',3:'TRAINING',4:'ACRO',5:'FBWA',6:'FBWB',7:'CRUISE',8:'AUTOTUNE',10:'AUTO',11:'RTL',12:'LOITER',13:'TAKEOFF',15:'GUIDED',17:'QSTABILIZE',18:'QHOVER',19:'QLOITER',20:'QLAND',21:'QRTL',22:'QAUTOTUNE',23:'QACRO',24:'THERMAL',25:'LOITER_QLAND'};
+const MODE_CLR = {MANUAL:'#6b7280',FBWA:'#93c5fd',FBWB:'#60a5fa',CRUISE:'#3b82f6',AUTO:'#f97316',RTL:'#ef4444',LOITER:'#a78bfa',GUIDED:'#f59e0b',TAKEOFF:'#facc15',QSTABILIZE:'#4ade80',QHOVER:'#22c55e',QLOITER:'#16a34a',QLAND:'#ef4444',QRTL:'#dc2626',LOITER_QLAND:'#f97316',CIRCLE:'#e879f9',THERMAL:'#fb923c'};
+const BIN_SZ = {a:64,b:1,B:1,h:2,H:2,i:4,I:4,f:4,d:8,n:4,N:16,Z:64,c:2,C:2,e:4,E:4,L:4,M:1,q:8,Q:8};
+
+function binStr(buf, off, max) {
+  let s=''; for(let k=0;k<max&&off+k<buf.length;k++){const c=buf[off+k];if(!c)break;s+=String.fromCharCode(c);} return s;
+}
+
+function binRecord(payload, fmtStr, labels) {
+  const rec={}, view=new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+  let o=0;
+  for(let k=0;k<fmtStr.length&&o<payload.byteLength;k++){
+    const fc=fmtStr[k], lbl=labels[k]||('f'+k), sz=BIN_SZ[fc]||1;
+    if(o+sz>payload.byteLength) break;
+    let v=null;
+    try{switch(fc){
+      case 'b': v=view.getInt8(o); break;
+      case 'B':case 'M': v=view.getUint8(o); break;
+      case 'h': v=view.getInt16(o,true); break;
+      case 'H': v=view.getUint16(o,true); break;
+      case 'c': v=view.getInt16(o,true)/100; break;
+      case 'C': v=view.getUint16(o,true)/100; break;
+      case 'i': v=view.getInt32(o,true); break;
+      case 'I': v=view.getUint32(o,true); break;
+      case 'e': v=view.getInt32(o,true)/100; break;
+      case 'E': v=view.getUint32(o,true)/100; break;
+      case 'L': v=view.getInt32(o,true)*1e-7; break;
+      case 'f': v=view.getFloat32(o,true); break;
+      case 'd': v=view.getFloat64(o,true); break;
+      case 'q':case 'Q':{const lo=view.getUint32(o,true),hi=view.getUint32(o+4,true);v=hi*4294967296+lo;break;}
+      case 'n': v=binStr(payload,o,4); break;
+      case 'N': v=binStr(payload,o,16); break;
+      case 'Z': v=binStr(payload,o,64); break;
+    }}catch(e){}
+    rec[lbl]=v; o+=sz;
+  }
+  return rec;
+}
+
+function parseBinData(buf) {
+  const H1=0xA3,H2=0x95,FMT=0x80;
+  const fmts={};
+  const bat={t:[],v:[],c:[],ct:[]};
+  const gps={t:[],alt:[],sats:[],hdop:[],spd:[],lat:[],lng:[],gwk:[],gms:[]};
+  const pos={t:[],relHome:[],alt:[]};   // POS.RelHomeAlt = true AGL from EKF
+  const arsp={t:[],v:[]};
+  const modes=[], msgs=[];
+  let firstT=0, lastT=0, i=0;
+
+  while(i<buf.length-2){
+    if(buf[i]!==H1||buf[i+1]!==H2){i++;continue;}
+    const type=buf[i+2];
+    if(type===FMT){
+      if(i+89>buf.length){i++;continue;}
+      const ft=buf[i+3],fl=buf[i+4];
+      fmts[ft]={name:binStr(buf,i+5,4).trim(),len:fl,fmt:binStr(buf,i+9,16),labels:binStr(buf,i+25,64).split(',').map(s=>s.trim())};
+      i+=89;
+    } else {
+      const fmt=fmts[type];
+      if(!fmt||fmt.len<3){i++;continue;}
+      if(i+fmt.len>buf.length){i++;continue;}
+      const p=buf.subarray(i+3,i+fmt.len);
+      const n=fmt.name.toUpperCase();
+      if(n==='BAT'||n==='BATT'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        if(r.Volt>3&&r.Volt<60){
+          const t=r.TimeUS||0;
+          if(!firstT)firstT=t; lastT=Math.max(lastT,t);
+          bat.t.push(t);bat.v.push(r.Volt);
+          if(r.Curr!=null)bat.c.push(r.Curr);
+          if(r.CurrTot!=null)bat.ct.push(r.CurrTot);
+        }
+      } else if(n==='GPS'||n==='GPS2'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0;
+        if(t>0&&r.NSats!=null){
+          if(!firstT)firstT=t; lastT=Math.max(lastT,t);
+          gps.t.push(t);gps.sats.push(r.NSats);gps.hdop.push(r.HDop||99);
+          gps.alt.push(r.Alt!=null?r.Alt:null);
+          gps.spd.push(r.Spd!=null?r.Spd:null);
+          gps.lat.push(r.Lat!=null?r.Lat:null);
+          gps.lng.push(r.Lng!=null?r.Lng:null);
+          if(r.GWk>100){gps.gwk.push(r.GWk);gps.gms.push(r.GMS||0);}
+        }
+      } else if(n==='POS'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0;
+        if(t>0&&r.RelHomeAlt!=null&&isFinite(r.RelHomeAlt)){
+          pos.t.push(t); pos.relHome.push(r.RelHomeAlt);
+          if(r.Alt!=null) pos.alt.push(r.Alt);
+        }
+      } else if(n==='ARSP'||n==='ASPD'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0,v=r.Airspeed!=null?r.Airspeed:r.Aspd;
+        if(t>0&&v!=null&&v>=0&&v<120){arsp.t.push(t);arsp.v.push(v);}
+      } else if(n==='MODE'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0,m=r.Mode!=null?r.Mode:r.ModeNum;
+        if(t>0&&m!=null)modes.push({t,mode:m});
+      } else if(n==='MSG'){
+        const r=binRecord(p,fmt.fmt,fmt.labels);
+        const t=r.TimeUS||0,txt=r.Message||r.Msg||'';
+        if(txt.trim().length>1)msgs.push({t,text:txt.trim()});
+      }
+      i+=fmt.len;
+    }
+  }
+  if(!firstT)firstT=bat.t[0]||gps.t[0]||0;
+  if(!lastT) lastT=bat.t[bat.t.length-1]||gps.t[gps.t.length-1]||0;
+  return {bat,gps,pos,arsp,modes,msgs,firstT,lastT};
+}
+
+function binChart(values, times, color, height) {
+  height=height||80;
+  if(!values||values.length<2)return '<div style="color:var(--muted);font-size:12px;padding:8px 0">No data</div>';
+  let vs=values,ts=times;
+  if(vs.length>600){const step=vs.length/600;vs=[];ts=[];for(let k=0;k<600;k++){const idx=Math.round(k*step);if(values[idx]!=null){vs.push(values[idx]);ts.push(times[idx]);}}}
+  const valid=vs.filter(v=>v!=null&&isFinite(v));
+  if(!valid.length)return '<div style="color:var(--muted);font-size:12px;padding:8px 0">No valid data</div>';
+  const minV=Math.min(...valid),maxV=Math.max(...valid),range=maxV-minV||0.1;
+  const W=700,H=height,ml=46,mb=14,mt=6,mr=6,cW=W-ml-mr,cH=H-mt-mb;
+  const durSec=(ts[ts.length-1]-ts[0])/1e6;
+  const poly=vs.map((v,i)=>{
+    if(v==null||!isFinite(v))return null;
+    const x=(ml+(ts[i]-ts[0])/(ts[ts.length-1]-ts[0])*cW).toFixed(1);
+    const y=(mt+cH-((v-minV)/range)*cH).toFixed(1);
+    return x+','+y;
+  }).filter(Boolean).join(' ');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block">'
+    +'<rect x="'+ml+'" y="'+mt+'" width="'+cW+'" height="'+cH+'" fill="var(--surface2)"/>'
+    +'<text x="'+(ml-3)+'" y="'+(mt+9)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+maxV.toFixed(1)+'</text>'
+    +'<text x="'+(ml-3)+'" y="'+(mt+cH)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+minV.toFixed(1)+'</text>'
+    +'<text x="'+ml+'" y="'+(H-2)+'" fill="var(--muted)" font-size="9" font-family="monospace">0:00</text>'
+    +'<text x="'+(ml+cW)+'" y="'+(H-2)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+Math.floor(durSec/60)+':'+(''+(Math.round(durSec)%60)).padStart(2,'0')+'</text>'
+    +'<rect x="'+ml+'" y="'+mt+'" width="'+cW+'" height="'+cH+'" fill="none" stroke="var(--border2)" stroke-width="0.5"/>'
+    +'<polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round"/>'
+    +'</svg>';
+}
+
+function parseBinFull() {
+  const file=document.getElementById('bin-file').files[0];
+  const status=document.getElementById('bin-status');
+  const result=document.getElementById('bin-result');
+  if(!file){status.textContent='Select a .bin file first.';return;}
+  status.style.color='var(--muted)';status.textContent='Parsing '+file.name+' ('+Math.round(file.size/1024)+' KB)…';
+  result.innerHTML='';
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const buf=new Uint8Array(ev.target.result);
+      const d=parseBinData(buf);
+      const counts=[];
+      if(d.bat.v.length)counts.push(d.bat.v.length+' battery samples');
+      if(d.gps.t.length)counts.push(d.gps.t.length+' GPS records');
+      if(d.arsp.v.length)counts.push(d.arsp.v.length+' airspeed samples');
+      if(d.modes.length)counts.push(d.modes.length+' mode changes');
+      if(!counts.length){status.style.color='var(--amber)';status.textContent='No recognisable data found. Is this a valid ArduPilot .bin DataFlash log?';return;}
+      status.style.color='var(--green)';status.textContent='Parsed — '+counts.join(', ');
+      renderBinResult(d,file.name);
+    }catch(e){status.style.color='var(--red)';status.textContent='Error: '+e.message;}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderBinResult(d, filename) {
+  const out=document.getElementById('bin-result');
+  const bt=loadBattType(),cells=bt.cells,chem=BATT_CHEM[bt.chem]||BATT_CHEM.lipo;
+
+  // Wall-clock date from GPS GWk/GMS
+  let flightDate='Unknown date',startStr='—';
+  if(d.gps.gwk.length){
+    const wk=d.gps.gwk.find(w=>w>100);
+    if(wk!=null){
+      const idx=d.gps.gwk.indexOf(wk);
+      const wallMs=315964800000+wk*604800000+(d.gps.gms[idx]||0);
+      const dt=new Date(wallMs);
+      flightDate=dt.toISOString().split('T')[0];
+      startStr=dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    }
+  }
+
+  // Duration
+  const durSec=(d.lastT-d.firstT)/1e6;
+  const durStr=durSec>0?Math.floor(durSec/60)+'m '+(Math.round(durSec)%60)+'s':'—';
+  const tFmt=s=>Math.floor(s/60)+'m '+(''+(Math.round(s)%60)).padStart(2,'0')+'s';
+
+  // Battery
+  const vv=d.bat.v.filter((v,i)=>v>cells*chem.critical*0.85&&v<cells*chem.full*1.05);
+  const vt=d.bat.t.filter((_,i)=>d.bat.v[i]>cells*chem.critical*0.85&&d.bat.v[i]<cells*chem.full*1.05);
+  const startV=vv.length?vv[0].toFixed(2):'—';
+  const endV=vv.length?vv[vv.length-1].toFixed(2):'—';
+  const minVnum=vv.length?Math.min(...vv):null;
+  const minV=minVnum!=null?minVnum.toFixed(2):'—';
+  const sag=vv.length?(vv[0]-minVnum).toFixed(2):'—';
+  const currArr=d.bat.c.filter(c=>c!=null&&c>=0&&c<500);
+  const maxCurr=currArr.length?Math.max(...currArr).toFixed(1):'—';
+  const avgCurr=currArr.length?(currArr.reduce((a,b)=>a+b,0)/currArr.length).toFixed(1):'—';
+  const ctArr=d.bat.ct.filter(c=>c!=null&&c>=0);
+  const mAhUsed=ctArr.length>1?(ctArr[ctArr.length-1]-ctArr[0]).toFixed(0):'—';
+
+  // Altitude — prefer POS.RelHomeAlt (true AGL from EKF), fall back to GPS MSL - launch MSL
+  let relAlts, altTimes, altLabel, maxAlt, baseAlt=0;
+  if(d.pos.relHome.length>2){
+    relAlts=d.pos.relHome; altTimes=d.pos.t;
+    altLabel='ALTITUDE AGL — RELATIVE TO HOME (m) · source: POS.RelHomeAlt';
+    maxAlt=Math.max(...relAlts).toFixed(0);
+  } else {
+    const altPairs=d.gps.alt.map((a,i)=>({a,t:d.gps.t[i]})).filter(x=>x.a!=null&&isFinite(x.a));
+    baseAlt=altPairs.length?altPairs[0].a:0;
+    relAlts=altPairs.map(x=>+(x.a-baseAlt).toFixed(1));
+    altTimes=altPairs.map(x=>x.t);
+    altLabel='ALTITUDE RELATIVE TO LAUNCH GPS FIX (m) · POS messages not found';
+    maxAlt=relAlts.length?Math.max(...relAlts).toFixed(0):'—';
+  }
+
+  // Airspeed
+  const spdArr=d.arsp.v.filter(v=>v>0&&v<100);
+  const maxSpd=spdArr.length?Math.max(...spdArr).toFixed(1):'—';
+  const avgSpd=spdArr.length?(spdArr.reduce((a,b)=>a+b,0)/spdArr.length).toFixed(1):'—';
+
+  // GPS
+  const satArr=d.gps.sats.filter(s=>s>0);
+  const minSat=satArr.length?Math.min(...satArr):'—';
+  const avgSat=satArr.length?Math.round(satArr.reduce((a,b)=>a+b,0)/satArr.length):'—';
+  const hdopArr=d.gps.hdop.filter(h=>h>0&&h<50);
+  const maxHDop=hdopArr.length?Math.max(...hdopArr).toFixed(2):'—';
+
+  // Mode segments
+  const totalUs=d.lastT-d.firstT||1;
+  const modeSegs=d.modes.map((m,k)=>{
+    const tEnd=k+1<d.modes.length?d.modes[k+1].t:d.lastT;
+    const dur=(tEnd-m.t)/1e6;
+    const name=QPLANE_MODES[m.mode]||('MODE_'+m.mode);
+    const pct=((tEnd-m.t)/totalUs*100).toFixed(2);
+    return {name,dur,pct,clr:MODE_CLR[name]||'#6b7280',tSec:(m.t-d.firstT)/1e6};
+  });
+
+  // Status messages (deduplicated, sort by time)
+  const seenTxt=new Set();
+  const uniqMsgs=d.msgs.filter(m=>{if(seenTxt.has(m.text))return false;seenTxt.add(m.text);return true;});
+
+  // Charts
+  const voltChart=vv.length>2?binChart(vv,vt,'var(--accent)',80):'';
+  const altChart=relAlts.length>2?binChart(relAlts,altTimes,'var(--green)',80):'';
+  const arspChart=spdArr.length>2?binChart(d.arsp.v,d.arsp.t,'#60a5fa',70):'';
+
+  function sc(title,color,rows){
+    return '<div style="background:var(--surface);border:1px solid var(--border2);border-left:3px solid '+color+';padding:16px 18px">'
+      +'<div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:'+color+';margin-bottom:10px">'+title+'</div>'
+      +'<div style="font-size:14px;color:var(--muted);line-height:2.1">'+rows+'</div></div>';
+  }
+  function row(){return Array.from(arguments).join(' &nbsp;·&nbsp; ');}
+  function lbl(k,v,c){return '<span style="color:var(--muted)">'+k+'</span> <strong style="color:'+(c||'var(--text)')+'">'+v+'</strong>';}
+
+  out.innerHTML=
+    '<div style="margin-bottom:18px">'
+      +'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:3px">DATAFLASH LOG</div>'
+      +'<div style="font-family:var(--head);font-size:20px;font-weight:700;color:var(--text);letter-spacing:1px">'+filename+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+flightDate+' &nbsp;·&nbsp; Start: '+startStr+' &nbsp;·&nbsp; Duration: '+durStr+' &nbsp;·&nbsp; '+cells+'S '+chem.name+'</div>'
+    +'</div>'
+
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">'
+      +sc('BATTERY','var(--accent)',
+          row(lbl('Start',startV+'V'),lbl('Min',minV+'V','var(--red)'))+'\n'
+          +row(lbl('End',endV+'V'),lbl('Sag',sag+'V','var(--amber)'))+'\n'
+          +(mAhUsed!=='—'?row(lbl('Used',mAhUsed+' mAh'))+'\n':'')
+          +(maxCurr!=='—'?row(lbl('Avg I',avgCurr+'A'),lbl('Max I',maxCurr+'A')):''))
+      +sc(d.pos.relHome.length>2?'ALTITUDE AGL':'ALTITUDE REL.','var(--green)',
+          row(lbl('Max',maxAlt+'m'))+'\n'+(d.pos.relHome.length>2?'<span style="font-size:11px;color:var(--muted)">EKF relative to home</span>':row(lbl('Base',baseAlt.toFixed(0)+'m MSL'))))
+      +sc('AIRSPEED','#60a5fa',
+          row(lbl('Max',maxSpd+' m/s'),lbl('Avg',avgSpd+' m/s'))+'\n'
+          +'<span style="font-size:11px">Cruise target: 13 m/s</span>')
+      +sc('GPS',avgSat>=8?'var(--green)':'var(--amber)',
+          row(lbl('Avg sats',avgSat),lbl('Min',minSat))+'\n'+row(lbl('Max HDOP',maxHDop)))
+    +'</div>'
+
+    +(voltChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">BATTERY VOLTAGE (V)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+voltChart+'</div>':'')
+    +(altChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">'+altLabel+'</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+altChart+'</div>':'')
+    +(arspChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">AIRSPEED (m/s)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+arspChart+'</div>':'')
+
+    +(modeSegs.length?
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">FLIGHT MODE TIMELINE</div>'
+      +'<div style="height:34px;display:flex;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px">'
+      +modeSegs.map(s=>'<div style="flex:0 0 '+s.pct+'%;background:'+s.clr+'33;border-right:1px solid '+s.clr+'66" title="'+s.name+' — '+tFmt(s.dur)+'"></div>').join('')
+      +'</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px">'
+      +modeSegs.map(s=>'<div style="display:flex;align-items:center;gap:6px;font-size:13px">'
+        +'<div style="width:10px;height:10px;background:'+s.clr+'"></div>'
+        +'<span style="color:var(--muted)">'+s.name+'</span>'
+        +'<span style="color:var(--text);font-family:var(--mono)">'+tFmt(s.dur)+'</span></div>').join('')
+      +'</div>':'')
+
+    +(uniqMsgs.length?
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">STATUS MESSAGES ('+uniqMsgs.length+' unique)</div>'
+      +'<div style="background:var(--surface);border:1px solid var(--border2);max-height:340px;overflow-y:auto;margin-bottom:16px">'
+      +uniqMsgs.map(m=>{
+        const sec=(m.t-d.firstT)/1e6;
+        const ts=Math.floor(sec/60)+':'+(''+(Math.round(sec)%60)).padStart(2,'0');
+        const warn=m.text.match(/error|fail|warn|critical|unsafe|bad\s|low\s|unable|disarm|no\s|lost|denied/i);
+        return '<div style="display:flex;gap:12px;padding:7px 12px;border-bottom:1px solid var(--border);align-items:baseline">'
+          +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;min-width:44px">'+ts+'</span>'
+          +'<span style="font-size:13px;color:'+(warn?'var(--amber)':'var(--text)')+'">'+m.text+'</span></div>';
+      }).join('')+'</div>'
+    :'<div style="color:var(--green);font-size:13px;margin-bottom:16px">No status messages in log.</div>');
+}
+
+// placeholder — kept to avoid breaking any old reference
+function rf32le(p, o) {
+  const ab=new ArrayBuffer(4);const v=new DataView(ab);
+  for(let k=0;k<4;k++)v.setUint8(k,p[o+k]||0);
+  return v.getFloat32(0,true);
+}
+
+function mavlinkExtractAll(buf) {
+  // Date from first timestamp (8-byte BE uint64 microseconds before first STX)
+  let flightDate = null, startTimeMs = null;
+  for (let j=8; j<Math.min(buf.length,500); j++) {
+    if (buf[j]===0xFE || buf[j]===0xFD) {
+      const hi=((buf[j-8]<<24)|(buf[j-7]<<16)|(buf[j-6]<<8)|buf[j-5])>>>0;
+      const lo=((buf[j-4]<<24)|(buf[j-3]<<16)|(buf[j-2]<<8)|buf[j-1])>>>0;
+      const ms=(hi*4294967296+lo)/1000;
+      const d=new Date(ms);
+      if (d.getFullYear()>=2015&&d.getFullYear()<=2040){flightDate=d.toISOString().split('T')[0];startTimeMs=ms;}
+      break;
+    }
+  }
+
+  const volts=[], alts=[], speeds=[], sats=[], texts=[], modes=[];
+  let heartbeats=0, i=0;
+
+  while (i<buf.length-8) {
+    const stx=buf[i];
+    if (stx===0xFE) {
+      const paylen=buf[i+1], msgid=buf[i+5], flen=8+paylen;
+      if (i+flen>buf.length){i++;continue;}
+      const p=buf.slice(i+6,i+6+paylen);
+      _tlogMsg(msgid,p,volts,alts,speeds,sats,texts,modes);
+      if (msgid===0) heartbeats++;
+      i+=flen;
+    } else if (stx===0xFD) {
+      if (i+10>buf.length){i++;continue;}
+      const paylen=buf[i+1], msgid=buf[i+7]|(buf[i+8]<<8)|(buf[i+9]<<16), flen=12+paylen;
+      if (i+flen>buf.length){i++;continue;}
+      const p=buf.slice(i+10,i+10+paylen);
+      _tlogMsg(msgid,p,volts,alts,speeds,sats,texts,modes);
+      if (msgid===0) heartbeats++;
+      i+=flen;
+    } else { i++; }
+  }
+
+  return {flightDate, startTimeMs, volts, alts, speeds, sats, texts, modes, heartbeats};
+}
+
+function _tlogMsg(msgid,p,volts,alts,speeds,sats,texts,modes) {
+  if (msgid===1 && p.length>=16) {
+    const mV=p[14]|(p[15]<<8); if(mV>5000&&mV<60000) volts.push(mV/1000);
+  }
+  if (msgid===147 && p.length>=12) {
+    const mV=p[10]|(p[11]<<8); if(mV>5000&&mV<60000) volts.push(mV/1000);
+  }
+  if (msgid===74 && p.length>=20) {
+    const spd=rf32le(p,0), alt=rf32le(p,8);
+    if(spd>=0&&spd<150) speeds.push(spd);
+    if(alt>-100&&alt<8000) alts.push(alt);
+  }
+  if (msgid===24 && p.length>=30) {
+    const sv=p[29]; if(sv>0&&sv<50) sats.push(sv);
+  }
+  if (msgid===253 && p.length>=2) {
+    const sev=p[0];
+    const text=Array.from(p.slice(1,Math.min(51,p.length))).map(c=>String.fromCharCode(c)).join('').replace(/\0/g,'').trim();
+    if(text.length>1) texts.push({sev,text});
+  }
+  if (msgid===0 && p.length>=4) {
+    const mode=p[0]|(p[1]<<8)|(p[2]<<16)|(p[3]<<24);
+    if(!modes.length||modes[modes.length-1]!==mode) modes.push(mode);
+  }
+}
+
+function tlogChart(values, color, minLabel, maxLabel, height) {
+  height = height || 80;
+  if (!values.length) return '<div style="color:var(--muted);font-size:12px;padding:8px">No data</div>';
+  let pts = values;
+  if (pts.length > 500) {
+    const step = pts.length/500;
+    pts = Array.from({length:500},(_,i)=>values[Math.min(Math.round(i*step),values.length-1)]);
+  }
+  const minV=Math.min(...pts), maxV=Math.max(...pts), range=maxV-minV||0.1;
+  const W=600, H=height, ml=44, mb=4, mt=4, mr=8, cW=W-ml-mr, cH=H-mt-mb;
+  const poly=pts.map((v,i)=>{
+    const x=ml+(i/(pts.length-1))*cW;
+    const y=mt+cH-((v-minV)/range)*cH;
+    return x.toFixed(1)+','+y.toFixed(1);
+  }).join(' ');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block;background:var(--surface)">'
+    +'<rect x="'+ml+'" y="'+mt+'" width="'+cW+'" height="'+cH+'" fill="none" stroke="var(--border2)" stroke-width="0.5"/>'
+    +'<text x="'+(ml-2)+'" y="'+(mt+8)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+maxLabel+'</text>'
+    +'<text x="'+(ml-2)+'" y="'+(mt+cH)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+minLabel+'</text>'
+    +'<polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round"/>'
+    +'</svg>';
+}
+
+function parseTlogFull() {
+  const file = document.getElementById('tlog-full-file').files[0];
+  const status = document.getElementById('tlog-full-status');
+  const result = document.getElementById('tlog-full-result');
+  if (!file) { status.textContent='Select a .tlog file first.'; return; }
+  status.style.color='var(--muted)'; status.textContent='Parsing…';
+  result.innerHTML='';
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const buf = new Uint8Array(ev.target.result);
+      const d = mavlinkExtractAll(buf);
+      status.style.color='var(--green)';
+      status.textContent='Parsed '+buf.length+' bytes — '+d.volts.length+' voltage samples, '+d.alts.length+' altitude samples, '+d.texts.length+' status messages';
+      renderTlogResult(d, file.name);
+    } catch(e) {
+      status.style.color='var(--red)'; status.textContent='Parse error: '+e.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderTlogResult(d, filename) {
+  const out = document.getElementById('tlog-full-result');
+  const bt = loadBattType();
+  const cells = bt.cells, chem = BATT_CHEM[bt.chem]||BATT_CHEM.lipo;
+
+  // Duration estimate from heartbeats (1 Hz) or voltage samples (~2 Hz)
+  const durSec = d.heartbeats > 30 ? d.heartbeats : Math.round(d.volts.length / 2);
+  const durMin = (durSec / 60).toFixed(1);
+  const startStr = d.startTimeMs ? new Date(d.startTimeMs).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—';
+
+  // Battery stats
+  const vv = d.volts.filter(v=>v>cells*chem.critical*0.9&&v<cells*chem.full*1.05);
+  const startV = vv.length ? vv[0].toFixed(2) : '—';
+  const endV   = vv.length ? vv[vv.length-1].toFixed(2) : '—';
+  const minV   = vv.length ? Math.min(...vv).toFixed(2) : '—';
+  const sag    = vv.length ? (vv[0]-Math.min(...vv)).toFixed(2) : '—';
+
+  // Altitude stats
+  const validAlts = d.alts.filter(a=>a>-50&&a<5000);
+  const maxAlt = validAlts.length ? Math.max(...validAlts).toFixed(0) : '—';
+  const avgAlt = validAlts.length ? (validAlts.reduce((a,b)=>a+b,0)/validAlts.length).toFixed(0) : '—';
+
+  // Airspeed stats
+  const validSpd = d.speeds.filter(s=>s>0&&s<100);
+  const maxSpd = validSpd.length ? Math.max(...validSpd).toFixed(1) : '—';
+  const avgSpd = validSpd.length ? (validSpd.reduce((a,b)=>a+b,0)/validSpd.length).toFixed(1) : '—';
+
+  // GPS stats
+  const avgSat = d.sats.length ? Math.round(d.sats.reduce((a,b)=>a+b,0)/d.sats.length) : '—';
+  const minSat = d.sats.length ? Math.min(...d.sats) : '—';
+
+  // Unique flight modes
+  const modeNames = [...new Set(d.modes)].map(m=>PLANE_MODES[m]||('MODE_'+m));
+
+  // Status messages — severity < 6 (skip INFO/DEBUG)
+  const importantTexts = d.texts.filter(t=>t.sev<=5);
+  const uniqueTexts = [];
+  const seenTexts = new Set();
+  importantTexts.forEach(function(t){
+    const k = t.sev+'|'+t.text;
+    if(!seenTexts.has(k)){seenTexts.add(k);uniqueTexts.push(t);}
+  });
+
+  // Charts
+  const voltChart = vv.length>2 ? tlogChart(vv,'var(--accent)',minV+'V',startV+'V',70) : '';
+  const altChart  = validAlts.length>2 ? tlogChart(validAlts,'var(--green)','0m',maxAlt+'m',70) : '';
+  const spdChart  = validSpd.length>2 ? tlogChart(validSpd,'#60a5fa','0 m/s',maxSpd+' m/s',70) : '';
+
+  out.innerHTML =
+    // Header
+    '<div style="margin-bottom:16px">' +
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:3px">FILE</div>' +
+      '<div style="font-family:var(--head);font-size:18px;font-weight:700;color:var(--text);letter-spacing:1px">'+filename+'</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+(d.flightDate||'Unknown date')+' &nbsp;·&nbsp; Start: '+startStr+' &nbsp;·&nbsp; Est. duration: '+durMin+' min &nbsp;·&nbsp; '+cells+'S '+chem.name+'</div>' +
+    '</div>' +
+
+    // 4 stat cards
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px">' +
+      _tlogCard('BATTERY', 'var(--accent)',
+        'Start: <b>'+startV+'V</b> &nbsp;·&nbsp; Min: <b style="color:var(--red)">'+minV+'V</b><br>End: <b>'+endV+'V</b> &nbsp;·&nbsp; Sag: <b style="color:var(--amber)">'+sag+'V</b>') +
+      _tlogCard('ALTITUDE', 'var(--green)',
+        'Max: <b>'+maxAlt+'m</b> &nbsp;·&nbsp; Avg: <b>'+avgAlt+'m</b>') +
+      _tlogCard('AIRSPEED', '#60a5fa',
+        'Max: <b>'+maxSpd+' m/s</b> &nbsp;·&nbsp; Avg: <b>'+avgSpd+' m/s</b><br><span style="font-size:11px;color:var(--muted)">T2 cruise target: 13 m/s</span>') +
+      _tlogCard('GPS', avgSat>=8?'var(--green)':'var(--amber)',
+        'Avg sats: <b>'+avgSat+'</b> &nbsp;·&nbsp; Min sats: <b>'+minSat+'</b>') +
+    '</div>' +
+
+    // Charts
+    (voltChart ? '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">BATTERY VOLTAGE</div>' +
+      '<div style="border:1px solid var(--border2);margin-bottom:16px">'+voltChart+'</div>' : '') +
+    (altChart ? '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">ALTITUDE (m MSL)</div>' +
+      '<div style="border:1px solid var(--border2);margin-bottom:16px">'+altChart+'</div>' : '') +
+    (spdChart ? '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">AIRSPEED (m/s)</div>' +
+      '<div style="border:1px solid var(--border2);margin-bottom:16px">'+spdChart+'</div>' : '') +
+
+    // Flight modes
+    (modeNames.length ? '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">FLIGHT MODES USED</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+
+      modeNames.map(m=>'<span style="font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:1px;padding:4px 10px;background:var(--surface);border:1px solid var(--border2);color:var(--accent)">'+m+'</span>').join('')+
+      '</div>' : '') +
+
+    // Status messages
+    (uniqueTexts.length ?
+      '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">STATUS MESSAGES ('+uniqueTexts.length+')</div>' +
+      '<div style="background:var(--surface);border:1px solid var(--border2);margin-bottom:16px">' +
+      uniqueTexts.map(function(t){
+        const c=SEV_COLOR[Math.min(t.sev,7)];
+        const l=SEV_LABEL[Math.min(t.sev,7)];
+        return '<div style="display:flex;align-items:baseline;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border)">' +
+          '<span style="font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1px;color:'+c+';min-width:72px;flex-shrink:0">'+l+'</span>' +
+          '<span style="font-size:13px;color:var(--text)">'+t.text+'</span>' +
+          '</div>';
+      }).join('')+
+      '</div>' : '<div style="font-size:13px;color:var(--green);margin-bottom:16px">No warnings or errors in log.</div>');
+}
+
+function _tlogCard(title, color, body) {
+  return '<div style="background:var(--surface);border:1px solid var(--border2);border-left:3px solid '+color+';padding:14px 16px">' +
+    '<div style="font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:'+color+';margin-bottom:8px">'+title+'</div>' +
+    '<div style="font-size:14px;color:var(--muted);line-height:1.8">'+body+'</div>' +
+  '</div>';
+}
+
+// Initialise on load
+vtolInit();
+
+// ── WIND COMPASS SVG ──
+function windCompassSVG(dir, speed, c) {
+  const cx = 55, cy = 55, r = 44, al = 36;
+  // Arrow rotated by `dir` degrees: tail (FROM direction) at top, tip (TO direction) at bottom
+  return '<svg viewBox="0 0 110 110" style="width:110px;height:110px;flex-shrink:0">'
+    + '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+c+'22" stroke="'+c+'44" stroke-width="1.5"/>'
+    + '<text x="'+cx+'" y="'+(cy-r-3)+'" fill="#777" font-size="9" text-anchor="middle" font-family="Oswald,sans-serif">N</text>'
+    + '<text x="'+cx+'" y="'+(cy+r+12)+'" fill="#777" font-size="9" text-anchor="middle" font-family="Oswald,sans-serif">S</text>'
+    + '<text x="'+(cx+r+6)+'" y="'+(cy+4)+'" fill="#777" font-size="8" font-family="Oswald,sans-serif">E</text>'
+    + '<text x="'+(cx-r-10)+'" y="'+(cy+4)+'" fill="#777" font-size="8" font-family="Oswald,sans-serif">W</text>'
+    + '<g transform="rotate('+dir+' '+cx+' '+cy+')">'
+    + '<line x1="'+cx+'" y1="'+(cy-al+8)+'" x2="'+cx+'" y2="'+(cy+al)+'" stroke="'+c+'" stroke-width="3" stroke-linecap="round"/>'
+    + '<polygon points="'+cx+','+(cy+al)+' '+(cx-7)+','+(cy+al-12)+' '+(cx+7)+','+(cy+al-12)+'" fill="'+c+'"/>'
+    + '<circle cx="'+cx+'" cy="'+(cy-al)+'" r="4" fill="'+c+'" opacity="0.8"/>'
+    + '</g>'
+    + '<text x="'+cx+'" y="'+(cy+5)+'" fill="'+c+'" font-size="12" font-weight="bold" text-anchor="middle" font-family="Oswald,sans-serif">'+speed.toFixed(1)+'</text>'
+    + '<text x="'+cx+'" y="'+(cy+17)+'" fill="#888" font-size="8" text-anchor="middle">m/s</text>'
+    + '</svg>';
+}
+
+// ── SUN TIMES (NOAA algorithm) ──
+function calcSunTimes(lat, lon) {
+  const now = new Date();
+  const rad = Math.PI / 180, deg = 180 / Math.PI;
+  const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+
+  function solve(rising, zenith) {
+    const lngHour = lon / 15;
+    const t = dayOfYear + ((rising ? 6 : 18) - lngHour) / 24;
+    const M = (0.9856 * t) - 3.289;
+    let L = M + (1.916 * Math.sin(M * rad)) + (0.020 * Math.sin(2 * M * rad)) + 282.634;
+    L = ((L % 360) + 360) % 360;
+    let RA = Math.atan(0.91764 * Math.tan(L * rad)) * deg;
+    RA = ((RA % 360) + 360) % 360;
+    RA = RA + (Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90);
+    RA /= 15;
+    const sinDec = 0.39782 * Math.sin(L * rad);
+    const cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(zenith * rad) - sinDec * Math.sin(lat * rad)) / (cosDec * Math.cos(lat * rad));
+    if (cosH > 1) return 'never_rises';
+    if (cosH < -1) return 'never_sets';
+    let H = rising ? (360 - Math.acos(cosH) * deg) : Math.acos(cosH) * deg;
+    H /= 15;
+    let UT = H + RA - (0.06571 * t) - 6.622 - lngHour;
+    UT = ((UT % 24) + 24) % 24;
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    d.setUTCHours(Math.floor(UT), Math.round((UT % 1) * 60), 0, 0);
+    return d;
+  }
+
+  return {
+    civilDawn: solve(true,  96),
+    sunrise:   solve(true,  90.833),
+    sunset:    solve(false, 90.833),
+    civilDusk: solve(false, 96)
+  };
+}
+
+// ── WEATHER ──
+function getLocation() {
+  const btn = document.querySelector('[onclick="getLocation()"]');
+  if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+  btn.textContent = 'LOCATING...'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('wx-lat').value = pos.coords.latitude.toFixed(4);
+      document.getElementById('wx-lon').value = pos.coords.longitude.toFixed(4);
+      btn.textContent = 'USE GPS'; btn.disabled = false;
+    },
+    err => { btn.textContent = 'USE GPS'; btn.disabled = false; alert('GPS error: ' + err.message); },
+    { timeout: 10000 }
+  );
+}
+
+async function fetchWeather() {
+  const lat = parseFloat(document.getElementById('wx-lat').value);
+  const lon = parseFloat(document.getElementById('wx-lon').value);
+  const out = document.getElementById('wx-result');
+  if (isNaN(lat) || isNaN(lon)) {
+    out.innerHTML = '<div class="alert alert-warn">Enter coordinates or use GPS first.</div>';
+    return;
+  }
+  out.innerHTML = '<div class="alert alert-info">Fetching weather data...</div>';
+  try {
+    const wxUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+      '&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation,rain,snowfall' +
+      '&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,weather_code,' +
+      'temperature_1000hPa,temperature_950hPa,temperature_900hPa,temperature_850hPa,' +
+      'relative_humidity_1000hPa,relative_humidity_950hPa,relative_humidity_900hPa,relative_humidity_850hPa' +
+      '&wind_speed_unit=ms&timezone=auto&forecast_days=1';
+
+    const [wxResp, geoResp] = await Promise.all([
+      fetch(wxUrl),
+      fetch('https://nominatim.openstreetmap.org/reverse?lat=' + lat + '&lon=' + lon + '&format=json&accept-language=en').catch(() => null)
+    ]);
+    if (!wxResp.ok) throw new Error('HTTP ' + wxResp.status);
+    const data = await wxResp.json();
+    const geoData = geoResp ? await geoResp.json().catch(() => null) : null;
+
+    const c = data.current;
+    const wind = c.wind_speed_10m, gusts = c.wind_gusts_10m, temp = c.temperature_2m;
+    const rh = c.relative_humidity_2m, dir = c.wind_direction_10m;
+    const precip = c.precipitation || 0, wCode = c.weather_code;
+    const hIdx = Math.max(0, data.hourly.time.indexOf(c.time));
+    const h = data.hourly;
+
+    // Location name
+    let locName = lat.toFixed(4) + ', ' + lon.toFixed(4);
+    if (geoData && geoData.address) {
+      const a = geoData.address;
+      const parts = [a.village || a.town || a.city || a.county, a.state || a.region, a.country].filter(Boolean);
+      if (parts.length) locName = parts.join(', ');
+    }
+    wxCurrentLocName = locName;
+
+    const DIRS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    function compass(d) { return DIRS[Math.round(d / 22.5) % 16]; }
+
+    const WMO = {0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Freezing fog',
+      51:'Light drizzle',53:'Moderate drizzle',55:'Dense drizzle',56:'Light freezing drizzle',57:'Heavy freezing drizzle',
+      61:'Slight rain',63:'Moderate rain',65:'Heavy rain',66:'Light freezing rain',67:'Heavy freezing rain',
+      71:'Slight snow',73:'Moderate snow',75:'Heavy snow',77:'Snow grains',
+      80:'Slight showers',81:'Moderate showers',82:'Violent showers',85:'Slight snow showers',86:'Heavy snow showers',
+      95:'Thunderstorm',96:'Thunderstorm + hail',99:'Thunderstorm + heavy hail'};
+    function skyDesc(code) { return WMO[code] || 'Unknown'; }
+
+    function windStat(w, g) {
+      if (w > 8 || g > 10) return {s:'NO-GO', c:'var(--red)', bg:'#1f0a0a'};
+      if (w > 5)           return {s:'CAUTION', c:'var(--amber)', bg:'#1f1a08'};
+      return                      {s:'GO', c:'var(--green)', bg:'#0a1f0e'};
+    }
+    function precipStat(code, mm) {
+      if (code >= 95) return {s:'NO-GO', label:'Thunderstorm', c:'var(--red)', bg:'#1f0a0a'};
+      if (code >= 85) return {s:'NO-GO', label:'Snow showers', c:'var(--red)', bg:'#1f0a0a'};
+      if (code >= 71) return {s:'NO-GO', label:'Snow', c:'var(--red)', bg:'#1f0a0a'};
+      if (code === 66 || code === 67) return {s:'NO-GO', label:'Freezing rain', c:'var(--red)', bg:'#1f0a0a'};
+      if (code === 82 || code >= 63 || mm > 4) return {s:'NO-GO', label:skyDesc(code), c:'var(--red)', bg:'#1f0a0a'};
+      if (code >= 51 || mm > 0) return {s:'CAUTION', label:skyDesc(code), c:'var(--amber)', bg:'#1f1a08'};
+      return {s:'GO', label:'None', c:'var(--green)', bg:'#0a1f0e'};
+    }
+    function icingStat(t, rhv) {
+      if (t === null || t === undefined) return {label:'--', c:'var(--muted)'};
+      if (t > 2 || t < -25) return {label:'NIL', c:'var(--green)'};
+      const r = rhv || 0;
+      if (t >= -2  && t <= 2  && r >= 80) return {label:'HIGH', c:'var(--red)'};
+      if (t >= -10 && t < -2  && r >= 80) return {label:'MOD',  c:'var(--amber)'};
+      if (r >= 60) return {label:'LOW', c:'var(--amber)'};
+      return {label:'NIL', c:'var(--green)'};
+    }
+
+    const wStat = windStat(wind, gusts);
+    const pStat = precipStat(wCode, precip);
+
+    // Sun times
+    const sun = calcSunTimes(lat, lon);
+    const sunNow = new Date();
+    function fmtSun(d) {
+      if (typeof d === 'string') return d === 'never_rises' ? 'No rise' : '24h light';
+      return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    }
+    function isDate(d) { return d instanceof Date; }
+    let sunStatus, sunColor, sunBg;
+    if (sun.sunrise === 'never_sets') {
+      sunStatus = 'MIDNIGHT SUN — DAYLIGHT ALL DAY'; sunColor = 'var(--green)'; sunBg = '#0a1f0e';
+    } else if (sun.sunrise === 'never_rises') {
+      sunStatus = 'POLAR NIGHT — NO DAYLIGHT'; sunColor = 'var(--red)'; sunBg = '#1f0a0a';
+    } else if (isDate(sun.sunrise) && isDate(sun.sunset) && sunNow >= sun.sunrise && sunNow <= sun.sunset) {
+      const mins = Math.round((sun.sunset - sunNow) / 60000);
+      sunStatus = 'DAYLIGHT — ' + (mins >= 60 ? Math.floor(mins/60)+'h '+('0'+mins%60).slice(-2)+'m' : mins+'m') + ' until sunset';
+      sunColor = 'var(--green)'; sunBg = '#0a1f0e';
+    } else if (isDate(sun.civilDawn) && isDate(sun.sunrise) && sunNow >= sun.civilDawn && sunNow < sun.sunrise) {
+      sunStatus = 'CIVIL TWILIGHT (dawn) — Sunrise in ' + Math.round((sun.sunrise - sunNow)/60000) + 'm';
+      sunColor = 'var(--amber)'; sunBg = '#1f1a08';
+    } else if (isDate(sun.sunset) && isDate(sun.civilDusk) && sunNow > sun.sunset && sunNow <= sun.civilDusk) {
+      sunStatus = 'CIVIL TWILIGHT (dusk) — ' + Math.round((sun.civilDusk - sunNow)/60000) + 'm of light remaining';
+      sunColor = 'var(--amber)'; sunBg = '#1f1a08';
+    } else {
+      sunStatus = 'NIGHT — No flight (next sunrise ' + fmtSun(sun.sunrise) + ')';
+      sunColor = 'var(--red)'; sunBg = '#1f0a0a';
+    }
+    const sunHTML =
+      '<div style="background:'+sunBg+';border:2px solid '+sunColor+';padding:18px 20px;margin-bottom:18px">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px">' +
+          '<div>' +
+            '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:5px">SOLAR WINDOW</div>' +
+            '<div style="font-family:var(--head);font-size:22px;font-weight:700;color:'+sunColor+';letter-spacing:2px;line-height:1.2">'+sunStatus+'</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:18px;flex-wrap:wrap;flex-shrink:0">' +
+            '<div style="text-align:center"><div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">CIVIL DAWN</div><div style="font-family:var(--head);font-size:17px;font-weight:700;color:var(--text)">'+fmtSun(sun.civilDawn)+'</div></div>' +
+            '<div style="text-align:center"><div style="font-size:10px;color:var(--amber);letter-spacing:1px;margin-bottom:3px">SUNRISE</div><div style="font-family:var(--head);font-size:17px;font-weight:700;color:var(--amber)">'+fmtSun(sun.sunrise)+'</div></div>' +
+            '<div style="text-align:center"><div style="font-size:10px;color:var(--amber);letter-spacing:1px;margin-bottom:3px">SUNSET</div><div style="font-family:var(--head);font-size:17px;font-weight:700;color:var(--amber)">'+fmtSun(sun.sunset)+'</div></div>' +
+            '<div style="text-align:center"><div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">CIVIL DUSK</div><div style="font-family:var(--head);font-size:17px;font-weight:700;color:var(--text)">'+fmtSun(sun.civilDusk)+'</div></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    const icingLevels = [
+      {label:'SURFACE', alt:'2m AGL',   t:temp,                             rh:rh},
+      {label:'~100m',   alt:'1000 hPa', t:h.temperature_1000hPa[hIdx],      rh:h.relative_humidity_1000hPa[hIdx]},
+      {label:'~500m',   alt:'950 hPa',  t:h.temperature_950hPa[hIdx],       rh:h.relative_humidity_950hPa[hIdx]},
+      {label:'~1000m',  alt:'900 hPa',  t:h.temperature_900hPa[hIdx],       rh:h.relative_humidity_900hPa[hIdx]},
+      {label:'~1500m',  alt:'850 hPa',  t:h.temperature_850hPa[hIdx],       rh:h.relative_humidity_850hPa[hIdx]},
+    ];
+    const icingStats = icingLevels.map(l => icingStat(l.t, l.rh));
+    const worstIcing = icingStats.find(i => i.label === 'HIGH') || icingStats.find(i => i.label === 'MOD') || icingStats.find(i => i.label === 'LOW') || {label:'NIL', c:'var(--green)'};
+
+    // Icing table rows
+    const icingRows = icingLevels.map(function(l, i) {
+      const ice = icingStats[i];
+      const tCol = (l.t !== null && l.t !== undefined && l.t <= 2 && l.t >= -25) ? 'var(--amber)' : 'var(--text)';
+      const tStr = (l.t !== null && l.t !== undefined) ? l.t.toFixed(1) + '°C' : '--';
+      const rhStr = (l.rh !== null && l.rh !== undefined) ? l.rh + '%' : '--';
+      return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:11px 14px;border-bottom:1px solid var(--border);font-size:14px">' +
+        '<span style="color:var(--text);font-family:var(--head);font-weight:700;letter-spacing:1px">' + l.label + '</span>' +
+        '<span style="color:var(--muted)">' + l.alt + '</span>' +
+        '<span style="color:' + tCol + '">' + tStr + '</span>' +
+        '<span style="color:var(--muted)">' + rhStr + '</span>' +
+        '<span style="color:' + ice.c + ';font-family:var(--head);font-weight:700;letter-spacing:1px">' + ice.label + '</span>' +
+        '</div>';
+    }).join('');
+
+    // 4-hour forecast rows
+    var fcastRows = '';
+    for (var i = 1; i <= 4; i++) {
+      var fi = hIdx + i;
+      if (fi >= h.time.length) break;
+      var fw = h.wind_speed_10m[fi], fg = h.wind_gusts_10m[fi];
+      var ft = h.temperature_2m[fi], fd = h.wind_direction_10m[fi];
+      var fp = h.precipitation[fi] || 0, fc = h.weather_code[fi];
+      var fws = windStat(fw, fg), fps = precipStat(fc, fp);
+      var rowC = (fws.s === 'NO-GO' || fps.s === 'NO-GO') ? 'var(--red)' : (fws.s === 'CAUTION' || fps.s === 'CAUTION') ? 'var(--amber)' : 'var(--green)';
+      var timeStr = h.time[fi].slice(11, 16);
+      fcastRows += '<div style="display:grid;grid-template-columns:65px 1fr 50px 70px 1fr;padding:11px 14px;border-bottom:1px solid var(--border);font-size:14px;align-items:center">' +
+        '<span style="color:' + rowC + ';font-family:var(--head);font-weight:700">' + timeStr + '</span>' +
+        '<span style="color:var(--text)">' + fw.toFixed(1) + ' m/s G' + fg.toFixed(1) + '</span>' +
+        '<span style="color:var(--muted)">' + compass(fd) + '</span>' +
+        '<span style="color:var(--text)">' + ft.toFixed(1) + '°C</span>' +
+        '<span style="color:' + (fp > 0 ? 'var(--amber)' : 'var(--muted)') + ';font-size:11px">' + skyDesc(fc) + '</span>' +
+        '</div>';
+    }
+
+    out.innerHTML =
+      // Location header
+      '<div style="margin-bottom:16px">' +
+        '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:3px">LOCATION</div>' +
+        '<div style="font-family:var(--head);font-size:20px;font-weight:700;color:var(--text);letter-spacing:1px">' + locName + '</div>' +
+        '<div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px">' + lat.toFixed(4) + ', ' + lon.toFixed(4) + ' · ' + skyDesc(wCode) + ' · ' + new Date().toLocaleTimeString() + '</div>' +
+      '</div>' +
+      sunHTML +
+      // 3 status banners
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px">' +
+        '<div style="background:' + wStat.bg + ';border:2px solid ' + wStat.c + ';padding:20px;display:flex;gap:14px;align-items:center">' +
+          '<div style="flex:1">' +
+            '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">WIND</div>' +
+            '<div style="font-family:var(--head);font-size:36px;font-weight:700;color:' + wStat.c + ';letter-spacing:3px;line-height:1">' + wStat.s + '</div>' +
+            '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + wind.toFixed(1) + ' m/s &nbsp;G' + gusts.toFixed(1) + '</div>' +
+            '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + compass(dir) + ' ' + dir + '° &nbsp;·&nbsp; ' + temp.toFixed(1) + '°C &nbsp;·&nbsp; RH ' + rh + '%</div>' +
+          '</div>' +
+          windCompassSVG(dir, wind, wStat.c) +
+        '</div>' +
+        '<div style="background:' + pStat.bg + ';border:2px solid ' + pStat.c + ';padding:20px">' +
+          '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">PRECIPITATION</div>' +
+          '<div style="font-family:var(--head);font-size:36px;font-weight:700;color:' + pStat.c + ';letter-spacing:3px;line-height:1">' + pStat.s + '</div>' +
+          '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + pStat.label + '</div>' +
+          '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + (precip > 0 ? precip.toFixed(1) + ' mm/h' : 'No precipitation') + '</div>' +
+        '</div>' +
+        '<div style="background:' + (worstIcing.label==='HIGH'?'#1f0a0a':worstIcing.label==='NIL'?'#0a1f0e':'#1f1a08') + ';border:2px solid ' + worstIcing.c + ';padding:20px">' +
+          '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">ICING RISK</div>' +
+          '<div style="font-family:var(--head);font-size:36px;font-weight:700;color:' + worstIcing.c + ';letter-spacing:3px;line-height:1">' + (worstIcing.label==='NIL'?'CLEAR':worstIcing.label) + '</div>' +
+          '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + (worstIcing.label==='NIL'?'No icing risk':'Icing possible') + '</div>' +
+          '<div style="font-size:13px;color:var(--muted);margin-top:4px">Worst across all levels</div>' +
+        '</div>' +
+      '</div>' +
+      // Icing table
+      '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">ICING BY ALTITUDE</div>' +
+      '<div style="overflow-x:auto;margin-bottom:18px"><div style="min-width:420px;background:var(--surface);border:1px solid var(--border2)">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;padding:10px 14px;border-bottom:1px solid var(--border2);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">' +
+          '<span>ALT</span><span>PRESSURE</span><span>TEMP</span><span>RH</span><span>RISK</span>' +
+        '</div>' + icingRows +
+      '</div></div>' +
+      // 4-hour forecast
+      '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">4-HOUR FORECAST</div>' +
+      '<div style="overflow-x:auto;margin-bottom:18px"><div style="min-width:480px;background:var(--surface);border:1px solid var(--border2)">' +
+        '<div style="display:grid;grid-template-columns:65px 1fr 50px 70px 1fr;padding:10px 14px;border-bottom:1px solid var(--border2);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted)">' +
+          '<span>TIME</span><span>WIND</span><span>DIR</span><span>TEMP</span><span>CONDITIONS</span>' +
+        '</div>' + fcastRows +
+      '</div></div>' +
+      '<div style="font-size:11px;color:var(--muted);letter-spacing:1px">SOURCE: OPEN-METEO · OSM NOMINATIM · ' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '</div>';
+
+    try { localStorage.setItem('vtol_wx_cache', JSON.stringify({ lat, lon, locName, html: out.innerHTML, ts: Date.now() })); } catch(_) {}
+
+  } catch(e) {
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem('vtol_wx_cache')); } catch(_) {}
+    if (cached && cached.html) {
+      const age = Math.round((Date.now() - cached.ts) / 60000);
+      const ageStr = age < 60 ? age + ' min ago' : Math.round(age / 60) + 'h ago';
+      out.innerHTML = '<div class="alert alert-warn" style="margin-bottom:14px">OFFLINE — showing cached data from ' + ageStr + '</div>' + cached.html;
+    } else {
+      out.innerHTML = '<div class="alert alert-danger">Failed to fetch weather: ' + e.message + '. No cached data — connect to the internet and fetch once to enable offline use.</div>';
+    }
+  }
+}
+// ── SWIPE TAB NAVIGATION ──
+(function() {
+  const TABS = ['preflight','turnaround','postflight','battlog','tlog','weather'];
+  let x0 = 0, y0 = 0;
+  document.addEventListener('touchstart', e => {
+    x0 = e.changedTouches[0].clientX;
+    y0 = e.changedTouches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - x0;
+    const dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const cur = localStorage.getItem('vtol_active_tab') || 'preflight';
+    const idx = TABS.indexOf(cur);
+    const next = dx < 0 ? idx + 1 : idx - 1;
+    if (next < 0 || next >= TABS.length) return;
+    const btn = document.querySelector('nav button[onclick*="\''+TABS[next]+'\'"]');
+    switchTab(TABS[next], btn);
+  }, { passive: true });
+})();
+
+// ── EMERGENCY QUICK-JUMP ──
+function emergJump(id) {
+  const el = document.getElementById(id);
+  const modal = document.getElementById('emerg-modal');
+  if (el && modal) modal.scrollTop = el.offsetTop - 16;
+}
+</script>
+</body>
+</html>
