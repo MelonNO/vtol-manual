@@ -1532,6 +1532,12 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 <footer>DOC-RC-001 · HEEWING T2 VTOL RELAY CARRIER · ARDUPLANE · OPERATIONS MANUAL</footer>
 
 <script>
+function toggleCleanup(btn) {
+  var el = btn.nextElementSibling;
+  var open = el.classList.toggle('visible');
+  btn.classList.toggle('open', open);
+  btn.innerHTML = (open ? '▼' : '▶') + ' &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE';
+}
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
