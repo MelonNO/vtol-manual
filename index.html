@@ -36,6 +36,7 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
 @keyframes checkPop{0%{transform:scale(0);}60%{transform:scale(1.3);}100%{transform:scale(1);}}
 @keyframes pulseFab{0%,100%{box-shadow:0 4px 20px rgba(239,68,68,.4);}50%{box-shadow:0 4px 32px rgba(239,68,68,.8),0 0 0 6px rgba(239,68,68,.15);}}
 @keyframes goNogoBanner{from{opacity:0;transform:scaleX(.95);}to{opacity:1;transform:scaleX(1);}}
+@keyframes pulseGoBorder{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}50%{box-shadow:0 0 0 8px rgba(34,197,94,.18);}}
 #emerg-fab{position:fixed;bottom:20px;right:20px;z-index:900;background:var(--red);color:#fff;border:none;font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px 22px;cursor:pointer;border-radius:4px;box-shadow:0 4px 20px rgba(239,68,68,.4);transition:background .15s,transform .1s;display:flex;align-items:center;gap:8px;animation:pulseFab 2.5s ease-in-out infinite;}
 #emerg-fab:hover{background:#dc2626;animation:none;box-shadow:0 4px 28px rgba(239,68,68,.7);}
 #emerg-fab:active{transform:scale(.96);}
