@@ -738,7 +738,7 @@ function battTrendSVG(entries, cells, chem) {
   const pts = recent.map((e, i) => (pad + i * stepX).toFixed(1) + ',' + yv(e.min).toFixed(1)).join(' ');
   const dots = recent.map((e, i) => {
     const x = (pad + i * stepX).toFixed(1), y = yv(e.min).toFixed(1);
-    const c = e.min / cells < chem.critical + 0.05 ? 'var(--red)' : e.min / cells < chem.low + 0.15 ? 'var(--amber)' : 'var(--green)';
+    const c = e.min / cells < chem.critical + 0.05 ? 'var(--red)' : e.min / cells < chem.low + 0.10 ? 'var(--amber)' : 'var(--green)';
     return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + c + '"/>';
   }).join('');
   const yCrit = yv(critV).toFixed(1), yRtl = yv(23.0).toFixed(1);
