@@ -637,9 +637,10 @@ function buildChecklist(CL_data, containerId, storageKey, secProgPrefix, overall
       const extrasHtml = (item.extras||[]).map(e => `<div style="margin-top:6px"><span style="font-size:10px;color:var(--muted);letter-spacing:1px">${e.label}</span><span class="ci-note copy-val" onclick="copyVal(this,event)">${e.val}</span></div>`).join('');
       const detailHtml = hasDetail ? `<div class="ci-detail" id="det-${sec.id}-${i}"><span class="ci-detail-text">${item.t||''}</span>${noteHtml}${extrasHtml}</div>` : '';
       const row = document.createElement('div');
-      row.className = 'ci' + (done ? ' done' : '');
+      row.className = 'ci' + (done ? ' done' : '') + (item.w ? ' warn-item' : '');
       row.dataset.key = key; row.dataset.sec = sec.id; row.dataset.store = storageKey; row.dataset.prefix = secProgPrefix; row.dataset.overall = overallFn;
-      row.innerHTML = `<div class="ci-left" onclick="toggleCI(this.closest('.ci'),event)"><div class="ci-box"></div><span class="ci-short">${item.s||item.t}</span></div><div class="ci-right${hasDetail?'':' no-detail'}" id="right-${sec.id}-${i}" ${hasDetail?`onclick="toggleDetail('${sec.id}-${i}',this,event)"`:''}>${hasDetail?`<span class="expand-icon">▶</span><span class="expand-hint">DETAILS</span>`:''}</div>`;
+      const warnDot = item.w ? '<span class="ci-warn-dot">!</span>' : '';
+      row.innerHTML = `<div class="ci-left" onclick="toggleCI(this.closest('.ci'),event)"><div class="ci-box"></div><span class="ci-short">${item.s||item.t}</span>${warnDot}</div><div class="ci-right${hasDetail?'':' no-detail'}" id="right-${sec.id}-${i}" ${hasDetail?`onclick="toggleDetail('${sec.id}-${i}',this,event)"`:''}>${hasDetail?`<span class="expand-icon">▶</span><span class="expand-hint">DETAILS</span>`:''}</div>`;
       wrap.appendChild(row);
       if (hasDetail) { const d = document.createElement('div'); d.innerHTML = detailHtml; wrap.appendChild(d.firstChild); }
     });
