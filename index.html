@@ -688,9 +688,9 @@ function logBattery() {
 function deleteBattEntry(idx) { if (!confirm('Delete this entry?')) return; const e=loadBattLog(); e.splice(idx,1); saveBattLog(e); renderBattLog(); }
 
 const BATT_CHEM = {
-  lipo:  { full:4.20, nominal:3.70, low:3.60, critical:3.50, name:'LiPo' },
-  liion: { full:4.20, nominal:3.60, low:3.20, critical:3.00, name:'Li-Ion' },
-  life:  { full:3.65, nominal:3.30, low:3.00, critical:2.80, name:'LiFe' }
+  lipo:  { full:4.20, nominal:3.70, low:3.50, critical:3.30, name:'LiPo' },
+  liion: { full:4.20, nominal:3.60, low:3.20, critical:2.90, name:'Li-Ion' },
+  life:  { full:3.65, nominal:3.30, low:3.00, critical:2.70, name:'LiFe' }
 };
 function loadBattType() {
   try { return JSON.parse(localStorage.getItem('vtol_batt_type')) || {cells:6, chem:'lipo'}; }
