@@ -886,7 +886,8 @@ function renderBattLog() {
       <tr><th colspan="4" style="padding-top:10px;color:var(--muted)">THRESHOLDS — ${cells}S ${chem.name}</th></tr>
       <tr><td>Full charge</td><td>${fullV}V</td><td>${chem.full}V</td><td style="color:var(--muted)">After a complete charge</td></tr>
       <tr><td>Longevity floor</td><td>${lowV}V</td><td>${chem.low}V</td><td style="color:var(--amber)">SEI degradation accelerates below this — avoid as a habit</td></tr>
-      <tr><td>Critical</td><td style="color:var(--red)">${critV}V</td><td style="color:var(--red)">${chem.critical}V</td><td style="color:var(--red)">QLand triggers here</td></tr>
+      <tr><td>Hard floor</td><td style="color:var(--red)">${critV}V</td><td style="color:var(--red)">${chem.critical}V</td><td style="color:var(--red)">Deep SEI damage zone — consistent use here shortens pack life significantly</td></tr>
+      <tr><td>Storage target</td><td style="color:var(--green)">22.8V</td><td style="color:var(--green)">3.80V</td><td style="color:var(--muted)">Optimal SoC for storage ≥48h (40–60% capacity)</td></tr>
     </table>
   </div>
   <div class="card accent" style="margin-bottom:14px">
