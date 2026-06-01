@@ -546,6 +546,12 @@ function openEmerg() { document.getElementById('emerg-modal').style.display='blo
 function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeEmerg(); });
 
+// ── CHECKLIST SECTION COLOURS ──
+const SEC_COLORS = {
+  A:'#60a5fa', B:'#f97316', C:'#22c55e', D:'#a78bfa', E:'#f43f5e',
+  T1:'#f97316', T2:'#a78bfa', T3:'#f43f5e'
+};
+
 // ── CHECKLIST 1 ──
 const CL = [
   { id:'A', name:'SITE', items:[
