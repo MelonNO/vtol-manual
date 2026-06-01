@@ -143,11 +143,14 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   .hdr-badge{writing-mode:horizontal-tb;padding:6px 12px;font-size:10px;}
   .hdr-title{font-size:15px;}
   .hdr-meta{padding:8px 12px;gap:8px 16px;font-size:9px;}
-  .content{padding:16px 12px 100px;}
-  nav button{padding:10px 10px;font-size:11px;letter-spacing:.5px;}
+  .content{padding:16px 12px 140px;}
+  nav{position:fixed;bottom:0;left:0;right:0;z-index:800;border-top:2px solid var(--border2);border-bottom:none;padding:0;}
+  nav button{padding:10px 8px 8px;font-size:10px;letter-spacing:.3px;min-height:52px;border-bottom:none;border-top:2px solid transparent;}
+  nav button.active{border-bottom:none;border-top-color:var(--accent);}
+  .nav-manual-btn{min-height:52px;margin-left:0;border:none;border-left:1px solid var(--border2);padding:10px 12px 8px;font-size:10px;}
   .ci-left,.ci-right{padding:10px 8px;}
   .ci-box{width:22px;height:22px;font-size:13px;}
-  #emerg-fab{bottom:16px;right:16px;font-size:13px;padding:12px 16px;}
+  #emerg-fab{bottom:68px;right:16px;font-size:13px;padding:12px 16px;}
 }
 </style>
 </head>
