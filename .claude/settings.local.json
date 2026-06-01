@@ -3,7 +3,8 @@
     "allow": [
       "PowerShell(winget *)",
       "PowerShell(git *)",
-      "WebFetch(domain:melonno.github.io)"
+      "WebFetch(domain:melonno.github.io)",
+      "Bash(Get-ChildItem *)"
     ]
   }
 }
