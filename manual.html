@@ -1095,7 +1095,7 @@ function manSearch(query) {
   var list=document.getElementById('man-search-results');
   query=query.trim();
   if(!query){wrap.style.display='none';return;}
-  var TABS={overview:'Overview',comms:'RF & Comms',flightmodes:'Flight Modes',aircraft:'Aircraft',mission:'Mission',procedures:'Procedures',emergency:'Emergency',prearm:'Pre-Arm Ref',abbrev:'Abbreviations'};
+  var TABS={overview:'Overview',comms:'RF & Comms',flightmodes:'Flight Modes',aircraft:'Aircraft',mission:'Mission',procedures:'Procedures',emergency:'Emergency',prearm:'Pre-Arm Ref',abbrev:'Abbreviations',crew:'Crew Training',maintenance:'Maintenance',callouts:'Callouts',missionplan:'Mission Planning'};
   var re=new RegExp(escRx(query),'i'), reG=new RegExp(escRx(query),'gi');
   var results=[], seen=new Set();
   Object.keys(TABS).forEach(function(tabId){
