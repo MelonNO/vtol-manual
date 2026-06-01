@@ -368,6 +368,47 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>Q_RTL_ALT_MIN</code></td><td class="val">35m</td><td>Minimum VTOL RTL altitude</td></tr>
   </table>
 
+  <svg viewBox="0 0 700 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:20px 0;font-family:'Share Tech Mono',monospace;overflow:visible">
+    <text x="350" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">CARRIER BATTERY — 6S LiPo VOLTAGE REFERENCE</text>
+    <!-- colour zones (19.8V–25.2V mapped to x=40–660, scale=(V-19.8)/5.4×620) -->
+    <rect x="40"  y="24" width="275" height="26" fill="#ef444420"/>
+    <rect x="315" y="24" width="104" height="26" fill="#facc1520"/>
+    <rect x="419" y="24" width="103" height="26" fill="#f9731618"/>
+    <rect x="522" y="24" width="69"  height="26" fill="#22c55e18"/>
+    <rect x="591" y="24" width="69"  height="26" fill="#22c55e30"/>
+    <rect x="40"  y="24" width="620" height="26" fill="none" stroke="#333" stroke-width="1"/>
+    <line x1="315" y1="24" x2="315" y2="50" stroke="#2a2a2a" stroke-width="1"/>
+    <line x1="419" y1="24" x2="419" y2="50" stroke="#2a2a2a" stroke-width="1"/>
+    <line x1="522" y1="24" x2="522" y2="50" stroke="#2a2a2a" stroke-width="1"/>
+    <line x1="591" y1="24" x2="591" y2="50" stroke="#2a2a2a" stroke-width="1"/>
+    <text x="177" y="41" fill="#ef4444" font-size="8" text-anchor="middle" letter-spacing="1">CRITICAL</text>
+    <text x="367" y="41" fill="#facc15" font-size="8" text-anchor="middle" letter-spacing="1">CAUTION</text>
+    <text x="470" y="41" fill="#f97316" font-size="8" text-anchor="middle" letter-spacing="1">LOW</text>
+    <text x="556" y="41" fill="#e8e8e8" font-size="8" text-anchor="middle">OK</text>
+    <text x="625" y="41" fill="#22c55e" font-size="8" text-anchor="middle">FULL</text>
+    <!-- tick marks -->
+    <line x1="40"  y1="50" x2="40"  y2="58" stroke="#ef4444" stroke-width="1.5"/>
+    <line x1="315" y1="50" x2="315" y2="58" stroke="#ef4444" stroke-width="2"/>
+    <line x1="419" y1="50" x2="419" y2="58" stroke="#facc15" stroke-width="2" stroke-dasharray="2,2"/>
+    <line x1="522" y1="50" x2="522" y2="58" stroke="#f97316" stroke-width="2"/>
+    <line x1="591" y1="50" x2="591" y2="58" stroke="#22c55e" stroke-width="1.5"/>
+    <line x1="660" y1="50" x2="660" y2="58" stroke="#22c55e" stroke-width="1.5"/>
+    <!-- voltage values -->
+    <text x="40"  y="69" fill="#ef4444" font-size="9" text-anchor="middle">19.8V</text>
+    <text x="315" y="69" fill="#ef4444" font-size="9" text-anchor="middle">22.2V</text>
+    <text x="419" y="69" fill="#facc15" font-size="9" text-anchor="middle">23.1V</text>
+    <text x="522" y="69" fill="#f97316" font-size="9" text-anchor="middle">24.0V</text>
+    <text x="591" y="69" fill="#22c55e" font-size="9" text-anchor="middle">24.6V</text>
+    <text x="660" y="69" fill="#22c55e" font-size="9" text-anchor="middle">25.2V</text>
+    <!-- sub-labels -->
+    <text x="40"  y="81" fill="#ef444466" font-size="7" text-anchor="middle">3.3V/cell</text>
+    <text x="315" y="81" fill="#ef444466" font-size="7" text-anchor="middle">BATT_CRT → QLAND</text>
+    <text x="419" y="81" fill="#facc1566" font-size="7" text-anchor="middle">rec. BATT_LOW</text>
+    <text x="522" y="81" fill="#f9731666" font-size="7" text-anchor="middle">MANUAL RTL NOW</text>
+    <text x="591" y="81" fill="#22c55e66" font-size="7" text-anchor="middle">4.1V/cell</text>
+    <text x="660" y="81" fill="#22c55e66" font-size="7" text-anchor="middle">4.2V/cell</text>
+  </svg>
+
 </div>
 
 <!-- ═══ MISSION ═══ -->
