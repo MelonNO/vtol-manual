@@ -314,6 +314,65 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </table>
   <div class="alert alert-danger">No low-battery warning is configured (BATT_LOW_VOLT=0). The first automated response is the critical failsafe at 22.2V → Loiter to QLand at current position. Aircraft will NOT return home. Initiate manual RTL at 23.0V (3.83V/cell). Hard limit: do not let voltage reach 22.5V before RTL is in progress.</div>
 
+  <!-- RC Link-loss failsafe cascade timeline -->
+  <!-- Scale: 0–7 seconds mapped to x=55–655 (600px, 1s=85.7px≈86px) -->
+  <svg viewBox="0 0 700 115" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:20px 0;font-family:'Share Tech Mono',monospace;overflow:visible">
+    <text x="350" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">RC LINK-LOSS FAILSAFE CASCADE — CARRIER (915MHz)</text>
+
+    <!-- Zone fills -->
+    <rect x="55" y="30" width="129" height="28" fill="#facc1514"/><!-- 0–1.5s monitoring -->
+    <rect x="184" y="30" width="302" height="28" fill="#f9731614"/><!-- 1.5–5s FBWA active -->
+    <rect x="486" y="30" width="169" height="28" fill="#ef444420"/><!-- >5s RTL active -->
+
+    <!-- Zone labels inside bar -->
+    <text x="120" y="48" fill="#facc1588" font-size="8" text-anchor="middle">MONITORING</text>
+    <text x="335" y="48" fill="#f9731688" font-size="8" text-anchor="middle">FBWA ACTIVE</text>
+    <text x="572" y="48" fill="#ef444488" font-size="8" text-anchor="middle">RTL ACTIVE</text>
+
+    <!-- Bar outline -->
+    <rect x="55" y="30" width="600" height="28" fill="none" stroke="#2a2a2a" stroke-width="1"/>
+    <line x1="184" y1="30" x2="184" y2="58" stroke="#333" stroke-width="1"/>
+    <line x1="486" y1="30" x2="486" y2="58" stroke="#333" stroke-width="1"/>
+
+    <!-- Timeline arrow -->
+    <line x1="55" y1="74" x2="660" y2="74" stroke="#333" stroke-width="1"/>
+    <polygon points="660,74 652,70 652,78" fill="#333"/>
+    <text x="665" y="77" fill="#444" font-size="8">t</text>
+
+    <!-- Second tick marks and labels (every 1s) -->
+    <!-- 0s=55, 1s=141, 2s=227, 3s=313, 4s=399, 5s=486 (=55+5×86.2), 6s=572, 7s=655 -->
+    <line x1="55"  y1="69" x2="55"  y2="58" stroke="#444" stroke-width="1"/>
+    <line x1="141" y1="69" x2="141" y2="74" stroke="#333" stroke-width="0.5"/>
+    <line x1="227" y1="69" x2="227" y2="74" stroke="#333" stroke-width="0.5"/>
+    <line x1="313" y1="69" x2="313" y2="74" stroke="#333" stroke-width="0.5"/>
+    <line x1="399" y1="69" x2="399" y2="74" stroke="#333" stroke-width="0.5"/>
+    <line x1="486" y1="69" x2="486" y2="58" stroke="#f97316" stroke-width="1.5"/>
+    <line x1="572" y1="69" x2="572" y2="74" stroke="#333" stroke-width="0.5"/>
+    <line x1="655" y1="69" x2="655" y2="74" stroke="#333" stroke-width="0.5"/>
+    <text x="55"  y="84" fill="#555" font-size="8" text-anchor="middle">0s</text>
+    <text x="141" y="84" fill="#444" font-size="8" text-anchor="middle">1s</text>
+    <text x="184" y="84" fill="#facc15" font-size="8" text-anchor="middle">1.5s</text>
+    <text x="227" y="84" fill="#444" font-size="8" text-anchor="middle">2s</text>
+    <text x="313" y="84" fill="#444" font-size="8" text-anchor="middle">3s</text>
+    <text x="399" y="84" fill="#444" font-size="8" text-anchor="middle">4s</text>
+    <text x="486" y="84" fill="#f97316" font-size="8" text-anchor="middle">5s</text>
+    <text x="572" y="84" fill="#444" font-size="8" text-anchor="middle">6s</text>
+
+    <!-- Event 1: link lost at t=0 -->
+    <line x1="55" y1="58" x2="55" y2="30" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="55" y="100" fill="#ef4444" font-size="8" text-anchor="middle">LINK LOST</text>
+
+    <!-- Event 2: FS_SHORT_TIMEOUT=1.5s → FBWA -->
+    <line x1="184" y1="58" x2="184" y2="30" stroke="#facc15" stroke-width="2"/>
+    <text x="184" y="100" fill="#facc15" font-size="8" text-anchor="middle">FBWA</text>
+    <text x="184" y="110" fill="#facc1566" font-size="7" text-anchor="middle">FS_SHORT_TIMEOUT</text>
+
+    <!-- Event 3: FS_LONG_TIMEOUT=5s → RTL 120m -->
+    <line x1="486" y1="58" x2="486" y2="30" stroke="#ef4444" stroke-width="2"/>
+    <text x="486" y="100" fill="#ef4444" font-size="8" text-anchor="middle">RTL 120m AGL</text>
+    <text x="486" y="110" fill="#ef444466" font-size="7" text-anchor="middle">FS_LONG_TIMEOUT</text>
+  </svg>
+
   <div class="section-title">VTOL Assist</div>
   <p>VTOL assist activates automatically in fixed-wing modes when airspeed drops below <span class="val">9 m/s</span> or when altitude is below <span class="val">25m AGL</span>. If VTOL assist triggers unexpectedly during cruise, check for airspeed sensor failure or gusty conditions.</p>
 
