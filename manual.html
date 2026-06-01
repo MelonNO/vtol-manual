@@ -335,6 +335,60 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>Q_M_THST_HOVER</code></td><td class="val">0.272</td><td>Learned hover thrust (~27.2% throttle)</td></tr>
   </table>
 
+  <!-- Tilt-rotor top-down schematic -->
+  <svg viewBox="0 0 700 175" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:20px 0;font-family:'Share Tech Mono',monospace">
+    <text x="350" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">HEEWING T2 — TILT-ROTOR CONFIGURATION (TOP VIEW)</text>
+
+    <!-- Fuselage -->
+    <rect x="338" y="22" width="24" height="132" rx="10" fill="#1c1c1c" stroke="#444" stroke-width="1.5"/>
+    <!-- Nose cone -->
+    <polygon points="338,22 362,22 350,8" fill="#222" stroke="#444" stroke-width="1"/>
+    <!-- Tail -->
+    <polygon points="338,154 362,154 370,168 330,168" fill="#1c1c1c" stroke="#444" stroke-width="1"/>
+
+    <!-- Main wing (swept) -->
+    <polygon points="350,62 118,88 138,112 230,112 338,80 362,80 470,112 562,112 582,88 350,62" fill="#1c1c1c" stroke="#444" stroke-width="1.5"/>
+
+    <!-- Front-left motor (TILT) — orange highlight -->
+    <circle cx="128" cy="88" r="26" fill="#1a0d04" stroke="#f97316" stroke-width="2.5"/>
+    <text x="128" y="85" fill="#f97316" font-size="8" text-anchor="middle" font-weight="700">M1</text>
+    <text x="128" y="97" fill="#f97316" font-size="7" text-anchor="middle">TILT</text>
+    <!-- Tilt arc above M1 -->
+    <path d="M 110,72 A 20,20 0 0,1 147,72" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
+    <polygon points="147,72 141,65 150,67" fill="#f97316" opacity="0.8"/>
+    <text x="128" y="59" fill="#f97316" font-size="7" text-anchor="middle" opacity="0.8">0°→80°</text>
+
+    <!-- Front-right motor (TILT) — orange highlight -->
+    <circle cx="572" cy="88" r="26" fill="#1a0d04" stroke="#f97316" stroke-width="2.5"/>
+    <text x="572" y="85" fill="#f97316" font-size="8" text-anchor="middle" font-weight="700">M2</text>
+    <text x="572" y="97" fill="#f97316" font-size="7" text-anchor="middle">TILT</text>
+    <!-- Tilt arc above M2 -->
+    <path d="M 553,72 A 20,20 0 0,0 590,72" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
+    <polygon points="553,72 559,65 550,67" fill="#f97316" opacity="0.8"/>
+    <text x="572" y="59" fill="#f97316" font-size="7" text-anchor="middle" opacity="0.8">0°→80°</text>
+
+    <!-- Rear-left motor (FIXED LIFT ONLY) — grey -->
+    <circle cx="220" cy="112" r="22" fill="#191919" stroke="#555" stroke-width="1.5"/>
+    <text x="220" y="109" fill="#777" font-size="8" text-anchor="middle">M3</text>
+    <text x="220" y="120" fill="#555" font-size="7" text-anchor="middle">FIXED</text>
+
+    <!-- Rear-right motor (FIXED LIFT ONLY) — grey -->
+    <circle cx="480" cy="112" r="22" fill="#191919" stroke="#555" stroke-width="1.5"/>
+    <text x="480" y="109" fill="#777" font-size="8" text-anchor="middle">M4</text>
+    <text x="480" y="120" fill="#555" font-size="7" text-anchor="middle">FIXED</text>
+
+    <!-- Flight direction arrow -->
+    <line x1="350" y1="28" x2="350" y2="8" stroke="#444" stroke-width="1" stroke-dasharray="2,3"/>
+    <polygon points="350,4 345,12 355,12" fill="#444"/>
+    <text x="364" y="12" fill="#444" font-size="7">FWD</text>
+
+    <!-- Mode state legend -->
+    <rect x="18" y="148" width="8" height="8" fill="#1a0d04" stroke="#f97316" stroke-width="1.5"/>
+    <text x="30" y="156" fill="#f97316" font-size="8">M1/M2 — VTOL: vertical thrust (0°)  ·  FW cruise: forward thrust (80°)</text>
+    <rect x="18" y="162" width="8" height="8" fill="#191919" stroke="#555" stroke-width="1.5"/>
+    <text x="30" y="170" fill="#666" font-size="8">M3/M4 — VTOL: vertical lift only  ·  FW cruise: stopped (Q_TILT_MASK=3)</text>
+  </svg>
+
   <div class="section-title">Transition Parameters</div>
   <table>
     <tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr>
