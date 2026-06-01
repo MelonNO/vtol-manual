@@ -1889,6 +1889,26 @@ function _tlogCard(title, color, body) {
 // Initialise on load
 vtolInit();
 
+// ── WIND COMPASS SVG ──
+function windCompassSVG(dir, speed, c) {
+  const cx = 55, cy = 55, r = 44, al = 36;
+  // Arrow rotated by `dir` degrees: tail (FROM direction) at top, tip (TO direction) at bottom
+  return '<svg viewBox="0 0 110 110" style="width:110px;height:110px;flex-shrink:0">'
+    + '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+c+'22" stroke="'+c+'44" stroke-width="1.5"/>'
+    + '<text x="'+cx+'" y="'+(cy-r-3)+'" fill="#777" font-size="9" text-anchor="middle" font-family="Oswald,sans-serif">N</text>'
+    + '<text x="'+cx+'" y="'+(cy+r+12)+'" fill="#777" font-size="9" text-anchor="middle" font-family="Oswald,sans-serif">S</text>'
+    + '<text x="'+(cx+r+6)+'" y="'+(cy+4)+'" fill="#777" font-size="8" font-family="Oswald,sans-serif">E</text>'
+    + '<text x="'+(cx-r-10)+'" y="'+(cy+4)+'" fill="#777" font-size="8" font-family="Oswald,sans-serif">W</text>'
+    + '<g transform="rotate('+dir+' '+cx+' '+cy+')">'
+    + '<line x1="'+cx+'" y1="'+(cy-al+8)+'" x2="'+cx+'" y2="'+(cy+al)+'" stroke="'+c+'" stroke-width="3" stroke-linecap="round"/>'
+    + '<polygon points="'+cx+','+(cy+al)+' '+(cx-7)+','+(cy+al-12)+' '+(cx+7)+','+(cy+al-12)+'" fill="'+c+'"/>'
+    + '<circle cx="'+cx+'" cy="'+(cy-al)+'" r="4" fill="'+c+'" opacity="0.8"/>'
+    + '</g>'
+    + '<text x="'+cx+'" y="'+(cy+5)+'" fill="'+c+'" font-size="12" font-weight="bold" text-anchor="middle" font-family="Oswald,sans-serif">'+speed.toFixed(1)+'</text>'
+    + '<text x="'+cx+'" y="'+(cy+17)+'" fill="#888" font-size="8" text-anchor="middle">m/s</text>'
+    + '</svg>';
+}
+
 // ── SUN TIMES (NOAA algorithm) ──
 function calcSunTimes(lat, lon) {
   const now = new Date();
