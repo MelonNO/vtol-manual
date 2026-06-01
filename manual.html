@@ -818,6 +818,61 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     </table>
     <div class="alert alert-danger" style="margin-top:12px">If GPS Rescue activates, <strong>do not touch the FPV TX sticks</strong>. Stick input above the threshold (30%) disables the rescue and returns control to the pilot — at night or BVLOS this means losing the aircraft.</div>
   </div>
+
+  <!-- GPS Rescue trajectory diagram -->
+  <svg viewBox="0 0 720 195" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:16px 0;font-family:'Share Tech Mono',monospace">
+    <!-- Ground fill -->
+    <rect x="0" y="158" width="720" height="37" fill="#1a1a1a"/>
+    <line x1="35" y1="158" x2="685" y2="158" stroke="#333" stroke-width="1"/>
+    <!-- 100m AGL reference -->
+    <line x1="35" y1="22" x2="685" y2="22" stroke="#222" stroke-width="0.5" stroke-dasharray="4,7"/>
+    <text x="31" y="26" fill="#444" font-size="9" text-anchor="end">100m</text>
+    <text x="31" y="161" fill="#444" font-size="9" text-anchor="end">GND</text>
+    <!-- ~50m label at link-lost height -->
+    <text x="31" y="108" fill="#444" font-size="9" text-anchor="end">~50m</text>
+    <line x1="33" y1="106" x2="38" y2="106" stroke="#444" stroke-width="1"/>
+    <!-- Home marker -->
+    <line x1="655" y1="158" x2="655" y2="130" stroke="#555" stroke-width="1.5"/>
+    <polygon points="655,130 672,137 655,144" fill="#444"/>
+    <text x="655" y="173" fill="#555" font-size="9" text-anchor="middle">HOME</text>
+    <!-- 20m descent-start indicator -->
+    <line x1="618" y1="158" x2="618" y2="150" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="618" y="148" fill="#444" font-size="7" text-anchor="middle">20m</text>
+    <!-- 4m motor-cut indicator -->
+    <line x1="640" y1="158" x2="640" y2="152" stroke="#ef444488" stroke-width="1"/>
+    <text x="640" y="150" fill="#ef444488" font-size="7" text-anchor="middle">4m</text>
+    <!-- FPV quad icon at link-lost position -->
+    <g transform="translate(90,106)">
+      <line x1="-7" y1="-7" x2="7" y2="7" stroke="#f97316" stroke-width="1.5"/>
+      <line x1="7" y1="-7" x2="-7" y2="7" stroke="#f97316" stroke-width="1.5"/>
+      <circle cx="-8" cy="-8" r="2.5" fill="#f97316" opacity="0.8"/>
+      <circle cx="8" cy="-8" r="2.5" fill="#f97316" opacity="0.8"/>
+      <circle cx="-8" cy="8" r="2.5" fill="#f97316" opacity="0.8"/>
+      <circle cx="8" cy="8" r="2.5" fill="#f97316" opacity="0.8"/>
+      <circle cx="0" cy="0" r="3" fill="#0f0f0f" stroke="#f97316" stroke-width="1.5"/>
+    </g>
+    <!-- LINK LOST label -->
+    <text x="90" y="96" fill="#ef4444" font-size="9" text-anchor="middle" letter-spacing="1">LINK LOST</text>
+    <text x="90" y="188" fill="#ef444466" font-size="8" text-anchor="middle">2.5s delay</text>
+    <!-- Flight path: climb → cruise → descend → cut -->
+    <polyline points="90,106 90,22 612,22" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="612,22 638,152" fill="none" stroke="#f97316" stroke-width="2"/>
+    <!-- motor cut drop (dashed) -->
+    <line x1="638" y1="152" x2="652" y2="158" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <circle cx="638" cy="152" r="3" fill="#ef4444"/>
+    <!-- +30m initial climb bracket -->
+    <line x1="70" y1="106" x2="70" y2="64" stroke="#facc15" stroke-width="1" opacity="0.7"/>
+    <line x1="66" y1="106" x2="74" y2="106" stroke="#facc15" stroke-width="1" opacity="0.7"/>
+    <line x1="66" y1="64"  x2="74" y2="64"  stroke="#facc15" stroke-width="1" opacity="0.7"/>
+    <text x="58" y="87" fill="#facc15" font-size="8" text-anchor="middle" transform="rotate(-90,58,87)" opacity="0.9">+30m</text>
+    <!-- Phase labels -->
+    <text x="62" y="48" fill="#f97316" font-size="8" text-anchor="middle" transform="rotate(-90,62,48)">CLIMB</text>
+    <text x="350" y="16" fill="#f97316" font-size="9" text-anchor="middle" letter-spacing="1">CRUISE HOME — 7.5 m/s AT 100m AGL</text>
+    <text x="636" y="85" fill="#f97316" font-size="8" text-anchor="start" transform="rotate(72,626,85)">DESCENT</text>
+    <text x="643" y="150" fill="#ef4444" font-size="8" text-anchor="start">MOTOR CUT</text>
+    <!-- Min sats warning -->
+    <text x="360" y="188" fill="#ef444455" font-size="8" text-anchor="middle" letter-spacing="1">REQUIRES 8+ GPS SATS TO ACTIVATE</text>
+  </svg>
   <div class="card">
     <div class="card-title">OSD Elements — Key Triggers</div>
     <table>
