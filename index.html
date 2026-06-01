@@ -2137,6 +2137,33 @@ async function fetchWeather() {
     }
   }
 }
+// ── SWIPE TAB NAVIGATION ──
+(function() {
+  const TABS = ['preflight','turnaround','postflight','battlog','tlog','weather'];
+  let x0 = 0, y0 = 0;
+  document.addEventListener('touchstart', e => {
+    x0 = e.changedTouches[0].clientX;
+    y0 = e.changedTouches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - x0;
+    const dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const cur = localStorage.getItem('vtol_active_tab') || 'preflight';
+    const idx = TABS.indexOf(cur);
+    const next = dx < 0 ? idx + 1 : idx - 1;
+    if (next < 0 || next >= TABS.length) return;
+    const btn = document.querySelector('nav button[onclick*="\''+TABS[next]+'\'"]');
+    switchTab(TABS[next], btn);
+  }, { passive: true });
+})();
+
+// ── EMERGENCY QUICK-JUMP ──
+function emergJump(id) {
+  const el = document.getElementById(id);
+  const modal = document.getElementById('emerg-modal');
+  if (el && modal) modal.scrollTop = el.offsetTop - 16;
+}
 </script>
 </body>
 </html>
