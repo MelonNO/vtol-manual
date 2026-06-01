@@ -173,20 +173,47 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
 <nav id="nav">
   <a class="nav-tools-btn" href="index.html">◀ TOOLS</a>
+
   <button onclick="switchTab('overview',this)">Overview</button>
-  <button onclick="switchTab('comms',this)">RF & Comms</button>
-  <button onclick="switchTab('flightmodes',this)">Flight Modes</button>
-  <button onclick="switchTab('aircraft',this)">Aircraft</button>
-  <button onclick="switchTab('mission',this)">Mission</button>
-  <button onclick="switchTab('procedures',this)">Procedures</button>
-  <button onclick="switchTab('emergency',this)">Emergency</button>
-  <button onclick="switchTab('prearm',this)">Pre-Arm Ref</button>
-  <button onclick="switchTab('abbrev',this)">Abbreviations</button>
-  <button onclick="switchTab('crew',this)">Crew Training</button>
-  <button onclick="switchTab('fpv',this)">FPV Sub-Drone</button>
-  <button onclick="switchTab('maintenance',this)">Maintenance</button>
-  <button onclick="switchTab('callouts',this)">Callouts</button>
-  <button onclick="switchTab('missionplan',this)">Mission Planning</button>
+
+  <div class="nav-group">
+    <button class="nav-group-btn" onclick="toggleNavGroup(this)">Aircraft <span style="font-size:10px;opacity:.6">▾</span></button>
+    <div class="nav-dropdown">
+      <button onclick="selectNavItem('aircraft',this,event)">Aircraft</button>
+      <button onclick="selectNavItem('flightmodes',this,event)">Flight Modes</button>
+      <button onclick="selectNavItem('fpv',this,event)">FPV Sub-Drone</button>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <button class="nav-group-btn" onclick="toggleNavGroup(this)">Operations <span style="font-size:10px;opacity:.6">▾</span></button>
+    <div class="nav-dropdown">
+      <button onclick="selectNavItem('procedures',this,event)">Procedures</button>
+      <button onclick="selectNavItem('mission',this,event)">Mission</button>
+      <button onclick="selectNavItem('callouts',this,event)">Callouts</button>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <button class="nav-group-btn" onclick="toggleNavGroup(this)">Planning <span style="font-size:10px;opacity:.6">▾</span></button>
+    <div class="nav-dropdown">
+      <button onclick="selectNavItem('missionplan',this,event)">Mission Planning</button>
+      <button onclick="selectNavItem('crew',this,event)">Crew Training</button>
+      <button onclick="selectNavItem('maintenance',this,event)">Maintenance</button>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <button class="nav-group-btn" onclick="toggleNavGroup(this)">Reference <span style="font-size:10px;opacity:.6">▾</span></button>
+    <div class="nav-dropdown">
+      <button onclick="selectNavItem('comms',this,event)">RF &amp; Comms</button>
+      <button onclick="selectNavItem('prearm',this,event)">Pre-Arm Ref</button>
+      <button onclick="selectNavItem('abbrev',this,event)">Abbreviations</button>
+    </div>
+  </div>
+
+  <button onclick="switchTab('emergency',this)" class="nav-emerg">⚠ Emergency</button>
+
   <div style="margin-left:auto;padding:6px 12px;flex-shrink:0;display:flex;align-items:center">
     <input type="search" id="man-search" placeholder="SEARCH MANUAL..." oninput="manSearch(this.value)" onkeydown="if(event.key==='Escape'){this.value='';manSearch('');}" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 10px;width:180px;outline:none;letter-spacing:1px">
   </div>
