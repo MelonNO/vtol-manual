@@ -2140,11 +2140,14 @@ async function fetchWeather() {
       sunHTML +
       // 3 status banners
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:18px">' +
-        '<div style="background:' + wStat.bg + ';border:2px solid ' + wStat.c + ';padding:20px">' +
-          '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">WIND</div>' +
-          '<div style="font-family:var(--head);font-size:36px;font-weight:700;color:' + wStat.c + ';letter-spacing:3px;line-height:1">' + wStat.s + '</div>' +
-          '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + wind.toFixed(1) + ' m/s &nbsp;G' + gusts.toFixed(1) + '</div>' +
-          '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + compass(dir) + ' ' + dir + '° &nbsp;·&nbsp; ' + temp.toFixed(1) + '°C &nbsp;·&nbsp; RH ' + rh + '%</div>' +
+        '<div style="background:' + wStat.bg + ';border:2px solid ' + wStat.c + ';padding:20px;display:flex;gap:14px;align-items:center">' +
+          '<div style="flex:1">' +
+            '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">WIND</div>' +
+            '<div style="font-family:var(--head);font-size:36px;font-weight:700;color:' + wStat.c + ';letter-spacing:3px;line-height:1">' + wStat.s + '</div>' +
+            '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + wind.toFixed(1) + ' m/s &nbsp;G' + gusts.toFixed(1) + '</div>' +
+            '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + compass(dir) + ' ' + dir + '° &nbsp;·&nbsp; ' + temp.toFixed(1) + '°C &nbsp;·&nbsp; RH ' + rh + '%</div>' +
+          '</div>' +
+          windCompassSVG(dir, wind, wStat.c) +
         '</div>' +
         '<div style="background:' + pStat.bg + ';border:2px solid ' + pStat.c + ';padding:20px">' +
           '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">PRECIPITATION</div>' +
