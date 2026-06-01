@@ -216,40 +216,121 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <button onclick="emergJump('emerg-gcs')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">GCS LOSS</button>
     </div>
     <div id="emerg-rc" class="card danger" style="margin-top:14px">
-      <div class="emerg-hdr">RC Link Loss — 915MHz (Ground → Carrier)</div>
-      <div class="proc-step"><div class="n">1</div><div class="t">Short loss (≤1.5s): ArduPlane switches to <span class="mbadge m-fbwb">FBWA</span> automatically. Regain link and resume.</div></div>
-      <div class="proc-step"><div class="n">2</div><div class="t">Long loss (&gt;5s): RTL triggers at 120m AGL. Do NOT power-cycle TX in flight.</div></div>
-      <div class="proc-step"><div class="n">3</div><div class="t">GCS (SIYI HM30) still available: send mode commands via Mission Planner.</div></div>
+      <div class="emerg-hdr">RC Link Loss — 915MHz (Carrier Control)</div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>WAIT — do not touch TX</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>1.5s: <span class="mbadge m-fbwb">FBWA</span> AUTO — monitor MP</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>5s: <span class="mbadge m-rtl">RTL</span> AUTO — 120m AGL</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>GCS STILL LIVE: MP mode commands</div></div>
+        <div class="emerg-imm-step"><div class="n">5</div><div>NO TX POWER-CYCLE in flight</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Confirm RTL altitude in MP — should show 120m AGL before descent begins.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Monitor airspeed — must stay above 11 m/s. Use MP GCS for mode commands if needed.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Monitor battery — extended RTL draws higher current during VTOL descent phase.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">If link recovers: assess battery and position before resuming AUTO mission.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">After landing: inspect TX/RX antennas, check bind, log the incident.</div></div>
+      </div>
     </div>
     <div id="emerg-relay" class="card danger">
-      <div class="emerg-hdr">Relay Link Loss — 2.4GHz (Carrier → FPV)</div>
-      <div class="proc-step"><div class="n">1</div><div class="t">FPV failsafe activates. Co-pilot ceases inputs immediately.</div></div>
-      <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot holds loiter — sub-drone may be RTH-ing toward carrier position.</div></div>
-      <div class="proc-step"><div class="n">3</div><div class="t">If relay does not recover: co-pilot monitors FPV failsafe. Carrier Pilot recovers independently.</div></div>
+      <div class="emerg-hdr">Relay Link Loss — 2.4GHz (FPV Sub-Drone)</div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>FPV PILOT: HANDS OFF — now</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>CARRIER: HOLD LOITER</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>GPS RESCUE fires in 2.5s — wait</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>DO NOT touch FPV TX sticks</div></div>
+        <div class="emerg-imm-step"><div class="n">5</div><div>WATCH OSD: need 8+ GPS sats</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">GPS Rescue: climbs 30m, cruises home at 100m AGL / 7.5 m/s, motor cut at 4m.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Monitor using SIYI carrier camera if FPV is in view.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Keep carrier loitering until FPV lands — sub-drone may be returning toward carrier position.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Confirm FPV disarmed before approach on ground.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Check relay bind was completed pre-flight. Inspect carrier Nomad relay TX antenna.</div></div>
+      </div>
     </div>
     <div id="emerg-video" class="card danger">
       <div class="emerg-hdr">Video Loss — 5.8GHz or SIYI Chain</div>
-      <div class="proc-step"><div class="n">1</div><div class="t">Co-pilot: zero inputs. Sub-drone to hover/stabilise.</div></div>
-      <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot: descend carrier to reduce path loss. Wait 10s.</div></div>
-      <div class="proc-step"><div class="n">3</div><div class="t">Not recovered: FPV RTH. Carrier Pilot recovers carrier independently.</div></div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>FPV PILOT: ZERO INPUTS — hover</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>CARRIER: DESCEND — reduce range</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>WAIT 10 SECONDS</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>STILL LOST: FPV return home</div></div>
+        <div class="emerg-imm-step"><div class="n">5</div><div>CARRIER: independent recovery</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check CVBS→HDMI converter — connector, power light on, no heat damage.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check SIYI HDMI→IP encoder — connected to SIYI switch, LED status normal.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Verify FPV VTX channel: Raceband R5 / 5806 MHz.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Check 5.8G VRX antenna orientation on carrier.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Restart GStreamer and MPV stream. Verify video in MPV.net before FPV re-arms.</div></div>
+      </div>
     </div>
     <div id="emerg-trans" class="card danger">
       <div class="emerg-hdr">Transition Failure — VTOL → FW</div>
-      <div class="proc-step"><div class="n">1</div><div class="t">No airspeed build within 3s or excessive pitch-down: <span class="mbadge m-qhov">QHOVER</span> immediately.</div></div>
-      <div class="proc-step"><div class="n">2</div><div class="t"><code>Q_TRANS_FAIL=4s</code> — auto-abort triggers at 4s. Do not wait for it.</div></div>
-      <div class="proc-step"><div class="n">3</div><div class="t">Land in VTOL. Inspect tilt servo, cruise ESC, battery voltage before next attempt.</div></div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div><span class="mbadge m-qhov">QHOVER</span> — switch now</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>GAIN ALTITUDE — full VTOL power</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>HOLD — assess before any retry</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check pitot — airspeed reading in MP? Zero = blocked/disconnected. Do not retry without airspeed data.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check tilt servos — switch to FBWB and observe in MP. Do front rotors tilt forward?</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Check battery — sufficient for another transition attempt plus VTOL recovery?</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Check wind — clear corridor ahead? Crosswind/tailwind can prevent successful transition.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">If retrying: climb to 60m+ in QHOVER first. Clear 300m corridor ahead. Monitor airspeed immediately on AUTO.</div></div>
+        <div class="emerg-cu-step"><div class="n">6</div><div class="t">Log failure phase: no airspeed build in 3s vs pitch-down upset. Note battery voltage.</div></div>
+      </div>
     </div>
     <div id="emerg-batt" class="card danger">
       <div class="emerg-hdr">Battery Critical — Carrier</div>
-      <div class="proc-step"><div class="n">1</div><div class="t">No BATT_LOW_VOLT set. First automated action: <code>22.2V</code> → Loiter to QLand at current position. Will NOT return home.</div></div>
-      <div class="proc-step"><div class="n">2</div><div class="t">Initiate manual RTL at <span class="warn-val">23.0V</span>. Hard limit: RTL in progress before <span class="crit-val">22.5V</span>. If dropping rapidly: Nomad left button → RTL immediately.</div></div>
-      <div class="proc-step"><div class="n">3</div><div class="t">If Loiter→QLand triggers: confirm area below is clear. Aircraft descending vertically from current position.</div></div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>23.0V → <span class="mbadge m-rtl">RTL</span> NOW — left button</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>22.5V → RTL MUST BE ACTIVE</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>22.2V → AUTOLAND HERE — not home</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>CLEAR AREA BELOW</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Log landing voltage in battery log — note start voltage and any anomalies.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Inspect battery for puffing, heat, smell. If any present — quarantine, do not charge.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Allow pack to cool 30 minutes minimum before charging.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Review: was RTL initiated on time? Use battery log analysis to check sag vs previous flights.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Set BATT_LOW_VOLT using the battery log recommendation in the Tools page.</div></div>
+      </div>
     </div>
     <div id="emerg-gcs" class="card danger">
       <div class="emerg-hdr">GCS Link Loss (SIYI HM30)</div>
-      <div class="proc-step"><div class="n">1</div><div class="t">Switch to physical ELRS 915MHz TX immediately. Confirm carrier responds.</div></div>
-      <div class="proc-step"><div class="n">2</div><div class="t">In AUTO: GCS failsafe triggers RTL. In FBWB/QHOVER: no failsafe — fly manually.</div></div>
-      <div class="proc-step"><div class="n">3</div><div class="t">Use Nomad 3-position switch (QHOVER/FBWB/AUTO) or left button for RTL.</div></div>
+      <div class="emerg-imm">
+        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+        <div class="emerg-imm-step"><div class="n">1</div><div>SWITCH — 915MHz Nomad TX now</div></div>
+        <div class="emerg-imm-step"><div class="n">2</div><div>CONFIRM carrier responds</div></div>
+        <div class="emerg-imm-step"><div class="n">3</div><div>AUTO: GCS failsafe → RTL fires</div></div>
+        <div class="emerg-imm-step"><div class="n">4</div><div>OTHER: Nomad switch + left button</div></div>
+      </div>
+      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+      <div class="emerg-cleanup">
+        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check ethernet cable — mast to laptop. Reseat both ends.</div></div>
+        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check HM30 ground unit LED — blue = linked. If not: check mast battery and HM30 power.</div></div>
+        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Check mast battery voltage — below 21.0V may cause HM30 brownout.</div></div>
+        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Restart MP UDPCI: IP 192.168.144.12 / Port 19856.</div></div>
+        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Do not re-enter AUTO until GCS telemetry stable for 30+ seconds.</div></div>
+      </div>
     </div>
   </div>
 </div>
