@@ -4,7 +4,8 @@
       "PowerShell(winget *)",
       "PowerShell(git *)",
       "WebFetch(domain:melonno.github.io)",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Bash(git *)"
     ]
   }
 }
