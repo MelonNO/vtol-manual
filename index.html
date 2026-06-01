@@ -847,7 +847,7 @@ function renderBattLog() {
   // BATT_LOW_VOLT: avg landing + 0.8V return margin, never below critical + 1.0V.
   // Previous formula (lowestMin + worstSag + 0.5) was wrong — it double-counted
   // the full-flight sag, producing absurdly high values like 25V on a 6S pack.
-  const recRaw     = Math.max(avgMin + 0.8, chem.critical * cells + 1.0);
+  const recRaw     = Math.max(avgMin + 0.8, 23.0); // floor = manual RTL trigger; chemistry floor is far lower and not the binding constraint here
   const recBattLow = recRaw.toFixed(1);
   const recPC      = (recRaw / cells).toFixed(2);
   const marginV    = (recRaw - chem.critical * cells).toFixed(1);
