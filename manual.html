@@ -585,7 +585,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="card danger">
     <div class="emerg-hdr">Battery Critical — Carrier</div>
     <div class="proc-step"><div class="n">1</div><div class="t">No BATT_LOW_VOLT set. First automated action: <code>22.2V</code> → Loiter to QLand at <strong>current position</strong>. Will NOT return home.</div></div>
-    <div class="proc-step"><div class="n">2</div><div class="t">Initiate manual RTL at 24V. If dropping rapidly: Nomad left button → RTL immediately.</div></div>
+    <div class="proc-step"><div class="n">2</div><div class="t">Initiate manual RTL at <span class="warn-val">23.0V</span>. Hard limit: RTL must be in progress before <span class="crit-val">22.5V</span>. If dropping rapidly: Nomad left button → RTL immediately.</div></div>
     <div class="proc-step"><div class="n">3</div><div class="t">If Loiter→QLand triggers: confirm area below is clear. Aircraft descending vertically from current position.</div></div>
   </div>
 
@@ -761,7 +761,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title">Carrier Pilot — Sign-Off Criteria</div>
   <div class="card">
-    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Solo VTOL check (3 flights)</strong><p>3 consecutive flights: QHOVER arm → climb → FBWB transition → AUTO cruise → back-transition → VTOL_LAND. No aborts. Demonstrates battery management (manual RTL initiated at 24V or above).</p></div></div>
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Solo VTOL check (3 flights)</strong><p>3 consecutive flights: QHOVER arm → climb → FBWB transition → AUTO cruise → back-transition → VTOL_LAND. No aborts. Demonstrates battery management (manual RTL initiated at 23.0V or above).</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Mission Planner proficiency</strong><p>Successfully uploads a 7-waypoint mission, verifies waypoint altitudes, and sends a GCS mode command during an actual flight.</p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Emergency verbal recitation</strong><p>Verbally walks through all 6 emergency scenarios with a qualified observer. No notes permitted. Observer confirms all actions are correct.</p></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Supervised relay sortie</strong><p>First relay operation conducted with a qualified observer present (not the FPV Pilot). Observer may not intervene except for safety.</p></div></div>
