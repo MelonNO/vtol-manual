@@ -624,6 +624,38 @@ function toggleExpandAll2() {
 function resetCL() { if (!confirm('Reset preflight checklist?')) return; localStorage.removeItem('vtol_cl2'); buildChecklist(CL, 'cl-container', 'vtol_cl2', 'csp-', 'updateOverall1'); }
 function resetCL2() { if (!confirm('Reset turnaround checklist?')) return; localStorage.removeItem('vtol_cl3'); buildChecklist(CL2, 'cl-container2', 'vtol_cl3', 'csp2-', 'updateOverall2'); }
 
+// ── BATTERY TREND CHART ──
+function battTrendSVG(entries, cells, chem) {
+  if (entries.length < 2) return '';
+  const n = Math.min(entries.length, 12);
+  const recent = entries.slice(0, n).reverse();
+  const W = 680, H = 58, pad = 10;
+  const critV = chem.critical * cells, fullV = chem.full * cells;
+  const range = fullV - critV || 1;
+  function yv(v) { return H - pad - ((Math.max(critV, Math.min(fullV, v)) - critV) / range) * (H - pad * 2); }
+  const stepX = n > 1 ? (W - pad * 2) / (n - 1) : 0;
+  const pts = recent.map((e, i) => (pad + i * stepX).toFixed(1) + ',' + yv(e.min).toFixed(1)).join(' ');
+  const dots = recent.map((e, i) => {
+    const x = (pad + i * stepX).toFixed(1), y = yv(e.min).toFixed(1);
+    const c = e.min / cells < chem.critical + 0.05 ? 'var(--red)' : e.min / cells < 3.75 ? 'var(--amber)' : 'var(--green)';
+    return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + c + '"/>';
+  }).join('');
+  const yCrit = yv(critV).toFixed(1), yRtl = yv(23.0).toFixed(1);
+  return '<div style="margin-bottom:14px">'
+    + '<div style="font-family:var(--head);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">MIN VOLTAGE TREND — LAST ' + n + ' FLIGHTS (oldest → newest)</div>'
+    + '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;display:block;background:var(--surface);border:1px solid var(--border2)">'
+    + '<line x1="' + pad + '" y1="' + yCrit + '" x2="' + (W-pad) + '" y2="' + yCrit + '" stroke="var(--red)" stroke-width="0.5" stroke-dasharray="3,5" opacity="0.5"/>'
+    + '<line x1="' + pad + '" y1="' + yRtl + '" x2="' + (W-pad) + '" y2="' + yRtl + '" stroke="var(--accent)" stroke-width="0.5" stroke-dasharray="3,5" opacity="0.5"/>'
+    + '<polyline points="' + pts + '" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" opacity="0.6"/>'
+    + dots + '</svg>'
+    + '<div style="display:flex;gap:16px;font-size:10px;color:var(--muted);margin-top:4px">'
+    + '<span>● <span style="color:var(--green)">healthy</span></span>'
+    + '<span>● <span style="color:var(--amber)">marginal</span></span>'
+    + '<span>● <span style="color:var(--red)">critical</span></span>'
+    + '<span style="margin-left:auto">— <span style="color:var(--accent)">23.0V RTL</span> &nbsp; — <span style="color:var(--red)">22.2V BATT_CRT</span></span>'
+    + '</div></div>';
+}
+
 // ── BATTERY SPARKLINE ──
 function battSparkline(sv, mv, rv, cells, chem) {
   const full = chem.full * cells, crit = chem.critical * cells;
