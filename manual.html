@@ -1184,35 +1184,54 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Avoid body-shadowing geometry</strong><p>If the carrier passes directly between the ground station and the FPV aircraft, both RF links may experience a brief null. Plan orbit direction to minimise time in this geometry.</p></div></div>
   </div>
 
-  <!-- Top-down orbit geometry diagram -->
-  <svg viewBox="0 0 700 255" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:16px 0;font-family:'Share Tech Mono',monospace">
+  <!-- Top-down orbit geometry diagram — FPV INSIDE orbit -->
+  <svg viewBox="0 0 700 265" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:16px 0;font-family:'Share Tech Mono',monospace">
     <text x="350" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">RELAY ORBIT GEOMETRY — TOP-DOWN VIEW</text>
+
     <!-- Ground station (lower-left) -->
-    <rect x="18" y="188" width="108" height="42" rx="1" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
-    <text x="72" y="205" fill="#777" font-size="9" text-anchor="middle" letter-spacing="1">GROUND</text>
-    <text x="72" y="218" fill="#777" font-size="9" text-anchor="middle" letter-spacing="1">STATION</text>
-    <line x1="72" y1="188" x2="72" y2="170" stroke="#555" stroke-width="1.5"/>
-    <line x1="56" y1="179" x2="72" y2="170" stroke="#555" stroke-width="1"/>
-    <line x1="88" y1="179" x2="72" y2="170" stroke="#555" stroke-width="1"/>
-    <!-- Carrier orbit circle (dashed) -->
-    <circle cx="365" cy="125" r="95" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="7,5" opacity="0.55"/>
-    <!-- Orbit direction arrows (clockwise: top pointing right, right pointing down) -->
-    <polygon points="365,30 373,42 357,42" fill="#f97316" opacity="0.55" transform="rotate(90,365,30)"/>
-    <polygon points="460,125 448,117 448,133" fill="#f97316" opacity="0.55"/>
-    <!-- Carrier airplane at upper-left of orbit (296, 57) -->
-    <g transform="translate(296,57) rotate(135)">
+    <rect x="18" y="192" width="108" height="42" rx="1" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
+    <text x="72" y="209" fill="#777" font-size="9" text-anchor="middle" letter-spacing="1">GROUND</text>
+    <text x="72" y="222" fill="#777" font-size="9" text-anchor="middle" letter-spacing="1">STATION</text>
+    <line x1="72" y1="192" x2="72" y2="174" stroke="#555" stroke-width="1.5"/>
+    <line x1="56" y1="183" x2="72" y2="174" stroke="#555" stroke-width="1"/>
+    <line x1="88" y1="183" x2="72" y2="174" stroke="#555" stroke-width="1"/>
+
+    <!-- Outside-orbit danger zone (subtle red tint OUTSIDE the orbit) -->
+    <!-- Drawn as a large circle clipped by the outer region — use a rect fill minus the orbit -->
+    <text x="584" y="55" fill="#ef444450" font-size="9" text-anchor="middle">OUTSIDE ORBIT</text>
+    <text x="584" y="68" fill="#ef444450" font-size="9" text-anchor="middle">= LINK LOSS</text>
+    <line x1="490" y1="76" x2="516" y2="92" stroke="#ef444430" stroke-width="1" stroke-dasharray="3,3"/>
+
+    <!-- Relay coverage fill — INSIDE orbit is the coverage zone -->
+    <circle cx="365" cy="128" r="95" fill="#22c55e0c"/>
+
+    <!-- Orbit circle — this is the relay link boundary -->
+    <circle cx="365" cy="128" r="95" fill="none" stroke="#f97316" stroke-width="2" stroke-dasharray="7,5" opacity="0.7"/>
+
+    <!-- Orbit direction arrows (clockwise) -->
+    <polygon points="365,33 374,46 356,46" fill="#f97316" opacity="0.6" transform="rotate(90,365,33)"/>
+    <polygon points="460,128 448,120 448,136" fill="#f97316" opacity="0.6"/>
+
+    <!-- Carrier airplane at upper-left of orbit (~296, 58) -->
+    <g transform="translate(296,58) rotate(135)">
       <polygon points="0,-13 -6,7 0,3 6,7" fill="#f97316"/>
     </g>
-    <text x="278" y="47" fill="#f97316" font-size="9" text-anchor="middle">CARRIER</text>
-    <!-- 868MHz + SIYI link: ground → carrier -->
-    <line x1="126" y1="196" x2="291" y2="65" stroke="#f97316" stroke-width="1.5" stroke-dasharray="7,4" opacity="0.7"/>
-    <text x="195" y="148" fill="#f97316" font-size="8" text-anchor="middle" transform="rotate(-52,195,148)" opacity="0.85">868MHz RC · SIYI video</text>
-    <!-- FPV operating area (right side) -->
-    <rect x="540" y="80" width="138" height="110" rx="2" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.5"/>
-    <text x="609" y="126" fill="#22c55e" font-size="9" text-anchor="middle" opacity="0.7" letter-spacing="1">FPV</text>
-    <text x="609" y="139" fill="#22c55e" font-size="9" text-anchor="middle" opacity="0.7" letter-spacing="1">AREA</text>
-    <!-- FPV quad icon at right of orbit (near-side) -->
-    <g transform="translate(609,158)">
+    <text x="270" y="46" fill="#f97316" font-size="9" text-anchor="middle">CARRIER</text>
+
+    <!-- Inward-pointing antenna arrow on carrier (direction toward orbit center 365,128) -->
+    <!-- Vector from (296,58) to (365,128): dx=69 dy=70, normalised ≈ (0.70, 0.71) -->
+    <line x1="300" y1="63" x2="316" y2="79" stroke="#facc15" stroke-width="2" opacity="0.9"/>
+    <polygon points="316,79 308,68 320,69" fill="#facc15" opacity="0.9"/>
+    <text x="336" y="64" fill="#facc15" font-size="7.5" opacity="0.9">ANTENNA</text>
+    <text x="336" y="75" fill="#facc15" font-size="7.5" opacity="0.9">INWARD →</text>
+
+    <!-- FPV operating area — INSIDE the orbit -->
+    <rect x="308" y="98" width="114" height="76" rx="2" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.7"/>
+    <text x="365" y="122" fill="#22c55e" font-size="9" text-anchor="middle" opacity="0.85" letter-spacing="1">FPV OPERATING</text>
+    <text x="365" y="135" fill="#22c55e" font-size="9" text-anchor="middle" opacity="0.85" letter-spacing="1">AREA</text>
+
+    <!-- FPV quad icon inside orbit -->
+    <g transform="translate(365,157)">
       <line x1="-7" y1="-7" x2="7" y2="7" stroke="#22c55e" stroke-width="2"/>
       <line x1="7" y1="-7" x2="-7" y2="7" stroke="#22c55e" stroke-width="2"/>
       <circle cx="-8" cy="-8" r="2.5" fill="#22c55e" opacity="0.8"/>
@@ -1221,22 +1240,31 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <circle cx="8" cy="8" r="2.5" fill="#22c55e" opacity="0.8"/>
       <circle cx="0" cy="0" r="3" fill="#0f0f0f" stroke="#22c55e" stroke-width="1.5"/>
     </g>
-    <!-- 2.4GHz relay + 5.8GHz video: carrier ↔ FPV -->
-    <line x1="304" y1="62" x2="540" y2="135" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="7,4" opacity="0.7"/>
-    <text x="432" y="84" fill="#22c55e" font-size="8" text-anchor="middle" transform="rotate(27,432,84)" opacity="0.85">2.4GHz relay · 5.8GHz video</text>
-    <!-- "Near side" callout -->
-    <line x1="460" y1="125" x2="537" y2="125" stroke="#facc15" stroke-width="1" stroke-dasharray="2,3" opacity="0.7"/>
-    <text x="495" y="120" fill="#facc15" font-size="8" text-anchor="middle" opacity="0.9">NEAR SIDE</text>
+
+    <!-- 868MHz + SIYI link: ground station → carrier -->
+    <line x1="126" y1="200" x2="291" y2="68" stroke="#f97316" stroke-width="1.5" stroke-dasharray="7,4" opacity="0.7"/>
+    <text x="194" y="152" fill="#f97316" font-size="8" text-anchor="middle" transform="rotate(-52,194,152)" opacity="0.85">868MHz RC · SIYI video</text>
+
+    <!-- 2.4GHz relay + 5.8GHz video: carrier → FPV (inside orbit) -->
+    <line x1="305" y1="65" x2="358" y2="148" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="7,4" opacity="0.7"/>
+    <text x="314" y="100" fill="#22c55e" font-size="8" text-anchor="middle" transform="rotate(55,314,100)" opacity="0.85">2.4GHz · 5.8GHz</text>
+
     <!-- Orbit radius label -->
-    <line x1="365" y1="125" x2="365" y2="30" stroke="#555" stroke-width="0.5" stroke-dasharray="2,4"/>
-    <text x="382" y="80" fill="#555" font-size="8">150–250m</text>
+    <line x1="365" y1="128" x2="460" y2="128" stroke="#555" stroke-width="0.5" stroke-dasharray="2,4"/>
+    <text x="415" y="123" fill="#555" font-size="8" text-anchor="middle">150–250m</text>
+
+    <!-- Key rule callout -->
+    <text x="365" y="240" fill="#22c55e" font-size="8.5" text-anchor="middle" opacity="0.8" letter-spacing="1">FPV MUST STAY INSIDE ORBIT — RELAY ANTENNAS FACE INWARD</text>
+
     <!-- Legend -->
-    <line x1="22" y1="245" x2="46" y2="245" stroke="#f97316" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.7"/>
-    <text x="52" y="248" fill="#777" font-size="8">Ground link (868MHz / SIYI)</text>
-    <line x1="220" y1="245" x2="244" y2="245" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.7"/>
-    <text x="250" y="248" fill="#777" font-size="8">FPV relay link (2.4GHz / 5.8GHz)</text>
-    <line x1="460" y1="245" x2="484" y2="245" stroke="#f97316" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.45"/>
-    <text x="490" y="248" fill="#777" font-size="8">Carrier orbit (clockwise)</text>
+    <line x1="22" y1="255" x2="46" y2="255" stroke="#f97316" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.7"/>
+    <text x="52" y="258" fill="#777" font-size="8">Ground link</text>
+    <line x1="148" y1="255" x2="172" y2="255" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.7"/>
+    <text x="178" y="258" fill="#777" font-size="8">FPV relay link</text>
+    <circle cx="310" cy="255" r="5" fill="#22c55e0c" stroke="#f97316" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>
+    <text x="320" y="258" fill="#777" font-size="8">Relay coverage zone (inside orbit)</text>
+    <line x1="532" y1="255" x2="556" y2="255" stroke="#facc15" stroke-width="2" opacity="0.8"/>
+    <text x="562" y="258" fill="#777" font-size="8">Antenna direction</text>
   </svg>
 
   <div class="section-title">Waypoint Planning — 7-WP Template</div>
