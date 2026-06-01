@@ -1,0 +1,177 @@
+================================================================
+SESSION NOTES — KEY DECISIONS & CHANGES
+(Read alongside PROJECT_CONTEXT.txt)
+================================================================
+
+STARTING POINT
+--------------
+Single monolithic HTML file (VTOL_Relay_Carrier_Operating_Manual.html).
+Split into two pages during this session.
+
+
+SPLIT INTO TWO PAGES
+--------------------
+index.html  — "Flight Tools" — operational use in the field
+manual.html — "Operations Manual" — reference documentation
+
+index.html nav has "MANUAL ▶" link to manual.html.
+manual.html nav has "◀ TOOLS" link back to index.html.
+Both registered with sw.js service worker for offline use.
+
+
+STYLE
+-----
+User chose Style D from a presented preview:
+- Black background (#0f0f0f)
+- Orange accent (#f97316)
+- High contrast, monospace (Share Tech Mono + Oswald)
+- Military/operational aesthetic
+
+Base font size: 15px (was 13px — user found it too small)
+Checklist row height: 50px min, checkbox 24x24px
+
+
+CHECKLIST UX
+------------
+Each row split 50/50:
+- Left half = tap to check/uncheck
+- Right half = tap to expand details
+This design came from user feedback that click targets were too small.
+
+Short titles (≤5 words) shown by default.
+Full detail + notes revealed on expand.
+Copy-to-clipboard blocks for URLs and config strings.
+
+
+CHECKLIST ITEMS — KEY DECISIONS
+---------------------------------
+Items REMOVED from preflight after user feedback:
+- GPS lock confirmed (removed — not needed as explicit check)
+- No pre-arm errors (removed — covered by MP connection)
+- Battery voltage OK (removed)
+- WP2 altitude set correctly (removed)
+- FENCE_ENABLE=0 noted (removed)
+- All crew ready section (removed entirely)
+
+Items COMBINED after user feedback:
+- "Airspace verified" + "Pilots briefed" → one item
+- "Battery secured" + "Power on, GPS acquiring" → one item
+- "Mission Planner open" + "MP IP" + "MP Port" → one item with
+  copyable extras in detail pane (uses extras:[{label,val}] format)
+
+Items ADDED after further discussion:
+- Correct AUTO waypoint selected (warning: WP1 not active if no co-pilot)
+- Relay bind procedure (hold LEFT button on carrier Nomad 3s)
+- Subnet verification (192.168.144.X)
+- GStreamer pipeline (copyable)
+- mpv.conf block (copyable)
+
+Turnaround checklist removed: GPS lock, No pre-arm errors, Battery voltage
+
+
+MANUAL STRUCTURE — 8 TABS
+--------------------------
+After user said "restructure, more organised, add more tabs":
+Overview / RF & Comms / Flight Modes / Aircraft / Mission /
+Procedures / Emergency / Pre-Arm Ref / Abbreviations
+
+Previously was 3 tabs (Systems / Procedures / Pre-Arm Ref).
+
+Abbreviations tab added later with ~60 terms across 5 categories,
+all searchable with one input box.
+
+Mission diagram moved from separate tab into Systems (now Overview)
+tab — user said "put it somewhere logical under systems".
+
+
+PARAMETERS CLARIFIED
+---------------------
+BATT_FS_CRT_ACT=6 = Loiter to QLand (NOT terminate — corrected
+after user pointed out the error).
+
+Carrier Pilot redundancy controller = 915MHz (not 868MHz — corrected
+after user pointed out).
+
+FPV relay chain ground→carrier hop = 868MHz.
+FPV relay carrier→FPV hop = 2.4GHz.
+
+RF chain has two separate diagrams in manual:
+1. FPV relay chain (868→2.4GHz)
+2. Carrier Pilot redundancy (915MHz)
+
+All carrier systems powered from single 6S battery — nothing separate.
+DBR4 = the RX on carrier (receives 868MHz).
+Carrier Nomad = the relay TX on carrier (transmits 2.4GHz to FPV).
+
+
+FEATURES ADDED TO index.html
+------------------------------
+1. Preflight timer
+   - START/STOP in checklist header
+   - MM:SS display, amber after 20min
+   - On stop: prompt to archive with notes
+   - Archive in localStorage (vtol_pf_archive)
+   - Archive table shown below checklist
+
+2. Battery log (.tlog auto-read)
+   - File input for .tlog binary files
+   - parseTlog() / mavlinkExtractBattery() — pure JS MAVLink v1/v2
+     binary parser, no server needed
+   - Extracts: start V, min V, end V, flight time → pre-fills form
+
+3. Battery log (MP live fetch)
+   - "MP" button next to each voltage field
+   - Fetches from http://localhost:20199/mavlink/SYS_STATUS
+   - Parses voltage_battery (mV → V)
+   - Works only on laptop running Mission Planner with REST API enabled
+   - Fails gracefully with instructions if not available
+
+4. Weather tab (Open-Meteo free API)
+   - Lat/lon input or browser geolocation
+   - Shows wind, gusts, temperature
+   - Go/no-go based on T2 wind limits
+
+
+GITHUB / DEPLOYMENT
+--------------------
+GitHub username: MelonNO
+GitHub repo: vtol-Manual
+Expected URL: https://MelonNO.github.io/vtol-Manual/
+
+Files for GitHub: index.html, manual.html, sw.js
+(sw.js cache version: vtol-manual-v2, caches both pages)
+
+Scripts created for automation:
+- git-setup.ps1 (one-time init + first push)
+- watch-push.ps1 (auto-commit + push on file save, 4s debounce)
+
+Node.js was not installed at start of session.
+PowerShell execution policy fix needed:
+  Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+
+THINGS TO DO / KNOWN GAPS
+--------------------------
+- BATT_LOW_VOLT should be set (~23.1V) — flagged throughout but
+  not a code change, a flight controller param change
+- Geofence disabled (FENCE_ENABLE=0) — flagged, intentional for now
+- Battery log .tlog parser approximates duration (assumes ~1Hz samples)
+  — could be improved with actual timestamp parsing from tlog header
+- MP voltage fetch uses AbortSignal.timeout() — may not work in
+  older browsers; graceful fallback is in place
+- Weather tab uses Open-Meteo — requires internet, no offline fallback
+
+
+================================================================
+HOW TO WORK ON THIS IN CLAUDE CODE CLI
+================================================================
+1. cd into the folder containing these files
+2. Run: claude
+3. Paste the contents of PROJECT_CONTEXT.txt at the start
+   (or say "read PROJECT_CONTEXT.txt before we start")
+4. Make requests as normal — Claude Code can read/edit files
+   and run git commands directly
+
+The watch-push.ps1 script will auto-push any changes Claude Code
+makes to the files, since it watches the same folder.
+================================================================
