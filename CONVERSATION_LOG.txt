@@ -1,0 +1,280 @@
+================================================================
+CONVERSATION LOG — VTOL RELAY CARRIER MANUAL PROJECT
+================================================================
+Note: This is a reconstructed log of the key exchanges.
+Exact wording may differ from the original conversation.
+For full technical decisions see SESSION_NOTES.txt.
+For full project context see PROJECT_CONTEXT.txt.
+================================================================
+
+
+SESSION START — COWORK SETUP
+------------------------------
+User: Hey Claude, I'm new to Cowork. Can you help me find plugins?
+      First ask me what my role is.
+
+Claude: [showed role picker UI]
+
+User: [selected Engineering]
+
+Claude: [showed Engineering plugin card]
+
+User: [installed Engineering plugin, triggered /engineering:documentation]
+
+
+INITIAL BRIEF
+--------------
+User: A fixed wing vtol relay carrier for FPV's.
+
+Claude: What type of documentation do you need?
+        Who is the primary audience?
+
+User: Operating manual including an interactive preflight checklist.
+      Audience: other pilots/builders.
+
+Claude: What flight controller / firmware?
+        What is the relay ELRS TX on the carrier?
+        What RC transmitter does the carrier pilot use?
+
+User: Heewing T2 Vtol with the Heewing FC.
+      One radiomaster dbr4 connected directly to the UART of a
+      Radiomaster nomad. The arduplane is not connected at all.
+      The Carrier drone is controlled primarily through mission
+      planner via a SIYI HM30. The video from the carrier can be
+      viewed in MPV but is primarily viewed in Gstreamer inside
+      missionplanner. The carrier drone has its own controller
+      connected with a ELRS TX on 915Mhz primarily for redundency.
+      The FPV pilot functions as a COpilot for the Carrier pilot
+      during takeoff and landing... [full crew/system description]
+
+Claude: [asked about battery, mission waypoints, param file]
+
+User: [uploaded params.param]
+User: [uploaded params-0c2c0060.param — identical file]
+
+
+INITIAL MANUAL CREATED
+-----------------------
+Claude: [created first version — green military theme]
+
+User: The manual is too generic ask me questions that give you more
+      insight. Remove all the fluff. Make it military style.
+      Is there any way to read parameters from ardupilot?
+
+Claude: [asked about airframe, relay bind, crew setup, battery]
+
+User: [answered — detailed crew/system description including
+      two-pilot setup, orbit management concept, co-located pilots,
+      FPV co-pilot advances waypoints during transition]
+
+Claude: [rebuilt manual from param file data, military green theme]
+
+User: BATT_FS_CRT_ACT=6 (terminate) this is just wrong —
+      6 means "loiter to Qland"
+
+Claude: You're right, my mistake. Fixed in all four places.
+
+User: Everything on the Carrier drone is powered by the same battery.
+      The relay on the carrier drone is only a separate system as in
+      the control signal does not interface with the carrier drone.
+
+Claude: Fixed — removed references to separate power supplies.
+
+User: Also specify in the control link architecture.
+      Ground PIC = Radiomaster nomad
+      Carrier RX = Radiomaster DBR4 RX
+      Carrier Relay = Radiomaster Nomad (not DBR4)
+
+Claude: Fixed chain diagram and description text.
+
+User: The mode switch is only a 3 select button so only Qhover,
+      FBWB and auto is the only modes available for the controller.
+      RTL to the left arm/disarm button.
+
+Claude: Updated flight modes table, removed QLOITER and MANUAL
+        as switch-accessible, added RTL on left button entry.
+
+User: Remove "Video chain has multiple A/D conversion stages..."
+      Change every mention of PIC to Carrier Pilot.
+
+Claude: Done — alert removed, all PIC instances replaced.
+
+User: The carrier pilot redundency RX is 915 not 868.
+
+Claude: Fixed — 915MHz throughout for carrier pilot link.
+        Note: relay chain (868/2.4GHz) kept correct.
+
+User: Everything is too small and not readable.
+      Also restructure the manual — more organised, easier to find
+      information, add more tabs.
+      In preflight check combine pilot briefed and airspace verified.
+      Combine battery secured and Power on GPS acquiring.
+      Combine Mission planner open MP IP and MP Port.
+      Remove battery voltage ok.
+      Remove Pre-arm errors.
+      Remove GPS lock confirmed.
+      [same removals for turnaround check]
+
+Claude: Bumped font to 15px, checklist rows 50px, boxes 24x24px.
+        Manual restructured to 8 tabs:
+        Overview / RF & Comms / Flight Modes / Aircraft / Mission /
+        Procedures / Emergency / Pre-Arm Ref
+        Checklist items combined/removed as requested.
+
+User: Make the emergency button larger and easier to see and press.
+      Make it phone compatible.
+      Make it compatible with github.io and set it up or help me.
+
+Claude: Emergency button → fixed floating FAB with pulse animation.
+        Added mobile CSS breakpoints.
+        [gave GitHub Pages setup instructions]
+
+User: Add some animations.
+
+Claude: Added: tab fade-slide, checklist section stagger, checkbox
+        spring pop, detail slide-down, progress bar cubic-bezier,
+        go/nogo scale-in, emergency FAB continuous pulse.
+
+User: The preflight tab says there are 50 items while there is not
+      that many.
+
+Claude: Bug fixed — updateOverall() was querying all .ci elements
+        across both checklists. Scoped to #cl-container only.
+
+User: Make it easier to click the expand button and check button.
+      The bar should be divided in half.
+
+Claude: Split each row 50/50 — left half checks, right half expands.
+
+User: Make MP connection IP and MP connection Port be information
+      under "mission planner open".
+
+Claude: Removed as separate checklist items, embedded as copyable
+        extras in the Mission Planner open detail pane.
+
+User: Make a tab for sequential preflight (turnaround).
+      Sort tabs: Preflight, Turnaround, Post-flight, Procedures,
+      Systems. Make Emergency a separate button icon. Remove parameters.
+
+Claude: Added Turnaround tab with trimmed between-flight checklist.
+        Emergency moved to floating red button + full-screen modal.
+        Parameters tab removed.
+        Tab order updated.
+
+User: In turnaround check combine battery change, add details that
+      batteries should be set to charge. Add servo check.
+      Add Gstreamer must be started again. Add MPV stream again.
+
+Claude: Updated turnaround CL2 data accordingly.
+
+User: Make the expand all and collapse button the same button.
+
+Claude: Merged into single toggle button (EXPAND ALL ↔ COLLAPSE).
+
+User: Add a separate tab for sequential preflight to be used after
+      one flight. Use the preflight but remove unnecessary checks.
+
+User: Sort tabs: Preflight, Sequential/Turnaround, Post Flight,
+      Procedures, Systems. Emergency separate. Remove Parameters.
+
+Claude: Already done in previous step.
+
+User: Actually create a separate page for the Manual and one for
+      Flight Tools. Tools = checklists + battery log + emergency.
+      Manual = documentation. Add Manual button on tools, Tools
+      button on manual.
+
+Claude: Split into index.html (Flight Tools) and manual.html (Manual).
+        Created sw.js for offline caching of both pages.
+
+User: Make everything bigger and not readable. Restructure manual
+      suite, more organised, more tabs.
+      [plus all the checklist combine/remove instructions above]
+
+Claude: index.html font 15px throughout. manual.html 8 tabs created.
+        Applied all checklist changes.
+
+User: In Network configuration add SIYI HM30 Ground unit IP
+      192.168.144.12 and SIYI air unit ip 192.168.144.11.
+
+Claude: Added both rows to network config table in RF & Comms tab.
+
+User: Make a tab for abbreviations including ArduPilot terms like
+      AHRS. Help me set up GitHub.io and on mobile. Currently
+      logged into GitHub but done nothing more.
+
+Claude: Added Abbreviations tab to manual.html — 5 categories,
+        ~60 terms, searchable. Gave step-by-step GitHub Pages
+        and phone home screen instructions.
+
+User: What else can you do to improve the project?
+
+Claude: [showed 6 options: flight timer, voltage gauge, maintenance
+        log, battery chart, QR code, weather check]
+
+User: Add a timer for preflight check with archive function.
+      And add a function to automatically read the battery info
+      for the battery log.
+
+Claude: Added to index.html:
+        - Preflight timer (START/STOP/archive, amber after 20min)
+        - Preflight archive (localStorage, date/duration/GO/NO-GO)
+        - .tlog binary parser (MAVLink v1/v2, extracts voltages)
+        - MP live fetch buttons (localhost:20199 REST API)
+
+User: Can I run you in the terminal?
+
+Claude: Yes — that's Claude Code. Install with:
+        npm install -g @anthropic-ai/claude-code
+
+User: npm not recognised.
+
+Claude: Node.js not installed. Download from nodejs.org LTS.
+
+User: [got PowerShell execution policy error on npm]
+
+Claude: Run: Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+
+User: I want to transition this project to the CLI. How do I do this?
+
+Claude: [gave full Claude Code setup instructions, how to point it
+        at the project folder, how to start using it]
+
+User: Can you do option B (auto-push script)?
+
+Claude: Created git-setup.ps1, watch-push.ps1, GIT-SETUP-GUIDE.txt
+
+User: Can you give me a transcript of our chat so I can copy paste it?
+
+Claude: Created PROJECT_CONTEXT.txt (full technical context) and
+        SESSION_NOTES.txt (key decisions and changes).
+        Explained full transcript is too long but these two files
+        give Claude Code everything it needs.
+
+User: Also create a txt file with the conversation log.
+
+Claude: Created this file (CONVERSATION_LOG.txt).
+
+
+================================================================
+HOW TO USE THESE FILES WITH CLAUDE CODE CLI
+================================================================
+
+Start a Claude Code session in the project folder:
+  cd [your project folder]
+  claude
+
+Then paste or say:
+  "Read PROJECT_CONTEXT.txt, SESSION_NOTES.txt and
+   CONVERSATION_LOG.txt before we start. These give you full
+   context on the VTOL relay carrier manual project."
+
+Claude Code can then read the actual HTML files directly,
+make edits, run git commands, and continue exactly where
+this Cowork session left off.
+
+GitHub:
+  Username: MelonNO
+  Repo: vtol-Manual
+  Expected URL: https://MelonNO.github.io/vtol-Manual/
+================================================================
