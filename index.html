@@ -856,10 +856,10 @@ function renderBattLog() {
 
   // Health
   let hColor, hText;
-  if      (avgMin/cells < chem.critical + 0.05) { hColor='var(--red)';   hText='CRITICAL — Average landing voltage is near the emergency threshold'; }
-  else if (avgMin/cells < chem.low       + 0.05) { hColor='var(--red)';   hText='LOW — Average landing voltage is below the safe minimum'; }
-  else if (avgMin/cells < chem.low       + 0.15) { hColor='var(--amber)'; hText='MARGINAL — Average landing voltage is close to the low threshold'; }
-  else                                            { hColor='var(--green)'; hText='HEALTHY — Landing voltages are within the normal range'; }
+  if      (avgMin/cells < chem.critical + 0.05) { hColor='var(--red)';   hText='CRITICAL — Average landing voltage is dangerously low. Inspect pack immediately.'; }
+  else if (avgMin/cells < chem.low       + 0.05) { hColor='var(--red)';   hText='LOW — Average landing voltage is below the chemistry floor. Check for unusual discharge.'; }
+  else if (avgMin/cells < chem.low       + 0.10) { hColor='var(--amber)'; hText='MARGINAL — Average landing voltage is low. Monitor for accelerating degradation.'; }
+  else                                            { hColor='var(--green)'; hText='HEALTHY — Landing voltages are within acceptable range for this pack chemistry.'; }
 
   analysis.innerHTML = battTrendSVG(entries, cells, chem) + `
   <div class="card amber" style="margin-bottom:14px">
