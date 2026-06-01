@@ -885,7 +885,7 @@ function renderBattLog() {
       <tr><td>Worst sag</td><td style="color:var(--amber)">${worstSag.toFixed(2)}V</td><td>${(worstSag/cells).toFixed(3)}V</td><td style="color:var(--muted)">Largest drop in one flight</td></tr>
       <tr><th colspan="4" style="padding-top:10px;color:var(--muted)">THRESHOLDS — ${cells}S ${chem.name}</th></tr>
       <tr><td>Full charge</td><td>${fullV}V</td><td>${chem.full}V</td><td style="color:var(--muted)">After a complete charge</td></tr>
-      <tr><td>Hard minimum</td><td>${lowV}V</td><td>${chem.low}V</td><td style="color:var(--amber)">Chemistry floor — avoid regular discharge below this</td></tr>
+      <tr><td>Longevity floor</td><td>${lowV}V</td><td>${chem.low}V</td><td style="color:var(--amber)">SEI degradation accelerates below this — avoid as a habit</td></tr>
       <tr><td>Critical</td><td style="color:var(--red)">${critV}V</td><td style="color:var(--red)">${chem.critical}V</td><td style="color:var(--red)">QLand triggers here</td></tr>
     </table>
   </div>
