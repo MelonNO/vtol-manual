@@ -193,37 +193,45 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <button onclick="closeEmerg()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:6px 14px;cursor:pointer;letter-spacing:1px">CLOSE ✕</button>
     </div>
     <div class="alert alert-danger">Memorise these actions. In-flight response time is measured in seconds.</div>
-    <div class="card danger" style="margin-top:14px">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px">
+      <button onclick="emergJump('emerg-rc')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">RC LOSS</button>
+      <button onclick="emergJump('emerg-relay')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">RELAY LOSS</button>
+      <button onclick="emergJump('emerg-video')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">VIDEO LOSS</button>
+      <button onclick="emergJump('emerg-trans')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">TRANSITION</button>
+      <button onclick="emergJump('emerg-batt')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">BATTERY</button>
+      <button onclick="emergJump('emerg-gcs')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">GCS LOSS</button>
+    </div>
+    <div id="emerg-rc" class="card danger" style="margin-top:14px">
       <div class="emerg-hdr">RC Link Loss — 915MHz (Ground → Carrier)</div>
       <div class="proc-step"><div class="n">1</div><div class="t">Short loss (≤1.5s): ArduPlane switches to <span class="mbadge m-fbwb">FBWA</span> automatically. Regain link and resume.</div></div>
       <div class="proc-step"><div class="n">2</div><div class="t">Long loss (&gt;5s): RTL triggers at 120m AGL. Do NOT power-cycle TX in flight.</div></div>
       <div class="proc-step"><div class="n">3</div><div class="t">GCS (SIYI HM30) still available: send mode commands via Mission Planner.</div></div>
     </div>
-    <div class="card danger">
+    <div id="emerg-relay" class="card danger">
       <div class="emerg-hdr">Relay Link Loss — 2.4GHz (Carrier → FPV)</div>
       <div class="proc-step"><div class="n">1</div><div class="t">FPV failsafe activates. Co-pilot ceases inputs immediately.</div></div>
       <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot holds loiter — sub-drone may be RTH-ing toward carrier position.</div></div>
       <div class="proc-step"><div class="n">3</div><div class="t">If relay does not recover: co-pilot monitors FPV failsafe. Carrier Pilot recovers independently.</div></div>
     </div>
-    <div class="card danger">
+    <div id="emerg-video" class="card danger">
       <div class="emerg-hdr">Video Loss — 5.8GHz or SIYI Chain</div>
       <div class="proc-step"><div class="n">1</div><div class="t">Co-pilot: zero inputs. Sub-drone to hover/stabilise.</div></div>
       <div class="proc-step"><div class="n">2</div><div class="t">Carrier Pilot: descend carrier to reduce path loss. Wait 10s.</div></div>
       <div class="proc-step"><div class="n">3</div><div class="t">Not recovered: FPV RTH. Carrier Pilot recovers carrier independently.</div></div>
     </div>
-    <div class="card danger">
+    <div id="emerg-trans" class="card danger">
       <div class="emerg-hdr">Transition Failure — VTOL → FW</div>
       <div class="proc-step"><div class="n">1</div><div class="t">No airspeed build within 3s or excessive pitch-down: <span class="mbadge m-qhov">QHOVER</span> immediately.</div></div>
       <div class="proc-step"><div class="n">2</div><div class="t"><code>Q_TRANS_FAIL=4s</code> — auto-abort triggers at 4s. Do not wait for it.</div></div>
       <div class="proc-step"><div class="n">3</div><div class="t">Land in VTOL. Inspect tilt servo, cruise ESC, battery voltage before next attempt.</div></div>
     </div>
-    <div class="card danger">
+    <div id="emerg-batt" class="card danger">
       <div class="emerg-hdr">Battery Critical — Carrier</div>
       <div class="proc-step"><div class="n">1</div><div class="t">No BATT_LOW_VOLT set. First automated action: <code>22.2V</code> → Loiter to QLand at current position. Will NOT return home.</div></div>
       <div class="proc-step"><div class="n">2</div><div class="t">Initiate manual RTL at <span class="warn-val">24V</span>. If dropping rapidly: Nomad left button → RTL immediately.</div></div>
       <div class="proc-step"><div class="n">3</div><div class="t">If Loiter→QLand triggers: confirm area below is clear. Aircraft descending vertically from current position.</div></div>
     </div>
-    <div class="card danger">
+    <div id="emerg-gcs" class="card danger">
       <div class="emerg-hdr">GCS Link Loss (SIYI HM30)</div>
       <div class="proc-step"><div class="n">1</div><div class="t">Switch to physical ELRS 915MHz TX immediately. Confirm carrier responds.</div></div>
       <div class="proc-step"><div class="n">2</div><div class="t">In AUTO: GCS failsafe triggers RTL. In FBWB/QHOVER: no failsafe — fly manually.</div></div>
