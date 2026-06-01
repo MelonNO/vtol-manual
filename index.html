@@ -525,6 +525,12 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 <footer>HEEWING T2 VTOL RELAY CARRIER · FLIGHT TOOLS · ARDUPLANE</footer>
 
 <script>
+function toggleCleanup(btn) {
+  var el = btn.nextElementSibling;
+  var open = el.classList.toggle('visible');
+  btn.classList.toggle('open', open);
+  btn.innerHTML = (open ? '▼' : '▶') + ' &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE';
+}
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
