@@ -1097,6 +1097,64 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     </table>
     <div class="alert alert-warn" style="margin-top:12px">The carrier→FPV link (2.4GHz) has less diffraction margin than 868MHz. If link budget is the constraint, increase relay altitude first before adjusting orbit radius.</div>
   </div>
+
+  <!-- Side-view LOS diagram: why altitude matters -->
+  <svg viewBox="0 0 700 185" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:16px 0;font-family:'Share Tech Mono',monospace">
+    <text x="350" y="12" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">RF LINE-OF-SIGHT — WHY RELAY ALTITUDE MATTERS</text>
+    <!-- Ground -->
+    <rect x="0" y="150" width="700" height="35" fill="#1a1a1a"/>
+    <line x1="20" y1="150" x2="680" y2="150" stroke="#333" stroke-width="1"/>
+    <!-- Terrain hump -->
+    <polygon points="155,150 220,95 310,75 400,95 460,150" fill="#222" stroke="#333" stroke-width="1"/>
+    <text x="310" y="92" fill="#444" font-size="8" text-anchor="middle">TERRAIN</text>
+    <!-- Ground station (left) -->
+    <rect x="22" y="130" width="70" height="20" rx="1" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
+    <text x="57" y="144" fill="#666" font-size="8" text-anchor="middle">GND STATION</text>
+    <line x1="57" y1="130" x2="57" y2="112" stroke="#555" stroke-width="1.5"/>
+    <line x1="44" y1="120" x2="57" y2="112" stroke="#555" stroke-width="1"/>
+    <line x1="70" y1="120" x2="57" y2="112" stroke="#555" stroke-width="1"/>
+    <!-- FPV sub-drone (right) -->
+    <g transform="translate(620,120)">
+      <line x1="-6" y1="-6" x2="6" y2="6" stroke="#22c55e" stroke-width="1.5"/>
+      <line x1="6" y1="-6" x2="-6" y2="6" stroke="#22c55e" stroke-width="1.5"/>
+      <circle cx="-7" cy="-7" r="2" fill="#22c55e" opacity="0.8"/>
+      <circle cx="7" cy="-7" r="2" fill="#22c55e" opacity="0.8"/>
+      <circle cx="-7" cy="7" r="2" fill="#22c55e" opacity="0.8"/>
+      <circle cx="7" cy="7" r="2" fill="#22c55e" opacity="0.8"/>
+      <circle cx="0" cy="0" r="3" fill="#0f0f0f" stroke="#22c55e" stroke-width="1.5"/>
+    </g>
+    <text x="620" y="141" fill="#22c55e" font-size="8" text-anchor="middle">FPV</text>
+    <!-- CARRIER LOW (blocked) -->
+    <rect x="190" y="114" width="18" height="8" rx="1" fill="#f97316" opacity="0.6"/>
+    <polygon points="199,114 194,107 204,107" fill="#f97316" opacity="0.6"/>
+    <text x="199" y="104" fill="#f97316" font-size="8" text-anchor="middle" opacity="0.8">LOW</text>
+    <!-- LOS low: carrier→FPV — BLOCKED (red, behind terrain) -->
+    <line x1="208" y1="118" x2="614" y2="120" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.6"/>
+    <!-- Terrain intersection marker (X) at approx hill peak projection -->
+    <line x1="304" y1="79" x2="316" y2="91" stroke="#ef4444" stroke-width="2"/>
+    <line x1="316" y1="79" x2="304" y2="91" stroke="#ef4444" stroke-width="2"/>
+    <text x="330" y="80" fill="#ef4444" font-size="8">BLOCKED</text>
+    <!-- GS to carrier low: clear -->
+    <line x1="88" y1="140" x2="190" y2="120" stroke="#f97316" stroke-width="1" stroke-dasharray="3,4" opacity="0.4"/>
+    <!-- CARRIER HIGH (clear) -->
+    <rect x="190" y="38" width="18" height="8" rx="1" fill="#f97316"/>
+    <polygon points="199,38 194,31 204,31" fill="#f97316"/>
+    <text x="199" y="28" fill="#f97316" font-size="8" text-anchor="middle">HIGH</text>
+    <!-- LOS high: carrier→FPV — CLEAR (green) -->
+    <line x1="208" y1="42" x2="614" y2="118" stroke="#22c55e" stroke-width="1.5" opacity="0.8"/>
+    <!-- checkmark near FPV end -->
+    <text x="580" y="80" fill="#22c55e" font-size="11">✓</text>
+    <text x="572" y="90" fill="#22c55e" font-size="7">CLEAR</text>
+    <!-- GS to carrier high: clear -->
+    <line x1="88" y1="138" x2="190" y2="44" stroke="#22c55e" stroke-width="1" opacity="0.5"/>
+    <!-- Vertical arrow between low and high carrier -->
+    <line x1="215" y1="114" x2="215" y2="50" stroke="#555" stroke-width="1" stroke-dasharray="2,3"/>
+    <polygon points="215,48 211,57 219,57" fill="#555"/>
+    <text x="228" y="84" fill="#555" font-size="8">ALTITUDE</text>
+    <!-- Y-axis altitude labels -->
+    <text x="16" y="45" fill="#444" font-size="8" text-anchor="end">high</text>
+    <text x="16" y="122" fill="#444" font-size="8" text-anchor="end">low</text>
+  </svg>
   <div class="card">
     <div class="card-title">Orbit Geometry</div>
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Orbit radius</strong><p>150–250m loiter radius works well for relay geometry while allowing orbit adjustments. Smaller radii tighten turns and increase bank angle — reduce radius in calm conditions only.</p></div></div>
