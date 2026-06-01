@@ -1146,8 +1146,11 @@ async function fetchVoltage(fieldId) {
   status.style.display = '';
   status.style.color = 'var(--muted)';
   status.textContent = 'Fetching from Mission Planner...';
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 2000);
   try {
-    const r = await fetch('http://localhost:20199/mavlink/SYS_STATUS', { signal: AbortSignal.timeout(2000) });
+    const r = await fetch('http://localhost:20199/mavlink/SYS_STATUS', { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const data = await r.json();
     const mV = data.voltage_battery || data.VOLTAGE_BATTERY;
@@ -1158,6 +1161,7 @@ async function fetchVoltage(fieldId) {
     status.textContent = `✓ Got ${v}V from Mission Planner`;
     setTimeout(() => { status.style.display='none'; }, 3000);
   } catch(e) {
+    clearTimeout(timeoutId);
     status.style.color = 'var(--amber)';
     if (e.name === 'AbortError' || e.message.includes('Failed to fetch') || e.message.includes('NetworkError')) {
       status.textContent = 'Cannot reach MP — enter voltage manually. (MP REST API must be enabled: Config → Planner → tick "Enable REST API")';
