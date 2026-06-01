@@ -626,7 +626,8 @@ function buildChecklist(CL_data, containerId, storageKey, secProgPrefix, overall
     const wrap = document.createElement('div');
     wrap.className = 'cl-section';
     wrap.id = 'cls-' + sec.id;
-    wrap.innerHTML = `<div class="cl-section-hdr"><span class="cl-section-name">${sec.id}. ${sec.name}</span><span class="cl-section-prog" id="${secProgPrefix}${sec.id}"></span></div>`;
+    const sc = SEC_COLORS[sec.id] || 'var(--accent)';
+    wrap.innerHTML = `<div class="cl-section-hdr" style="border-bottom-color:${sc}44"><span class="cl-section-letter" style="background:${sc}22;border:1px solid ${sc}66;color:${sc}">${sec.id}</span><span class="cl-section-name" style="color:${sc}">${sec.name}</span><span class="cl-section-prog" id="${secProgPrefix}${sec.id}"></span></div>`;
     sec.items.forEach((item, i) => {
       const key = `${sec.id}-${i}`;
       const done = saved[key] || false;
