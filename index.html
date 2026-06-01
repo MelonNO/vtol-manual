@@ -760,7 +760,7 @@ function renderBattLog() {
   else if (avgMin/cells < chem.low       + 0.15) { hColor='var(--amber)'; hText='MARGINAL — Average landing voltage is close to the low threshold'; }
   else                                            { hColor='var(--green)'; hText='HEALTHY — Landing voltages are within the normal range'; }
 
-  analysis.innerHTML = `
+  analysis.innerHTML = battTrendSVG(entries, cells, chem) + `
   <div class="card amber" style="margin-bottom:14px">
     <div class="card-title">Analysis — ${entries.length} flight${entries.length>1?'s':''} · ${cells}S ${chem.name}</div>
     <table>
