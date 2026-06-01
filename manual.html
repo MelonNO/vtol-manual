@@ -312,7 +312,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td>GCS (SIYI) loss</td><td><code>FS_GCS_ENABL=2</code></td><td>Active in AUTO mode only → RTL</td></tr>
     <tr><td>Throttle failsafe</td><td><code>THR_FS_VALUE=950</code></td><td>RC link loss confirmed by throttle channel drop</td></tr>
   </table>
-  <div class="alert alert-danger">No low-battery warning is configured (BATT_LOW_VOLT=0). The first automated response is the critical failsafe at 22.2V → Loiter to QLand at current position. Aircraft will NOT return home. Initiate manual RTL at 24V minimum.</div>
+  <div class="alert alert-danger">No low-battery warning is configured (BATT_LOW_VOLT=0). The first automated response is the critical failsafe at 22.2V → Loiter to QLand at current position. Aircraft will NOT return home. Initiate manual RTL at 23.0V (3.83V/cell). Hard limit: do not let voltage reach 22.5V before RTL is in progress.</div>
 
   <div class="section-title">VTOL Assist</div>
   <p>VTOL assist activates automatically in fixed-wing modes when airspeed drops below <span class="val">9 m/s</span> or when altitude is below <span class="val">25m AGL</span>. If VTOL assist triggers unexpectedly during cruise, check for airspeed sensor failure or gusty conditions.</p>
