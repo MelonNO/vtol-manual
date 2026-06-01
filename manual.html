@@ -802,6 +802,125 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
 </div>
 
+<!-- ═══ FPV SUB-DRONE ═══ -->
+<div id="tab-fpv" class="tab-panel">
+
+  <div class="section-title">Platform Overview</div>
+  <p>The FPV sub-drone is a <strong>7"+ GPS quad running Betaflight</strong>. It is operated via the relay link from the carrier drone and has no direct RF connection to the ground station. All control and video passes through the carrier as a relay node.</p>
+  <div class="alert alert-info">This vehicle is configured and flown entirely independently of ArduPlane. The carrier FC has no visibility of FPV link state, battery level, or position.</div>
+
+  <div class="section-title">Hardware Configuration</div>
+  <div class="card">
+    <div class="card-title">System</div>
+    <table>
+      <tr><th>Item</th><th>Value</th></tr>
+      <tr><td>Flight controller</td><td>Matek F405 STD (clone) · Betaflight 4.5.2</td></tr>
+      <tr><td>Battery</td><td>6S 1300mAh LiPo</td></tr>
+      <tr><td>VTX</td><td>Raceband R5 · <strong>5806 MHz</strong> · 25mW (constant — same power armed and disarmed)</td></tr>
+      <tr><td>RX</td><td>ELRS 2.4GHz · CRSF protocol · bound to carrier relay Nomad every preflight</td></tr>
+      <tr><td>Motors</td><td>1960KV · 14-pole · DSHOT300 · bidirectional DSHOT enabled</td></tr>
+      <tr><td>Gyro / rates</td><td>ACTUAL rate type · 67°/s max rate all axes</td></tr>
+      <tr><td>GPS</td><td>uBlox · 10Hz update · Galileo enabled · AIRBORNE_1G flight model</td></tr>
+      <tr><td>Blackbox</td><td>SD card · 1/2 sample rate · all channels logged</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <div class="card-title">Battery Thresholds — 6S 1300mAh LiPo</div>
+    <table>
+      <tr><th>Level</th><th>Pack voltage</th><th>Per cell</th><th>Action</th></tr>
+      <tr><td>Full charge</td><td>24.6V</td><td>4.1V</td><td>Normal takeoff state</td></tr>
+      <tr><td>OSD warning</td><td class="warn-val">21.0V</td><td>3.5V</td><td>Call "FPV BATT LOW — RETURNING" and land immediately</td></tr>
+      <tr><td>Absolute minimum</td><td class="crit-val">19.8V</td><td>3.3V</td><td>BF minimum cell voltage — retire pack if reached in flight</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Failsafe — GPS Rescue</div>
+  <p>Failsafe procedure is set to <strong>GPS-RESCUE</strong>. When the relay link is lost, the FPV sub-drone autonomously returns to the GPS home point set at arming.</p>
+  <div class="card amber">
+    <div class="card-title">GPS Rescue Parameters</div>
+    <table>
+      <tr><th>Parameter</th><th>Value</th><th>Implication</th></tr>
+      <tr><td>Activation delay</td><td class="warn-val">2.5s</td><td>1.5s stage 1 + 1s stage 2 before rescue triggers</td></tr>
+      <tr><td>Minimum satellites</td><td class="warn-val">8</td><td>Below 8 sats, GPS Rescue will NOT activate — FPV descends on failsafe throttle instead</td></tr>
+      <tr><td>Altitude mode</td><td>CURRENT_ALT</td><td>Climbs 30m above wherever the FPV is when link is lost</td></tr>
+      <tr><td>Return altitude</td><td>100m AGL</td><td>Cruises home at 100m above launch point</td></tr>
+      <tr><td>Return speed</td><td>7.5 m/s</td><td>Horizontal return ground speed</td></tr>
+      <tr><td>Descent start</td><td>20m from home</td><td>Begins descent when within 20m of home horizontally</td></tr>
+      <tr><td>Descent rate</td><td>1.5 m/s</td><td>Slow controlled descent</td></tr>
+      <tr><td>Disarm altitude</td><td>4m AGL</td><td>Motors cut at 4m — FPV drops the last 4m to ground</td></tr>
+      <tr><td>Min start distance</td><td>15m</td><td>Won't activate if already within 15m of home — descends in place</td></tr>
+      <tr><td>Throttle range</td><td>1100–1700</td><td>Hover estimate: 1300</td></tr>
+    </table>
+    <div class="alert alert-danger" style="margin-top:12px">If GPS Rescue activates, <strong>do not touch the FPV TX sticks</strong>. Stick input above the threshold (30%) disables the rescue mid-flight.</div>
+  </div>
+
+  <!-- GPS Rescue trajectory diagram -->
+  <svg viewBox="0 0 720 195" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:16px 0;font-family:'Share Tech Mono',monospace">
+    <rect x="0" y="158" width="720" height="37" fill="#1a1a1a"/>
+    <line x1="35" y1="158" x2="685" y2="158" stroke="#333" stroke-width="1"/>
+    <line x1="35" y1="22" x2="685" y2="22" stroke="#222" stroke-width="0.5" stroke-dasharray="4,7"/>
+    <text x="31" y="26" fill="#444" font-size="9" text-anchor="end">100m</text>
+    <text x="31" y="161" fill="#444" font-size="9" text-anchor="end">GND</text>
+    <text x="31" y="108" fill="#444" font-size="9" text-anchor="end">~50m</text>
+    <line x1="33" y1="106" x2="38" y2="106" stroke="#444" stroke-width="1"/>
+    <line x1="655" y1="158" x2="655" y2="130" stroke="#555" stroke-width="1.5"/>
+    <polygon points="655,130 672,137 655,144" fill="#444"/>
+    <text x="655" y="173" fill="#555" font-size="9" text-anchor="middle">HOME</text>
+    <line x1="618" y1="158" x2="618" y2="150" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="618" y="148" fill="#444" font-size="7" text-anchor="middle">20m</text>
+    <line x1="640" y1="158" x2="640" y2="152" stroke="#ef444488" stroke-width="1"/>
+    <text x="640" y="150" fill="#ef444488" font-size="7" text-anchor="middle">4m</text>
+    <g transform="translate(90,106)">
+      <line x1="-7" y1="-7" x2="7" y2="7" stroke="#f97316" stroke-width="1.5"/>
+      <line x1="7" y1="-7" x2="-7" y2="7" stroke="#f97316" stroke-width="1.5"/>
+      <circle cx="-8" cy="-8" r="2.5" fill="#f97316" opacity="0.8"/>
+      <circle cx="8" cy="-8" r="2.5" fill="#f97316" opacity="0.8"/>
+      <circle cx="-8" cy="8" r="2.5" fill="#f97316" opacity="0.8"/>
+      <circle cx="8" cy="8" r="2.5" fill="#f97316" opacity="0.8"/>
+      <circle cx="0" cy="0" r="3" fill="#0f0f0f" stroke="#f97316" stroke-width="1.5"/>
+    </g>
+    <text x="90" y="96" fill="#ef4444" font-size="9" text-anchor="middle" letter-spacing="1">LINK LOST</text>
+    <text x="90" y="188" fill="#ef444466" font-size="8" text-anchor="middle">2.5s delay</text>
+    <polyline points="90,106 90,22 612,22" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline points="612,22 638,152" fill="none" stroke="#f97316" stroke-width="2"/>
+    <line x1="638" y1="152" x2="652" y2="158" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <circle cx="638" cy="152" r="3" fill="#ef4444"/>
+    <line x1="70" y1="106" x2="70" y2="64" stroke="#facc15" stroke-width="1" opacity="0.7"/>
+    <line x1="66" y1="106" x2="74" y2="106" stroke="#facc15" stroke-width="1" opacity="0.7"/>
+    <line x1="66" y1="64"  x2="74" y2="64"  stroke="#facc15" stroke-width="1" opacity="0.7"/>
+    <text x="58" y="87" fill="#facc15" font-size="8" text-anchor="middle" transform="rotate(-90,58,87)" opacity="0.9">+30m</text>
+    <text x="62" y="48" fill="#f97316" font-size="8" text-anchor="middle" transform="rotate(-90,62,48)">CLIMB</text>
+    <text x="350" y="16" fill="#f97316" font-size="9" text-anchor="middle" letter-spacing="1">CRUISE HOME — 7.5 m/s AT 100m AGL</text>
+    <text x="636" y="85" fill="#f97316" font-size="8" text-anchor="start" transform="rotate(72,626,85)">DESCENT</text>
+    <text x="643" y="150" fill="#ef4444" font-size="8" text-anchor="start">MOTOR CUT</text>
+    <text x="360" y="188" fill="#ef444455" font-size="8" text-anchor="middle" letter-spacing="1">REQUIRES 8+ GPS SATS TO ACTIVATE</text>
+  </svg>
+
+  <div class="section-title">OSD Layout — Key Elements</div>
+  <div class="card">
+    <table>
+      <tr><th>OSD Element</th><th>Trigger</th><th>Callout</th></tr>
+      <tr><td>Battery voltage</td><td>Below 21.0V (3.5V/cell)</td><td>"FPV BATT LOW — RETURNING"</td></tr>
+      <tr><td>GPS satellites</td><td>Below 8 sats</td><td>"FPV SATS LOW" — GPS Rescue may not work</td></tr>
+      <tr><td>Link quality</td><td>LQ below 70% or RSSI below -90dBm</td><td>"FPV LINK WEAK"</td></tr>
+      <tr><td>Home distance</td><td>Approaching max intended range</td><td>Situational awareness — call if unexpectedly far</td></tr>
+      <tr><td>Flight mode</td><td>Any unexpected mode change</td><td>"FPV MODE CHANGE — [mode name]"</td></tr>
+      <tr><td>Altitude</td><td>Higher than expected / approaching terrain</td><td>Carrier Pilot awareness — call if >50m above planned operating alt</td></tr>
+    </table>
+  </div>
+
+  <div class="section-title">Relay Bind Procedure</div>
+  <div class="card accent">
+    <p>The FPV sub-drone must be re-bound to the carrier relay Nomad before every flight. The bind does not persist between power cycles.</p>
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Carrier powered on</strong><p>Carrier drone powered on. Carrier Nomad relay TX is active.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>FPV powered on</strong><p>FPV battery connected. Wait for Betaflight boot tone.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Enter bind mode on carrier relay TX</strong><p>Hold the <strong>LEFT button</strong> on the carrier-mounted Nomad for 3 seconds until it enters bind mode.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Confirm link</strong><p>ELRS RX on FPV confirms bind via LED. Verify FPV video feed appears in MPV.net — this confirms the full relay chain is operational.</p></div></div>
+    <div class="alert alert-warn" style="margin-top:12px">Bind is required every preflight — bind to the carrier Nomad only, not the ground TX.</div>
+  </div>
+
+</div>
+
 <!-- ═══ MAINTENANCE ═══ -->
 <div id="tab-maintenance" class="tab-panel">
 
