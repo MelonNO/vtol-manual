@@ -616,6 +616,22 @@ function toggleExpandAll2() {
 function resetCL() { if (!confirm('Reset preflight checklist?')) return; localStorage.removeItem('vtol_cl2'); buildChecklist(CL, 'cl-container', 'vtol_cl2', 'csp-', 'updateOverall1'); }
 function resetCL2() { if (!confirm('Reset turnaround checklist?')) return; localStorage.removeItem('vtol_cl3'); buildChecklist(CL2, 'cl-container2', 'vtol_cl3', 'csp2-', 'updateOverall2'); }
 
+// ── BATTERY SPARKLINE ──
+function battSparkline(sv, mv, rv, cells, chem) {
+  const full = chem.full * cells, crit = chem.critical * cells;
+  const range = full - crit || 1;
+  const W = 72, H = 26, pad = 5;
+  function y(v) { return H - pad - ((Math.max(crit, Math.min(full, v)) - crit) / range) * (H - pad * 2); }
+  const pts = [[pad, y(sv)], [W / 2, y(mv)], [W - pad, y(rv)]].map(p => p.join(',')).join(' ');
+  const c = mv / cells < chem.critical + 0.05 ? '#ef4444' : mv / cells < chem.low + 0.1 ? '#facc15' : '#f97316';
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">`
+    + `<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linejoin="round"/>`
+    + `<circle cx="${pad}" cy="${y(sv)}" r="2" fill="${c}"/>`
+    + `<circle cx="${W / 2}" cy="${y(mv)}" r="2.5" fill="${c}"/>`
+    + `<circle cx="${W - pad}" cy="${y(rv)}" r="2" fill="${c}"/>`
+    + `</svg>`;
+}
+
 // ── BATTERY LOG ──
 function loadBattLog() { return JSON.parse(localStorage.getItem('vtol_battlog') || '[]'); }
 function saveBattLog(e) { localStorage.setItem('vtol_battlog', JSON.stringify(e)); }
