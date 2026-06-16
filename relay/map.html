@@ -119,7 +119,7 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
   <div id="sim-banner">SIMULATED</div>
   <div class="hsep"></div>
   <div class="hs">Src: <b id="h-src">offline</b></div>
-  <div class="hs">Alt: <b id="h-alt">—</b></div>
+  <div class="hs"><b id="h-alt">—</b></div>
   <div class="hs">Boresight: <b id="h-bs">—</b></div>
   <div class="hs">Coverage: <b id="h-cov">—</b></div>
   <div class="hs">Terrain: <b id="h-ter">idle</b></div>
@@ -715,9 +715,21 @@ function renderState() {
   }
 
   document.getElementById('h-src').textContent=state.source;
-  const _altRef = gcsState.lat !== null ? ' rel' : ' AGL';
-  document.getElementById('h-alt').textContent=state.alt_m!=null?state.alt_m.toFixed(1)+' m'+_altRef:'—';
-  if (state.alt_m!=null) document.getElementById('g-alt').value=Math.round(state.alt_m);
+  if (state.alt_m!=null) {
+    const _gcsTer  = gcsState.lat!==null ? lookupElev(gcsState.lat,gcsState.lon) : null;
+    const _aircTer = state.lat!==null    ? lookupElev(state.lat,state.lon)        : null;
+    const _refTer  = gcsState.lat!==null ? _gcsTer : _aircTer;
+    const _amsl    = _refTer!==null ? Math.round(_refTer + state.alt_m) : null;
+    // AGL = AMSL − terrain under aircraft; if no GCS, refTer=aircTer so AGL=alt_m
+    const _agl     = _amsl!==null && _aircTer!==null ? Math.round(_amsl - _aircTer)
+                   : gcsState.lat===null ? Math.round(state.alt_m) : null;
+    const _aglStr  = _agl!==null  ? _agl+' m AGL'  : '— AGL';
+    const _amslStr = _amsl!==null ? _amsl+' m AMSL' : '— AMSL';
+    document.getElementById('h-alt').textContent = _aglStr+' · '+_amslStr;
+    document.getElementById('g-alt').value=Math.round(state.alt_m);
+  } else {
+    document.getElementById('h-alt').textContent='—';
+  }
   const bs=boresightRange();
   document.getElementById('h-bs').textContent=Math.round(bs/100)/10+' km';
   const covEl=document.getElementById('h-cov');
