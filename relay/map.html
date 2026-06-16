@@ -712,6 +712,7 @@ function renderState() {
 
   document.getElementById('h-src').textContent=state.source;
   document.getElementById('h-alt').textContent=state.alt_m!=null?state.alt_m.toFixed(1)+' m':'—';
+  if (state.alt_m!=null) document.getElementById('g-alt').value=Math.round(state.alt_m);
   const bs=boresightRange();
   document.getElementById('h-bs').textContent=Math.round(bs/100)/10+' km';
   const covEl=document.getElementById('h-cov');
