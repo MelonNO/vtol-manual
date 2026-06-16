@@ -190,19 +190,11 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
     <div class="fld"><label>Longitude</label>
       <input id="m-lon" type="number" step="0.00001" placeholder="click map or enter"/></div>
     <div class="row2">
-      <div class="fld"><label id="alt-mode-lbl">Alt (m AGL)</label>
+      <div class="fld"><label>Alt (m relative)</label>
         <input id="m-alt" type="number" value="120" min="10" max="2000"/></div>
       <div class="fld"><label>Heading (°)</label>
         <input id="m-hdg" type="number" value="0" min="0" max="359"
                oninput="syncHdgSlider(this.value); applyManual()"/></div>
-    </div>
-    <div class="fld" style="margin-bottom:5px">
-      <label>Alt reference</label>
-      <div style="display:flex;gap:3px;margin-top:2px">
-        <button class="btn active" id="am-agl"  onclick="setAltMode('agl')"  style="margin:0;flex:1;padding:5px 2px;font-size:11px">AGL</button>
-        <button class="btn"        id="am-rel"  onclick="setAltMode('rel')"  style="margin:0;flex:1;padding:5px 2px;font-size:11px">Rel GCS</button>
-        <button class="btn"        id="am-amsl" onclick="setAltMode('amsl')" style="margin:0;flex:1;padding:5px 2px;font-size:11px">AMSL</button>
-      </div>
     </div>
     <div class="fld">
       <div class="vtx-row" style="gap:4px">
@@ -334,7 +326,7 @@ const R2D = 180 / Math.PI, D2R = Math.PI / 180;
 
 // ─── Application state ────────────────────────────────────────────────────────
 const state = {
-  lat: null, lon: null, alt_m: 120.0, alt_mode: 'agl',
+  lat: null, lon: null, alt_m: 120.0,
   roll: 0.0, pitch: 0.0, heading: 0.0,
   vtx_dbm: 27.8, quad_alt: QUAD_ALT_DEF,
   source: 'offline',
@@ -491,18 +483,13 @@ function terrainLos(rLat, rLon, rAsl, brg, capR, sampleR, qa) {
 
 // ─── Coverage polygon ─────────────────────────────────────────────────────────
 function computePolygon() {
-  const {lat,lon,alt_m:alt,roll,pitch,heading,quad_alt:qa,alt_mode} = state;
-  let rAsl;
-  if (alt_mode === 'amsl') {
-    rAsl = alt;
-  } else if (alt_mode === 'rel') {
-    const refTer = gcsState.lat !== null
-      ? (lookupElev(gcsState.lat, gcsState.lon) ?? lookupElev(lat,lon) ?? 0)
-      : (lookupElev(lat,lon) ?? 0);
-    rAsl = refTer + alt;
-  } else {
-    rAsl = (lookupElev(lat,lon) ?? 0) + alt;
-  }
+  const {lat,lon,alt_m:alt,roll,pitch,heading,quad_alt:qa} = state;
+  // Altitude is treated as relative (ArduPlane relative frame).
+  // Reference = GCS terrain if a GCS is placed, otherwise terrain under aircraft (≈AGL).
+  const refTer = gcsState.lat !== null
+    ? (lookupElev(gcsState.lat, gcsState.lon) ?? lookupElev(lat,lon) ?? 0)
+    : (lookupElev(lat,lon) ?? 0);
+  const rAsl = refTer + alt;
   const bs   = boresightRange();
   const polygon=[], segTypes=[], ranges=[];
 
@@ -728,8 +715,8 @@ function renderState() {
   }
 
   document.getElementById('h-src').textContent=state.source;
-  const _altSfx={agl:'AGL',rel:'rel',amsl:'AMSL'}[state.alt_mode]||'AGL';
-  document.getElementById('h-alt').textContent=state.alt_m!=null?state.alt_m.toFixed(1)+' m '+_altSfx:'—';
+  const _altRef = gcsState.lat !== null ? ' rel' : ' AGL';
+  document.getElementById('h-alt').textContent=state.alt_m!=null?state.alt_m.toFixed(1)+' m'+_altRef:'—';
   if (state.alt_m!=null) document.getElementById('g-alt').value=Math.round(state.alt_m);
   const bs=boresightRange();
   document.getElementById('h-bs').textContent=Math.round(bs/100)/10+' km';
@@ -816,15 +803,6 @@ function geolocate() {
 }
 
 // ─── Heading slider ───────────────────────────────────────────────────────────
-function setAltMode(mode) {
-  state.alt_mode = mode;
-  ['agl','rel','amsl'].forEach(m =>
-    document.getElementById('am-'+m).classList.toggle('active', m===mode));
-  const labels = {agl:'Alt (m AGL)', rel:'Alt (m rel. GCS)', amsl:'Alt (m AMSL)'};
-  document.getElementById('alt-mode-lbl').textContent = labels[mode];
-  recomputePolygon();
-}
-
 function syncHdgSlider(deg) {
   const d=((+deg%360)+360)%360;
   document.getElementById('m-hdg-sl').value=d;
@@ -1117,7 +1095,7 @@ function setGcsPos(latlng) {
     .addTo(map).bindTooltip('GCS');
 }
 
-function gcsTerrainLos(gLat, gLon, antH, treeH, brg, capR, sampleR, carrierAlt, altMode, refTer) {
+function gcsTerrainLos(gLat, gLon, antH, treeH, brg, capR, sampleR, carrierAlt) {
   const gcsTer = lookupElev(gLat, gLon) ?? 0;
   const gcsAsl = gcsTer + antH;
 
@@ -1139,11 +1117,9 @@ function gcsTerrainLos(gLat, gLon, antH, treeH, brg, capR, sampleR, carrierAlt, 
     const [dT, baseTer] = samp[i];
     if (dT > capR) { if (lim==='nodata') { maxC=capR; lim='rf'; } break; }
     if (baseTer === null) break;
-    // Carrier altitude above LOS — interpret per alt mode
-    // Carrier is flying above trees so no tree offset on target
-    const tAsl = altMode==='amsl' ? carrierAlt
-               : altMode==='rel'  ? refTer + carrierAlt
-               :                    baseTer + carrierAlt; // AGL
+    // Carrier is relative — reference is GCS terrain (same as computePolygon).
+    // Carrier is above the tree canopy so no tree offset on target.
+    const tAsl = gcsTer + carrierAlt;
     let ok = true;
     for (let j=0; j<i; j++) {
       const [dM,, blockM] = samp[j];
@@ -1206,12 +1182,10 @@ async function computeGcsCoverage() {
   }
 
   stEl.textContent='Computing…';
-  const altMode = state.alt_mode;
-  const refTer  = lookupElev(lat, lon) ?? 0; // GCS terrain = reference for 'rel' mode
   const polygon=[], segTypes=[];
   for (let i=0; i<N_BRG; i++) {
     const brg=i*360/N_BRG;
-    const [terR,lim]=gcsTerrainLos(lat,lon,antH,treeH,brg,maxR,maxR,carrier,altMode,refTer);
+    const [terR,lim]=gcsTerrainLos(lat,lon,antH,treeH,brg,maxR,maxR,carrier);
     polygon.push(dest(lat,lon,brg,Math.max(terR,30)).map(v=>Math.round(v*1e6)/1e6));
     segTypes.push(lim);
   }
@@ -1219,9 +1193,8 @@ async function computeGcsCoverage() {
   drawGcsPoly(polygon, segTypes);
   const nRf=segTypes.filter(s=>s==='rf').length;
   const nTer=segTypes.filter(s=>s==='terrain').length;
-  const _sfx={agl:'AGL',rel:'rel GCS',amsl:'AMSL'}[altMode]||'AGL';
   stEl.style.color='#4f8';
-  stEl.textContent=`${nRf} clear · ${nTer} blocked (${carrier}m ${_sfx})`;
+  stEl.textContent=`${nRf} clear · ${nTer} blocked (${carrier}m rel)`;
 }
 
 function clearGcsCoverage() {
