@@ -31,8 +31,15 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#ccc;
          font-family:'Courier New',monospace;letter-spacing:1px;transition:color .15s,border-color .15s}
 .nav-btn:hover{color:#4ab4ff;border-color:#4ab4ff}
 #map{flex:1}
-#sb{position:absolute;top:54px;right:8px;z-index:900;width:260px;
-    display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 70px);overflow-y:auto}
+#sb-wrap{position:absolute;top:54px;right:8px;z-index:900;display:flex;align-items:flex-start}
+#sb-tog{flex-shrink:0;background:rgba(10,10,10,.95);border:1px solid #222;border-right:none;
+        border-radius:6px 0 0 6px;color:#4ab4ff;cursor:pointer;padding:10px 4px;
+        font-size:13px;font-family:inherit;align-self:flex-start;margin-top:8px}
+#sb-tog:hover{background:#0c1e30}
+#sb{width:270px;display:flex;flex-direction:column;gap:8px;
+    max-height:calc(100vh - 70px);overflow-y:auto}
+#sb-wrap.sb-off #sb{display:none}
+#sb-wrap.sb-off #sb-tog{border-right:1px solid #222;border-radius:6px}
 .pnl{background:rgba(10,10,10,.95);border:1px solid #222;border-radius:6px;padding:12px}
 .pnl h2{font-size:12px;color:#4ab4ff;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:9px}
 .fld{margin-bottom:7px}
@@ -78,10 +85,6 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
 .ter-txt{font-size:12px;margin-top:6px;color:#444}
 .ter-txt.ready{color:#4a8}
 .ter-txt.fetching{color:#fa4;animation:blink .8s step-end infinite}
-#leg{position:absolute;bottom:28px;right:8px;z-index:900;
-     background:rgba(10,10,10,.95);border:1px solid #222;border-radius:6px;
-     padding:10px 14px;font-size:12px}
-#leg h2{color:#4ab4ff;text-transform:uppercase;letter-spacing:1px;font-size:12px;margin-bottom:7px}
 .lr{display:flex;align-items:center;gap:9px;margin-bottom:5px;color:#777}
 .ls{width:22px;height:5px;border-radius:2px}
 .leaflet-container{background:#111}
@@ -136,6 +139,8 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
   <span id="cursor-measure" style="display:none" class="cmeasure">📏 click to add point · dbl-click to finish</span>
 </div>
 
+<div id="sb-wrap">
+<button id="sb-tog" onclick="toggleSb()" title="Toggle controls">◀</button>
 <div id="sb">
   <div class="pnl">
     <h2>Simulation</h2>
@@ -269,7 +274,22 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
     </div>
     <div style="font-size:11px;color:#555;margin-top:4px" id="cache-info">Cache: 0 pts</div>
   </div>
-</div>
+
+  <div class="pnl">
+    <h2>Legend</h2>
+    <div class="lr"><div class="ls" style="background:#4ab4ff"></div>Relay: RF-limited</div>
+    <div class="lr"><div class="ls" style="background:#ff6622"></div>Relay: terrain blocked</div>
+    <div class="lr"><div class="ls" style="background:#888;border:1px dashed #555"></div>No terrain data</div>
+    <div class="lr"><div class="ls" style="background:#ff2244;opacity:.5"></div>No signal (behind patches)</div>
+    <div class="lr"><div class="ls" style="background:#4f8;border-radius:50%;height:8px;width:8px"></div>Relay aircraft</div>
+    <div class="lr" style="color:#4ab4ff;font-size:9px;margin-top:2px">→ Orange arrow = patch boresight</div>
+    <div class="divider"></div>
+    <div class="lr"><div class="ls" style="background:#22c55e"></div>GCS: LOS clear to carrier</div>
+    <div class="lr"><div class="ls" style="background:#f97316"></div>GCS: terrain / trees blocked</div>
+    <div class="lr"><div class="ls" style="background:#facc15;border-radius:50%;height:8px;width:8px"></div>GCS position</div>
+  </div>
+</div><!-- #sb -->
+</div><!-- #sb-wrap -->
 
 <div id="att">
   <div class="att-pnl">
@@ -292,20 +312,6 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
     <div class="divider"></div>
     <div class="ter-txt" id="ter-st">Terrain: idle</div>
   </div>
-</div>
-
-<div id="leg">
-  <h2>Legend</h2>
-  <div class="lr"><div class="ls" style="background:#4ab4ff"></div>Relay: RF-limited (LOS clear)</div>
-  <div class="lr"><div class="ls" style="background:#ff6622"></div>Relay: terrain blocked</div>
-  <div class="lr"><div class="ls" style="background:#888;border:1px dashed #555"></div>No terrain data</div>
-  <div class="lr"><div class="ls" style="background:#ff2244;opacity:.5"></div>No signal (behind patches)</div>
-  <div class="lr"><div class="ls" style="background:#4f8;border-radius:50%;height:8px;width:8px"></div>Relay aircraft</div>
-  <div class="lr" style="color:#4ab4ff;font-size:9px;margin-top:3px">→ Arrow = patch boresight direction</div>
-  <div class="divider" style="margin:6px 0"></div>
-  <div class="lr"><div class="ls" style="background:#22c55e"></div>GCS: LOS clear to carrier</div>
-  <div class="lr"><div class="ls" style="background:#f97316"></div>GCS: terrain / trees blocked</div>
-  <div class="lr"><div class="ls" style="background:#facc15;border-radius:50%;height:8px;width:8px"></div>GCS position</div>
 </div>
 
 <script>
@@ -1192,6 +1198,14 @@ function clearGcsCoverage() {
   document.getElementById('g-lon').value='';
   document.getElementById('g-pos-lbl').textContent='No GCS position set';
   document.getElementById('g-status').textContent='';
+}
+
+// ─── Sidebar toggle ───────────────────────────────────────────────────────────
+function toggleSb() {
+  const w = document.getElementById('sb-wrap');
+  const b = document.getElementById('sb-tog');
+  w.classList.toggle('sb-off');
+  b.textContent = w.classList.contains('sb-off') ? '▶' : '◀';
 }
 
 // ─── Start background tasks ───────────────────────────────────────────────────
