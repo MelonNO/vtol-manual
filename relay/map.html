@@ -228,6 +228,15 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
       <option value="dark">Dark (CartoDB)</option>
     </select>
   </div>
+
+  <div class="pnl">
+    <h2>Diagnostics</h2>
+    <button class="btn" onclick="testApi()">⟳ Test Elevation API</button>
+    <div id="api-test-result" style="font-size:11px;color:#555;margin-top:6px;word-break:break-all">
+      Click to verify API connectivity
+    </div>
+    <div style="font-size:11px;color:#555;margin-top:4px" id="cache-info">Cache: 0 pts</div>
+  </div>
 </div>
 
 <div id="att">
@@ -1045,6 +1054,36 @@ map.on('mouseout',()=>{
   document.getElementById('cursor-ll').textContent='— , —';
   document.getElementById('cursor-elev').textContent='—';
 });
+
+// ─── Diagnostics ─────────────────────────────────────────────────────────────
+async function testApi() {
+  const el=document.getElementById('api-test-result');
+  const lat=state.lat??51.5074, lon=state.lon??-0.1278;
+  el.style.color='#fa4'; el.textContent='Testing API…';
+  try {
+    const url=`https://api.opentopodata.org/v1/aster30m?locations=${lat},${lon}`;
+    el.textContent='URL: '+url.slice(0,80)+'…';
+    const r=await fetch(url);
+    if (!r.ok) { el.style.color='#f44'; el.textContent='HTTP '+r.status+' '+r.statusText; return; }
+    const j=await r.json();
+    const e=j?.results?.[0]?.elevation;
+    el.style.color=e!==null?'#4f8':'#fa4';
+    el.textContent=e!==null
+      ?`OK ✓  elevation=${e} m  (${lat.toFixed(4)},${lon.toFixed(4)})`
+      :`OK but elevation=null (no data at this location — ocean/gap)`;
+  } catch(err) {
+    el.style.color='#f44';
+    el.textContent='Error: '+err.message;
+  }
+}
+
+function updateCacheInfo() {
+  const el=document.getElementById('cache-info');
+  if (!el) return;
+  const nan=Array.from(elevCache.values()).filter(v=>isNaN(v)).length;
+  el.textContent=`Cache: ${elevCache.size} pts (${nan} NaN / no-data)`;
+}
+setInterval(updateCacheInfo,2000);
 
 // ─── Start background tasks ───────────────────────────────────────────────────
 setInterval(terrainPrefetch,2000);

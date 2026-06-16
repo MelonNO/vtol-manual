@@ -1,9 +1,8 @@
-const CACHE = 'vtol-manual-v9';
+const CACHE = 'vtol-manual-v10';
 const ASSETS = [
   './',
   './index.html',
   './manual.html',
-  'https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap'
 ];
 
 self.addEventListener('install', e => {
@@ -21,8 +20,9 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return; // Cache API doesn't support non-GET; let POSTs pass through
+  if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin) return; // never intercept cross-origin (API, CDN fonts)
   const isHTML = url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/');
 
   if (isHTML) {
