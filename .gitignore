@@ -4,3 +4,5 @@ Thumbs.db
 relay/__pycache__/
 relay/*.pyc
 relay/.env
+token.txt
+*.token
