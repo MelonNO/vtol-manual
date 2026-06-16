@@ -25,10 +25,11 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#ccc;
             border-radius:3px;display:none;white-space:nowrap}
 #sim-banner.sim{background:#1a0800;border:1px solid #f84;color:#f84}
 #sim-banner.manual{background:#0a0a18;border:1px solid #445;color:#667}
-#back-btn{margin-left:auto;font-size:11px;color:#555;text-decoration:none;
-          border:1px solid #333;padding:4px 10px;white-space:nowrap;
-          font-family:'Courier New',monospace;letter-spacing:1px;transition:color .15s,border-color .15s}
-#back-btn:hover{color:#4ab4ff;border-color:#4ab4ff}
+.nav-btns{margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0}
+.nav-btn{font-size:11px;color:#555;text-decoration:none;
+         border:1px solid #333;padding:4px 10px;white-space:nowrap;
+         font-family:'Courier New',monospace;letter-spacing:1px;transition:color .15s,border-color .15s}
+.nav-btn:hover{color:#4ab4ff;border-color:#4ab4ff}
 #map{flex:1}
 #sb{position:absolute;top:54px;right:8px;z-index:900;width:260px;
     display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 70px);overflow-y:auto}
@@ -96,6 +97,7 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
         padding:2px 6px;border-radius:3px;white-space:nowrap;border:1px solid rgba(255,204,0,.35)}
 #map.measuring{cursor:crosshair !important}
 #map.picking{cursor:crosshair}
+#map.picking-gcs{cursor:crosshair}
 #toast{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:9999;
        background:#0c1e30;border:1px solid #4ab4ff;color:#4ab4ff;padding:6px 16px;
        border-radius:4px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s}
@@ -118,7 +120,10 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
   <div class="hs">Boresight: <b id="h-bs">—</b></div>
   <div class="hs">Coverage: <b id="h-cov">—</b></div>
   <div class="hs">Terrain: <b id="h-ter">idle</b></div>
-  <a href="../index.html" id="back-btn">◀ TOOLS</a>
+  <div class="nav-btns">
+    <a href="../index.html" class="nav-btn">◀ TOOLS</a>
+    <a href="../manual.html" class="nav-btn">MANUAL ▶</a>
+  </div>
 </div>
 
 <div id="map"></div>
@@ -220,6 +225,33 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
   </div>
 
   <div class="pnl">
+    <h2>GCS Coverage</h2>
+    <div class="fld"><label>GCS Latitude</label>
+      <input id="g-lat" type="number" step="0.00001" placeholder="click map or enter"/></div>
+    <div class="fld"><label>GCS Longitude</label>
+      <input id="g-lon" type="number" step="0.00001" placeholder="click map or enter"/></div>
+    <div class="row2">
+      <div class="fld"><label>Ant. Height (m)</label>
+        <input id="g-anth" type="number" value="2" min="0.5" max="30" step="0.5"/></div>
+      <div class="fld"><label>Tree Height (m)</label>
+        <input id="g-tree" type="number" value="15" min="0" max="40" step="1"/></div>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>Carrier Alt AGL (m)</label>
+        <input id="g-alt" type="number" value="120" min="10" max="2000"/></div>
+      <div class="fld"><label>Max Range (km)</label>
+        <input id="g-range" type="number" value="15" min="1" max="50"/></div>
+    </div>
+    <button class="btn" id="g-pick-btn" onclick="startGcsPick()">⊕ Click Map for GCS</button>
+    <div class="center-lbl" id="g-pos-lbl">No GCS position set</div>
+    <div style="display:flex;gap:4px;margin-top:4px">
+      <button class="btn" onclick="computeGcsCoverage()" style="flex:1">▶ Compute</button>
+      <button class="btn stop" onclick="clearGcsCoverage()" style="width:auto;padding:5px 10px">✕</button>
+    </div>
+    <div id="g-status" style="font-size:11px;color:#555;margin-top:5px"></div>
+  </div>
+
+  <div class="pnl">
     <h2>Map Layer</h2>
     <select class="layer-sel" onchange="switchLayer(this.value)">
       <option value="topo">Topo (OpenTopoMap)</option>
@@ -264,12 +296,16 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
 
 <div id="leg">
   <h2>Legend</h2>
-  <div class="lr"><div class="ls" style="background:#4ab4ff"></div>RF-limited (LOS clear)</div>
-  <div class="lr"><div class="ls" style="background:#ff6622"></div>Terrain blocked</div>
+  <div class="lr"><div class="ls" style="background:#4ab4ff"></div>Relay: RF-limited (LOS clear)</div>
+  <div class="lr"><div class="ls" style="background:#ff6622"></div>Relay: terrain blocked</div>
   <div class="lr"><div class="ls" style="background:#888;border:1px dashed #555"></div>No terrain data</div>
   <div class="lr"><div class="ls" style="background:#ff2244;opacity:.5"></div>No signal (behind patches)</div>
   <div class="lr"><div class="ls" style="background:#4f8;border-radius:50%;height:8px;width:8px"></div>Relay aircraft</div>
   <div class="lr" style="color:#4ab4ff;font-size:9px;margin-top:3px">→ Arrow = patch boresight direction</div>
+  <div class="divider" style="margin:6px 0"></div>
+  <div class="lr"><div class="ls" style="background:#22c55e"></div>GCS: LOS clear to carrier</div>
+  <div class="lr"><div class="ls" style="background:#f97316"></div>GCS: terrain / trees blocked</div>
+  <div class="lr"><div class="ls" style="background:#facc15;border-radius:50%;height:8px;width:8px"></div>GCS position</div>
 </div>
 
 <script>
@@ -920,6 +956,10 @@ new L.Control.Measure().addTo(map);
 
 // ─── Map event handlers ───────────────────────────────────────────────────────
 map.on('click',e=>{
+  if (pickingGcs) {
+    pickingGcs=false; map.getContainer().classList.remove('picking-gcs');
+    setGcsPos(e.latlng); toast('GCS position set'); return;
+  }
   if (pickingOrbitCenter) {
     pickingOrbitCenter=false; map.getContainer().classList.remove('picking');
     setOrbitCenter(e.latlng); toast('Orbit center set'); return;
@@ -1009,6 +1049,150 @@ function updateCacheInfo() {
   el.textContent = `Tiles: ${loaded}/${tileCache.size} loaded (zoom ${TERR_ZOOM})`;
 }
 setInterval(updateCacheInfo, 2000);
+
+// ─── GCS Coverage ─────────────────────────────────────────────────────────────
+const gcsState = {lat:null, lon:null, ant_h:2.0, tree_h:15.0, carrier_agl:120.0, max_range:15000};
+let gcsMarker=null, gcsPolyLayer=null, pickingGcs=false;
+
+const GCS_SEG_COLOR = {rf:'#22c55e', terrain:'#f97316', nodata:'#777'};
+
+function gcsIcon() {
+  return L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
+    html:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+      <polygon points="11,2 20,18 2,18" fill="none" stroke="#facc15" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="11" cy="11" r="3" fill="#facc15"/>
+    </svg>`});
+}
+
+function startGcsPick() {
+  pickingGcs=true;
+  map.getContainer().classList.add('picking-gcs');
+  toast('Click map to set GCS position',4000);
+  document.getElementById('g-pick-btn').textContent='… click map';
+}
+
+function setGcsPos(latlng) {
+  gcsState.lat=latlng.lat; gcsState.lon=latlng.lng;
+  document.getElementById('g-lat').value=latlng.lat.toFixed(6);
+  document.getElementById('g-lon').value=latlng.lng.toFixed(6);
+  document.getElementById('g-pos-lbl').textContent=
+    `GCS: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+  document.getElementById('g-pick-btn').textContent='⊕ Click Map for GCS';
+  if (gcsMarker) map.removeLayer(gcsMarker);
+  gcsMarker=L.marker(latlng,{icon:gcsIcon(),zIndexOffset:900})
+    .addTo(map).bindTooltip('GCS');
+}
+
+function gcsTerrainLos(gLat, gLon, antH, treeH, brg, capR, sampleR, carrierAgl) {
+  const gcsTer = lookupElev(gLat, gLon) ?? 0;
+  const gcsAsl = gcsTer + antH;
+
+  // samp[i] = [dist, baseTer, blockTer]
+  // baseTer: raw terrain at sample point (for carrier target height)
+  // blockTer: terrain + trees (for LOS obstruction check)
+  const samp = [];
+  for (let k=1; k<=TERR_PTS; k++) {
+    const d = sampleR * k / TERR_PTS;
+    const [sl, so] = dest(gLat, gLon, brg, d);
+    const ter = lookupElev(sl, so);
+    samp.push([d, ter, ter !== null ? ter + treeH : null]);
+  }
+
+  if (!samp.some(s => s[1] !== null)) return [Math.min(NO_DATA_RANGE, capR), 'nodata'];
+
+  let maxC = NO_DATA_RANGE, lim = 'nodata';
+  for (let i=0; i<samp.length; i++) {
+    const [dT, baseTer] = samp[i];
+    if (dT > capR) { if (lim==='nodata') { maxC=capR; lim='rf'; } break; }
+    if (baseTer === null) break;
+    // Carrier at this sample point is above trees — no tree offset on target
+    const tAsl = baseTer + carrierAgl;
+    let ok = true;
+    for (let j=0; j<i; j++) {
+      const [dM,, blockM] = samp[j];
+      if (blockM === null) { ok=false; break; }
+      const frac = dM / dT;
+      // LOS line height at intermediate point (with Earth bulge correction)
+      const losH = gcsAsl + (tAsl - gcsAsl) * frac - dM * (dT - dM) / (2 * EARTH_R_EFF);
+      // Terrain + trees must clear LOS (with 25m Fresnel margin at mid-path)
+      if (blockM > losH - 25 * 4 * frac * (1 - frac)) { ok=false; break; }
+    }
+    if (ok) { maxC=dT; lim=i<TERR_PTS-1?'terrain':'rf'; }
+    else break;
+  }
+  return [Math.min(maxC, capR), lim];
+}
+
+function drawGcsPoly(poly, types) {
+  if (gcsPolyLayer) map.removeLayer(gcsPolyLayer);
+  if (!poly || poly.length < 3) return;
+  gcsPolyLayer = L.layerGroup().addTo(map);
+  L.polygon(poly,{color:'transparent',fillColor:'#22c55e',fillOpacity:0.07,weight:0}).addTo(gcsPolyLayer);
+  for (let i=0; i<poly.length; i++) {
+    const j=(i+1)%poly.length, col=GCS_SEG_COLOR[types[i]]||'#22c55e';
+    L.polyline([poly[i],poly[j]],{
+      color:col, weight:2.5, opacity:0.85,
+      dashArray:types[i]==='nodata'?'6,4':null
+    }).addTo(gcsPolyLayer);
+  }
+}
+
+async function computeGcsCoverage() {
+  const lat = parseFloat(document.getElementById('g-lat').value);
+  const lon = parseFloat(document.getElementById('g-lon').value);
+  if (isNaN(lat)||isNaN(lon)) { toast('Place GCS on map first',3000); return; }
+  const antH   = parseFloat(document.getElementById('g-anth').value) || 2;
+  const treeH  = parseFloat(document.getElementById('g-tree').value) || 0;
+  const carrier= parseFloat(document.getElementById('g-alt').value)  || 120;
+  const maxR   = (parseFloat(document.getElementById('g-range').value)||15)*1000;
+
+  Object.assign(gcsState,{lat,lon,ant_h:antH,tree_h:treeH,carrier_agl:carrier,max_range:maxR});
+  if (!gcsMarker) setGcsPos({lat,lng:lon});
+
+  const stEl = document.getElementById('g-status');
+  stEl.style.color='#fa4'; stEl.textContent='Loading terrain tiles…';
+
+  // Prefetch all tiles needed for coverage area
+  const needed = new Set();
+  needed.add(_tile(lat,lon).join('/'));
+  for (let b=0; b<360; b+=5)
+    for (let k=1; k<=TERR_PTS; k++) {
+      const [sl,so]=dest(lat,lon,b,maxR*k/TERR_PTS);
+      needed.add(_tile(sl,so).join('/'));
+    }
+  const missing=[...needed].filter(k=>!tileCache.has(`${TERR_ZOOM}/${k}`));
+  if (missing.length) {
+    await Promise.all(missing.map(k=>{
+      const [tx,ty]=k.split('/').map(Number);
+      return _fetchTile(tx,ty);
+    }));
+  }
+
+  stEl.textContent='Computing…';
+  const polygon=[], segTypes=[];
+  for (let i=0; i<N_BRG; i++) {
+    const brg=i*360/N_BRG;
+    const [terR,lim]=gcsTerrainLos(lat,lon,antH,treeH,brg,maxR,maxR,carrier);
+    polygon.push(dest(lat,lon,brg,Math.max(terR,30)).map(v=>Math.round(v*1e6)/1e6));
+    segTypes.push(lim);
+  }
+
+  drawGcsPoly(polygon, segTypes);
+  const nRf=segTypes.filter(s=>s==='rf').length;
+  const nTer=segTypes.filter(s=>s==='terrain').length;
+  stEl.style.color='#4f8';
+  stEl.textContent=`${nRf} RF-clear · ${nTer} terrain-blocked`;
+}
+
+function clearGcsCoverage() {
+  if (gcsPolyLayer) { map.removeLayer(gcsPolyLayer); gcsPolyLayer=null; }
+  if (gcsMarker)    { map.removeLayer(gcsMarker);    gcsMarker=null; }
+  gcsState.lat=null; gcsState.lon=null;
+  document.getElementById('g-lat').value='';
+  document.getElementById('g-lon').value='';
+  document.getElementById('g-pos-lbl').textContent='No GCS position set';
+  document.getElementById('g-status').textContent='';
+}
 
 // ─── Start background tasks ───────────────────────────────────────────────────
 setInterval(terrainPrefetch,2000);
