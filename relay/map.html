@@ -48,6 +48,8 @@ body{font-family:'Courier New',monospace;background:#0a0a0a;color:#ccc;
            padding:5px 8px;border-radius:4px;font-family:inherit;font-size:13px}
 .fld input:focus{outline:none;border-color:#4ab4ff}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.amode-btn{padding:1px 5px;font-size:10px;background:#0c1e30;border:1px solid #333;color:#555;border-radius:3px;cursor:pointer;font-family:inherit}
+.amode-btn.amode-on{border-color:#4ab4ff;color:#4ab4ff;background:#0a1f30}
 .btn{width:100%;padding:7px;background:#0c1e30;border:1px solid #4ab4ff;
      color:#4ab4ff;border-radius:4px;cursor:pointer;font-family:inherit;
      font-size:13px;margin-top:4px}
@@ -190,8 +192,13 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
     <div class="fld"><label>Longitude</label>
       <input id="m-lon" type="number" step="0.00001" placeholder="click map or enter"/></div>
     <div class="row2">
-      <div class="fld"><label>Alt (m relative)</label>
-        <input id="m-alt" type="number" value="120" min="10" max="2000"/></div>
+      <div class="fld">
+        <label>Alt (m) <span style="display:inline-flex;gap:2px;vertical-align:middle">
+          <button id="amode-rel"  class="amode-btn amode-on"  onclick="setAltMode('rel')">Rel</button>
+          <button id="amode-agl"  class="amode-btn"           onclick="setAltMode('agl')">AGL</button>
+          <button id="amode-amsl" class="amode-btn"           onclick="setAltMode('amsl')">AMSL</button>
+        </span></label>
+        <input id="m-alt" type="number" value="120" min="10" max="9000"/></div>
       <div class="fld"><label>Heading (°)</label>
         <input id="m-hdg" type="number" value="0" min="0" max="359"
                oninput="syncHdgSlider(this.value); applyManual()"/></div>
@@ -319,6 +326,28 @@ const PATCH1_B = [0, 1, 0];
 const PATCH2_B = [0, Math.SQRT1_2, Math.SQRT1_2];
 const FREQ_MHZ = 5800, TX_DBI = 2.0, RX_DBI = 10.0, RX_SENS = -85.0, MARGIN_DB = 6.0;
 const R2D = 180 / Math.PI, D2R = Math.PI / 180;
+
+let altMode = 'rel'; // 'rel' | 'agl' | 'amsl'
+
+function setAltMode(m) {
+  altMode = m;
+  ['rel','agl','amsl'].forEach(k => {
+    document.getElementById('amode-'+k).classList.toggle('amode-on', k===m);
+  });
+  recomputePolygon();
+}
+
+// Convert entered alt to AMSL given aircraft lat/lon
+function computeRasl(lat, lon, alt) {
+  if (altMode === 'amsl') return alt;
+  const aircTer = lookupElev(lat, lon) ?? 0;
+  if (altMode === 'agl') return aircTer + alt;
+  // 'rel': relative to GCS terrain if GCS placed, aircraft terrain otherwise
+  const refTer = gcsState.lat !== null
+    ? (lookupElev(gcsState.lat, gcsState.lon) ?? aircTer)
+    : aircTer;
+  return refTer + alt;
+}
 
 // ─── Application state ────────────────────────────────────────────────────────
 const state = {
@@ -480,12 +509,7 @@ function terrainLos(rLat, rLon, rAsl, brg, capR, sampleR, qa) {
 // ─── Coverage polygon ─────────────────────────────────────────────────────────
 function computePolygon() {
   const {lat,lon,alt_m:alt,roll,pitch,heading,quad_alt:qa} = state;
-  // Altitude is treated as relative (ArduPlane relative frame).
-  // Reference = GCS terrain if a GCS is placed, otherwise terrain under aircraft (≈AGL).
-  const refTer = gcsState.lat !== null
-    ? (lookupElev(gcsState.lat, gcsState.lon) ?? lookupElev(lat,lon) ?? 0)
-    : (lookupElev(lat,lon) ?? 0);
-  const rAsl = refTer + alt;
+  const rAsl = computeRasl(lat, lon, alt);
   const bs   = boresightRange();
   const polygon=[], segTypes=[], ranges=[];
 
@@ -520,13 +544,15 @@ function recomputePolygon() {
 }
 
 function _recomputeGcsSync() {
-  if (!gcsPolyLayer || gcsState.lat===null) return;
+  if (gcsState.lat===null) return;
   const {lat,lon,ant_h:antH,tree_h:treeH,max_range:maxR} = gcsState;
-  const carrier = state.alt_m ?? 120;
+  // Carrier AMSL: convert entered alt using selected mode (aircraft position or GCS fallback)
+  const aLat = state.lat ?? lat, aLon = state.lon ?? lon;
+  const carrierAmsl = computeRasl(aLat, aLon, state.alt_m ?? 120);
   const polygon=[], segTypes=[];
   for (let i=0; i<N_BRG; i++) {
     const brg=i*360/N_BRG;
-    const [terR,lim]=gcsTerrainLos(lat,lon,antH,treeH,brg,maxR,maxR,carrier);
+    const [terR,lim]=gcsTerrainLos(lat,lon,antH,treeH,brg,maxR,maxR,carrierAmsl);
     polygon.push(dest(lat,lon,brg,Math.max(terR,30)).map(v=>Math.round(v*1e6)/1e6));
     segTypes.push(lim);
   }
@@ -724,17 +750,15 @@ function renderState() {
   }
 
   document.getElementById('h-src').textContent=state.source;
-  if (state.alt_m!=null) {
-    const _gcsTer  = gcsState.lat!==null ? lookupElev(gcsState.lat,gcsState.lon) : null;
-    const _aircTer = state.lat!==null    ? lookupElev(state.lat,state.lon)        : null;
-    const _refTer  = gcsState.lat!==null ? _gcsTer : _aircTer;
-    const _amsl    = _refTer!==null ? Math.round(_refTer + state.alt_m) : null;
-    // AGL = AMSL − terrain under aircraft; if no GCS, refTer=aircTer so AGL=alt_m
-    const _agl     = _amsl!==null && _aircTer!==null ? Math.round(_amsl - _aircTer)
-                   : gcsState.lat===null ? Math.round(state.alt_m) : null;
-    const _aglStr  = _agl!==null  ? _agl+' m AGL'  : '— AGL';
-    const _amslStr = _amsl!==null ? _amsl+' m AMSL' : '— AMSL';
+  if (state.alt_m!=null && state.lat!=null) {
+    const _aircTer = lookupElev(state.lat, state.lon);
+    const _amsl    = Math.round(computeRasl(state.lat, state.lon, state.alt_m));
+    const _agl     = _aircTer!==null ? Math.round(_amsl - _aircTer) : null;
+    const _aglStr  = _agl!==null ? _agl+' m AGL'  : '— AGL';
+    const _amslStr = _amsl+' m AMSL';
     document.getElementById('h-alt').textContent = _aglStr+' · '+_amslStr;
+  } else if (state.alt_m!=null) {
+    document.getElementById('h-alt').textContent = state.alt_m+' m · — AMSL';
   } else {
     document.getElementById('h-alt').textContent='—';
   }
@@ -1137,9 +1161,8 @@ function gcsTerrainLos(gLat, gLon, antH, treeH, brg, capR, sampleR, carrierAlt) 
     const [dT, baseTer] = samp[i];
     if (dT > capR) { if (lim==='nodata') { maxC=capR; lim='rf'; } break; }
     if (baseTer === null) break;
-    // Carrier is relative — reference is GCS terrain (same as computePolygon).
-    // Carrier is above the tree canopy so no tree offset on target.
-    const tAsl = gcsTer + carrierAlt;
+    // carrierAlt is already AMSL (converted by _recomputeGcsSync / computeGcsCoverage)
+    const tAsl = carrierAlt;
     let ok = true;
     for (let j=0; j<i; j++) {
       const [dM,, blockM] = samp[j];
@@ -1233,6 +1256,7 @@ document.getElementById('m-lat').value = '61.224117';
 document.getElementById('m-lon').value = '10.768342';
 applyManual();
 setGcsPos({lat: 61.220179414089365, lng: 10.769059956005174});
+computeGcsCoverage();
 </script>
 </body>
 </html>
