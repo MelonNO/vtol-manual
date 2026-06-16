@@ -406,7 +406,7 @@ function terrainLos(rLat, rLon, rAsl, brg, capR, sampleR, qa) {
   for (let k=1; k<=TERR_PTS; k++) {
     const d = sampleR*k/TERR_PTS;
     const [sl,so] = dest(rLat, rLon, brg, d);
-    samp.push([d, cachedElev(sl,so)]);
+    samp.push([d, lookupElev(sl,so)]);
   }
   if (!samp.some(s=>s[1]!==null)) return [Math.min(NO_DATA_RANGE,capR),'nodata'];
 
@@ -544,14 +544,14 @@ async function terrainPrefetch() {
           elevCache.set(ck(...chunk[j]), e!==null?e:NaN);
         });
         recomputePolygon();
+      } else {
+        // Mark failed points as NaN so they aren't re-requested every cycle.
+        // Treated as no-data (200m segment) until page refresh.
+        chunk.forEach(pt => { if (!elevCache.has(ck(...pt))) elevCache.set(ck(...pt), NaN); });
       }
     }
-    if (!anyOk) {
-      _terFailed++;
-      state.terrain_status='error: '+(_apiErrMsg||'no response');
-    } else {
-      state.terrain_status='ready';
-    }
+    state.terrain_status = anyOk ? 'ready' : 'error: '+(_apiErrMsg||'no response');
+    recomputePolygon();
     renderState();
   } catch(e) {
     state.terrain_status='error: '+e.message;
