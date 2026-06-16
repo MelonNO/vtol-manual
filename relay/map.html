@@ -241,12 +241,8 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
       <div class="fld"><label>Tree Height (m)</label>
         <input id="g-tree" type="number" value="15" min="0" max="40" step="1"/></div>
     </div>
-    <div class="row2">
-      <div class="fld"><label>Carrier Alt AGL (m)</label>
-        <input id="g-alt" type="number" value="120" min="10" max="2000"/></div>
-      <div class="fld"><label>Max Range (km)</label>
-        <input id="g-range" type="number" value="15" min="1" max="50"/></div>
-    </div>
+    <div class="fld"><label>Max Range (km)</label>
+      <input id="g-range" type="number" value="15" min="1" max="50"/></div>
     <button class="btn" id="g-pick-btn" onclick="startGcsPick()">⊕ Click Map for GCS</button>
     <div class="center-lbl" id="g-pos-lbl">No GCS position set</div>
     <div style="display:flex;gap:4px;margin-top:4px">
@@ -519,7 +515,22 @@ function recomputePolygon() {
   const active = ranges.filter((_,i)=>segTypes[i]!=='patch' && ranges[i]>0.05);
   state.min_range_km = active.length ? Math.round(Math.min(...active)*100)/100 : 0;
   state.max_range_km = active.length ? Math.round(Math.max(...active)*100)/100 : 0;
+  _recomputeGcsSync();
   renderState();
+}
+
+function _recomputeGcsSync() {
+  if (!gcsPolyLayer || gcsState.lat===null) return;
+  const {lat,lon,ant_h:antH,tree_h:treeH,max_range:maxR} = gcsState;
+  const carrier = state.alt_m ?? 120;
+  const polygon=[], segTypes=[];
+  for (let i=0; i<N_BRG; i++) {
+    const brg=i*360/N_BRG;
+    const [terR,lim]=gcsTerrainLos(lat,lon,antH,treeH,brg,maxR,maxR,carrier);
+    polygon.push(dest(lat,lon,brg,Math.max(terR,30)).map(v=>Math.round(v*1e6)/1e6));
+    segTypes.push(lim);
+  }
+  drawGcsPoly(polygon, segTypes);
 }
 
 // ─── Tile-based terrain prefetch (every 2 s) ─────────────────────────────────
@@ -726,7 +737,6 @@ function renderState() {
     const _aglStr  = _agl!==null  ? _agl+' m AGL'  : '— AGL';
     const _amslStr = _amsl!==null ? _amsl+' m AMSL' : '— AMSL';
     document.getElementById('h-alt').textContent = _aglStr+' · '+_amslStr;
-    document.getElementById('g-alt').value=Math.round(state.alt_m);
   } else {
     document.getElementById('h-alt').textContent='—';
   }
@@ -1075,7 +1085,7 @@ function updateCacheInfo() {
 setInterval(updateCacheInfo, 2000);
 
 // ─── GCS Coverage ─────────────────────────────────────────────────────────────
-const gcsState = {lat:null, lon:null, ant_h:2.0, tree_h:15.0, carrier_agl:120.0, max_range:15000};
+const gcsState = {lat:null, lon:null, ant_h:2.0, tree_h:15.0, max_range:15000};
 let gcsMarker=null, gcsPolyLayer=null, pickingGcs=false;
 
 const GCS_SEG_COLOR = {rf:'#22c55e', terrain:'#f97316', nodata:'#777'};
@@ -1166,12 +1176,11 @@ async function computeGcsCoverage() {
   const lat = parseFloat(document.getElementById('g-lat').value);
   const lon = parseFloat(document.getElementById('g-lon').value);
   if (isNaN(lat)||isNaN(lon)) { toast('Place GCS on map first',3000); return; }
-  const antH   = parseFloat(document.getElementById('g-anth').value) || 2;
-  const treeH  = parseFloat(document.getElementById('g-tree').value) || 0;
-  const carrier= parseFloat(document.getElementById('g-alt').value)  || 120;
-  const maxR   = (parseFloat(document.getElementById('g-range').value)||15)*1000;
+  const antH  = parseFloat(document.getElementById('g-anth').value) || 2;
+  const treeH = parseFloat(document.getElementById('g-tree').value) || 0;
+  const maxR  = (parseFloat(document.getElementById('g-range').value)||15)*1000;
 
-  Object.assign(gcsState,{lat,lon,ant_h:antH,tree_h:treeH,carrier_agl:carrier,max_range:maxR});
+  Object.assign(gcsState,{lat,lon,ant_h:antH,tree_h:treeH,max_range:maxR});
   if (!gcsMarker) setGcsPos({lat,lng:lon});
 
   const stEl = document.getElementById('g-status');
@@ -1194,19 +1203,9 @@ async function computeGcsCoverage() {
   }
 
   stEl.textContent='Computing…';
-  const polygon=[], segTypes=[];
-  for (let i=0; i<N_BRG; i++) {
-    const brg=i*360/N_BRG;
-    const [terR,lim]=gcsTerrainLos(lat,lon,antH,treeH,brg,maxR,maxR,carrier);
-    polygon.push(dest(lat,lon,brg,Math.max(terR,30)).map(v=>Math.round(v*1e6)/1e6));
-    segTypes.push(lim);
-  }
-
-  drawGcsPoly(polygon, segTypes);
-  const nRf=segTypes.filter(s=>s==='rf').length;
-  const nTer=segTypes.filter(s=>s==='terrain').length;
+  _recomputeGcsSync();
   stEl.style.color='#4f8';
-  stEl.textContent=`${nRf} clear · ${nTer} blocked (${carrier}m rel)`;
+  stEl.textContent='Ready — updates with aircraft alt';
 }
 
 function clearGcsCoverage() {
