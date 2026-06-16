@@ -652,11 +652,9 @@ const LAYERS={
   osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'©OSM',maxZoom:19}),
   dark:L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'©CartoDB',maxZoom:19}),
 };
-const map=L.map('map').setView([20,0],3);
+const map=L.map('map').setView([61.222,10.769],13);
 LAYERS.topo.addTo(map);
 let activeLayer='topo';
-if (navigator.geolocation)
-  navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],12),()=>{});
 
 function switchLayer(k) { map.removeLayer(LAYERS[activeLayer]); LAYERS[k].addTo(map); activeLayer=k; }
 
@@ -1229,7 +1227,12 @@ function toggleSb() {
 // ─── Start background tasks ───────────────────────────────────────────────────
 setInterval(terrainPrefetch,2000);
 setTimeout(()=>{ widePrefetch(); setInterval(widePrefetch,60000); },30000);
-renderState();
+
+// Default positions
+document.getElementById('m-lat').value = '61.224117';
+document.getElementById('m-lon').value = '10.768342';
+applyManual();
+setGcsPos({lat: 61.220179414089365, lng: 10.769059956005174});
 </script>
 </body>
 </html>
