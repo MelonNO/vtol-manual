@@ -467,8 +467,8 @@ function recomputePolygon() {
   renderState();
 }
 
-// ─── OpenTopoData rate-limited queue (1 req/s) ────────────────────────────────
-let _apiLast=0, _apiRunning=false;
+// ─── OpenTopoData rate-limited queue (1 req/s, GET to avoid CORS preflight) ───
+let _apiLast=0, _apiRunning=false, _apiErrMsg='';
 const _apiQ=[];
 
 async function _runApiQueue() {
@@ -483,12 +483,20 @@ async function _runApiQueue() {
       try {
         const ctrl=new AbortController();
         const tid=setTimeout(()=>ctrl.abort(),15000);
-        const r=await fetch('https://api.opentopodata.org/v1/aster30m',
-          {method:'POST',headers:{'Content-Type':'application/json'},
-           body:JSON.stringify({locations:loc}),signal:ctrl.signal});
+        // GET avoids CORS preflight (simple request); pipe encoded as %7C
+        const url='https://api.opentopodata.org/v1/aster30m?locations='+loc.replace(/\|/g,'%7C');
+        const r=await fetch(url,{signal:ctrl.signal});
         clearTimeout(tid);
-        res(r.ok ? await r.json() : null);
-      } catch(e) { res(null); }
+        if (r.ok) {
+          _apiErrMsg='';
+          res(await r.json());
+        } else {
+          _apiErrMsg='HTTP '+r.status; res(null);
+        }
+      } catch(e) {
+        _apiErrMsg=e.name==='AbortError'?'timeout':(e.message||'network error');
+        res(null);
+      }
     }
   } finally {
     _apiRunning=false;
@@ -500,7 +508,7 @@ function topoPost(loc) {
 }
 
 // ─── Fine-grid terrain prefetch (every 2 s) ───────────────────────────────────
-let _terRunning=false;
+let _terRunning=false, _terFailed=0;
 async function terrainPrefetch() {
   if (_terRunning || state.lat===null) return;
   _terRunning=true;
@@ -512,19 +520,25 @@ async function terrainPrefetch() {
         const [sl,so]=dest(lat,lon,b,bs*k/TERR_PTS);
         raw.push([bs*k/TERR_PTS,sl,so]);
       }
-    raw.sort((a,b)=>a[0]-b[0]);
+    raw.sort((a,b2)=>a[0]-b2[0]);
     const seen=new Set(), pts=[];
     for (const [,sl,so] of raw) {
       const k=ck(sl,so);
       if (!seen.has(k)) { seen.add(k); pts.push([sl,so]); }
     }
     const miss=pts.filter(([sl,so])=>!elevCache.has(ck(sl,so)));
-    if (!miss.length) { if(state.terrain_status!=='ready'){state.terrain_status='ready';renderState();} return; }
+    if (!miss.length) {
+      _terFailed=0;
+      if (state.terrain_status!=='ready') { state.terrain_status='ready'; renderState(); }
+      return;
+    }
     state.terrain_status='fetching'; renderState();
+    let anyOk=false;
     for (let i=0;i<miss.length;i+=100) {
       const chunk=miss.slice(i,i+100);
-      const data=await topoPost(chunk.map(([a,b])=>`${a},${b}`).join('|'));
+      const data=await topoPost(chunk.map(([a,b2])=>`${a},${b2}`).join('|'));
       if (data?.results) {
+        anyOk=true; _terFailed=0;
         data.results.forEach((rec,j)=>{
           const e=rec.elevation;
           elevCache.set(ck(...chunk[j]), e!==null?e:NaN);
@@ -532,8 +546,18 @@ async function terrainPrefetch() {
         recomputePolygon();
       }
     }
-    state.terrain_status='ready'; renderState();
-  } catch(e) { console.warn('[terrain]',e); }
+    if (!anyOk) {
+      _terFailed++;
+      state.terrain_status='error: '+(_apiErrMsg||'no response');
+    } else {
+      state.terrain_status='ready';
+    }
+    renderState();
+  } catch(e) {
+    state.terrain_status='error: '+e.message;
+    renderState();
+    console.warn('[terrain]',e);
+  }
   finally { _terRunning=false; }
 }
 
