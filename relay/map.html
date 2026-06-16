@@ -3,128 +3,195 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>VTOL Relay Coverage — 5.8GHz</title>
+<title>HEEWING T2 — RELAY COVERAGE MAP</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
+:root{
+  --bg:#0f0f0f;--surface:#1a1a1a;--surface2:#222;--border:#2a2a2a;--border2:#333;
+  --text:#e8e8e8;--muted:#666;--accent:#f97316;--amber:#facc15;--red:#ef4444;
+  --green:#22c55e;--dim:#444;--mono:'Share Tech Mono',monospace;--head:'Oswald',sans-serif;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Courier New',monospace;background:#0a0a0a;color:#ccc;
+body{font-family:var(--mono);background:var(--bg);color:var(--text);
      height:100vh;display:flex;flex-direction:column;overflow:hidden}
-#hdr{background:#0f0f0f;border-bottom:1px solid #222;padding:7px 16px;
-     display:flex;align-items:center;gap:14px;flex-shrink:0;flex-wrap:wrap;min-height:48px}
-#hdr h1{font-size:15px;color:#4ab4ff;letter-spacing:2px;white-space:nowrap}
-.dot{width:10px;height:10px;border-radius:50%;background:#f44;flex-shrink:0}
-.dot.on{background:#4f8;box-shadow:0 0 6px #4f8}
-.dot.sim{background:#f84;box-shadow:0 0 6px #f84}
-.hsep{width:1px;height:24px;background:#222;flex-shrink:0}
-.hs{font-size:13px;color:#555;white-space:nowrap}
-.hs b{color:#4ab4ff}
-.hs b.warn{color:#f84}
-.hs b.ok{color:#4f8}
-#sim-banner{font-size:13px;font-weight:bold;letter-spacing:1.5px;padding:3px 10px;
-            border-radius:3px;display:none;white-space:nowrap}
-#sim-banner.sim{background:#1a0800;border:1px solid #f84;color:#f84}
-#sim-banner.manual{background:#0a0a18;border:1px solid #445;color:#667}
-.nav-btns{margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0}
-.nav-btn{font-size:11px;color:#555;text-decoration:none;
-         border:1px solid #333;padding:4px 10px;white-space:nowrap;
-         font-family:'Courier New',monospace;letter-spacing:1px;transition:color .15s,border-color .15s}
-.nav-btn:hover{color:#4ab4ff;border-color:#4ab4ff}
+
+/* ── HEADER ── */
+#hdr{background:var(--surface);border-bottom:2px solid var(--accent);
+     display:flex;align-items:stretch;flex-shrink:0;min-height:48px}
+.hdr-badge{background:var(--accent);color:#000;font-family:var(--head);font-size:10px;
+           font-weight:700;letter-spacing:3px;writing-mode:vertical-rl;
+           padding:8px 6px;display:flex;align-items:center;flex-shrink:0}
+.hdr-inner{display:flex;align-items:center;gap:12px;flex:1;padding:0 14px;flex-wrap:wrap;min-width:0}
+.hdr-title{font-family:var(--head);font-size:15px;font-weight:700;
+           color:var(--accent);letter-spacing:2px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.sim{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.hsep{width:1px;height:20px;background:var(--border2);flex-shrink:0}
+.hs{font-size:11px;color:var(--muted);white-space:nowrap;font-family:var(--head);
+    letter-spacing:1px;text-transform:uppercase}
+.hs b{color:var(--text);font-weight:400;font-family:var(--mono);font-size:12px;text-transform:none;letter-spacing:0}
+.hs b.warn{color:var(--amber)}
+.hs b.ok{color:var(--green)}
+#sim-banner{font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;
+            padding:3px 10px;display:none;white-space:nowrap;text-transform:uppercase}
+#sim-banner.sim{background:#1c1000;border:1px solid var(--amber);color:var(--amber)}
+#sim-banner.manual{background:var(--surface2);border:1px solid var(--border2);color:var(--muted)}
+.nav-btns{margin-left:auto;display:flex;align-items:stretch;flex-shrink:0;
+          border-left:1px solid var(--border2)}
+.nav-btn{font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;
+         color:var(--muted);text-decoration:none;border-right:1px solid var(--border2);
+         padding:0 16px;white-space:nowrap;text-transform:uppercase;
+         transition:all .15s;display:flex;align-items:center}
+.nav-btn:hover{color:var(--accent);background:var(--surface2)}
+
+/* Map */
 #map{flex:1}
+
+/* ── SIDEBAR ── */
 #sb-wrap{position:absolute;top:54px;right:8px;z-index:900;display:flex;align-items:flex-start}
-#sb-tog{flex-shrink:0;background:rgba(10,10,10,.95);border:1px solid #222;border-right:none;
-        border-radius:6px 0 0 6px;color:#4ab4ff;cursor:pointer;padding:10px 4px;
-        font-size:13px;font-family:inherit;align-self:flex-start;margin-top:8px}
-#sb-tog:hover{background:#0c1e30}
-#sb{width:270px;display:flex;flex-direction:column;gap:8px;
-    max-height:calc(100vh - 70px);overflow-y:auto}
+#sb-tog{flex-shrink:0;background:var(--surface);border:1px solid var(--border2);
+        border-right:none;border-radius:4px 0 0 4px;color:var(--accent);cursor:pointer;
+        padding:10px 5px;font-family:var(--head);font-size:13px;align-self:flex-start;
+        margin-top:8px;transition:all .15s}
+#sb-tog:hover{background:var(--surface2)}
+#sb{width:278px;display:flex;flex-direction:column;gap:6px;
+    max-height:calc(100vh - 70px);overflow-y:auto;padding-right:1px}
 #sb-wrap.sb-off #sb{display:none}
-#sb-wrap.sb-off #sb-tog{border-right:1px solid #222;border-radius:6px}
-.pnl{background:rgba(10,10,10,.95);border:1px solid #222;border-radius:6px;padding:12px}
-.pnl h2{font-size:12px;color:#4ab4ff;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:9px}
+#sb-wrap.sb-off #sb-tog{border-right:1px solid var(--border2);border-radius:4px}
+
+/* Panels */
+.pnl{background:var(--surface);border:1px solid var(--border2);
+     border-top:2px solid var(--accent);padding:12px 14px}
+#hint-pnl{border-top-color:var(--dim);text-align:center;
+          font-size:11px;color:var(--muted);padding:8px 14px}
+.pnl h2{font-family:var(--head);font-size:11px;font-weight:700;color:var(--accent);
+         text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+
+/* Form fields */
 .fld{margin-bottom:7px}
-.fld label{font-size:12px;color:#666;display:block;margin-bottom:2px}
-.fld input{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
-           padding:5px 8px;border-radius:4px;font-family:inherit;font-size:13px}
-.fld input:focus{outline:none;border-color:#4ab4ff}
+.fld label{font-family:var(--head);font-size:10px;font-weight:600;color:var(--muted);
+           letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:3px}
+.fld input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
+           padding:5px 8px;font-family:var(--mono);font-size:13px}
+.fld input:focus{outline:none;border-color:var(--accent)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.amode-btn{padding:1px 5px;font-size:10px;background:#0c1e30;border:1px solid #333;color:#555;border-radius:3px;cursor:pointer;font-family:inherit}
-.amode-btn.amode-on{border-color:#4ab4ff;color:#4ab4ff;background:#0a1f30}
-.btn{width:100%;padding:7px;background:#0c1e30;border:1px solid #4ab4ff;
-     color:#4ab4ff;border-radius:4px;cursor:pointer;font-family:inherit;
-     font-size:13px;margin-top:4px}
-.btn:hover{background:#1a3550}
-.btn.active{background:#1a3550;border-color:#7cf}
-.btn.stop{background:#1a0000;border-color:#f44;color:#f44}
-.btn.stop:hover{background:#300}
+
+/* Alt mode buttons */
+.amode-btn{padding:1px 6px;font-size:10px;background:transparent;
+           border:1px solid var(--border2);color:var(--muted);cursor:pointer;
+           font-family:var(--head);letter-spacing:1px;text-transform:uppercase;transition:all .15s}
+.amode-btn.amode-on{border-color:var(--accent);color:var(--accent)}
+
+/* Primary button */
+.btn{width:100%;padding:7px;background:transparent;border:1px solid var(--accent);
+     color:var(--accent);cursor:pointer;font-family:var(--head);font-size:12px;
+     font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;transition:all .15s}
+.btn:hover{background:var(--accent);color:#000}
+.btn.active{background:var(--accent);color:#000}
+.btn.stop{border-color:var(--red);color:var(--red)}
+.btn.stop:hover{background:var(--red);color:#000}
+
+/* Slider rows */
 .vtx-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.vtx-row label{font-size:12px;color:#666;white-space:nowrap}
-.vtx-row input[type=range]{flex:1;accent-color:#4ab4ff;height:4px}
-.vtx-row span{font-size:13px;color:#4ab4ff;width:52px;text-align:right}
-select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
-                 padding:5px 8px;border-radius:4px;font-family:inherit;font-size:13px}
-.sim-sub{padding-top:8px;border-top:1px solid #1a1a1a;margin-top:7px}
+.vtx-row label{font-family:var(--head);font-size:10px;color:var(--muted);white-space:nowrap;
+               letter-spacing:1px;text-transform:uppercase}
+.vtx-row input[type=range]{flex:1;accent-color:var(--accent);height:4px}
+.vtx-row span{font-size:13px;color:var(--accent);width:52px;text-align:right;font-family:var(--head)}
+
+/* Select */
+select.layer-sel{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
+                 padding:5px 8px;font-family:var(--mono);font-size:13px}
+select.layer-sel:focus{outline:none;border-color:var(--accent)}
+
+/* Sim */
+.sim-sub{padding-top:8px;border-top:1px solid var(--border);margin-top:8px}
 .sim-tabs{display:flex;gap:3px;margin:7px 0}
-.sim-tabs .btn{margin:0;flex:1;padding:6px 2px;font-size:12px}
-.sim-st{font-size:12px;margin-top:6px}
-.sim-st.run{color:#4f8}
-.sim-st.stop{color:#555}
-.sim-st.done{color:#f84}
-.center-lbl{font-size:12px;color:#555;margin:4px 0;word-break:break-all}
+.sim-tabs .btn{margin:0;flex:1;padding:6px 2px;font-size:11px}
+.sim-st{font-size:11px;margin-top:6px;color:var(--muted);font-family:var(--head);letter-spacing:1px}
+.sim-st.run{color:var(--green)}
+.sim-st.stop{color:var(--muted)}
+.sim-st.done{color:var(--amber)}
+.center-lbl{font-size:11px;color:var(--muted);margin:4px 0;word-break:break-all;
+            font-family:var(--head);letter-spacing:.5px}
+.info-txt{font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--head);letter-spacing:.5px}
+
+/* ── ATTITUDE PANEL ── */
 #att{position:absolute;bottom:28px;left:8px;z-index:900}
-.att-pnl{background:rgba(10,10,10,.95);border:1px solid #222;border-radius:6px;padding:12px;width:220px}
-.att-pnl h2{font-size:12px;color:#4ab4ff;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
-.ar{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:13px}
-.ar span{color:#666;width:46px;font-size:12px}
-.ar b{color:#4ab4ff;width:52px;text-align:right;font-size:13px}
-.bw{flex:1;height:6px;background:#1a1a1a;border-radius:3px;position:relative;overflow:hidden}
-.bf{height:100%;background:#4ab4ff;position:absolute;top:0;transition:all .25s}
-.bc{position:absolute;top:0;left:50%;width:1px;height:100%;background:#333}
-.divider{height:1px;background:#1f1f1f;margin:8px 0}
+.att-pnl{background:var(--surface);border:1px solid var(--border2);
+         border-top:2px solid var(--accent);padding:12px 14px;width:226px}
+.att-pnl h2{font-family:var(--head);font-size:11px;font-weight:700;color:var(--accent);
+            text-transform:uppercase;letter-spacing:2px;margin-bottom:9px}
+.ar{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.ar span{color:var(--muted);width:52px;font-size:10px;font-family:var(--head);
+         text-transform:uppercase;letter-spacing:1px}
+.ar b{color:var(--text);width:52px;text-align:right;font-size:13px;font-family:var(--head)}
+.bw{flex:1;height:4px;background:var(--surface2);border-radius:2px;position:relative;overflow:hidden}
+.bf{height:100%;background:var(--accent);position:absolute;top:0;transition:all .25s}
+.bc{position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--border2)}
+.divider{height:1px;background:var(--border2);margin:8px 0}
 .rng-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
-.rng-row span{color:#555}
-.rng-row b{color:#4ab4ff}
-.ter-txt{font-size:12px;margin-top:6px;color:#444}
-.ter-txt.ready{color:#4a8}
-.ter-txt.fetching{color:#fa4;animation:blink .8s step-end infinite}
-.lr{display:flex;align-items:center;gap:9px;margin-bottom:5px;color:#777}
-.ls{width:22px;height:5px;border-radius:2px}
+.rng-row span{color:var(--muted);font-family:var(--head);font-size:10px;
+              text-transform:uppercase;letter-spacing:1px}
+.rng-row b{color:var(--text);font-family:var(--head)}
+.ter-txt{font-size:11px;margin-top:6px;color:var(--dim);font-family:var(--head);
+         letter-spacing:1px;text-transform:uppercase}
+.ter-txt.ready{color:var(--green)}
+.ter-txt.fetching{color:var(--amber);animation:blink .8s step-end infinite}
+
+/* Legend */
+.lr{display:flex;align-items:center;gap:9px;margin-bottom:5px;color:var(--muted);font-size:12px}
+.ls{width:22px;height:4px;border-radius:1px}
+
+/* Leaflet overrides */
 .leaflet-container{background:#111}
-.leaflet-popup-content-wrapper{background:#111;color:#ccc;border:1px solid #333;font-family:monospace;font-size:13px}
-.leaflet-popup-tip{background:#111}
+.leaflet-popup-content-wrapper{background:var(--surface);color:var(--text);
+                               border:1px solid var(--border2);font-family:var(--mono);font-size:13px}
+.leaflet-popup-tip{background:var(--surface)}
+
+/* ── CURSOR BAR ── */
 #cursor-bar{position:absolute;bottom:0;left:50%;transform:translateX(-50%);z-index:900;
-            background:rgba(10,10,10,.9);border:1px solid #222;border-radius:4px 4px 0 0;
-            padding:4px 18px;font-size:13px;color:#555;display:flex;gap:14px;
-            pointer-events:none;white-space:nowrap}
-#cursor-bar .cv{color:#4ab4ff}
-#cursor-bar .cmeasure{color:#ffcc00;animation:blink .8s step-end infinite}
-.mlabel{background:rgba(0,0,0,.82);color:#ffcc00;font-size:11px;font-family:'Courier New',monospace;
-        padding:2px 6px;border-radius:3px;white-space:nowrap;border:1px solid rgba(255,204,0,.35)}
+            background:rgba(15,15,15,.96);border:1px solid var(--border2);border-bottom:none;
+            border-radius:4px 4px 0 0;padding:5px 20px;font-size:11px;color:var(--muted);
+            display:flex;gap:14px;pointer-events:none;white-space:nowrap;
+            font-family:var(--head);letter-spacing:1px;text-transform:uppercase}
+#cursor-bar .cv{color:var(--text);text-transform:none;font-family:var(--mono)}
+#cursor-bar .cmeasure{color:var(--amber);animation:blink .8s step-end infinite}
+.mlabel{background:rgba(0,0,0,.88);color:var(--amber);font-size:11px;font-family:var(--mono);
+        padding:2px 6px;white-space:nowrap;border:1px solid rgba(250,204,21,.3)}
 #map.measuring{cursor:crosshair !important}
-#map.picking{cursor:crosshair}
-#map.picking-gcs{cursor:crosshair}
+#map.picking,#map.picking-gcs{cursor:crosshair}
+
+/* ── TOAST ── */
 #toast{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:9999;
-       background:#0c1e30;border:1px solid #4ab4ff;color:#4ab4ff;padding:6px 16px;
-       border-radius:4px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s}
+       background:var(--surface);border:1px solid var(--accent);color:var(--accent);
+       padding:6px 18px;font-family:var(--head);font-size:11px;font-weight:700;
+       letter-spacing:2px;text-transform:uppercase;pointer-events:none;opacity:0;transition:opacity .2s}
 #toast.show{opacity:1}
 #maphint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:900;
-          background:rgba(10,10,10,.9);border:1px solid #333;color:#888;
-          padding:6px 16px;border-radius:4px;font-size:13px;pointer-events:none}
+          background:rgba(15,15,15,.92);border:1px solid var(--border2);color:var(--muted);
+          padding:6px 18px;font-size:11px;pointer-events:none;font-family:var(--head);
+          letter-spacing:1.5px;text-transform:uppercase}
 @keyframes blink{50%{opacity:.4}}
 </style>
 </head>
 <body>
 
 <div id="hdr">
-  <div class="dot" id="dot"></div>
-  <h1>5.8GHz RELAY COVERAGE</h1>
-  <div id="sim-banner">SIMULATED</div>
-  <div class="hsep"></div>
-  <div class="hs">Src: <b id="h-src">offline</b></div>
-  <div class="hs"><b id="h-alt">—</b></div>
-  <div class="hs">Boresight: <b id="h-bs">—</b></div>
-  <div class="hs">Coverage: <b id="h-cov">—</b></div>
-  <div class="hs">Terrain: <b id="h-ter">idle</b></div>
+  <div class="hdr-badge">MAP</div>
+  <div class="hdr-inner">
+    <div class="dot" id="dot"></div>
+    <span class="hdr-title">5.8GHz RELAY COVERAGE</span>
+    <div id="sim-banner">SIMULATED</div>
+    <div class="hsep"></div>
+    <div class="hs">SRC <b id="h-src">offline</b></div>
+    <div class="hs"><b id="h-alt">—</b></div>
+    <div class="hs">BORESIGHT <b id="h-bs">—</b></div>
+    <div class="hs">COVERAGE <b id="h-cov">—</b></div>
+    <div class="hs">TERRAIN <b id="h-ter">idle</b></div>
+  </div>
   <div class="nav-btns">
     <a href="../index.html" class="nav-btn">◀ TOOLS</a>
     <a href="../manual.html" class="nav-btn">MANUAL ▶</a>
@@ -136,7 +203,7 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
 <div id="maphint">Click anywhere on map to place relay aircraft</div>
 <div id="cursor-bar">
   <span id="cursor-ll">— , —</span>
-  <span style="color:#2a2a2a">│</span>
+  <span style="color:var(--border2)">│</span>
   <span>AMSL:</span><span class="cv" id="cursor-elev">—</span>
   <span id="cursor-measure" style="display:none" class="cmeasure">📏 click to add point · dbl-click to finish</span>
 </div>
@@ -174,9 +241,9 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
         <label>Mission Planner .waypoints file</label>
         <input type="file" id="mis-file" accept=".waypoints,.txt,.mission,.wp"
                onchange="loadMission(this)"
-               style="color:#aaa;padding:2px 0;cursor:pointer"/>
+               style="color:var(--muted);padding:2px 0;cursor:pointer"/>
       </div>
-      <div id="mis-status" style="font-size:10px;color:#555;margin-bottom:4px">No mission loaded</div>
+      <div id="mis-status" class="info-txt" style="margin-bottom:4px">No mission loaded</div>
     </div>
     <div style="display:flex;gap:4px;margin-top:8px">
       <button class="btn" id="sim-start-btn" onclick="startSim()" style="flex:1">▶ Start</button>
@@ -232,7 +299,7 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
     <button class="btn" onclick="geolocate()">⊕ Use My Location</button>
   </div>
 
-  <div class="pnl" id="hint-pnl" style="border-color:#333;text-align:center;color:#555;font-size:10px;padding:8px">
+  <div class="pnl" id="hint-pnl">
     Click anywhere on the map to place the relay aircraft
   </div>
 
@@ -256,7 +323,7 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
       <button class="btn" onclick="computeGcsCoverage()" style="flex:1">▶ Compute</button>
       <button class="btn stop" onclick="clearGcsCoverage()" style="width:auto;padding:5px 10px">✕</button>
     </div>
-    <div id="g-status" style="font-size:11px;color:#555;margin-top:5px"></div>
+    <div id="g-status" class="info-txt"></div>
   </div>
 
   <div class="pnl">
@@ -272,23 +339,23 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
   <div class="pnl">
     <h2>Diagnostics</h2>
     <button class="btn" onclick="testApi()">⟳ Test Elevation API</button>
-    <div id="api-test-result" style="font-size:11px;color:#555;margin-top:6px;word-break:break-all">
+    <div id="api-test-result" class="info-txt" style="margin-top:6px;word-break:break-all">
       Click to verify API connectivity
     </div>
-    <div style="font-size:11px;color:#555;margin-top:4px" id="cache-info">Cache: 0 pts</div>
+    <div class="info-txt" id="cache-info" style="margin-top:4px">Cache: 0 pts</div>
   </div>
 
   <div class="pnl">
     <h2>Legend</h2>
-    <div class="lr"><div class="ls" style="background:#4ab4ff"></div>Relay: RF-limited</div>
-    <div class="lr"><div class="ls" style="background:#ff6622"></div>Relay: terrain blocked</div>
-    <div class="lr"><div class="ls" style="background:#888;border:1px dashed #555"></div>No terrain data</div>
-    <div class="lr"><div class="ls" style="background:#ff2244;opacity:.5"></div>No signal (behind patches)</div>
-    <div class="lr"><div class="ls" style="background:#4f8;border-radius:50%;height:8px;width:8px"></div>Relay aircraft</div>
-    <div class="lr" style="color:#4ab4ff;font-size:9px;margin-top:2px">→ Orange arrow = patch boresight</div>
+    <div class="lr"><div class="ls" style="background:#60a5fa"></div>Relay: RF-limited</div>
+    <div class="lr"><div class="ls" style="background:#facc15"></div>Relay: terrain blocked</div>
+    <div class="lr"><div class="ls" style="background:#444;border:1px dashed #555"></div>No terrain data</div>
+    <div class="lr"><div class="ls" style="background:#ef4444;opacity:.5"></div>No signal (behind patches)</div>
+    <div class="lr"><div class="ls" style="background:#22c55e;border-radius:50%;height:8px;width:8px"></div>Relay aircraft</div>
+    <div class="lr" style="color:var(--muted);font-size:10px;margin-top:2px">→ Orange arrow = patch boresight</div>
     <div class="divider"></div>
     <div class="lr"><div class="ls" style="background:#22c55e"></div>GCS: LOS clear to carrier</div>
-    <div class="lr"><div class="ls" style="background:#f97316"></div>GCS: terrain / trees blocked</div>
+    <div class="lr"><div class="ls" style="background:#facc15"></div>GCS: terrain / trees blocked</div>
     <div class="lr"><div class="ls" style="background:#facc15;border-radius:50%;height:8px;width:8px"></div>GCS position</div>
   </div>
 </div><!-- #sb -->
@@ -305,7 +372,7 @@ select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
       <b id="vp">0°</b></div>
     <div class="ar"><span>Heading</span>
       <div class="bw" style="background:transparent">
-        <span id="hdg-lbl" style="font-size:10px;color:#4ab4ff"></span></div>
+        <span id="hdg-lbl" style="font-size:10px;color:var(--accent)"></span></div>
       <b id="vh">0°</b></div>
     <div class="divider"></div>
     <div class="rng-row"><span>Boresight (5.8G):</span><b id="r-bs">—</b></div>
@@ -688,11 +755,11 @@ function acIcon(hdg) {
   return L.divIcon({className:'',iconSize:[44,44],iconAnchor:[22,22],
     html:`<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
       <g transform="rotate(${hdg},22,22)">
-        <ellipse cx="22" cy="22" rx="3" ry="11" fill="#4f8" stroke="#111" stroke-width="1"/>
-        <polygon points="22,19 5,26 22,23 39,26" fill="#4f8" stroke="#111" stroke-width="1"/>
-        <polygon points="22,30 15,38 22,34 29,38" fill="#4f8" stroke="#111" stroke-width="1"/>
-        <line x1="22" y1="22" x2="38" y2="22" stroke="#ff9900" stroke-width="2.5" stroke-linecap="round"/>
-        <polygon points="38,22 33,19 33,25" fill="#ff9900"/>
+        <ellipse cx="22" cy="22" rx="3" ry="11" fill="#22c55e" stroke="#111" stroke-width="1"/>
+        <polygon points="22,19 5,26 22,23 39,26" fill="#22c55e" stroke="#111" stroke-width="1"/>
+        <polygon points="22,30 15,38 22,34 29,38" fill="#22c55e" stroke="#111" stroke-width="1"/>
+        <line x1="22" y1="22" x2="38" y2="22" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
+        <polygon points="38,22 33,19 33,25" fill="#f97316"/>
         <circle cx="22" cy="11" r="2.5" fill="#fff" opacity=".5"/>
       </g></svg>`});
 }
@@ -700,15 +767,15 @@ function acIcon(hdg) {
 let marker=null, polyLayer=null, firstFix=true;
 let orbitCenterMarker=null, orbitCircle=null;
 
-const SEG_COLOR={rf:'#4ab4ff',terrain:'#ff6622',nodata:'#777',patch:'#ff2244'};
+const SEG_COLOR={rf:'#60a5fa',terrain:'#facc15',nodata:'#555',patch:'#ef4444'};
 
 function drawPoly(poly,types) {
   if (polyLayer) map.removeLayer(polyLayer);
   if (!poly||poly.length<3) return;
   polyLayer=L.layerGroup().addTo(map);
-  L.polygon(poly,{color:'transparent',fillColor:'#4ab4ff',fillOpacity:0.08,weight:0}).addTo(polyLayer);
+  L.polygon(poly,{color:'transparent',fillColor:'#60a5fa',fillOpacity:0.07,weight:0}).addTo(polyLayer);
   for (let i=0;i<poly.length;i++) {
-    const j=(i+1)%poly.length, col=SEG_COLOR[types[i]]||'#4ab4ff';
+    const j=(i+1)%poly.length, col=SEG_COLOR[types[i]]||'#60a5fa';
     L.polyline([poly[i],poly[j]],{
       color:col,weight:types[i]==='patch'?1:2.5,opacity:0.85,
       dashArray:types[i]==='nodata'?'6,4':types[i]==='patch'?'2,4':null
@@ -719,7 +786,7 @@ function drawPoly(poly,types) {
 function attBar(id,val,max) {
   const el=document.getElementById(id), pct=Math.min(Math.abs(val)/max*50,50);
   el.style.width=pct+'%'; el.style.left=val>=0?'50%':(50-pct)+'%';
-  el.style.background=Math.abs(val)>max*0.65?'#f84':'#4ab4ff';
+  el.style.background=Math.abs(val)>max*0.65?'#facc15':'#f97316';
 }
 
 const COMPASS8=['N','NE','E','SE','S','SW','W','NW'];
@@ -875,7 +942,7 @@ function updateOrbitCircle() {
   if (orbitCircle) map.removeLayer(orbitCircle);
   if (!orbitCenter) return;
   const r=parseInt(document.getElementById('sim-orb-r').value)||200;
-  orbitCircle=L.circle(orbitCenter,{radius:r,color:'#f84',fillColor:'#f84',
+  orbitCircle=L.circle(orbitCenter,{radius:r,color:'#facc15',fillColor:'#facc15',
     fillOpacity:0.04,weight:1,dashArray:'4,4'}).addTo(map);
 }
 document.getElementById('sim-orb-r').addEventListener('input',updateOrbitCircle);
@@ -886,7 +953,7 @@ function setOrbitCenter(latlng) {
   document.getElementById('orb-center-lbl').textContent=
     `Center: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
   if (orbitCenterMarker) map.removeLayer(orbitCenterMarker);
-  orbitCenterMarker=L.circleMarker(latlng,{radius:6,color:'#f84',fillColor:'#f84',
+  orbitCenterMarker=L.circleMarker(latlng,{radius:6,color:'#facc15',fillColor:'#facc15',
     fillOpacity:0.8,weight:2}).addTo(map).bindTooltip('Orbit Center');
   updateOrbitCircle();
 }
@@ -962,10 +1029,10 @@ function redrawMeasure() {
   measureLayer.clearLayers();
   if (!measurePts.length) return;
   if (measurePts.length>=2)
-    L.polyline(measurePts,{color:'#ffcc00',weight:2.5,opacity:.9}).addTo(measureLayer);
+    L.polyline(measurePts,{color:'#facc15',weight:2.5,opacity:.9}).addTo(measureLayer);
   let cum=0;
   measurePts.forEach((p,i)=>{
-    L.circleMarker(p,{radius:4,color:'#ffcc00',fillColor:'#ffcc00',fillOpacity:1,weight:1}).addTo(measureLayer);
+    L.circleMarker(p,{radius:4,color:'#facc15',fillColor:'#facc15',fillOpacity:1,weight:1}).addTo(measureLayer);
     if (i>0) {
       cum+=measurePts[i-1].distanceTo(p);
       L.marker(p,{icon:labelIcon(fmtDist(cum),true),zIndexOffset:500}).addTo(measureLayer);
@@ -997,13 +1064,13 @@ L.Control.Measure=L.Control.extend({
   onAdd(){
     const c=L.DomUtil.create('div','leaflet-bar leaflet-control');
     c.innerHTML=`<a id="btn-measure" href="#" title="Measure distance"
-      style="font-size:15px;line-height:1;color:#4ab4ff;display:flex;align-items:center;
+      style="font-size:15px;line-height:1;color:var(--accent);display:flex;align-items:center;
              justify-content:center;width:30px;height:30px;text-decoration:none">📏</a>`;
     L.DomEvent.disableClickPropagation(c);
     L.DomEvent.on(c.querySelector('a'),'click',e=>{
       L.DomEvent.preventDefault(e);
       if (measuring) clearMeasure(); else startMeasure();
-      c.querySelector('a').style.background=measuring?'#1a3550':'';
+      c.querySelector('a').style.background=measuring?'#1c0a00':'';
     });
     return c;
   }
@@ -1069,7 +1136,7 @@ map.on('mousemove',e=>{
   if (rubberLayer) map.removeLayer(rubberLayer);
   rubberLayer=L.layerGroup().addTo(map);
   const last=measurePts[measurePts.length-1], d=last.distanceTo(e.latlng);
-  L.polyline([last,e.latlng],{color:'#ffcc00',weight:1.5,opacity:.5,dashArray:'5,5'}).addTo(rubberLayer);
+  L.polyline([last,e.latlng],{color:'#facc15',weight:1.5,opacity:.5,dashArray:'5,5'}).addTo(rubberLayer);
   L.marker(e.latlng,{icon:labelIcon(fmtDist(d),true),zIndexOffset:600}).addTo(rubberLayer);
 });
 
@@ -1110,7 +1177,7 @@ setInterval(updateCacheInfo, 2000);
 const gcsState = {lat:null, lon:null, ant_h:2.0, tree_h:15.0, max_range:15000};
 let gcsMarker=null, gcsPolyLayer=null, pickingGcs=false;
 
-const GCS_SEG_COLOR = {rf:'#22c55e', terrain:'#f97316', nodata:'#777'};
+const GCS_SEG_COLOR = {rf:'#22c55e', terrain:'#facc15', nodata:'#555'};
 
 function gcsIcon() {
   return L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
