@@ -474,22 +474,25 @@ const _apiQ=[];
 async function _runApiQueue() {
   if (_apiRunning) return;
   _apiRunning=true;
-  while (_apiQ.length) {
-    const {loc,res}=_apiQ.shift();
-    const wait=1100-(Date.now()-_apiLast);
-    if (wait>0) await new Promise(r=>setTimeout(r,wait));
-    _apiLast=Date.now();
-    try {
-      const ctrl=new AbortController();
-      const tid=setTimeout(()=>ctrl.abort(),15000);
-      const r=await fetch('https://api.opentopodata.org/v1/aster30m',
-        {method:'POST',headers:{'Content-Type':'application/json'},
-         body:JSON.stringify({locations:loc}),signal:ctrl.signal});
-      clearTimeout(tid);
-      res(r.ok ? await r.json() : null);
-    } catch(e) { res(null); }
+  try {
+    while (_apiQ.length) {
+      const {loc,res}=_apiQ.shift();
+      const wait=1100-(Date.now()-_apiLast);
+      if (wait>0) await new Promise(r=>setTimeout(r,wait));
+      _apiLast=Date.now();
+      try {
+        const ctrl=new AbortController();
+        const tid=setTimeout(()=>ctrl.abort(),15000);
+        const r=await fetch('https://api.opentopodata.org/v1/aster30m',
+          {method:'POST',headers:{'Content-Type':'application/json'},
+           body:JSON.stringify({locations:loc}),signal:ctrl.signal});
+        clearTimeout(tid);
+        res(r.ok ? await r.json() : null);
+      } catch(e) { res(null); }
+    }
+  } finally {
+    _apiRunning=false;
   }
-  _apiRunning=false;
 }
 
 function topoPost(loc) {

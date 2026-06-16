@@ -1,4 +1,4 @@
-const CACHE = 'vtol-manual-v6';
+const CACHE = 'vtol-manual-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -21,6 +21,7 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return; // Cache API doesn't support non-GET; let POSTs pass through
   const url = new URL(e.request.url);
   const isHTML = url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/');
 
