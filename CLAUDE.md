@@ -27,8 +27,32 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned  # if PS bl
 | `index.html` | Flight Tools — checklists, battery log, telemetry analysis, weather |
 | `manual.html` | Operations manual — grouped dropdown nav, all reference chapters |
 | `sw.js` | Service worker — offline caching (network-first for HTML, cache-first for fonts) |
+| `relay/app.py` | Flask backend — RF coverage polygon, terrain LOS, MAVLink, simulation |
+| `relay/templates/index.html` | Relay map frontend — Leaflet.js, terrain elevation, sim modes |
+| `relay/requirements.txt` | Python deps: flask, requests, pymavlink |
+| `relay/start.sh` | Startup script — run to serve the map on http://0.0.0.0:5000 |
 
-Both pages are fully self-contained (all CSS and JS inline). They cross-link via `MANUAL ▶` / `◀ TOOLS` buttons.
+Both static pages are fully self-contained (all CSS and JS inline). They cross-link via `MANUAL ▶` / `◀ TOOLS` buttons. Both also have a `MAP ▶` button linking to `http://localhost:5000` — the relay coverage map server (must be started separately via `relay/start.sh`).
+
+## Relay coverage map (`relay/`)
+
+Flask app that computes 5.8GHz FPV relay RF coverage in real time. Requires Python 3 and runs on the RPi.
+
+```bash
+cd relay
+pip3 install -r requirements.txt   # first time only
+./start.sh                         # or: python3 -u app.py
+# Browse to http://localhost:5000 or http://<pi-ip>:5000
+```
+
+Key features:
+- Live MAVLink telemetry (SIYI HM30 at `udpout:192.168.144.12:19856`)
+- 5.8GHz RF coverage polygon with terrain LOS (OpenTopoData ASTER 30m elevation)
+- Terrain prefetch: fine-grid 111m cells within ~3.5km, coarse 1km grid for 50×50km cursor AMSL
+- Simulation: straight flight, orbit (click map to move center), mission (.waypoints upload)
+- Manual aircraft placement with heading, altitude, VTX power controls
+- Distance measurement tool, cursor AMSL elevation display
+- Map layers: topo, satellite, OSM, dark
 
 ## Aircraft configuration
 

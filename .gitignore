@@ -1,3 +1,6 @@
 ﻿*.ps1~
 Thumbs.db
 .DS_Store
+relay/__pycache__/
+relay/*.pyc
+relay/.env
