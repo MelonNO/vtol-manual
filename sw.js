@@ -1,4 +1,4 @@
-const CACHE = 'vtol-manual-v5';
+const CACHE = 'vtol-manual-v6';
 const ASSETS = [
   './',
   './index.html',

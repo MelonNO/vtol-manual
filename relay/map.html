@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VTOL Relay Coverage — 5.8GHz</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Courier New',monospace;background:#0a0a0a;color:#ccc;
+     height:100vh;display:flex;flex-direction:column;overflow:hidden}
+#hdr{background:#0f0f0f;border-bottom:1px solid #222;padding:7px 16px;
+     display:flex;align-items:center;gap:14px;flex-shrink:0;flex-wrap:wrap;min-height:48px}
+#hdr h1{font-size:15px;color:#4ab4ff;letter-spacing:2px;white-space:nowrap}
+.dot{width:10px;height:10px;border-radius:50%;background:#f44;flex-shrink:0}
+.dot.on{background:#4f8;box-shadow:0 0 6px #4f8}
+.dot.sim{background:#f84;box-shadow:0 0 6px #f84}
+.hsep{width:1px;height:24px;background:#222;flex-shrink:0}
+.hs{font-size:13px;color:#555;white-space:nowrap}
+.hs b{color:#4ab4ff}
+.hs b.warn{color:#f84}
+.hs b.ok{color:#4f8}
+#sim-banner{font-size:13px;font-weight:bold;letter-spacing:1.5px;padding:3px 10px;
+            border-radius:3px;display:none;white-space:nowrap}
+#sim-banner.sim{background:#1a0800;border:1px solid #f84;color:#f84}
+#sim-banner.manual{background:#0a0a18;border:1px solid #445;color:#667}
+#back-btn{margin-left:auto;font-size:11px;color:#555;text-decoration:none;
+          border:1px solid #333;padding:4px 10px;white-space:nowrap;
+          font-family:'Courier New',monospace;letter-spacing:1px;transition:color .15s,border-color .15s}
+#back-btn:hover{color:#4ab4ff;border-color:#4ab4ff}
+#map{flex:1}
+#sb{position:absolute;top:54px;right:8px;z-index:900;width:260px;
+    display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 70px);overflow-y:auto}
+.pnl{background:rgba(10,10,10,.95);border:1px solid #222;border-radius:6px;padding:12px}
+.pnl h2{font-size:12px;color:#4ab4ff;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:9px}
+.fld{margin-bottom:7px}
+.fld label{font-size:12px;color:#666;display:block;margin-bottom:2px}
+.fld input{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
+           padding:5px 8px;border-radius:4px;font-family:inherit;font-size:13px}
+.fld input:focus{outline:none;border-color:#4ab4ff}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.btn{width:100%;padding:7px;background:#0c1e30;border:1px solid #4ab4ff;
+     color:#4ab4ff;border-radius:4px;cursor:pointer;font-family:inherit;
+     font-size:13px;margin-top:4px}
+.btn:hover{background:#1a3550}
+.btn.active{background:#1a3550;border-color:#7cf}
+.btn.stop{background:#1a0000;border-color:#f44;color:#f44}
+.btn.stop:hover{background:#300}
+.vtx-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.vtx-row label{font-size:12px;color:#666;white-space:nowrap}
+.vtx-row input[type=range]{flex:1;accent-color:#4ab4ff;height:4px}
+.vtx-row span{font-size:13px;color:#4ab4ff;width:52px;text-align:right}
+select.layer-sel{width:100%;background:#111;border:1px solid #2a2a2a;color:#ccc;
+                 padding:5px 8px;border-radius:4px;font-family:inherit;font-size:13px}
+.sim-sub{padding-top:8px;border-top:1px solid #1a1a1a;margin-top:7px}
+.sim-tabs{display:flex;gap:3px;margin:7px 0}
+.sim-tabs .btn{margin:0;flex:1;padding:6px 2px;font-size:12px}
+.sim-st{font-size:12px;margin-top:6px}
+.sim-st.run{color:#4f8}
+.sim-st.stop{color:#555}
+.sim-st.done{color:#f84}
+.center-lbl{font-size:12px;color:#555;margin:4px 0;word-break:break-all}
+#att{position:absolute;bottom:28px;left:8px;z-index:900}
+.att-pnl{background:rgba(10,10,10,.95);border:1px solid #222;border-radius:6px;padding:12px;width:220px}
+.att-pnl h2{font-size:12px;color:#4ab4ff;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
+.ar{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:13px}
+.ar span{color:#666;width:46px;font-size:12px}
+.ar b{color:#4ab4ff;width:52px;text-align:right;font-size:13px}
+.bw{flex:1;height:6px;background:#1a1a1a;border-radius:3px;position:relative;overflow:hidden}
+.bf{height:100%;background:#4ab4ff;position:absolute;top:0;transition:all .25s}
+.bc{position:absolute;top:0;left:50%;width:1px;height:100%;background:#333}
+.divider{height:1px;background:#1f1f1f;margin:8px 0}
+.rng-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
+.rng-row span{color:#555}
+.rng-row b{color:#4ab4ff}
+.ter-txt{font-size:12px;margin-top:6px;color:#444}
+.ter-txt.ready{color:#4a8}
+.ter-txt.fetching{color:#fa4;animation:blink .8s step-end infinite}
+#leg{position:absolute;bottom:28px;right:8px;z-index:900;
+     background:rgba(10,10,10,.95);border:1px solid #222;border-radius:6px;
+     padding:10px 14px;font-size:12px}
+#leg h2{color:#4ab4ff;text-transform:uppercase;letter-spacing:1px;font-size:12px;margin-bottom:7px}
+.lr{display:flex;align-items:center;gap:9px;margin-bottom:5px;color:#777}
+.ls{width:22px;height:5px;border-radius:2px}
+.leaflet-container{background:#111}
+.leaflet-popup-content-wrapper{background:#111;color:#ccc;border:1px solid #333;font-family:monospace;font-size:13px}
+.leaflet-popup-tip{background:#111}
+#cursor-bar{position:absolute;bottom:0;left:50%;transform:translateX(-50%);z-index:900;
+            background:rgba(10,10,10,.9);border:1px solid #222;border-radius:4px 4px 0 0;
+            padding:4px 18px;font-size:13px;color:#555;display:flex;gap:14px;
+            pointer-events:none;white-space:nowrap}
+#cursor-bar .cv{color:#4ab4ff}
+#cursor-bar .cmeasure{color:#ffcc00;animation:blink .8s step-end infinite}
+.mlabel{background:rgba(0,0,0,.82);color:#ffcc00;font-size:11px;font-family:'Courier New',monospace;
+        padding:2px 6px;border-radius:3px;white-space:nowrap;border:1px solid rgba(255,204,0,.35)}
+#map.measuring{cursor:crosshair !important}
+#map.picking{cursor:crosshair}
+#toast{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:9999;
+       background:#0c1e30;border:1px solid #4ab4ff;color:#4ab4ff;padding:6px 16px;
+       border-radius:4px;font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s}
+#toast.show{opacity:1}
+#maphint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:900;
+          background:rgba(10,10,10,.9);border:1px solid #333;color:#888;
+          padding:6px 16px;border-radius:4px;font-size:13px;pointer-events:none}
+@keyframes blink{50%{opacity:.4}}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="dot" id="dot"></div>
+  <h1>5.8GHz RELAY COVERAGE</h1>
+  <div id="sim-banner">SIMULATED</div>
+  <div class="hsep"></div>
+  <div class="hs">Src: <b id="h-src">offline</b></div>
+  <div class="hs">Alt: <b id="h-alt">—</b></div>
+  <div class="hs">Boresight: <b id="h-bs">—</b></div>
+  <div class="hs">Coverage: <b id="h-cov">—</b></div>
+  <div class="hs">Terrain: <b id="h-ter">idle</b></div>
+  <a href="../index.html" id="back-btn">◀ TOOLS</a>
+</div>
+
+<div id="map"></div>
+<div id="toast"></div>
+<div id="maphint">Click anywhere on map to place relay aircraft</div>
+<div id="cursor-bar">
+  <span id="cursor-ll">— , —</span>
+  <span style="color:#2a2a2a">│</span>
+  <span>AMSL:</span><span class="cv" id="cursor-elev">—</span>
+  <span id="cursor-measure" style="display:none" class="cmeasure">📏 click to add point · dbl-click to finish</span>
+</div>
+
+<div id="sb">
+  <div class="pnl">
+    <h2>Simulation</h2>
+    <div class="fld">
+      <div class="vtx-row">
+        <label>Speed</label>
+        <input type="range" id="sim-speed" min="9" max="35" step="0.5" value="15"
+               oninput="document.getElementById('sim-spd-lbl').textContent=this.value+'m/s'"/>
+        <span id="sim-spd-lbl">15m/s</span>
+      </div>
+    </div>
+    <div class="sim-tabs">
+      <button class="btn" id="btn-straight" onclick="selectSimMode('straight')">Straight</button>
+      <button class="btn" id="btn-orbit"    onclick="selectSimMode('orbit')">Orbit</button>
+      <button class="btn" id="btn-mission"  onclick="selectSimMode('mission')">Mission</button>
+    </div>
+    <div class="sim-sub" id="sp-straight" style="display:none">
+      <div class="fld"><label>Travel Heading (°)</label>
+        <input id="sim-hdg" type="number" value="0" min="0" max="359" step="1"/></div>
+    </div>
+    <div class="sim-sub" id="sp-orbit" style="display:none">
+      <div class="fld"><label>Orbit Radius (m)</label>
+        <input id="sim-orb-r" type="number" value="200" min="50" max="5000" step="10"/></div>
+      <div class="center-lbl" id="orb-center-lbl">No orbit center set</div>
+      <button class="btn" id="btn-pick-center" onclick="startOrbitCenterPick()">⊕ Click Map to Set Center</button>
+    </div>
+    <div class="sim-sub" id="sp-mission" style="display:none">
+      <div class="fld">
+        <label>Mission Planner .waypoints file</label>
+        <input type="file" id="mis-file" accept=".waypoints,.txt,.mission,.wp"
+               onchange="loadMission(this)"
+               style="color:#aaa;padding:2px 0;cursor:pointer"/>
+      </div>
+      <div id="mis-status" style="font-size:10px;color:#555;margin-bottom:4px">No mission loaded</div>
+    </div>
+    <div style="display:flex;gap:4px;margin-top:8px">
+      <button class="btn" id="sim-start-btn" onclick="startSim()" style="flex:1">▶ Start</button>
+      <button class="btn stop" onclick="stopSim()" style="width:auto;padding:5px 10px">⏹</button>
+    </div>
+    <div id="sim-st" class="sim-st stop">Stopped</div>
+  </div>
+
+  <div class="pnl">
+    <h2>Manual Placement</h2>
+    <div class="fld"><label>Latitude</label>
+      <input id="m-lat" type="number" step="0.00001" placeholder="click map or enter"/></div>
+    <div class="fld"><label>Longitude</label>
+      <input id="m-lon" type="number" step="0.00001" placeholder="click map or enter"/></div>
+    <div class="row2">
+      <div class="fld"><label>Alt (m AGL)</label>
+        <input id="m-alt" type="number" value="120" min="10" max="2000"/></div>
+      <div class="fld"><label>Heading (°)</label>
+        <input id="m-hdg" type="number" value="0" min="0" max="359"
+               oninput="syncHdgSlider(this.value); applyManual()"/></div>
+    </div>
+    <div class="fld">
+      <div class="vtx-row" style="gap:4px">
+        <label style="white-space:nowrap">Hdg</label>
+        <input type="range" id="m-hdg-sl" min="0" max="359" step="1" value="0"
+               oninput="document.getElementById('m-hdg').value=this.value; applyManual()"/>
+        <span id="hdg-sl-lbl" style="width:32px;text-align:right">N</span>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>Roll (°)</label>
+        <input id="m-roll" type="number" value="0" min="-90" max="90"/></div>
+      <div class="fld"><label>Pitch (°)</label>
+        <input id="m-pitch" type="number" value="0" min="-30" max="30"/></div>
+    </div>
+    <div class="row2">
+      <div class="fld"><label>VTX Power</label>
+        <div class="vtx-row">
+          <input type="range" id="m-vtx" min="20" max="33" step="0.1" value="27.8"
+                 oninput="document.getElementById('vtx-lbl').textContent=dbmToMw(this.value)+'mW';applyManual()"/>
+          <span id="vtx-lbl">600mW</span>
+        </div>
+      </div>
+      <div class="fld"><label>Quad AGL (m)</label>
+        <input id="m-quad" type="number" value="3" min="1" max="50"/></div>
+    </div>
+    <button class="btn" onclick="applyManual()">▶ Apply / Update</button>
+    <button class="btn" onclick="geolocate()">⊕ Use My Location</button>
+  </div>
+
+  <div class="pnl" id="hint-pnl" style="border-color:#333;text-align:center;color:#555;font-size:10px;padding:8px">
+    Click anywhere on the map to place the relay aircraft
+  </div>
+
+  <div class="pnl">
+    <h2>Map Layer</h2>
+    <select class="layer-sel" onchange="switchLayer(this.value)">
+      <option value="topo">Topo (OpenTopoMap)</option>
+      <option value="sat">Satellite (ESRI)</option>
+      <option value="osm">Street (OSM)</option>
+      <option value="dark">Dark (CartoDB)</option>
+    </select>
+  </div>
+</div>
+
+<div id="att">
+  <div class="att-pnl">
+    <h2>Attitude</h2>
+    <div class="ar"><span>Roll</span>
+      <div class="bw"><div class="bc"></div><div class="bf" id="br"></div></div>
+      <b id="vr">0°</b></div>
+    <div class="ar"><span>Pitch</span>
+      <div class="bw"><div class="bc"></div><div class="bf" id="bp"></div></div>
+      <b id="vp">0°</b></div>
+    <div class="ar"><span>Heading</span>
+      <div class="bw" style="background:transparent">
+        <span id="hdg-lbl" style="font-size:10px;color:#4ab4ff"></span></div>
+      <b id="vh">0°</b></div>
+    <div class="divider"></div>
+    <div class="rng-row"><span>Boresight (5.8G):</span><b id="r-bs">—</b></div>
+    <div class="rng-row"><span>Min coverage:</span><b id="r-min">—</b></div>
+    <div class="rng-row"><span>Max coverage:</span><b id="r-max">—</b></div>
+    <div class="rng-row"><span>Patches face:</span><b id="r-dir">right</b></div>
+    <div class="divider"></div>
+    <div class="ter-txt" id="ter-st">Terrain: idle</div>
+  </div>
+</div>
+
+<div id="leg">
+  <h2>Legend</h2>
+  <div class="lr"><div class="ls" style="background:#4ab4ff"></div>RF-limited (LOS clear)</div>
+  <div class="lr"><div class="ls" style="background:#ff6622"></div>Terrain blocked</div>
+  <div class="lr"><div class="ls" style="background:#888;border:1px dashed #555"></div>No terrain data</div>
+  <div class="lr"><div class="ls" style="background:#ff2244;opacity:.5"></div>No signal (behind patches)</div>
+  <div class="lr"><div class="ls" style="background:#4f8;border-radius:50%;height:8px;width:8px"></div>Relay aircraft</div>
+  <div class="lr" style="color:#4ab4ff;font-size:9px;margin-top:3px">→ Arrow = patch boresight direction</div>
+</div>
+
+<script>
+// ─── Constants (mirrored from app.py) ────────────────────────────────────────
+const EARTH_R = 6371000, EARTH_R_EFF = EARTH_R * 4/3;
+const N_BRG = 72, TERR_PTS = 15, QUAD_ALT_DEF = 3.0, NO_DATA_RANGE = 200.0;
+const PATCH_N = 3.5;
+const PATCH1_B = [0, 1, 0];
+const PATCH2_B = [0, Math.SQRT1_2, Math.SQRT1_2];
+const FREQ_MHZ = 5800, TX_DBI = 2.0, RX_DBI = 10.0, RX_SENS = -85.0, MARGIN_DB = 6.0;
+const R2D = 180 / Math.PI, D2R = Math.PI / 180;
+
+// ─── Application state ────────────────────────────────────────────────────────
+const state = {
+  lat: null, lon: null, alt_m: 120.0,
+  roll: 0.0, pitch: 0.0, heading: 0.0,
+  vtx_dbm: 27.8, quad_alt: QUAD_ALT_DEF,
+  source: 'offline',
+  polygon: [], seg_types: [],
+  boresight_km: 0, min_range_km: 0, max_range_km: 0,
+  terrain_status: 'idle',
+};
+const sim = {
+  mode: null, speed_ms: 15.0, heading: 0.0,
+  orbit_lat: null, orbit_lon: null,
+  orbit_r: 200.0, orbit_angle: 0.0,
+  waypoints: [], wp_idx: 0,
+};
+
+// ─── Elevation caches ─────────────────────────────────────────────────────────
+const elevCache = new Map();   // fine-grid ~111m cells  key="lat,lon" val=float|NaN
+const elevWide  = new Map();   // coarse ~1km cells       key="lat,lon" val=float|NaN
+
+// ─── Geometry ─────────────────────────────────────────────────────────────────
+function roundTo(x, n) { const f = 10**n; return Math.round(x*f)/f; }
+
+function dest(lat, lon, brg, dist) {
+  const d = dist/EARTH_R, θ = brg*D2R;
+  const φ1 = lat*D2R, λ1 = lon*D2R;
+  const φ2 = Math.asin(Math.sin(φ1)*Math.cos(d)+Math.cos(φ1)*Math.sin(d)*Math.cos(θ));
+  const λ2 = λ1+Math.atan2(Math.sin(θ)*Math.sin(d)*Math.cos(φ1),
+                             Math.cos(d)-Math.sin(φ1)*Math.sin(φ2));
+  return [φ2*R2D, λ2*R2D];
+}
+
+function distM(la1,lo1,la2,lo2) {
+  const φ1=la1*D2R, φ2=la2*D2R;
+  const a = Math.sin((la2-la1)*D2R/2)**2
+          + Math.cos(φ1)*Math.cos(φ2)*Math.sin((lo2-lo1)*D2R/2)**2;
+  return 2*EARTH_R*Math.asin(Math.sqrt(a));
+}
+
+function bearingTo(la1,lo1,la2,lo2) {
+  const φ1=la1*D2R, φ2=la2*D2R, dλ=(lo2-lo1)*D2R;
+  return (Math.atan2(Math.sin(dλ)*Math.cos(φ2),
+    Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(dλ))*R2D+360)%360;
+}
+
+// ─── Cache key functions ──────────────────────────────────────────────────────
+function ck(lat, lon) {
+  const latR = roundTo(lat, 3);
+  const cosL = Math.max(Math.abs(Math.cos(lat*D2R)), 0.1);
+  const step = roundTo(0.001/cosL, 4);
+  return latR+','+roundTo(Math.round(lon/step)*step, 5);
+}
+
+function ckW(lat, lon) {
+  const latR = roundTo(lat, 2);
+  const cosL = Math.max(Math.abs(Math.cos(lat*D2R)), 0.1);
+  const step = roundTo(0.01/cosL, 3);
+  return latR+','+roundTo(Math.round(lon/step)*step, 4);
+}
+
+// ─── Elevation lookup (cache only, synchronous) ───────────────────────────────
+function cachedElev(lat, lon) {
+  const v = elevCache.get(ck(lat, lon));
+  return (v === undefined || isNaN(v)) ? null : v;
+}
+
+function lookupElev(lat, lon) {
+  // 1. exact fine-grid
+  const key = ck(lat, lon);
+  const v = elevCache.get(key);
+  if (v !== undefined) return isNaN(v) ? null : v;
+
+  // 2. 5×5 fine-grid neighbour search
+  const latR = roundTo(lat, 3);
+  const cosL = Math.max(Math.abs(Math.cos(lat*D2R)), 0.1);
+  const dls = 0.001, dlo = roundTo(0.001/cosL, 4);
+  const baseLon = parseFloat(key.split(',')[1]);
+  let best = null, bd2 = Infinity;
+  for (let di=-2; di<=2; di++) {
+    const nlat = roundTo(latR+di*dls, 3);
+    for (let dj=-2; dj<=2; dj++) {
+      if (!di && !dj) continue;
+      const nlon = roundTo(Math.round((baseLon+dj*dlo)/dlo)*dlo, 5);
+      const nv = elevCache.get(`${nlat},${nlon}`);
+      if (nv===undefined || isNaN(nv)) continue;
+      const d2=di*di+dj*dj;
+      if (d2<bd2) { bd2=d2; best=nv; }
+    }
+  }
+  if (best !== null) return best;
+
+  // 3. wide-grid fallback
+  const wv = elevWide.get(ckW(lat, lon));
+  return (wv!==undefined && !isNaN(wv)) ? wv : null;
+}
+
+// ─── RF math (ported from app.py) ────────────────────────────────────────────
+function boresightRange() {
+  const pl = state.vtx_dbm + TX_DBI + RX_DBI - RX_SENS - MARGIN_DB;
+  return 10**((pl - 20*Math.log10(4*Math.PI*FREQ_MHZ*1e6/3e8))/20);
+}
+
+function brgToNed(brg, depM, dstM) {
+  const B=brg*D2R, da=Math.atan2(Math.max(depM,0), Math.max(dstM,1)), ca=Math.cos(da);
+  return [Math.cos(B)*ca, Math.sin(B)*ca, Math.sin(da)];
+}
+
+function nedToBody(n, hdg, pitch, roll) {
+  const ψ=hdg*D2R,θ=pitch*D2R,φ=roll*D2R;
+  const cψ=Math.cos(ψ),sψ=Math.sin(ψ),cθ=Math.cos(θ),sθ=Math.sin(θ),cφ=Math.cos(φ),sφ=Math.sin(φ);
+  const x1=n[0]*cψ+n[1]*sψ, y1=-n[0]*sψ+n[1]*cψ, z1=n[2];
+  const x2=x1*cθ+z1*sθ, y2=y1, z2=-x1*sθ+z1*cθ;
+  return [x2, y2*cφ+z2*sφ, -y2*sφ+z2*cφ];
+}
+
+function patchGain(b, bs) {
+  return Math.max(b[0]*bs[0]+b[1]*bs[1]+b[2]*bs[2], 0)**PATCH_N;
+}
+
+function combinedRF(brg, alt, dist, hdg, pitch, roll) {
+  const altDrop = Math.max(alt - state.quad_alt, 0);
+  const dBody = nedToBody(brgToNed(brg, altDrop, dist), hdg, pitch, roll);
+  const g = Math.max(patchGain(dBody, PATCH1_B), patchGain(dBody, PATCH2_B));
+  return g > 0 ? Math.sqrt(g) : 0;
+}
+
+// ─── Terrain LOS ──────────────────────────────────────────────────────────────
+function terrainLos(rLat, rLon, rAsl, brg, capR, sampleR, qa) {
+  const samp = [];
+  for (let k=1; k<=TERR_PTS; k++) {
+    const d = sampleR*k/TERR_PTS;
+    const [sl,so] = dest(rLat, rLon, brg, d);
+    samp.push([d, cachedElev(sl,so)]);
+  }
+  if (!samp.some(s=>s[1]!==null)) return [Math.min(NO_DATA_RANGE,capR),'nodata'];
+
+  let maxC=NO_DATA_RANGE, lim='nodata';
+  for (let i=0; i<samp.length; i++) {
+    const [dT,hT]=samp[i];
+    if (dT>capR) { if(lim==='nodata'){maxC=capR;lim='rf';} break; }
+    if (hT===null) break;
+    const tAsl=hT+qa;
+    let ok=true;
+    for (let j=0; j<i; j++) {
+      const [dM,hM]=samp[j];
+      if (hM===null) { ok=false; break; }
+      const frac=dM/dT;
+      const losH=rAsl+(tAsl-rAsl)*frac - dM*(dT-dM)/(2*EARTH_R_EFF);
+      if (hM > losH - 25*4*frac*(1-frac)) { ok=false; break; }
+    }
+    if (ok) { maxC=dT; lim=i<TERR_PTS-1?'terrain':'rf'; }
+    else break;
+  }
+  return [Math.min(maxC,capR), lim];
+}
+
+// ─── Coverage polygon ─────────────────────────────────────────────────────────
+function computePolygon() {
+  const {lat,lon,alt_m:alt,roll,pitch,heading,quad_alt:qa} = state;
+  const rTer = cachedElev(lat,lon) ?? 0;
+  const rAsl = rTer + alt;
+  const bs   = boresightRange();
+  const polygon=[], segTypes=[], ranges=[];
+
+  for (let i=0; i<N_BRG; i++) {
+    const brg = i*360/N_BRG;
+    const rf  = combinedRF(brg, alt, bs, heading, pitch, roll);
+    if (rf < 0.05) {
+      polygon.push(dest(lat,lon,brg,30)); segTypes.push('patch'); ranges.push(0.03);
+      continue;
+    }
+    const adjR = bs*rf;
+    const [terR,lim] = terrainLos(lat,lon,rAsl,brg,adjR,bs,qa);
+    const finalR = Math.max(terR,30);
+    polygon.push(dest(lat,lon,brg,finalR).map(v=>Math.round(v*1e6)/1e6));
+    segTypes.push(lim==='nodata'?'nodata': terR<adjR*0.95?'terrain':'rf');
+    ranges.push(finalR/1000);
+  }
+  return {polygon, segTypes, ranges};
+}
+
+function recomputePolygon() {
+  if (state.lat===null) return;
+  const {polygon,segTypes,ranges} = computePolygon();
+  state.polygon=polygon; state.seg_types=segTypes;
+  const bs=boresightRange();
+  state.boresight_km = Math.round(bs/100)/10;
+  const active = ranges.filter((_,i)=>segTypes[i]!=='patch' && ranges[i]>0.05);
+  state.min_range_km = active.length ? Math.round(Math.min(...active)*100)/100 : 0;
+  state.max_range_km = active.length ? Math.round(Math.max(...active)*100)/100 : 0;
+  renderState();
+}
+
+// ─── OpenTopoData rate-limited queue (1 req/s) ────────────────────────────────
+let _apiLast=0, _apiRunning=false;
+const _apiQ=[];
+
+async function _runApiQueue() {
+  if (_apiRunning) return;
+  _apiRunning=true;
+  while (_apiQ.length) {
+    const {loc,res}=_apiQ.shift();
+    const wait=1100-(Date.now()-_apiLast);
+    if (wait>0) await new Promise(r=>setTimeout(r,wait));
+    _apiLast=Date.now();
+    try {
+      const ctrl=new AbortController();
+      const tid=setTimeout(()=>ctrl.abort(),15000);
+      const r=await fetch('https://api.opentopodata.org/v1/aster30m',
+        {method:'POST',headers:{'Content-Type':'application/json'},
+         body:JSON.stringify({locations:loc}),signal:ctrl.signal});
+      clearTimeout(tid);
+      res(r.ok ? await r.json() : null);
+    } catch(e) { res(null); }
+  }
+  _apiRunning=false;
+}
+
+function topoPost(loc) {
+  return new Promise(res=>{ _apiQ.push({loc,res}); _runApiQueue(); });
+}
+
+// ─── Fine-grid terrain prefetch (every 2 s) ───────────────────────────────────
+let _terRunning=false;
+async function terrainPrefetch() {
+  if (_terRunning || state.lat===null) return;
+  _terRunning=true;
+  try {
+    const {lat,lon}=state, bs=boresightRange();
+    const raw=[[0,lat,lon]];
+    for (let b=0;b<360;b+=5)
+      for (let k=1;k<=TERR_PTS;k++) {
+        const [sl,so]=dest(lat,lon,b,bs*k/TERR_PTS);
+        raw.push([bs*k/TERR_PTS,sl,so]);
+      }
+    raw.sort((a,b)=>a[0]-b[0]);
+    const seen=new Set(), pts=[];
+    for (const [,sl,so] of raw) {
+      const k=ck(sl,so);
+      if (!seen.has(k)) { seen.add(k); pts.push([sl,so]); }
+    }
+    const miss=pts.filter(([sl,so])=>!elevCache.has(ck(sl,so)));
+    if (!miss.length) { if(state.terrain_status!=='ready'){state.terrain_status='ready';renderState();} return; }
+    state.terrain_status='fetching'; renderState();
+    for (let i=0;i<miss.length;i+=100) {
+      const chunk=miss.slice(i,i+100);
+      const data=await topoPost(chunk.map(([a,b])=>`${a},${b}`).join('|'));
+      if (data?.results) {
+        data.results.forEach((rec,j)=>{
+          const e=rec.elevation;
+          elevCache.set(ck(...chunk[j]), e!==null?e:NaN);
+        });
+        recomputePolygon();
+      }
+    }
+    state.terrain_status='ready'; renderState();
+  } catch(e) { console.warn('[terrain]',e); }
+  finally { _terRunning=false; }
+}
+
+// ─── Wide-area prefetch (50×50km, 1km grid, 30s delay then every 60s) ─────────
+let _wideRunning=false;
+async function widePrefetch() {
+  if (_wideRunning || state.lat===null) return;
+  _wideRunning=true;
+  try {
+    const {lat,lon}=state;
+    const cosL=Math.max(Math.abs(Math.cos(lat*D2R)),0.1);
+    const ls=0.01, lons=roundTo(0.01/cosL,3);
+    const n=Math.ceil(25/(ls*111))+1;
+    const clat=roundTo(lat,2);
+    const clon=parseFloat(ckW(lat,lon).split(',')[1]);
+    const seen=new Set(), pts=[];
+    for (let di=-n;di<=n;di++) {
+      const nlat=roundTo(clat+di*ls,2);
+      for (let dj=-n;dj<=n;dj++) {
+        const nlon=roundTo(Math.round((clon+dj*lons)/lons)*lons,4);
+        const k=`${nlat},${nlon}`;
+        if (!seen.has(k)) { seen.add(k); pts.push([nlat,nlon,k]); }
+      }
+    }
+    const miss=pts.filter(([,,k])=>!elevWide.has(k));
+    if (!miss.length) return;
+    console.log(`[wide] fetching ${miss.length} pts`);
+    for (let i=0;i<miss.length;i+=100) {
+      const chunk=miss.slice(i,i+100);
+      const data=await topoPost(chunk.map(([a,b])=>`${a},${b}`).join('|'));
+      if (data?.results)
+        data.results.forEach((rec,j)=>{
+          elevWide.set(chunk[j][2], rec.elevation!==null?rec.elevation:NaN);
+        });
+    }
+  } catch(e) { console.warn('[wide]',e); }
+  finally { _wideRunning=false; }
+}
+
+// ─── Simulation engine (2 Hz) ─────────────────────────────────────────────────
+const SIM_DT=0.5;
+function simStep() {
+  if (!sim.mode || state.lat===null) return;
+  if (sim.mode==='straight') {
+    const [nl,no]=dest(state.lat,state.lon,sim.heading,sim.speed_ms*SIM_DT);
+    Object.assign(state,{lat:nl,lon:no,heading:sim.heading,roll:0,pitch:0,source:'simulated'});
+  } else if (sim.mode==='orbit') {
+    if (sim.orbit_lat===null) return;
+    const r=Math.max(sim.orbit_r,50);
+    sim.orbit_angle=(sim.orbit_angle+sim.speed_ms/r*SIM_DT)%(2*Math.PI);
+    const [nl,no]=dest(sim.orbit_lat,sim.orbit_lon,sim.orbit_angle*R2D,r);
+    const roll=Math.atan2(sim.speed_ms**2,r*9.81)*R2D;
+    Object.assign(state,{lat:nl,lon:no,heading:(sim.orbit_angle*R2D+90+360)%360,
+                         roll,pitch:0,source:'simulated'});
+  } else if (sim.mode==='mission') {
+    if (!sim.waypoints.length||sim.wp_idx>=sim.waypoints.length) {
+      sim.mode=null; renderState(); return;
+    }
+    const {lat:wl,lon:wo,alt:wa}=sim.waypoints[sim.wp_idx];
+    const step=sim.speed_ms*SIM_DT;
+    const d=distM(state.lat,state.lon,wl,wo);
+    if (d<=Math.max(step,20)) {
+      Object.assign(state,{lat:wl,lon:wo,alt_m:wa,source:'simulated'});
+      sim.wp_idx++;
+      if (sim.wp_idx>=sim.waypoints.length) sim.mode=null;
+    } else {
+      const hdg=bearingTo(state.lat,state.lon,wl,wo);
+      const [nl,no]=dest(state.lat,state.lon,hdg,step);
+      Object.assign(state,{lat:nl,lon:no,heading:hdg,roll:0,pitch:0,source:'simulated'});
+    }
+  }
+  recomputePolygon();
+}
+setInterval(simStep,500);
+
+// ─── Mission file parser (QGC WPL 110) ───────────────────────────────────────
+function parseMission(text) {
+  const wps=[];
+  for (const raw of text.split('\n')) {
+    const line=raw.trim();
+    if (!line||line.startsWith('#')||line.startsWith('QGC')) continue;
+    const p=line.split('\t');
+    if (p.length<12) continue;
+    const idx=parseInt(p[0]);
+    if (isNaN(idx)||idx===0) continue;
+    const cmd=parseInt(p[3]);
+    if (![16,22,21].includes(cmd)) continue;
+    const lat=parseFloat(p[8]),lon=parseFloat(p[9]),alt=parseFloat(p[10]);
+    if (Math.abs(lat)<0.001&&Math.abs(lon)<0.001) continue;
+    wps.push({lat,lon,alt});
+  }
+  return wps;
+}
+
+// ─── Leaflet map ──────────────────────────────────────────────────────────────
+const LAYERS={
+  topo:L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'©OpenTopoMap',maxZoom:17}),
+  sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'©ESRI',maxZoom:18}),
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'©OSM',maxZoom:19}),
+  dark:L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'©CartoDB',maxZoom:19}),
+};
+const map=L.map('map').setView([20,0],3);
+LAYERS.topo.addTo(map);
+let activeLayer='topo';
+if (navigator.geolocation)
+  navigator.geolocation.getCurrentPosition(p=>map.setView([p.coords.latitude,p.coords.longitude],12),()=>{});
+
+function switchLayer(k) { map.removeLayer(LAYERS[activeLayer]); LAYERS[k].addTo(map); activeLayer=k; }
+
+function acIcon(hdg) {
+  return L.divIcon({className:'',iconSize:[44,44],iconAnchor:[22,22],
+    html:`<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+      <g transform="rotate(${hdg},22,22)">
+        <ellipse cx="22" cy="22" rx="3" ry="11" fill="#4f8" stroke="#111" stroke-width="1"/>
+        <polygon points="22,19 5,26 22,23 39,26" fill="#4f8" stroke="#111" stroke-width="1"/>
+        <polygon points="22,30 15,38 22,34 29,38" fill="#4f8" stroke="#111" stroke-width="1"/>
+        <line x1="22" y1="22" x2="38" y2="22" stroke="#ff9900" stroke-width="2.5" stroke-linecap="round"/>
+        <polygon points="38,22 33,19 33,25" fill="#ff9900"/>
+        <circle cx="22" cy="11" r="2.5" fill="#fff" opacity=".5"/>
+      </g></svg>`});
+}
+
+let marker=null, polyLayer=null, firstFix=true;
+let orbitCenterMarker=null, orbitCircle=null;
+
+const SEG_COLOR={rf:'#4ab4ff',terrain:'#ff6622',nodata:'#777',patch:'#ff2244'};
+
+function drawPoly(poly,types) {
+  if (polyLayer) map.removeLayer(polyLayer);
+  if (!poly||poly.length<3) return;
+  polyLayer=L.layerGroup().addTo(map);
+  L.polygon(poly,{color:'transparent',fillColor:'#4ab4ff',fillOpacity:0.08,weight:0}).addTo(polyLayer);
+  for (let i=0;i<poly.length;i++) {
+    const j=(i+1)%poly.length, col=SEG_COLOR[types[i]]||'#4ab4ff';
+    L.polyline([poly[i],poly[j]],{
+      color:col,weight:types[i]==='patch'?1:2.5,opacity:0.85,
+      dashArray:types[i]==='nodata'?'6,4':types[i]==='patch'?'2,4':null
+    }).addTo(polyLayer);
+  }
+}
+
+function attBar(id,val,max) {
+  const el=document.getElementById(id), pct=Math.min(Math.abs(val)/max*50,50);
+  el.style.width=pct+'%'; el.style.left=val>=0?'50%':(50-pct)+'%';
+  el.style.background=Math.abs(val)>max*0.65?'#f84':'#4ab4ff';
+}
+
+const COMPASS8=['N','NE','E','SE','S','SW','W','NW'];
+const COMPASS16=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+
+// ─── Render state to DOM ──────────────────────────────────────────────────────
+const hint=document.getElementById('maphint');
+function renderState() {
+  const isSim=sim.mode!==null||state.source==='simulated';
+  const dot=document.getElementById('dot');
+  dot.className='dot'+(isSim?' sim':'');
+
+  const banner=document.getElementById('sim-banner');
+  if (isSim) {
+    banner.textContent='SIMULATED — '+(sim.mode||'manual').toUpperCase();
+    banner.className='sim'; banner.style.display='block';
+  } else if (state.lat!==null) {
+    banner.textContent='MANUAL POSITION'; banner.className='manual'; banner.style.display='block';
+  } else {
+    banner.style.display='none';
+  }
+
+  const stEl=document.getElementById('sim-st');
+  if (sim.mode) {
+    stEl.textContent='Running: '+sim.mode; stEl.className='sim-st run';
+  } else if (stEl.textContent.startsWith('Running')) {
+    stEl.textContent='Mission complete'; stEl.className='sim-st done';
+  }
+
+  document.getElementById('h-src').textContent=state.source;
+  document.getElementById('h-alt').textContent=state.alt_m!=null?state.alt_m.toFixed(1)+' m':'—';
+  const bs=boresightRange();
+  document.getElementById('h-bs').textContent=Math.round(bs/100)/10+' km';
+  const covEl=document.getElementById('h-cov');
+  covEl.textContent=state.max_range_km>0?state.min_range_km+'–'+state.max_range_km+' km':'—';
+  const terEl=document.getElementById('h-ter');
+  terEl.className=state.terrain_status==='ready'?'ok':state.terrain_status==='fetching'?'warn':'';
+  terEl.textContent=state.terrain_status;
+
+  attBar('br',state.roll,90); attBar('bp',state.pitch,30);
+  document.getElementById('vr').textContent=(state.roll||0).toFixed(1)+'°';
+  document.getElementById('vp').textContent=(state.pitch||0).toFixed(1)+'°';
+  document.getElementById('vh').textContent=(state.heading||0).toFixed(0)+'°';
+  document.getElementById('hdg-lbl').textContent=COMPASS8[Math.round(((state.heading||0)%360+360)/45)%8];
+  document.getElementById('r-bs').textContent=Math.round(bs/100)/10+' km';
+  document.getElementById('r-min').textContent=state.min_range_km>0?state.min_range_km+' km':'—';
+  document.getElementById('r-max').textContent=state.max_range_km>0?state.max_range_km+' km':'—';
+  const ph=((state.heading||0)+90+360)%360;
+  document.getElementById('r-dir').textContent=COMPASS8[Math.round(ph/45)%8]+' ('+ph.toFixed(0)+'°)';
+  const tst=document.getElementById('ter-st');
+  tst.textContent='Terrain: '+state.terrain_status;
+  tst.className='ter-txt '+(state.terrain_status==='ready'?'ready':state.terrain_status==='fetching'?'fetching':'');
+
+  if (isSim||state.source==='simulated') {
+    document.getElementById('m-hdg').value=Math.round(state.heading);
+    syncHdgSlider(state.heading);
+  }
+
+  hint.style.display=state.lat===null?'':'none';
+  if (state.lat===null) return;
+
+  if (firstFix) { map.setView([state.lat,state.lon],13); firstFix=false; }
+  const icon=acIcon(state.heading||0);
+  if (!marker) marker=L.marker([state.lat,state.lon],{icon,zIndexOffset:1000}).addTo(map);
+  else { marker.setLatLng([state.lat,state.lon]); marker.setIcon(icon); }
+  marker.bindPopup(
+    `<b>${isSim?'⚠ SIMULATED':'Relay Aircraft'}</b><br>`+
+    `Alt: ${(state.alt_m||0).toFixed(1)} m AGL<br>`+
+    `Hdg: ${(state.heading||0).toFixed(0)}°   Roll: ${(state.roll||0).toFixed(1)}°`
+  );
+  drawPoly(state.polygon, state.seg_types);
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+let _toastT=null;
+function toast(msg,ms=2200) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove('show'),ms);
+}
+
+// ─── Manual placement ─────────────────────────────────────────────────────────
+function dbmToMw(dbm) { return Math.round(10**(dbm/10)); }
+
+function applyManual() {
+  const lat=parseFloat(document.getElementById('m-lat').value);
+  const lon=parseFloat(document.getElementById('m-lon').value);
+  if (isNaN(lat)||isNaN(lon)) { toast('Click the map or enter coordinates first',3000); return; }
+  Object.assign(state,{
+    lat, lon,
+    alt_m:    parseFloat(document.getElementById('m-alt').value)||120,
+    roll:     parseFloat(document.getElementById('m-roll').value)||0,
+    pitch:    parseFloat(document.getElementById('m-pitch').value)||0,
+    heading:  parseFloat(document.getElementById('m-hdg').value)||0,
+    vtx_dbm:  parseFloat(document.getElementById('m-vtx').value)||27.8,
+    quad_alt: parseFloat(document.getElementById('m-quad').value)||3,
+    source:   'manual',
+  });
+  hint.style.display='none';
+  recomputePolygon();
+  toast('Coverage computing — terrain loading');
+}
+
+function geolocate() {
+  if (!navigator.geolocation) { toast('Geolocation not available'); return; }
+  toast('Getting location…',5000);
+  navigator.geolocation.getCurrentPosition(p=>{
+    const lat=p.coords.latitude, lon=p.coords.longitude;
+    map.setView([lat,lon],14);
+    document.getElementById('m-lat').value=lat.toFixed(6);
+    document.getElementById('m-lon').value=lon.toFixed(6);
+    toast('Location set — click Apply to place aircraft');
+  },()=>toast('Location access denied'));
+}
+
+// ─── Heading slider ───────────────────────────────────────────────────────────
+function syncHdgSlider(deg) {
+  const d=((+deg%360)+360)%360;
+  document.getElementById('m-hdg-sl').value=d;
+  document.getElementById('hdg-sl-lbl').textContent=COMPASS16[Math.round(d/22.5)%16];
+}
+
+// ─── Simulation controls ──────────────────────────────────────────────────────
+let currentSimMode=null, missionLoaded=false;
+let orbitCenter=null, pickingOrbitCenter=false;
+
+function selectSimMode(mode) {
+  currentSimMode=mode;
+  ['straight','orbit','mission'].forEach(m=>{
+    document.getElementById('sp-'+m).style.display=m===mode?'':'none';
+    document.getElementById('btn-'+m).classList.toggle('active',m===mode);
+  });
+}
+
+function startOrbitCenterPick() {
+  pickingOrbitCenter=true;
+  map.getContainer().classList.add('picking');
+  toast('Click map to set orbit center',5000);
+}
+
+function updateOrbitCircle() {
+  if (orbitCircle) map.removeLayer(orbitCircle);
+  if (!orbitCenter) return;
+  const r=parseInt(document.getElementById('sim-orb-r').value)||200;
+  orbitCircle=L.circle(orbitCenter,{radius:r,color:'#f84',fillColor:'#f84',
+    fillOpacity:0.04,weight:1,dashArray:'4,4'}).addTo(map);
+}
+document.getElementById('sim-orb-r').addEventListener('input',updateOrbitCircle);
+
+function setOrbitCenter(latlng) {
+  orbitCenter=latlng;
+  sim.orbit_lat=latlng.lat; sim.orbit_lon=latlng.lng;
+  document.getElementById('orb-center-lbl').textContent=
+    `Center: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+  if (orbitCenterMarker) map.removeLayer(orbitCenterMarker);
+  orbitCenterMarker=L.circleMarker(latlng,{radius:6,color:'#f84',fillColor:'#f84',
+    fillOpacity:0.8,weight:2}).addTo(map).bindTooltip('Orbit Center');
+  updateOrbitCircle();
+}
+
+function startSim() {
+  if (!currentSimMode) { toast('Select Straight, Orbit, or Mission first',3000); return; }
+  const alt=parseFloat(document.getElementById('m-alt').value)||120;
+  if (state.lat===null) { toast('Place the aircraft on the map first',3000); return; }
+
+  sim.speed_ms=parseFloat(document.getElementById('sim-speed').value)||15;
+  sim.mode=currentSimMode;
+  state.alt_m=alt;
+
+  if (currentSimMode==='straight') {
+    sim.heading=parseFloat(document.getElementById('sim-hdg').value)||0;
+  } else if (currentSimMode==='orbit') {
+    if (!orbitCenter) { toast('Set orbit center first',3000); sim.mode=null; return; }
+    sim.orbit_r=parseFloat(document.getElementById('sim-orb-r').value)||200;
+    sim.orbit_angle=bearingTo(sim.orbit_lat,sim.orbit_lon,state.lat,state.lon)*D2R;
+  } else if (currentSimMode==='mission') {
+    if (!missionLoaded||!sim.waypoints.length) { toast('Load a .waypoints file first',3000); sim.mode=null; return; }
+    sim.wp_idx=0;
+  }
+  state.source='simulated';
+  const stEl=document.getElementById('sim-st');
+  stEl.textContent='Running: '+currentSimMode; stEl.className='sim-st run';
+  toast('Simulation started: '+currentSimMode);
+  renderState();
+}
+
+function stopSim() {
+  sim.mode=null;
+  if (state.source==='simulated') state.source='manual';
+  const stEl=document.getElementById('sim-st');
+  stEl.textContent='Stopped'; stEl.className='sim-st stop';
+  renderState();
+}
+
+function loadMission(input) {
+  const file=input.files[0]; if (!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wps=parseMission(e.target.result);
+    const el=document.getElementById('mis-status');
+    if (wps.length) {
+      sim.waypoints=wps; missionLoaded=true;
+      el.textContent=`${wps.length} waypoints from ${file.name}`; el.style.color='#4f8';
+      toast(`Mission loaded: ${wps.length} waypoints`);
+      if (state.lat===null) {
+        Object.assign(state,{lat:wps[0].lat,lon:wps[0].lon,alt_m:wps[0].alt,source:'manual'});
+        document.getElementById('m-lat').value=wps[0].lat.toFixed(6);
+        document.getElementById('m-lon').value=wps[0].lon.toFixed(6);
+        recomputePolygon();
+      }
+    } else {
+      missionLoaded=false; el.textContent='No valid waypoints found'; el.style.color='#f44';
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ─── Distance measurement tool ────────────────────────────────────────────────
+let measuring=false, measurePts=[], measureLayer=null, rubberLayer=null, clickTimer=null;
+
+function fmtDist(m) { return m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m'; }
+function labelIcon(txt,r) {
+  return L.divIcon({className:'',iconSize:[0,0],iconAnchor:[0,0],
+    html:`<div class="mlabel" style="transform:translate(${r?6:-4}px,-50%)">${txt}</div>`});
+}
+
+function redrawMeasure() {
+  if (!measureLayer) return;
+  measureLayer.clearLayers();
+  if (!measurePts.length) return;
+  if (measurePts.length>=2)
+    L.polyline(measurePts,{color:'#ffcc00',weight:2.5,opacity:.9}).addTo(measureLayer);
+  let cum=0;
+  measurePts.forEach((p,i)=>{
+    L.circleMarker(p,{radius:4,color:'#ffcc00',fillColor:'#ffcc00',fillOpacity:1,weight:1}).addTo(measureLayer);
+    if (i>0) {
+      cum+=measurePts[i-1].distanceTo(p);
+      L.marker(p,{icon:labelIcon(fmtDist(cum),true),zIndexOffset:500}).addTo(measureLayer);
+    }
+  });
+}
+
+function startMeasure() {
+  measuring=true; measurePts=[];
+  if (measureLayer) map.removeLayer(measureLayer);
+  measureLayer=L.layerGroup().addTo(map);
+  map.doubleClickZoom.disable();
+  map.getContainer().classList.add('measuring');
+  document.getElementById('cursor-measure').style.display='';
+  toast('Click to add points · Double-click to finish · Click 📏 again to clear',5000);
+}
+
+function clearMeasure() {
+  measuring=false; measurePts=[];
+  if (measureLayer){map.removeLayer(measureLayer);measureLayer=null;}
+  if (rubberLayer){map.removeLayer(rubberLayer);rubberLayer=null;}
+  map.doubleClickZoom.enable();
+  map.getContainer().classList.remove('measuring');
+  document.getElementById('cursor-measure').style.display='none';
+}
+
+L.Control.Measure=L.Control.extend({
+  options:{position:'topleft'},
+  onAdd(){
+    const c=L.DomUtil.create('div','leaflet-bar leaflet-control');
+    c.innerHTML=`<a id="btn-measure" href="#" title="Measure distance"
+      style="font-size:15px;line-height:1;color:#4ab4ff;display:flex;align-items:center;
+             justify-content:center;width:30px;height:30px;text-decoration:none">📏</a>`;
+    L.DomEvent.disableClickPropagation(c);
+    L.DomEvent.on(c.querySelector('a'),'click',e=>{
+      L.DomEvent.preventDefault(e);
+      if (measuring) clearMeasure(); else startMeasure();
+      c.querySelector('a').style.background=measuring?'#1a3550':'';
+    });
+    return c;
+  }
+});
+new L.Control.Measure().addTo(map);
+
+// ─── Map event handlers ───────────────────────────────────────────────────────
+map.on('click',e=>{
+  if (pickingOrbitCenter) {
+    pickingOrbitCenter=false; map.getContainer().classList.remove('picking');
+    setOrbitCenter(e.latlng); toast('Orbit center set'); return;
+  }
+  if (measuring) {
+    clearTimeout(clickTimer);
+    clickTimer=setTimeout(()=>{ measurePts.push(e.latlng); redrawMeasure(); },220);
+    return;
+  }
+  if (sim.mode==='orbit') {
+    setOrbitCenter(e.latlng);
+    toast(`Orbit center → ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
+    return;
+  }
+  if (sim.mode) return;
+  const lat=e.latlng.lat, lon=e.latlng.lng;
+  document.getElementById('m-lat').value=lat.toFixed(6);
+  document.getElementById('m-lon').value=lon.toFixed(6);
+  applyManual();
+  toast(`Aircraft placed at ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+});
+
+map.on('dblclick',e=>{
+  if (!measuring) return;
+  clearTimeout(clickTimer);
+  if (measurePts.length>=2) {
+    const total=measurePts.reduce((s,p,i)=>i?s+measurePts[i-1].distanceTo(p):0,0);
+    toast(`Total: ${fmtDist(total)}`,6000);
+  }
+  measuring=false;
+  if (rubberLayer){map.removeLayer(rubberLayer);rubberLayer=null;}
+  map.doubleClickZoom.enable();
+  map.getContainer().classList.remove('measuring');
+  document.getElementById('cursor-measure').style.display='none';
+  const btn=document.getElementById('btn-measure');
+  if (btn) btn.style.background='';
+});
+
+let elevTimer=null;
+map.on('mousemove',e=>{
+  const lat=e.latlng.lat, lon=e.latlng.lng;
+  document.getElementById('cursor-ll').textContent=lat.toFixed(5)+' , '+lon.toFixed(5);
+  clearTimeout(elevTimer);
+  elevTimer=setTimeout(()=>{
+    const v=lookupElev(lat,lon);
+    document.getElementById('cursor-elev').textContent=v!==null?Math.round(v)+' m':'—';
+  },60);
+  if (!measuring||!measurePts.length) {
+    if (rubberLayer){map.removeLayer(rubberLayer);rubberLayer=null;} return;
+  }
+  if (rubberLayer) map.removeLayer(rubberLayer);
+  rubberLayer=L.layerGroup().addTo(map);
+  const last=measurePts[measurePts.length-1], d=last.distanceTo(e.latlng);
+  L.polyline([last,e.latlng],{color:'#ffcc00',weight:1.5,opacity:.5,dashArray:'5,5'}).addTo(rubberLayer);
+  L.marker(e.latlng,{icon:labelIcon(fmtDist(d),true),zIndexOffset:600}).addTo(rubberLayer);
+});
+
+map.on('mouseout',()=>{
+  document.getElementById('cursor-ll').textContent='— , —';
+  document.getElementById('cursor-elev').textContent='—';
+});
+
+// ─── Start background tasks ───────────────────────────────────────────────────
+setInterval(terrainPrefetch,2000);
+setTimeout(()=>{ widePrefetch(); setInterval(widePrefetch,60000); },30000);
+renderState();
+</script>
+</body>
+</html>

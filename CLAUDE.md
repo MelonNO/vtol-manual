@@ -27,12 +27,13 @@ Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned  # if PS bl
 | `index.html` | Flight Tools — checklists, battery log, telemetry analysis, weather |
 | `manual.html` | Operations manual — grouped dropdown nav, all reference chapters |
 | `sw.js` | Service worker — offline caching (network-first for HTML, cache-first for fonts) |
-| `relay/app.py` | Flask backend — RF coverage polygon, terrain LOS, MAVLink, simulation |
-| `relay/templates/index.html` | Relay map frontend — Leaflet.js, terrain elevation, sim modes |
+| `relay/map.html` | **Static** relay coverage map — all math in JS, calls OpenTopoData directly from browser |
+| `relay/app.py` | Flask backend — RF coverage polygon, terrain LOS, MAVLink, simulation (RPi only) |
+| `relay/templates/index.html` | Flask map frontend — Leaflet.js, terrain elevation, sim modes (served by app.py) |
 | `relay/requirements.txt` | Python deps: flask, requests, pymavlink |
-| `relay/start.sh` | Startup script — run to serve the map on http://0.0.0.0:5000 |
+| `relay/start.sh` | Startup script — run to serve the Flask map on http://0.0.0.0:5000 |
 
-Both static pages are fully self-contained (all CSS and JS inline). They cross-link via `MANUAL ▶` / `◀ TOOLS` buttons. Both also have a `MAP ▶` button linking to `http://localhost:5000` — the relay coverage map server (must be started separately via `relay/start.sh`).
+Both static pages are fully self-contained (all CSS and JS inline). They cross-link via `MANUAL ▶` / `◀ TOOLS` buttons. Both also have a `MAP ▶` button linking to `relay/map.html` — the **static** coverage map that runs in any browser without any server, including directly from GitHub Pages.
 
 ## Relay coverage map (`relay/`)
 
