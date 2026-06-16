@@ -299,9 +299,9 @@ const sim = {
   waypoints: [], wp_idx: 0,
 };
 
-// ─── Elevation caches ─────────────────────────────────────────────────────────
-const elevCache = new Map();   // fine-grid ~111m cells  key="lat,lon" val=float|NaN
-const elevWide  = new Map();   // coarse ~1km cells       key="lat,lon" val=float|NaN
+// ─── AWS Terrain Tiles (Terrarium PNG, zoom 11 ~76m/px, full CORS) ───────────
+const TERR_ZOOM = 11;
+const tileCache = new Map(); // key: "11/tx/ty" → ImageData | null (null = loading)
 
 // ─── Geometry ─────────────────────────────────────────────────────────────────
 function roundTo(x, n) { const f = 10**n; return Math.round(x*f)/f; }
@@ -328,55 +328,55 @@ function bearingTo(la1,lo1,la2,lo2) {
     Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(dλ))*R2D+360)%360;
 }
 
-// ─── Cache key functions ──────────────────────────────────────────────────────
-function ck(lat, lon) {
-  const latR = roundTo(lat, 3);
-  const cosL = Math.max(Math.abs(Math.cos(lat*D2R)), 0.1);
-  const step = roundTo(0.001/cosL, 4);
-  return latR+','+roundTo(Math.round(lon/step)*step, 5);
+// ─── Tile coordinate helpers ──────────────────────────────────────────────────
+function _tile(lat, lon) {
+  const n = 1 << TERR_ZOOM;
+  const tx = Math.floor((lon + 180) / 360 * n);
+  const sinLat = Math.sin(lat * D2R);
+  const ty = Math.floor((1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2 * n);
+  return [tx, ty];
 }
 
-function ckW(lat, lon) {
-  const latR = roundTo(lat, 2);
-  const cosL = Math.max(Math.abs(Math.cos(lat*D2R)), 0.1);
-  const step = roundTo(0.01/cosL, 3);
-  return latR+','+roundTo(Math.round(lon/step)*step, 4);
+function _tilePixel(lat, lon, tx, ty) {
+  const n = 1 << TERR_ZOOM;
+  const px = Math.min(255, Math.max(0, Math.floor(((lon + 180) / 360 * n - tx) * 256)));
+  const sinLat = Math.sin(lat * D2R);
+  const py = Math.min(255, Math.max(0, Math.floor(((1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2 * n - ty) * 256)));
+  return [px, py];
 }
 
-// ─── Elevation lookup (cache only, synchronous) ───────────────────────────────
-function cachedElev(lat, lon) {
-  const v = elevCache.get(ck(lat, lon));
-  return (v === undefined || isNaN(v)) ? null : v;
+async function _fetchTile(tx, ty) {
+  const key = `${TERR_ZOOM}/${tx}/${ty}`;
+  if (tileCache.has(key)) return tileCache.get(key);
+  tileCache.set(key, null); // in-flight placeholder prevents duplicate requests
+  try {
+    const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${TERR_ZOOM}/${tx}/${ty}.png`;
+    const r = await fetch(url, {mode:'cors'});
+    if (!r.ok) { tileCache.delete(key); return null; }
+    const blob = await r.blob();
+    const img = await createImageBitmap(blob);
+    const can = typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(256, 256)
+      : Object.assign(document.createElement('canvas'), {width:256, height:256});
+    can.getContext('2d').drawImage(img, 0, 0);
+    const data = can.getContext('2d').getImageData(0, 0, 256, 256);
+    tileCache.set(key, data);
+    return data;
+  } catch(e) {
+    tileCache.delete(key); // allow retry on next cycle
+    console.warn('[tile]', e.message);
+    return null;
+  }
 }
 
 function lookupElev(lat, lon) {
-  // 1. exact fine-grid
-  const key = ck(lat, lon);
-  const v = elevCache.get(key);
-  if (v !== undefined) return isNaN(v) ? null : v;
-
-  // 2. 5×5 fine-grid neighbour search
-  const latR = roundTo(lat, 3);
-  const cosL = Math.max(Math.abs(Math.cos(lat*D2R)), 0.1);
-  const dls = 0.001, dlo = roundTo(0.001/cosL, 4);
-  const baseLon = parseFloat(key.split(',')[1]);
-  let best = null, bd2 = Infinity;
-  for (let di=-2; di<=2; di++) {
-    const nlat = roundTo(latR+di*dls, 3);
-    for (let dj=-2; dj<=2; dj++) {
-      if (!di && !dj) continue;
-      const nlon = roundTo(Math.round((baseLon+dj*dlo)/dlo)*dlo, 5);
-      const nv = elevCache.get(`${nlat},${nlon}`);
-      if (nv===undefined || isNaN(nv)) continue;
-      const d2=di*di+dj*dj;
-      if (d2<bd2) { bd2=d2; best=nv; }
-    }
-  }
-  if (best !== null) return best;
-
-  // 3. wide-grid fallback
-  const wv = elevWide.get(ckW(lat, lon));
-  return (wv!==undefined && !isNaN(wv)) ? wv : null;
+  const [tx, ty] = _tile(lat, lon);
+  const data = tileCache.get(`${TERR_ZOOM}/${tx}/${ty}`);
+  if (!data) return null;
+  const [px, py] = _tilePixel(lat, lon, tx, ty);
+  const i = (py * 256 + px) * 4, d = data.data;
+  const e = (d[i] * 256 + d[i+1] + d[i+2] / 256) - 32768;
+  return e > -1000 ? e : null;
 }
 
 // ─── RF math (ported from app.py) ────────────────────────────────────────────
@@ -442,7 +442,7 @@ function terrainLos(rLat, rLon, rAsl, brg, capR, sampleR, qa) {
 // ─── Coverage polygon ─────────────────────────────────────────────────────────
 function computePolygon() {
   const {lat,lon,alt_m:alt,roll,pitch,heading,quad_alt:qa} = state;
-  const rTer = cachedElev(lat,lon) ?? 0;
+  const rTer = lookupElev(lat,lon) ?? 0;
   const rAsl = rTer + alt;
   const bs   = boresightRange();
   const polygon=[], segTypes=[], ranges=[];
@@ -476,134 +476,61 @@ function recomputePolygon() {
   renderState();
 }
 
-// ─── OpenTopoData rate-limited queue (1 req/s, GET to avoid CORS preflight) ───
-let _apiLast=0, _apiRunning=false, _apiErrMsg='';
-const _apiQ=[];
-
-async function _runApiQueue() {
-  if (_apiRunning) return;
-  _apiRunning=true;
-  try {
-    while (_apiQ.length) {
-      const {loc,res}=_apiQ.shift();
-      const wait=1100-(Date.now()-_apiLast);
-      if (wait>0) await new Promise(r=>setTimeout(r,wait));
-      _apiLast=Date.now();
-      try {
-        const ctrl=new AbortController();
-        const tid=setTimeout(()=>ctrl.abort(),15000);
-        // GET avoids CORS preflight (simple request); pipe encoded as %7C
-        const url='https://api.opentopodata.org/v1/aster30m?locations='+loc.replace(/\|/g,'%7C');
-        const r=await fetch(url,{signal:ctrl.signal});
-        clearTimeout(tid);
-        if (r.ok) {
-          _apiErrMsg='';
-          res(await r.json());
-        } else {
-          _apiErrMsg='HTTP '+r.status; res(null);
-        }
-      } catch(e) {
-        _apiErrMsg=e.name==='AbortError'?'timeout':(e.message||'network error');
-        res(null);
-      }
-    }
-  } finally {
-    _apiRunning=false;
-  }
-}
-
-function topoPost(loc) {
-  return new Promise(res=>{ _apiQ.push({loc,res}); _runApiQueue(); });
-}
-
-// ─── Fine-grid terrain prefetch (every 2 s) ───────────────────────────────────
-let _terRunning=false, _terFailed=0;
+// ─── Tile-based terrain prefetch (every 2 s) ─────────────────────────────────
+let _terRunning = false;
 async function terrainPrefetch() {
-  if (_terRunning || state.lat===null) return;
-  _terRunning=true;
+  if (_terRunning || state.lat === null) return;
+  _terRunning = true;
   try {
-    const {lat,lon}=state, bs=boresightRange();
-    const raw=[[0,lat,lon]];
-    for (let b=0;b<360;b+=5)
-      for (let k=1;k<=TERR_PTS;k++) {
-        const [sl,so]=dest(lat,lon,b,bs*k/TERR_PTS);
-        raw.push([bs*k/TERR_PTS,sl,so]);
+    const {lat, lon} = state, bs = boresightRange();
+    const needed = new Set();
+    needed.add(_tile(lat, lon).join('/'));
+    for (let b = 0; b < 360; b += 5)
+      for (let k = 1; k <= TERR_PTS; k++) {
+        const [sl, so] = dest(lat, lon, b, bs * k / TERR_PTS);
+        needed.add(_tile(sl, so).join('/'));
       }
-    raw.sort((a,b2)=>a[0]-b2[0]);
-    const seen=new Set(), pts=[];
-    for (const [,sl,so] of raw) {
-      const k=ck(sl,so);
-      if (!seen.has(k)) { seen.add(k); pts.push([sl,so]); }
-    }
-    const miss=pts.filter(([sl,so])=>!elevCache.has(ck(sl,so)));
-    if (!miss.length) {
-      _terFailed=0;
-      if (state.terrain_status!=='ready') { state.terrain_status='ready'; renderState(); }
+    const missing = [...needed].filter(k => !tileCache.has(`${TERR_ZOOM}/${k}`));
+    if (!missing.length) {
+      if (state.terrain_status !== 'ready') { state.terrain_status = 'ready'; renderState(); }
       return;
     }
-    state.terrain_status='fetching'; renderState();
-    let anyOk=false;
-    for (let i=0;i<miss.length;i+=100) {
-      const chunk=miss.slice(i,i+100);
-      const data=await topoPost(chunk.map(([a,b2])=>`${a},${b2}`).join('|'));
-      if (data?.results) {
-        anyOk=true; _terFailed=0;
-        data.results.forEach((rec,j)=>{
-          const e=rec.elevation;
-          elevCache.set(ck(...chunk[j]), e!==null?e:NaN);
-        });
-        recomputePolygon();
-      } else {
-        // Mark failed points as NaN so they aren't re-requested every cycle.
-        // Treated as no-data (200m segment) until page refresh.
-        chunk.forEach(pt => { if (!elevCache.has(ck(...pt))) elevCache.set(ck(...pt), NaN); });
-      }
-    }
-    state.terrain_status = anyOk ? 'ready' : 'error: '+(_apiErrMsg||'no response');
-    recomputePolygon();
-    renderState();
+    state.terrain_status = 'fetching'; renderState();
+    await Promise.all(missing.map(k => {
+      const [tx, ty] = k.split('/').map(Number);
+      return _fetchTile(tx, ty).then(() => recomputePolygon());
+    }));
+    state.terrain_status = 'ready';
+    recomputePolygon(); renderState();
   } catch(e) {
-    state.terrain_status='error: '+e.message;
-    renderState();
-    console.warn('[terrain]',e);
-  }
-  finally { _terRunning=false; }
+    state.terrain_status = 'error: ' + e.message;
+    renderState(); console.warn('[terrain]', e);
+  } finally { _terRunning = false; }
 }
 
-// ─── Wide-area prefetch (50×50km, 1km grid, 30s delay then every 60s) ─────────
-let _wideRunning=false;
+// ─── Wide-area tile prefetch (30km radius, 30s delay then every 60s) ─────────
+let _wideRunning = false;
 async function widePrefetch() {
-  if (_wideRunning || state.lat===null) return;
-  _wideRunning=true;
+  if (_wideRunning || state.lat === null) return;
+  _wideRunning = true;
   try {
-    const {lat,lon}=state;
-    const cosL=Math.max(Math.abs(Math.cos(lat*D2R)),0.1);
-    const ls=0.01, lons=roundTo(0.01/cosL,3);
-    const n=Math.ceil(25/(ls*111))+1;
-    const clat=roundTo(lat,2);
-    const clon=parseFloat(ckW(lat,lon).split(',')[1]);
-    const seen=new Set(), pts=[];
-    for (let di=-n;di<=n;di++) {
-      const nlat=roundTo(clat+di*ls,2);
-      for (let dj=-n;dj<=n;dj++) {
-        const nlon=roundTo(Math.round((clon+dj*lons)/lons)*lons,4);
-        const k=`${nlat},${nlon}`;
-        if (!seen.has(k)) { seen.add(k); pts.push([nlat,nlon,k]); }
+    const {lat, lon} = state;
+    const needed = new Set();
+    needed.add(_tile(lat, lon).join('/'));
+    for (let b = 0; b < 360; b += 45)
+      for (const d of [10000, 20000, 30000]) {
+        const [sl, so] = dest(lat, lon, b, d);
+        needed.add(_tile(sl, so).join('/'));
       }
-    }
-    const miss=pts.filter(([,,k])=>!elevWide.has(k));
-    if (!miss.length) return;
-    console.log(`[wide] fetching ${miss.length} pts`);
-    for (let i=0;i<miss.length;i+=100) {
-      const chunk=miss.slice(i,i+100);
-      const data=await topoPost(chunk.map(([a,b])=>`${a},${b}`).join('|'));
-      if (data?.results)
-        data.results.forEach((rec,j)=>{
-          elevWide.set(chunk[j][2], rec.elevation!==null?rec.elevation:NaN);
-        });
-    }
-  } catch(e) { console.warn('[wide]',e); }
-  finally { _wideRunning=false; }
+    const missing = [...needed].filter(k => !tileCache.has(`${TERR_ZOOM}/${k}`));
+    if (!missing.length) return;
+    console.log(`[wide] fetching ${missing.length} tiles`);
+    await Promise.all(missing.map(k => {
+      const [tx, ty] = k.split('/').map(Number);
+      return _fetchTile(tx, ty);
+    }));
+  } catch(e) { console.warn('[wide]', e); }
+  finally { _wideRunning = false; }
 }
 
 // ─── Simulation engine (2 Hz) ─────────────────────────────────────────────────
@@ -1057,33 +984,31 @@ map.on('mouseout',()=>{
 
 // ─── Diagnostics ─────────────────────────────────────────────────────────────
 async function testApi() {
-  const el=document.getElementById('api-test-result');
-  const lat=state.lat??51.5074, lon=state.lon??-0.1278;
-  el.style.color='#fa4'; el.textContent='Testing API…';
+  const el = document.getElementById('api-test-result');
+  const lat = state.lat ?? 51.5074, lon = state.lon ?? -0.1278;
+  el.style.color = '#fa4'; el.textContent = 'Fetching tile…';
   try {
-    const url=`https://api.opentopodata.org/v1/aster30m?locations=${lat},${lon}`;
-    el.textContent='URL: '+url.slice(0,80)+'…';
-    const r=await fetch(url);
-    if (!r.ok) { el.style.color='#f44'; el.textContent='HTTP '+r.status+' '+r.statusText; return; }
-    const j=await r.json();
-    const e=j?.results?.[0]?.elevation;
-    el.style.color=e!==null?'#4f8':'#fa4';
-    el.textContent=e!==null
-      ?`OK ✓  elevation=${e} m  (${lat.toFixed(4)},${lon.toFixed(4)})`
-      :`OK but elevation=null (no data at this location — ocean/gap)`;
+    const [tx, ty] = _tile(lat, lon);
+    const data = await _fetchTile(tx, ty);
+    if (!data) { el.style.color = '#f44'; el.textContent = 'Tile fetch failed'; return; }
+    const e = lookupElev(lat, lon);
+    el.style.color = e !== null ? '#4f8' : '#fa4';
+    el.textContent = e !== null
+      ? `OK ✓  elevation=${e.toFixed(1)} m  tile=${TERR_ZOOM}/${tx}/${ty}`
+      : `Tile loaded but elevation=null (ocean/gap)`;
   } catch(err) {
-    el.style.color='#f44';
-    el.textContent='Error: '+err.message;
+    el.style.color = '#f44';
+    el.textContent = 'Error: ' + err.message;
   }
 }
 
 function updateCacheInfo() {
-  const el=document.getElementById('cache-info');
+  const el = document.getElementById('cache-info');
   if (!el) return;
-  const nan=Array.from(elevCache.values()).filter(v=>isNaN(v)).length;
-  el.textContent=`Cache: ${elevCache.size} pts (${nan} NaN / no-data)`;
+  const loaded = [...tileCache.values()].filter(v => v !== null).length;
+  el.textContent = `Tiles: ${loaded}/${tileCache.size} loaded (zoom ${TERR_ZOOM})`;
 }
-setInterval(updateCacheInfo,2000);
+setInterval(updateCacheInfo, 2000);
 
 // ─── Start background tasks ───────────────────────────────────────────────────
 setInterval(terrainPrefetch,2000);
