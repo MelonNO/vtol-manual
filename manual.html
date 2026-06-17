@@ -35,7 +35,7 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
 .nav-group-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:14px 16px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;display:flex;align-items:center;gap:5px;}
 .nav-group-btn:hover{color:var(--text);}
 .nav-group-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
-.nav-dropdown{display:none;position:absolute;top:100%;left:0;background:var(--surface);border:1px solid var(--border2);border-top:2px solid var(--accent);z-index:600;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.6);}
+.nav-dropdown{display:none;position:fixed;background:var(--surface);border:1px solid var(--border2);border-top:2px solid var(--accent);z-index:1000;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.6);}
 .nav-dropdown.open{display:block;}
 .nav-dropdown button{display:block;width:100%;background:none;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:var(--head);font-size:12px;font-weight:600;letter-spacing:1.5px;padding:11px 18px;cursor:pointer;text-align:left;text-transform:uppercase;transition:background .1s,color .1s;white-space:nowrap;}
 .nav-dropdown button:last-child{border-bottom:none;}
@@ -45,6 +45,11 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
 .nav-emerg:hover{color:#ff6b6b !important;}
 .nav-emerg.active{border-bottom-color:var(--red) !important;color:var(--red) !important;}
 .content{max-width:1000px;margin:0 auto;padding:32px 28px 60px;}
+.man-photo{margin:20px 0;border:1px solid var(--border2);border-radius:4px;overflow:hidden;background:var(--surface2);}
+.man-photo img{width:100%;max-height:340px;object-fit:cover;display:block;}
+.man-photo figcaption{padding:8px 14px;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;border-top:1px solid var(--border2);}
+.man-photo-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0;}
+@media(max-width:600px){.man-photo-row{grid-template-columns:1fr;}}
 .tab-panel{display:none;}
 .tab-panel.active{display:block;animation:fadeSlideIn .2s ease both;}
 @keyframes fadeSlideIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
@@ -231,6 +236,17 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
 <!-- ═══ OVERVIEW ═══ -->
 <div id="tab-overview" class="tab-panel">
+
+  <div class="man-photo-row" style="margin-bottom:0">
+    <figure class="man-photo" style="margin:0">
+      <img src="img/t2_vtol.jpg" alt="VTOL carrier aircraft" loading="lazy" onerror="this.closest('figure').style.display='none'">
+      <figcaption>Carrier — Heewing T2 Ranger VTOL</figcaption>
+    </figure>
+    <figure class="man-photo" style="margin:0">
+      <img src="img/fpv_drone.jpg" alt="FPV sub-drone" loading="lazy" onerror="this.closest('figure').style.display='none'">
+      <figcaption>Sub-drone — 5" FPV quad</figcaption>
+    </figure>
+  </div>
 
   <div class="section-title">Aircraft & Mission</div>
   <p>The Heewing T2 is a <strong>fixed-wing tilt-rotor VTOL</strong> operating as an airborne relay carrier. Its mission is to extend the effective range and altitude of FPV sub-drones by acting as a relay node — bridging ground-station control and video links to one or more FPV aircraft operating beyond direct line-of-sight.</p>
@@ -524,6 +540,11 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>TECS_SINK_MAX</code></td><td class="val">5 m/s</td><td>Maximum sink rate</td></tr>
     <tr><td><code>TRIM_THROTTLE</code></td><td class="val">35%</td><td>Cruise throttle setting</td></tr>
   </table>
+
+  <figure class="man-photo">
+    <img src="img/t2_vtol.jpg" alt="Fixed-wing VTOL carrier aircraft in flight" loading="lazy" onerror="this.closest('figure').style.display='none'">
+    <figcaption>Heewing T2 Ranger — fixed-wing VTOL carrier platform</figcaption>
+  </figure>
 
   <div class="section-title">Battery & Power</div>
   <table>
@@ -1057,8 +1078,83 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 <div id="tab-fpv" class="tab-panel">
 
   <div class="section-title">Platform Overview</div>
-  <p>The FPV sub-drone is a <strong>7"+ GPS quad running Betaflight</strong>. It is operated via the relay link from the carrier drone and has no direct RF connection to the ground station. All control and video passes through the carrier as a relay node.</p>
+  <p>The FPV sub-drone is a <strong>5" GPS quad running Betaflight</strong>. It is operated via the relay link from the carrier drone and has no direct RF connection to the ground station. All control and video passes through the carrier as a relay node.</p>
   <div class="alert alert-info">This vehicle is configured and flown entirely independently of ArduPlane. The carrier FC has no visibility of FPV link state, battery level, or position.</div>
+
+  <!-- FPV platform illustration -->
+  <svg viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:20px 0;font-family:'Share Tech Mono',monospace">
+    <text x="280" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">FPV SUB-DRONE — HARDWARE LAYOUT (TOP VIEW)</text>
+
+    <!-- ── Frame arms (X config) ── -->
+    <line x1="108" y1="70"  x2="232" y2="194" stroke="#333" stroke-width="10" stroke-linecap="round"/>
+    <line x1="328" y1="70"  x2="452" y2="194" stroke="#333" stroke-width="10" stroke-linecap="round"/>
+    <line x1="232" y1="70"  x2="108" y2="194" stroke="#333" stroke-width="10" stroke-linecap="round"/>
+    <line x1="452" y1="70"  x2="328" y2="194" stroke="#333" stroke-width="10" stroke-linecap="round"/>
+
+    <!-- ── Centre stack ── -->
+    <rect x="228" y="95" width="104" height="74" rx="6" fill="#1c1c1c" stroke="#555" stroke-width="1.5"/>
+    <!-- FC label -->
+    <text x="280" y="126" fill="#888" font-size="8" text-anchor="middle" letter-spacing="1">MATEK F405 STD</text>
+    <text x="280" y="138" fill="#555" font-size="7" text-anchor="middle">FC / ESC STACK</text>
+    <!-- Battery indicator bar (underside, conceptual) -->
+    <rect x="228" y="152" width="104" height="14" rx="3" fill="#f97316" opacity=".15" stroke="#f97316" stroke-width=".8"/>
+    <text x="280" y="162" fill="#f97316" font-size="7" text-anchor="middle" letter-spacing="1">6S 1300mAh</text>
+
+    <!-- ── Motors (props shown as dashed circles) ── -->
+    <!-- FL -->
+    <circle cx="108" cy="70"  r="38" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5 3" opacity=".7"/>
+    <circle cx="108" cy="70"  r="9"  fill="#2a2a2a" stroke="#888" stroke-width="2"/>
+    <text x="108" y="28" fill="#aaa" font-size="9" text-anchor="middle" letter-spacing="1">FL</text>
+    <text x="108" y="39" fill="#666" font-size="7" text-anchor="middle">1960KV</text>
+    <!-- FR -->
+    <circle cx="452" cy="70"  r="38" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5 3" opacity=".7"/>
+    <circle cx="452" cy="70"  r="9"  fill="#2a2a2a" stroke="#888" stroke-width="2"/>
+    <text x="452" y="28" fill="#aaa" font-size="9" text-anchor="middle" letter-spacing="1">FR</text>
+    <text x="452" y="39" fill="#666" font-size="7" text-anchor="middle">1960KV</text>
+    <!-- RL -->
+    <circle cx="108" cy="194" r="38" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5 3" opacity=".7"/>
+    <circle cx="108" cy="194" r="9"  fill="#2a2a2a" stroke="#888" stroke-width="2"/>
+    <text x="108" y="248" fill="#aaa" font-size="9" text-anchor="middle" letter-spacing="1">RL</text>
+    <text x="108" y="258" fill="#666" font-size="7" text-anchor="middle">DSHOT300</text>
+    <!-- RR -->
+    <circle cx="452" cy="194" r="38" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5 3" opacity=".7"/>
+    <circle cx="452" cy="194" r="9"  fill="#2a2a2a" stroke="#888" stroke-width="2"/>
+    <text x="452" y="248" fill="#aaa" font-size="9" text-anchor="middle" letter-spacing="1">RR</text>
+    <text x="452" y="258" fill="#666" font-size="7" text-anchor="middle">BIDIR-DSHOT</text>
+
+    <!-- ── Front camera ── -->
+    <rect x="255" y="68" width="50" height="24" rx="3" fill="#111" stroke="#555" stroke-width="1.2"/>
+    <circle cx="280" cy="80" r="7" fill="#0a0a0a" stroke="#888" stroke-width="1.5"/>
+    <circle cx="280" cy="80" r="3" fill="#1a1aff" opacity=".5"/>
+    <text x="280" y="62" fill="#888" font-size="8" text-anchor="middle" letter-spacing="1">FPV CAM</text>
+
+    <!-- ── GPS tower (rear centre) ── -->
+    <circle cx="280" cy="196" r="14" fill="#1c1c1c" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="3 2"/>
+    <text x="280" y="200" fill="#22c55e" font-size="7" text-anchor="middle">GPS</text>
+    <text x="280" y="215" fill="#22c55e" font-size="7" text-anchor="middle">+MAG</text>
+
+    <!-- ── VTX + antenna (right side) ── -->
+    <rect x="504" y="115" width="44" height="34" rx="3" fill="#1c1c1c" stroke="#a78bfa" stroke-width="1.2"/>
+    <text x="526" y="130" fill="#a78bfa" font-size="7" text-anchor="middle">VTX</text>
+    <text x="526" y="141" fill="#a78bfa" font-size="7" text-anchor="middle">5806MHz</text>
+    <line x1="548" y1="132" x2="556" y2="132" stroke="#a78bfa" stroke-width="1.5"/>
+    <line x1="556" y1="120" x2="556" y2="145" stroke="#a78bfa" stroke-width="1.5"/>
+
+    <!-- ── ELRS receiver (left side) ── -->
+    <rect x="12" y="115" width="44" height="34" rx="3" fill="#1c1c1c" stroke="#facc15" stroke-width="1.2"/>
+    <text x="34" y="130" fill="#facc15" font-size="7" text-anchor="middle">ELRS RX</text>
+    <text x="34" y="141" fill="#facc15" font-size="7" text-anchor="middle">2.4 GHz</text>
+    <line x1="12" y1="132" x2="4"  y2="132" stroke="#facc15" stroke-width="1.5"/>
+    <line x1="4"  y1="120" x2="4"  y2="145" stroke="#facc15" stroke-width="1.5"/>
+
+    <!-- ── "FRONT" label ── -->
+    <text x="280" y="249" fill="#444" font-size="8" text-anchor="middle" letter-spacing="2">▲ FRONT</text>
+  </svg>
+
+  <figure class="man-photo">
+    <img src="img/fpv_drone.jpg" alt="5-inch FPV racing quadcopter" loading="lazy" onerror="this.closest('figure').style.display='none'">
+    <figcaption>5" FPV sub-drone — 1960KV · 6S 1300mAh · ELRS 2.4GHz relay link</figcaption>
+  </figure>
 
   <div class="section-title">Hardware Configuration</div>
   <div class="card">
@@ -1595,7 +1691,13 @@ function toggleNavGroup(btn) {
   var dropdown = btn.nextElementSibling;
   var isOpen = dropdown.classList.contains('open');
   document.querySelectorAll('.nav-dropdown').forEach(d => d.classList.remove('open'));
-  if (!isOpen) dropdown.classList.add('open');
+  if (!isOpen) {
+    var r = btn.getBoundingClientRect();
+    dropdown.style.top  = r.bottom + 'px';
+    // keep within viewport right edge
+    dropdown.style.left = Math.min(r.left, window.innerWidth - 200) + 'px';
+    dropdown.classList.add('open');
+  }
 }
 
 function selectNavItem(name, btn, e) {
@@ -1614,6 +1716,9 @@ document.addEventListener('click', function(e) {
     document.querySelectorAll('.nav-dropdown').forEach(d => d.classList.remove('open'));
   }
 });
+window.addEventListener('scroll', function() {
+  document.querySelectorAll('.nav-dropdown').forEach(d => d.classList.remove('open'));
+}, {passive:true});
 function filterAbbrev() {
   const q = document.getElementById('abbrev-search').value.toLowerCase();
   ['abbrev-table-ardupilot','abbrev-table-modes','abbrev-table-electronics','abbrev-table-comms','abbrev-table-aviation'].forEach(id => {
