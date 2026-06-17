@@ -344,10 +344,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
       <button class="btn stop" onclick="clearGcsCoverage()" style="width:auto;padding:5px 10px">✕</button>
     </div>
     <div id="g-status" class="info-txt"></div>
-    <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);cursor:pointer">
-      <input type="checkbox" id="veg-show" onchange="drawVegLayer()" style="accent-color:#22c55e">
-      Show loaded forest polygons
-    </label>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4">Forest detected from topo tile colours. If wrong, draw zones manually:</div>
     <div style="display:flex;gap:4px;margin-top:4px">
       <button class="btn" id="veg-draw-btn" onclick="startVegDraw()" style="flex:1;font-size:11px">✏ Draw forest zone</button>
       <button class="btn stop" onclick="clearManualVeg()" style="width:auto;padding:5px 10px;font-size:11px" title="Clear manual zones">✕</button>
@@ -1367,120 +1364,124 @@ function updateCacheInfo() {
 }
 setInterval(updateCacheInfo, 2000);
 
-// ─── Vegetation polygons (OSM via Overpass) ───────────────────────────────────
-let vegPolygons = []; // {poly:[[lat,lon],...], minLat,maxLat,minLon,maxLon}
-let vegFetchKey = null;
-let vegLayer = null; // Leaflet overlay of loaded polygons
+// ─── Vegetation — satellite tile pixel sampling ───────────────────────────────
+// Instead of unreliable polygon databases, we sample the colour of a map tile
+// at the coordinate.  Topo tiles (Norgeskart / OpenTopoMap) paint forest in
+// a distinctive medium-green that is easy to threshold.
+//
+// Tiles are loaded at VEG_ZOOM with crossOrigin='anonymous', drawn to an
+// offscreen canvas, and the RGBA pixel at the exact coordinate is read.
+// The isForest() function is synchronous (loop-safe); tiles are pre-fetched
+// asynchronously before the coverage computation begins.
 
-function drawVegLayer() {
-  if (vegLayer) { map.removeLayer(vegLayer); vegLayer = null; }
-  if (!document.getElementById('veg-show').checked || !vegPolygons.length) return;
-  vegLayer = L.layerGroup().addTo(map);
-  for (const {poly} of vegPolygons)
-    L.polygon(poly.map(p=>[p[0],p[1]]),
-      {color:'#22c55e',weight:1,fillColor:'#22c55e',fillOpacity:0.18,opacity:0.5}
-    ).addTo(vegLayer);
-}
+const VEG_ZOOM = 13;  // ~1.2km/tile at 60°N — fast, still ~5m/px resolution
+const VEG_TILE = 256; // tile pixel size
+const vegTileCache = new Map(); // `${tx}/${ty}` → ImageData | null
+// Which URL template served a CORS-readable tile (-1=untested, null=none work)
+let vegSrcWorking = -1;
+let vegSrcName    = '';
 
-let vegSource = ''; // which backend returned the current vegPolygons
+// Tile URL builders tried in order. Norgeskart first (best for Norway).
+const VEG_SRCS = [
+  { name:'Norgeskart',  url:(z,x,y)=>`https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/${z}/${y}/${x}.png` },
+  { name:'OpenTopoMap', url:(z,x,y)=>`https://tile.opentopomap.org/${z}/${x}/${y}.png` },
+  { name:'Stamen topo', url:(z,x,y)=>`https://tiles.stadiamaps.com/tiles/stamen_terrain/${z}/${x}/${y}.png` },
+];
 
-// Parse GeoJSON features into internal poly format.
-// filter(feat) → true to include. rings are outer rings only.
-function _vegParseGeoJSON(features, filter) {
-  const out = [];
-  for (const feat of features) {
-    if (filter && !filter(feat)) continue;
-    const geom = feat.geometry;
-    if (!geom) continue;
-    const rings = geom.type === 'Polygon'   ? [geom.coordinates[0]]
-                : geom.type === 'MultiPolygon' ? geom.coordinates.map(c => c[0])
-                : [];
-    for (const ring of rings) {
-      if (!ring || ring.length < 3) continue;
-      const poly = ring.map(c => [c[1], c[0]]); // [lon,lat] → [lat,lon]
-      const lats = poly.map(p=>p[0]), lons = poly.map(p=>p[1]);
-      out.push({poly, minLat:Math.min(...lats), maxLat:Math.max(...lats),
-                       minLon:Math.min(...lons), maxLon:Math.max(...lons)});
-    }
-  }
-  return out;
-}
-
-// NIBIO AR5 WFS — authoritative Norwegian land resource map (1:5000).
-// artype 30 = Produktiv skog, 31 = Uproduktiv skog.
-async function _fetchVegNibio(s, w, n, e) {
-  const url = 'https://wfs.nibio.no/cgi-bin/ar5?' + new URLSearchParams({
-    SERVICE:'WFS', VERSION:'1.1.0', REQUEST:'GetFeature',
-    TYPENAME:'AR5N_Arealtype',
-    BBOX:`${w},${s},${e},${n},EPSG:4326`,
-    OUTPUTFORMAT:'application/json',
-    maxFeatures:'1000'
-  });
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const data = await r.json();
-  return _vegParseGeoJSON(data.features || [], feat => {
-    const at = Number(feat.properties?.artype);
-    return at === 30 || at === 31;
+// Load a tile image and extract its ImageData via an offscreen canvas.
+// Returns null if the image fails to load OR if CORS blocks pixel reads.
+function _loadTilePixels(url) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = c.height = VEG_TILE;
+        c.getContext('2d').drawImage(img, 0, 0);
+        resolve(c.getContext('2d').getImageData(0, 0, VEG_TILE, VEG_TILE));
+      } catch(_) { resolve(null); } // SecurityError — no CORS header
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
   });
 }
 
-// OSM Overpass fallback — global but incomplete in rural Norway.
-async function _fetchVegOSM(s, w, n, e) {
-  const q=`[out:json][timeout:25];(way["natural"="wood"](${s},${w},${n},${e});way["landuse"="forest"](${s},${w},${n},${e}););out geom;`;
-  const r = await fetch('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q));
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const data = await r.json();
-  const out = [];
-  for (const el of data.elements) {
-    if (el.type!=='way' || !el.geometry || el.geometry.length < 3) continue;
-    const poly = el.geometry.map(p=>[p.lat, p.lon]);
-    const lats=poly.map(p=>p[0]), lons=poly.map(p=>p[1]);
-    out.push({poly, minLat:Math.min(...lats), maxLat:Math.max(...lats),
-                     minLon:Math.min(...lons), maxLon:Math.max(...lons)});
-  }
-  return out;
-}
+async function _fetchVegTile(tx, ty) {
+  const key = `${tx}/${ty}`;
+  if (vegTileCache.has(key)) return vegTileCache.get(key);
 
-async function fetchVegetation(cLat, cLon, rangeM) {
-  const key = `${(cLat*100|0)},${(cLon*100|0)},${Math.round(rangeM/1000)}`;
-  if (key === vegFetchKey) return vegPolygons.length;
-  // Do NOT set vegFetchKey until success — failed fetch must be retryable
-  vegPolygons = [];
-  const dLat = rangeM / EARTH_R * R2D;
-  const dLon = rangeM / (EARTH_R * Math.cos(cLat * D2R)) * R2D;
-  const s=(cLat-dLat).toFixed(5), n=(cLat+dLat).toFixed(5);
-  const w=(cLon-dLon).toFixed(5), e=(cLon+dLon).toFixed(5);
-
-  // Try NIBIO AR5 first (Norway — far more complete than OSM for rural areas)
-  try {
-    const nibio = await _fetchVegNibio(s, w, n, e);
-    if (nibio.length > 0) {
-      vegPolygons = nibio;
-      vegSource = 'NIBIO AR5';
-      vegFetchKey = key;
-      console.log(`[veg] ${vegPolygons.length} polygon(s) from NIBIO AR5`);
-      drawVegLayer();
-      return vegPolygons.length;
+  let data = null;
+  if (vegSrcWorking === null) {
+    // All sources already tried and failed — skip
+  } else if (vegSrcWorking >= 0) {
+    data = await _loadTilePixels(VEG_SRCS[vegSrcWorking].url(VEG_ZOOM, tx, ty));
+  } else {
+    // Not yet tested — try each source once
+    for (let i = 0; i < VEG_SRCS.length; i++) {
+      data = await _loadTilePixels(VEG_SRCS[i].url(VEG_ZOOM, tx, ty));
+      if (data) { vegSrcWorking = i; vegSrcName = VEG_SRCS[i].name; break; }
     }
-    console.log('[veg] NIBIO returned 0 features — trying OSM');
-  } catch(err) {
-    console.warn('[veg NIBIO failed]', err.message, '— trying OSM');
+    if (!data) vegSrcWorking = null; // give up for this session
   }
-
-  // OSM Overpass fallback
-  try {
-    const osm = await _fetchVegOSM(s, w, n, e);
-    vegPolygons = osm;
-    vegSource = 'OSM';
-    vegFetchKey = key;
-    console.log(`[veg] ${vegPolygons.length} polygon(s) from OSM`);
-  } catch(err) {
-    console.warn('[veg OSM failed]', err.message);
-  }
-  drawVegLayer();
-  return vegPolygons.length;
+  vegTileCache.set(key, data);
+  return data;
 }
+
+// Standard Web Mercator lat/lon → tile coordinate + pixel offset
+function _latLonToVegPx(lat, lon) {
+  const n = 1 << VEG_ZOOM;
+  const xf = (lon + 180) / 360 * n;
+  const sinLat = Math.sin(lat * Math.PI / 180);
+  const yf = (1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2 * n;
+  return {
+    tx: Math.floor(xf),
+    ty: Math.floor(yf),
+    px: Math.min(Math.floor((xf - Math.floor(xf)) * VEG_TILE), VEG_TILE - 1),
+    py: Math.min(Math.floor((yf - Math.floor(yf)) * VEG_TILE), VEG_TILE - 1),
+  };
+}
+
+// Classify one pixel as vegetation.
+// Topo-map forest green (Norgeskart ~RGB 149,190,122, OpenTopoMap ~172,214,138):
+//   G clearly exceeds R and B, mid-brightness (not white/black/gray).
+// Satellite forest green (Norway summer ~RGB 60-100, 90-140, 40-80):
+//   Same rule, just darker.
+function _isVegPixel(r, g, b) {
+  return g > r + 12 && g > b + 8 && g > 55 && g < 235;
+}
+
+// Pre-fetch all vegetation tiles that cover the GCS coverage sample grid.
+// Must be called before _recomputeGcsSync() so isForest() is synchronous.
+async function prefetchVegTiles(cLat, cLon, rangeM) {
+  const needed = new Set();
+  // GCS point itself
+  const {tx:gx, ty:gy} = _latLonToVegPx(cLat, cLon);
+  needed.add(`${gx},${gy}`);
+  // All LOS sample points
+  for (let i = 0; i < N_BRG; i++) {
+    const brg = i * 360 / N_BRG;
+    for (let k = 1; k <= TERR_PTS; k++) {
+      const [lat, lon] = dest(cLat, cLon, brg, rangeM * k / TERR_PTS);
+      const {tx, ty} = _latLonToVegPx(lat, lon);
+      needed.add(`${tx},${ty}`);
+    }
+  }
+  const missing = [...needed].filter(k => !vegTileCache.has(k));
+  if (!missing.length) return;
+  await Promise.all(missing.map(k => {
+    const [tx, ty] = k.split(',').map(Number);
+    return _fetchVegTile(tx, ty);
+  }));
+  console.log(`[veg] ${needed.size} tiles (${missing.length} new) via ${vegSrcName||'?'}`);
+}
+
+// Manual forest zones drawn by user (array of same structure as vegPolygons)
+let manualVegZones = [];
+let _vegDrawing = false;
+let _vegDrawPts = [];
+let _vegDrawLayer = null;
+let _vegZoneLayer = null;
 
 function _ptInPoly(lat, lon, poly) {
   let inside = false;
@@ -1492,23 +1493,18 @@ function _ptInPoly(lat, lon, poly) {
   return inside;
 }
 
-// Manual forest zones drawn by user (array of same structure as vegPolygons)
-let manualVegZones = [];
-let _vegDrawing = false;
-let _vegDrawPts = [];
-let _vegDrawLayer = null;
-let _vegZoneLayer = null;
-
 function isForest(lat, lon) {
-  for (const {poly,minLat,maxLat,minLon,maxLon} of vegPolygons) {
-    if (lat<minLat||lat>maxLat||lon<minLon||lon>maxLon) continue;
-    if (_ptInPoly(lat,lon,poly)) return true;
-  }
+  // 1. Manual zones always win (drawn by user)
   for (const {poly,minLat,maxLat,minLon,maxLon} of manualVegZones) {
     if (lat<minLat||lat>maxLat||lon<minLon||lon>maxLon) continue;
     if (_ptInPoly(lat,lon,poly)) return true;
   }
-  return false;
+  // 2. Satellite tile pixel classification
+  const {tx, ty, px, py} = _latLonToVegPx(lat, lon);
+  const imgData = vegTileCache.get(`${tx}/${ty}`);
+  if (!imgData) return false; // tile not loaded or CORS blocked
+  const i = (py * VEG_TILE + px) * 4;
+  return _isVegPixel(imgData.data[i], imgData.data[i+1], imgData.data[i+2]);
 }
 
 function _drawManualVegPoly() {
@@ -1724,27 +1720,23 @@ async function computeGcsCoverage() {
   }
 
   if (treeH > 0) {
-    stEl.textContent='Loading vegetation data (OSM)…';
-    const nPoly = await fetchVegetation(lat, lon, maxR);
-    stEl.textContent = nPoly > 0
-      ? `${nPoly} forest polygon${nPoly!==1?'s':''} loaded — computing…`
-      : 'No forest polygons in area — computing…';
+    stEl.textContent = `Sampling ${VEG_SRCS.map(s=>s.name).join(' / ')} tiles…`;
+    await prefetchVegTiles(lat, lon, maxR);
+    if (vegSrcWorking === null) {
+      stEl.style.color='#fa4';
+      stEl.textContent='⚠ All tile sources blocked CORS — use manual forest zones instead';
+      // Still compute (manual zones may exist)
+    }
   } else {
     stEl.textContent='Computing…';
   }
 
   _recomputeGcsSync();
   stEl.style.color='#4f8';
-  const nPoly = vegPolygons.length;
   if (treeH > 0) {
-    if (nPoly === 0) {
-      stEl.style.color='#fa4';
-      stEl.textContent='⚠ No forest polygons loaded — both NIBIO AR5 and OSM returned nothing';
-    } else {
-      const inF = isForest(lat, lon);
-      const gcsTag = inF ? 'GCS IN FOREST' : 'GCS in open';
-      stEl.textContent=`${nPoly} poly${nPoly!==1?'s':''} (${vegSource}) · ${gcsTag} · live`;
-    }
+    const inF = isForest(lat, lon);
+    const src  = vegSrcWorking !== null ? (vegSrcName||'tiles') : 'manual zones only';
+    stEl.textContent = `${inF ? 'GCS IN FOREST' : 'GCS in open'} · ${src} · live`;
   } else {
     stEl.textContent='Ready — updates with aircraft alt';
   }
