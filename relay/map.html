@@ -187,6 +187,14 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
           padding:6px 18px;font-size:11px;pointer-events:none;font-family:var(--head);
           letter-spacing:1.5px;text-transform:uppercase}
 @keyframes blink{50%{opacity:.4}}
+
+/* Offline download panel */
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+progress.off-prog{width:100%;height:4px;appearance:none;border:none;
+                  background:var(--surface2);margin:4px 0;display:block}
+progress.off-prog::-webkit-progress-bar{background:var(--surface2)}
+progress.off-prog::-webkit-progress-value{background:var(--accent)}
+progress.off-prog::-moz-progress-bar{background:var(--accent)}
 </style>
 </head>
 <body>
@@ -374,6 +382,33 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
     <div class="lr"><div class="ls" style="background:#a78bfa"></div>GCS: terrain / trees blocked</div>
     <div class="lr"><div class="ls" style="background:#22c55e;border-radius:50%;height:8px;width:8px"></div>GCS position</div>
   </div>
+
+  <div class="pnl">
+    <h2>Offline Data</h2>
+    <button class="btn" id="off-draw-btn" onclick="startOfflineDraw()">▭ Draw Area</button>
+    <div class="center-lbl" id="off-area-lbl" style="margin-top:6px">No area selected</div>
+    <div class="divider" style="margin:10px 0 8px"></div>
+    <div class="fld">
+      <label>Map tiles — max zoom</label>
+      <div class="vtx-row" style="margin-bottom:0">
+        <input type="range" id="off-maxz" min="10" max="16" value="14" step="1"
+               oninput="document.getElementById('off-maxz-lbl').textContent=this.value; updateOfflineStats()"/>
+        <span id="off-maxz-lbl">14</span>
+      </div>
+    </div>
+    <div class="info-txt" id="off-terr-info" style="margin-top:4px">Select area to see tile count</div>
+    <progress class="off-prog" id="off-terr-prog" value="0" max="1" style="display:none"></progress>
+    <button class="btn" id="off-terr-btn" onclick="downloadTerrainArea()" style="margin-top:4px">↓ Cache Terrain Tiles</button>
+    <div class="info-txt" id="off-map-info" style="margin-top:10px">Select area to see tile count</div>
+    <progress class="off-prog" id="off-map-prog" value="0" max="1" style="display:none"></progress>
+    <button class="btn" id="off-map-btn" onclick="downloadMapArea()" style="margin-top:4px">↓ Cache Map Tiles</button>
+    <div class="divider" style="margin:10px 0 8px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="info-txt" id="off-cache-stats" style="margin:0">Cache: loading…</div>
+      <button class="btn stop" onclick="clearOfflineCache()"
+              style="width:auto;padding:4px 10px;margin:0;font-size:10px;letter-spacing:1px">✕ Clear</button>
+    </div>
+  </div>
 </div><!-- #sb -->
 </div><!-- #sb-wrap -->
 
@@ -453,6 +488,60 @@ const sim = {
 const TERR_ZOOM = 11;
 const tileCache = new Map(); // key: "11/tx/ty" → ImageData | null (null = loading)
 
+// ─── IndexedDB — persistent offline tile cache ────────────────────────────────
+let _offlineDB = null;
+async function _openOfflineDB() {
+  if (_offlineDB) return _offlineDB;
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('vtol-offline-v1', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('terrain')) db.createObjectStore('terrain');
+      if (!db.objectStoreNames.contains('maptiles')) db.createObjectStore('maptiles');
+    };
+    req.onsuccess = e => { _offlineDB = e.target.result; resolve(_offlineDB); };
+    req.onerror = () => reject(req.error);
+  });
+}
+async function _idbGet(store, key) {
+  try {
+    const db = await _openOfflineDB();
+    return new Promise(res => {
+      const req = db.transaction(store,'readonly').objectStore(store).get(key);
+      req.onsuccess = () => res(req.result ?? null);
+      req.onerror = () => res(null);
+    });
+  } catch { return null; }
+}
+async function _idbPut(store, key, val) {
+  try {
+    const db = await _openOfflineDB();
+    return new Promise(res => {
+      const tx = db.transaction(store,'readwrite');
+      tx.objectStore(store).put(val, key);
+      tx.oncomplete = res; tx.onerror = res;
+    });
+  } catch {}
+}
+async function _idbClear(store) {
+  const db = await _openOfflineDB();
+  return new Promise(res => {
+    const tx = db.transaction(store,'readwrite');
+    tx.objectStore(store).clear();
+    tx.oncomplete = res; tx.onerror = res;
+  });
+}
+async function _idbCount(store) {
+  try {
+    const db = await _openOfflineDB();
+    return new Promise(res => {
+      const req = db.transaction(store,'readonly').objectStore(store).count();
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => res(0);
+    });
+  } catch { return 0; }
+}
+
 // ─── Geometry ─────────────────────────────────────────────────────────────────
 function roundTo(x, n) { const f = 10**n; return Math.round(x*f)/f; }
 
@@ -498,7 +587,9 @@ function _tilePixel(lat, lon, tx, ty) {
 async function _fetchTile(tx, ty) {
   const key = `${TERR_ZOOM}/${tx}/${ty}`;
   if (tileCache.has(key)) return tileCache.get(key);
-  tileCache.set(key, null); // in-flight placeholder prevents duplicate requests
+  tileCache.set(key, null);
+  const cached = await _idbGet('terrain', key);
+  if (cached) { tileCache.set(key, cached); return cached; }
   try {
     const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${TERR_ZOOM}/${tx}/${ty}.png`;
     const r = await fetch(url, {mode:'cors'});
@@ -511,9 +602,10 @@ async function _fetchTile(tx, ty) {
     can.getContext('2d').drawImage(img, 0, 0);
     const data = can.getContext('2d').getImageData(0, 0, 256, 256);
     tileCache.set(key, data);
+    _idbPut('terrain', key, data);
     return data;
   } catch(e) {
-    tileCache.delete(key); // allow retry on next cycle
+    tileCache.delete(key);
     console.warn('[tile]', e.message);
     return null;
   }
@@ -754,13 +846,44 @@ function parseMission(text) {
   return wps;
 }
 
+// ─── Offline-aware tile layer ─────────────────────────────────────────────────
+const OfflineTileLayer = L.TileLayer.extend({
+  createTile(coords, done) {
+    const img = L.DomUtil.create('img', 'leaflet-tile');
+    img.alt = '';
+    img.onload = () => done(null, img);
+    img.onerror = e => done(e, img);
+    const url = this._buildUrl(coords);
+    _idbGet('maptiles', url).then(blob => {
+      img.src = blob ? URL.createObjectURL(blob) : url;
+    });
+    return img;
+  },
+  _buildUrl(coords) {
+    let url = this._url
+      .replace('{z}', coords.z)
+      .replace('{x}', coords.x)
+      .replace('{y}', coords.y)
+      .replace('{r}', '');
+    if (url.includes('{s}')) {
+      const subs = this.options.subdomains || 'abc';
+      url = url.replace('{s}', subs[(coords.x + coords.y) % subs.length]);
+    }
+    return url;
+  }
+});
+
+function _buildTileUrl(layer, z, x, y) {
+  return layer._buildUrl({z, x, y});
+}
+
 // ─── Leaflet map ──────────────────────────────────────────────────────────────
 const LAYERS={
-  topo:L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'©OpenTopoMap',maxZoom:17}),
-  sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'©ESRI',maxZoom:18}),
-  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'©OSM',maxZoom:19}),
-  dark:L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'©CartoDB',maxZoom:19}),
-  norgeskart:L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',{attribution:'©<a href="https://www.kartverket.no">Kartverket</a>',maxZoom:19}),
+  topo:       new OfflineTileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'©OpenTopoMap',maxZoom:17,subdomains:'abc'}),
+  sat:        new OfflineTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'©ESRI',maxZoom:18}),
+  osm:        new OfflineTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'©OSM',maxZoom:19,subdomains:'abc'}),
+  dark:       new OfflineTileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'©CartoDB',maxZoom:19,subdomains:'abcd'}),
+  norgeskart: new OfflineTileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',{attribution:'©<a href="https://www.kartverket.no">Kartverket</a>',maxZoom:19}),
 };
 const map=L.map('map').setView([61.222,10.769],13);
 LAYERS.topo.addTo(map);
@@ -1115,6 +1238,29 @@ L.Control.Measure=L.Control.extend({
 new L.Control.Measure().addTo(map);
 
 // ─── Map event handlers ───────────────────────────────────────────────────────
+map.on('mousedown', e => {
+  if (!drawingOffline) return;
+  offlineDrawStart = e.latlng;
+  if (offlineRect) { map.removeLayer(offlineRect); offlineRect = null; }
+  L.DomEvent.preventDefault(e.originalEvent);
+});
+map.on('mouseup', e => {
+  if (!drawingOffline || !offlineDrawStart) return;
+  const b = L.latLngBounds(offlineDrawStart, e.latlng);
+  if (b.getNorth() === b.getSouth() || b.getEast() === b.getWest()) {
+    toast('Too small — drag to select an area', 3000); return;
+  }
+  offlineArea = {sw: b.getSouthWest(), ne: b.getNorthEast()};
+  drawingOffline = false; offlineDrawStart = null;
+  map.dragging.enable();
+  map.getContainer().classList.remove('measuring');
+  document.getElementById('off-draw-btn').textContent = '▭ Redraw';
+  document.getElementById('off-area-lbl').textContent =
+    `${offlineArea.sw.lat.toFixed(4)}°, ${offlineArea.sw.lng.toFixed(4)}° → `+
+    `${offlineArea.ne.lat.toFixed(4)}°, ${offlineArea.ne.lng.toFixed(4)}°`;
+  updateOfflineStats();
+});
+
 map.on('click',e=>{
   if (pickingGcs) {
     pickingGcs=false; map.getContainer().classList.remove('picking-gcs');
@@ -1124,6 +1270,7 @@ map.on('click',e=>{
     pickingOrbitCenter=false; map.getContainer().classList.remove('picking');
     setOrbitCenter(e.latlng); toast('Orbit center set'); return;
   }
+  if (drawingOffline) return;
   if (measuring) {
     clearTimeout(clickTimer);
     clickTimer=setTimeout(()=>{ measurePts.push(e.latlng); redrawMeasure(); },220);
@@ -1167,6 +1314,16 @@ map.on('mousemove',e=>{
     const v=lookupElev(lat,lon);
     document.getElementById('cursor-elev').textContent=v!==null?Math.round(v)+' m / '+Math.round(v*3.28084)+' ft':'—';
   },60);
+  if (drawingOffline && offlineDrawStart) {
+    const b = L.latLngBounds(offlineDrawStart, e.latlng);
+    if (!offlineRect) {
+      offlineRect = L.rectangle(b, {
+        color:'#f97316', weight:2, fillColor:'#f97316', fillOpacity:0.08, dashArray:'6,4'
+      }).addTo(map);
+    } else {
+      offlineRect.setBounds(b);
+    }
+  }
   if (!measuring||!measurePts.length) {
     if (rubberLayer){map.removeLayer(rubberLayer);rubberLayer=null;} return;
   }
@@ -1343,6 +1500,127 @@ function clearGcsCoverage() {
   document.getElementById('g-status').textContent='';
 }
 
+// ─── Offline tile download ────────────────────────────────────────────────────
+let drawingOffline = false, offlineDrawStart = null;
+let offlineArea = null; // {sw, ne} as L.LatLng
+let offlineRect = null; // L.Rectangle on map
+
+function startOfflineDraw() {
+  if (drawingOffline) {
+    drawingOffline = false; offlineDrawStart = null;
+    map.dragging.enable();
+    map.getContainer().classList.remove('measuring');
+    document.getElementById('off-draw-btn').textContent = offlineRect ? '▭ Redraw' : '▭ Draw Area';
+    return;
+  }
+  drawingOffline = true;
+  map.dragging.disable();
+  map.getContainer().classList.add('measuring');
+  document.getElementById('off-draw-btn').textContent = '✕ Cancel';
+  toast('Drag on map to select download area', 4000);
+}
+
+function _tilesForBounds(sw, ne, zoom) {
+  const n = 1 << zoom;
+  function latToY(lat) {
+    const s = Math.sin(lat.lat * D2R);
+    return Math.floor((1 - Math.log((1 + s) / (1 - s)) / (2 * Math.PI)) / 2 * n);
+  }
+  const tx1 = Math.floor((sw.lng + 180) / 360 * n);
+  const tx2 = Math.floor((ne.lng + 180) / 360 * n);
+  const ty1 = latToY(ne); // north = smaller y
+  const ty2 = latToY(sw);
+  return {tx1, ty1, tx2, ty2, count: Math.max(0, (tx2 - tx1 + 1) * (ty2 - ty1 + 1))};
+}
+
+function updateOfflineStats() {
+  if (!offlineArea) return;
+  const {sw, ne} = offlineArea;
+  const tc = _tilesForBounds(sw, ne, TERR_ZOOM).count;
+  const maxZ = parseInt(document.getElementById('off-maxz').value) || 14;
+  let mc = 0;
+  for (let z = 10; z <= maxZ; z++) mc += _tilesForBounds(sw, ne, z).count;
+  document.getElementById('off-terr-info').textContent =
+    `${tc} terrain tile${tc!==1?'s':''} (~${(tc*0.05).toFixed(1)} MB)`;
+  document.getElementById('off-map-info').textContent =
+    `${mc} map tile${mc!==1?'s':''} (~${(mc*0.05).toFixed(1)} MB, zoom 10–${maxZ})`;
+}
+
+async function downloadTerrainArea() {
+  if (!offlineArea) { toast('Draw an area first', 3000); return; }
+  const {sw, ne} = offlineArea;
+  const {tx1, ty1, tx2, ty2, count} = _tilesForBounds(sw, ne, TERR_ZOOM);
+  if (count > 600) { toast(`Too many tiles (${count}). Reduce area.`, 4000); return; }
+  const btn = document.getElementById('off-terr-btn');
+  const prog = document.getElementById('off-terr-prog');
+  btn.disabled = true; prog.style.display = '';
+  let done = 0;
+  for (let tx = tx1; tx <= tx2; tx++) {
+    for (let ty = ty1; ty <= ty2; ty++) {
+      await _fetchTile(tx, ty);
+      prog.value = ++done / count;
+      if (done % 5 === 0)
+        document.getElementById('off-terr-info').textContent = `${done}/${count} terrain tiles…`;
+    }
+  }
+  btn.disabled = false; prog.style.display = 'none';
+  await updateOfflineCacheStats();
+  toast(`${count} terrain tiles cached`, 3000);
+  updateOfflineStats();
+}
+
+async function downloadMapArea() {
+  if (!offlineArea) { toast('Draw an area first', 3000); return; }
+  const {sw, ne} = offlineArea;
+  const maxZ = parseInt(document.getElementById('off-maxz').value) || 14;
+  const tiles = [];
+  for (let z = 10; z <= maxZ; z++) {
+    const {tx1, ty1, tx2, ty2} = _tilesForBounds(sw, ne, z);
+    for (let tx = tx1; tx <= tx2; tx++)
+      for (let ty = ty1; ty <= ty2; ty++)
+        tiles.push({z, x: tx, y: ty});
+  }
+  if (tiles.length > 3000) { toast(`Too many tiles (${tiles.length}). Lower max zoom.`, 4000); return; }
+  const btn = document.getElementById('off-map-btn');
+  const prog = document.getElementById('off-map-prog');
+  btn.disabled = true; prog.style.display = '';
+  let done = 0, errors = 0;
+  const layer = LAYERS[activeLayer];
+  for (const coords of tiles) {
+    const url = _buildTileUrl(layer, coords.z, coords.x, coords.y);
+    if (!(await _idbGet('maptiles', url))) {
+      try {
+        const r = await fetch(url, {mode:'cors'});
+        if (r.ok) await _idbPut('maptiles', url, await r.blob());
+        else errors++;
+      } catch { errors++; }
+    }
+    prog.value = ++done / tiles.length;
+    if (done % 20 === 0)
+      document.getElementById('off-map-info').textContent =
+        `${done}/${tiles.length} map tiles (${errors} failed)…`;
+  }
+  btn.disabled = false; prog.style.display = 'none';
+  await updateOfflineCacheStats();
+  toast(`${done - errors} map tiles cached${errors ? ` (${errors} failed — CORS limit)` : ''}`, 4000);
+  updateOfflineStats();
+}
+
+async function clearOfflineCache() {
+  await _idbClear('terrain');
+  await _idbClear('maptiles');
+  tileCache.clear();
+  await updateOfflineCacheStats();
+  toast('Offline cache cleared', 3000);
+}
+
+async function updateOfflineCacheStats() {
+  const tc = await _idbCount('terrain');
+  const mc = await _idbCount('maptiles');
+  const el = document.getElementById('off-cache-stats');
+  if (el) el.textContent = `Cached: ${tc} terrain, ${mc} map tiles`;
+}
+
 // ─── Sidebar toggle ───────────────────────────────────────────────────────────
 function toggleSb() {
   const w = document.getElementById('sb-wrap');
@@ -1361,6 +1639,7 @@ document.getElementById('m-lon').value = '10.768342';
 applyManual();
 setGcsPos({lat: 61.220179414089365, lng: 10.769059956005174});
 computeGcsCoverage();
+updateOfflineCacheStats();
 </script>
 </body>
 </html>
