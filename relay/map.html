@@ -1412,6 +1412,15 @@ function isForest(lat, lon) {
   return false;
 }
 
+// ITU-R P.833 vegetation attenuation for 5.8 GHz.
+// Saturates at A_MAX — signal diffracts around after enough depth.
+const FOREST_DB_M = 0.40;  // specific attenuation dB/m (dense forest, 5.8 GHz)
+const FOREST_A_MAX = 20.0; // max excess attenuation dB before diffraction takes over
+function forestAttnDB(depthM) {
+  if (depthM <= 0) return 0;
+  return FOREST_A_MAX * (1 - Math.exp(-depthM * FOREST_DB_M / FOREST_A_MAX));
+}
+
 // ─── GCS Coverage ─────────────────────────────────────────────────────────────
 const gcsState = {lat:null, lon:null, ant_h:2.0, tree_h:15.0, max_range:15000};
 let gcsMarker=null, gcsPolyLayer=null, pickingGcs=false;
@@ -1447,40 +1456,53 @@ function setGcsPos(latlng) {
 
 function gcsTerrainLos(gLat, gLon, antH, treeH, brg, capR, sampleR, carrierAlt) {
   const gcsTer = lookupElev(gLat, gLon) ?? 0;
-  const gcsAsl = gcsTer + antH;
+  // If antenna is below the local canopy, raise the effective LOS origin to canopy level.
+  // This blocks all bearings whose elevation angle is too shallow to clear the immediate treetops.
+  const gcsCanopyH = treeH > 0 && isForest(gLat, gLon) ? treeH : 0;
+  const gcsAsl = gcsTer + Math.max(antH, gcsCanopyH);
 
-  // samp[i] = [dist, baseTer, blockTer]
-  // baseTer: raw terrain at sample point (for carrier target height)
-  // blockTer: terrain + trees (for LOS obstruction check)
+  // samp[i] = [dist, baseTer, blockTer, inForest]
   const samp = [];
   for (let k=1; k<=TERR_PTS; k++) {
     const d = sampleR * k / TERR_PTS;
     const [sl, so] = dest(gLat, gLon, brg, d);
     const ter = lookupElev(sl, so);
-    const canopy = ter !== null ? (treeH > 0 && isForest(sl, so) ? treeH : 0) : 0;
-    samp.push([d, ter, ter !== null ? ter + canopy : null]);
+    const inf = treeH > 0 && isForest(sl, so);
+    const canopy = ter !== null && inf ? treeH : 0;
+    samp.push([d, ter, ter !== null ? ter + canopy : null, inf]);
   }
 
   if (!samp.some(s => s[1] !== null)) return [Math.min(NO_DATA_RANGE, capR), 'nodata'];
 
+  // Accumulate forest depth along path for ITU-R foliage attenuation.
+  // Seed with one step for GCS vicinity so nearby forest counts even
+  // before the first discrete sample point.
+  const stepLen = sampleR / TERR_PTS;
+  let forestDepth = gcsCanopyH > 0 ? stepLen : 0;
+
   let maxC = NO_DATA_RANGE, lim = 'nodata';
   for (let i=0; i<samp.length; i++) {
-    const [dT, baseTer] = samp[i];
-    if (dT > capR) { if (lim==='nodata') { maxC=capR; lim='rf'; } break; }
+    const [dT, baseTer,,inForest] = samp[i];
+    if (inForest) forestDepth += stepLen;
+
+    // Foliage attenuation reduces effective range for this bearing
+    const attnDB = forestAttnDB(forestDepth);
+    const effCapR = capR * Math.pow(10, -attnDB / 20);
+
+    if (dT > effCapR) { if (lim==='nodata') { maxC=effCapR; lim='rf'; } break; }
+    if (dT > capR)    { if (lim==='nodata') { maxC=capR;    lim='rf'; } break; }
     if (baseTer === null) break;
-    // carrierAlt is already AMSL (converted by _recomputeGcsSync / computeGcsCoverage)
+
     const tAsl = carrierAlt;
     let ok = true;
     for (let j=0; j<i; j++) {
       const [dM,, blockM] = samp[j];
       if (blockM === null) { ok=false; break; }
       const frac = dM / dT;
-      // LOS line height at intermediate point (with Earth bulge correction)
       const losH = gcsAsl + (tAsl - gcsAsl) * frac - dM * (dT - dM) / (2 * EARTH_R_EFF);
-      // Terrain + trees must clear LOS (with 25m Fresnel margin at mid-path)
       if (blockM > losH - 25 * 4 * frac * (1 - frac)) { ok=false; break; }
     }
-    if (ok) { maxC=dT; lim=i<TERR_PTS-1?'terrain':'rf'; }
+    if (ok) { maxC = Math.min(dT, effCapR); lim = i<TERR_PTS-1 ? 'terrain' : 'rf'; }
     else break;
   }
   return [Math.min(maxC, capR), lim];
