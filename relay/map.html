@@ -344,6 +344,10 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
       <button class="btn stop" onclick="clearGcsCoverage()" style="width:auto;padding:5px 10px">✕</button>
     </div>
     <div id="g-status" class="info-txt"></div>
+    <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="veg-show" onchange="drawVegLayer()" style="accent-color:#22c55e">
+      Show forest polygons (OSM)
+    </label>
   </div>
 
   <div class="pnl">
@@ -1361,40 +1365,47 @@ setInterval(updateCacheInfo, 2000);
 // ─── Vegetation polygons (OSM via Overpass) ───────────────────────────────────
 let vegPolygons = []; // {poly:[[lat,lon],...], minLat,maxLat,minLon,maxLon}
 let vegFetchKey = null;
+let vegLayer = null; // Leaflet overlay of loaded polygons
+
+function drawVegLayer() {
+  if (vegLayer) { map.removeLayer(vegLayer); vegLayer = null; }
+  if (!document.getElementById('veg-show').checked || !vegPolygons.length) return;
+  vegLayer = L.layerGroup().addTo(map);
+  for (const {poly} of vegPolygons)
+    L.polygon(poly.map(p=>[p[0],p[1]]),
+      {color:'#22c55e',weight:1,fillColor:'#22c55e',fillOpacity:0.18,opacity:0.5}
+    ).addTo(vegLayer);
+}
 
 async function fetchVegetation(cLat, cLon, rangeM) {
   const key = `${(cLat*100|0)},${(cLon*100|0)},${Math.round(rangeM/1000)}`;
   if (key === vegFetchKey) return vegPolygons.length;
-  vegFetchKey = key; vegPolygons = [];
+  // Do NOT set vegFetchKey until success — failed fetch must be retryable
+  vegPolygons = [];
   const dLat = rangeM / EARTH_R * R2D;
   const dLon = rangeM / (EARTH_R * Math.cos(cLat * D2R)) * R2D;
   const s=(cLat-dLat).toFixed(5), n=(cLat+dLat).toFixed(5);
   const w=(cLon-dLon).toFixed(5), e=(cLon+dLon).toFixed(5);
-  const q=`[out:json][timeout:25];(way["natural"="wood"](${s},${w},${n},${e});way["landuse"="forest"](${s},${w},${n},${e});relation["natural"="wood"](${s},${w},${n},${e});relation["landuse"="forest"](${s},${w},${n},${e}););out geom qt;`;
+  // Ways only — covers 99%+ of mapped forest; no relations (slow + complex)
+  const q=`[out:json][timeout:25];(way["natural"="wood"](${s},${w},${n},${e});way["landuse"="forest"](${s},${w},${n},${e}););out geom;`;
   try {
-    const r = await fetch('https://overpass-api.de/api/interpreter', {
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'data='+encodeURIComponent(q)
-    });
-    if (!r.ok) return 0;
+    const r = await fetch('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(q));
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     for (const el of data.elements) {
-      const rings = [];
-      if (el.type==='way' && el.geometry)
-        rings.push(el.geometry.map(p=>[p.lat,p.lon]));
-      else if (el.type==='relation' && el.members)
-        for (const m of el.members)
-          if (m.role==='outer' && m.geometry) rings.push(m.geometry.map(p=>[p.lat,p.lon]));
-      for (const poly of rings) {
-        if (poly.length < 3) continue;
-        const lats=poly.map(p=>p[0]), lons=poly.map(p=>p[1]);
-        vegPolygons.push({poly,
-          minLat:Math.min(...lats), maxLat:Math.max(...lats),
-          minLon:Math.min(...lons), maxLon:Math.max(...lons)});
-      }
+      if (el.type!=='way' || !el.geometry || el.geometry.length < 3) continue;
+      const poly = el.geometry.map(p=>[p.lat, p.lon]);
+      const lats=poly.map(p=>p[0]), lons=poly.map(p=>p[1]);
+      vegPolygons.push({poly,
+        minLat:Math.min(...lats), maxLat:Math.max(...lats),
+        minLon:Math.min(...lons), maxLon:Math.max(...lons)});
     }
-  } catch(err) { console.warn('[veg]', err.message); }
+    vegFetchKey = key; // only cache on success
+    console.log(`[veg] ${vegPolygons.length} polygon(s) loaded (${q.length}b query)`);
+  } catch(err) {
+    console.warn('[veg fetch failed]', err.message);
+  }
+  drawVegLayer();
   return vegPolygons.length;
 }
 
@@ -1571,9 +1582,18 @@ async function computeGcsCoverage() {
   _recomputeGcsSync();
   stEl.style.color='#4f8';
   const nPoly = vegPolygons.length;
-  stEl.textContent = treeH > 0 && nPoly > 0
-    ? `Ready — ${nPoly} forest area${nPoly!==1?'s':''} (OSM) · updates with aircraft alt`
-    : 'Ready — updates with aircraft alt';
+  if (treeH > 0) {
+    if (nPoly === 0) {
+      stEl.style.color='#fa4';
+      stEl.textContent='⚠ No forest polygons loaded (OSM fetch failed or area has none)';
+    } else {
+      const inF = isForest(lat, lon);
+      const gcsTag = inF ? '🌲 GCS IN FOREST' : 'GCS in open';
+      stEl.textContent=`${nPoly} polygon${nPoly!==1?'s':''} · ${gcsTag} · updates with aircraft alt`;
+    }
+  } else {
+    stEl.textContent='Ready — updates with aircraft alt';
+  }
 }
 
 function clearGcsCoverage() {
