@@ -101,10 +101,22 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
 .vtx-row input[type=range]{flex:1;accent-color:var(--accent);height:4px}
 .vtx-row span{font-size:13px;color:var(--accent);width:52px;text-align:right;font-family:var(--head)}
 
-/* Select */
-select.layer-sel{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
-                 padding:5px 8px;font-family:var(--mono);font-size:13px}
-select.layer-sel:focus{outline:none;border-color:var(--accent)}
+/* Custom layer dropdown */
+.layer-dd{position:relative;width:100%}
+.layer-dd-btn{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
+              padding:5px 28px 5px 8px;font-family:var(--mono);font-size:13px;
+              cursor:pointer;text-align:left;position:relative;transition:border-color .15s}
+.layer-dd-btn:hover,.layer-dd-btn.open{border-color:var(--accent)}
+.layer-dd-btn::after{content:'▾';position:absolute;right:8px;top:50%;transform:translateY(-50%);
+                     color:var(--muted);font-size:11px;pointer-events:none}
+.layer-dd-list{display:none;position:absolute;top:100%;left:0;right:0;z-index:9999;
+               background:var(--surface);border:1px solid var(--accent);
+               border-top:none;margin-top:-1px}
+.layer-dd-list.open{display:block}
+.layer-dd-item{padding:7px 10px;font-family:var(--mono);font-size:13px;color:var(--text);
+               cursor:pointer;transition:background .1s}
+.layer-dd-item:hover{background:var(--surface2);color:var(--accent)}
+.layer-dd-item.active{color:var(--accent)}
 
 /* Sim */
 .sim-sub{padding-top:8px;border-top:1px solid var(--border);margin-top:8px}
@@ -328,13 +340,16 @@ select.layer-sel:focus{outline:none;border-color:var(--accent)}
 
   <div class="pnl">
     <h2>Map Layer</h2>
-    <select class="layer-sel" onchange="switchLayer(this.value)">
-      <option value="topo">Topo (OpenTopoMap)</option>
-      <option value="norgeskart">Norgeskart (Kartverket)</option>
-      <option value="sat">Satellite (ESRI)</option>
-      <option value="osm">Street (OSM)</option>
-      <option value="dark">Dark (CartoDB)</option>
-    </select>
+    <div class="layer-dd" id="layer-dd">
+      <button class="layer-dd-btn" id="layer-dd-btn" onclick="toggleLayerDd(event)">Topo (OpenTopoMap)</button>
+      <div class="layer-dd-list" id="layer-dd-list">
+        <div class="layer-dd-item active" onclick="pickLayer('topo','Topo (OpenTopoMap)')">Topo (OpenTopoMap)</div>
+        <div class="layer-dd-item" onclick="pickLayer('norgeskart','Norgeskart (Kartverket)')">Norgeskart (Kartverket)</div>
+        <div class="layer-dd-item" onclick="pickLayer('sat','Satellite (ESRI)')">Satellite (ESRI)</div>
+        <div class="layer-dd-item" onclick="pickLayer('osm','Street (OSM)')">Street (OSM)</div>
+        <div class="layer-dd-item" onclick="pickLayer('dark','Dark (CartoDB)')">Dark (CartoDB)</div>
+      </div>
+    </div>
   </div>
 
   <div class="pnl">
@@ -752,6 +767,26 @@ LAYERS.topo.addTo(map);
 let activeLayer='topo';
 
 function switchLayer(k) { map.removeLayer(LAYERS[activeLayer]); LAYERS[k].addTo(map); activeLayer=k; }
+
+function toggleLayerDd(e) {
+  e.stopPropagation();
+  const list=document.getElementById('layer-dd-list');
+  const btn=document.getElementById('layer-dd-btn');
+  const open=list.classList.toggle('open');
+  btn.classList.toggle('open',open);
+}
+function pickLayer(key,label) {
+  switchLayer(key);
+  document.getElementById('layer-dd-btn').textContent=label;
+  document.getElementById('layer-dd-list').classList.remove('open');
+  document.getElementById('layer-dd-btn').classList.remove('open');
+  document.querySelectorAll('.layer-dd-item').forEach(el=>
+    el.classList.toggle('active', el.textContent===label));
+}
+document.addEventListener('click',()=>{
+  document.getElementById('layer-dd-list').classList.remove('open');
+  document.getElementById('layer-dd-btn').classList.remove('open');
+});
 
 function acIcon(hdg) {
   return L.divIcon({className:'',iconSize:[44,44],iconAnchor:[22,22],
