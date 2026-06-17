@@ -330,6 +330,7 @@ select.layer-sel:focus{outline:none;border-color:var(--accent)}
     <h2>Map Layer</h2>
     <select class="layer-sel" onchange="switchLayer(this.value)">
       <option value="topo">Topo (OpenTopoMap)</option>
+      <option value="norgeskart">Norgeskart (Kartverket)</option>
       <option value="sat">Satellite (ESRI)</option>
       <option value="osm">Street (OSM)</option>
       <option value="dark">Dark (CartoDB)</option>
@@ -348,15 +349,15 @@ select.layer-sel:focus{outline:none;border-color:var(--accent)}
   <div class="pnl">
     <h2>Legend</h2>
     <div class="lr"><div class="ls" style="background:#60a5fa"></div>Relay: RF-limited</div>
-    <div class="lr"><div class="ls" style="background:#facc15"></div>Relay: terrain blocked</div>
+    <div class="lr"><div class="ls" style="background:#f97316"></div>Relay: terrain blocked</div>
     <div class="lr"><div class="ls" style="background:#444;border:1px dashed #555"></div>No terrain data</div>
     <div class="lr"><div class="ls" style="background:#ef4444;opacity:.5"></div>No signal (behind patches)</div>
     <div class="lr"><div class="ls" style="background:#22c55e;border-radius:50%;height:8px;width:8px"></div>Relay aircraft</div>
     <div class="lr" style="color:var(--muted);font-size:10px;margin-top:2px">→ Orange arrow = patch boresight</div>
     <div class="divider"></div>
     <div class="lr"><div class="ls" style="background:#22c55e"></div>GCS: LOS clear to carrier</div>
-    <div class="lr"><div class="ls" style="background:#facc15"></div>GCS: terrain / trees blocked</div>
-    <div class="lr"><div class="ls" style="background:#facc15;border-radius:50%;height:8px;width:8px"></div>GCS position</div>
+    <div class="lr"><div class="ls" style="background:#a78bfa"></div>GCS: terrain / trees blocked</div>
+    <div class="lr"><div class="ls" style="background:#22c55e;border-radius:50%;height:8px;width:8px"></div>GCS position</div>
   </div>
 </div><!-- #sb -->
 </div><!-- #sb-wrap -->
@@ -744,6 +745,7 @@ const LAYERS={
   sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'©ESRI',maxZoom:18}),
   osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'©OSM',maxZoom:19}),
   dark:L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'©CartoDB',maxZoom:19}),
+  norgeskart:L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',{attribution:'©<a href="https://www.kartverket.no">Kartverket</a>',maxZoom:19}),
 };
 const map=L.map('map').setView([61.222,10.769],13);
 LAYERS.topo.addTo(map);
@@ -767,13 +769,13 @@ function acIcon(hdg) {
 let marker=null, polyLayer=null, firstFix=true;
 let orbitCenterMarker=null, orbitCircle=null;
 
-const SEG_COLOR={rf:'#60a5fa',terrain:'#facc15',nodata:'#555',patch:'#ef4444'};
+const SEG_COLOR={rf:'#60a5fa',terrain:'#f97316',nodata:'#555',patch:'#ef4444'};
 
 function drawPoly(poly,types) {
   if (polyLayer) map.removeLayer(polyLayer);
   if (!poly||poly.length<3) return;
   polyLayer=L.layerGroup().addTo(map);
-  L.polygon(poly,{color:'transparent',fillColor:'#60a5fa',fillOpacity:0.07,weight:0}).addTo(polyLayer);
+  L.polygon(poly,{color:'transparent',fillColor:'#60a5fa',fillOpacity:0.10,weight:0}).addTo(polyLayer);
   for (let i=0;i<poly.length;i++) {
     const j=(i+1)%poly.length, col=SEG_COLOR[types[i]]||'#60a5fa';
     L.polyline([poly[i],poly[j]],{
@@ -822,7 +824,7 @@ function renderState() {
     const _amsl    = Math.round(computeRasl(state.lat, state.lon, state.alt_m));
     const _agl     = _aircTer!==null ? Math.round(_amsl - _aircTer) : null;
     const _aglStr  = _agl!==null ? _agl+' m AGL'  : '— AGL';
-    const _amslStr = _amsl+' m AMSL';
+    const _amslStr = _amsl+' m / '+Math.round(_amsl*3.28084)+' ft AMSL';
     document.getElementById('h-alt').textContent = _aglStr+' · '+_amslStr;
   } else if (state.alt_m!=null) {
     document.getElementById('h-alt').textContent = state.alt_m+' m · — AMSL';
@@ -1128,7 +1130,7 @@ map.on('mousemove',e=>{
   clearTimeout(elevTimer);
   elevTimer=setTimeout(()=>{
     const v=lookupElev(lat,lon);
-    document.getElementById('cursor-elev').textContent=v!==null?Math.round(v)+' m':'—';
+    document.getElementById('cursor-elev').textContent=v!==null?Math.round(v)+' m / '+Math.round(v*3.28084)+' ft':'—';
   },60);
   if (!measuring||!measurePts.length) {
     if (rubberLayer){map.removeLayer(rubberLayer);rubberLayer=null;} return;
@@ -1177,13 +1179,13 @@ setInterval(updateCacheInfo, 2000);
 const gcsState = {lat:null, lon:null, ant_h:2.0, tree_h:15.0, max_range:15000};
 let gcsMarker=null, gcsPolyLayer=null, pickingGcs=false;
 
-const GCS_SEG_COLOR = {rf:'#22c55e', terrain:'#facc15', nodata:'#555'};
+const GCS_SEG_COLOR = {rf:'#22c55e', terrain:'#a78bfa', nodata:'#555'};
 
 function gcsIcon() {
   return L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
     html:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-      <polygon points="11,2 20,18 2,18" fill="none" stroke="#facc15" stroke-width="2" stroke-linejoin="round"/>
-      <circle cx="11" cy="11" r="3" fill="#facc15"/>
+      <polygon points="11,2 20,18 2,18" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="11" cy="11" r="3" fill="#22c55e"/>
     </svg>`});
 }
 
@@ -1250,7 +1252,7 @@ function drawGcsPoly(poly, types) {
   if (gcsPolyLayer) map.removeLayer(gcsPolyLayer);
   if (!poly || poly.length < 3) return;
   gcsPolyLayer = L.layerGroup().addTo(map);
-  L.polygon(poly,{color:'transparent',fillColor:'#22c55e',fillOpacity:0.07,weight:0}).addTo(gcsPolyLayer);
+  L.polygon(poly,{color:'transparent',fillColor:'#22c55e',fillOpacity:0.10,weight:0}).addTo(gcsPolyLayer);
   for (let i=0; i<poly.length; i++) {
     const j=(i+1)%poly.length, col=GCS_SEG_COLOR[types[i]]||'#22c55e';
     L.polyline([poly[i],poly[j]],{
