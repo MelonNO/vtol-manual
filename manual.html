@@ -338,6 +338,11 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </div>
   <p>HM30 ground unit on portable mast, powered by 6S 3000mAh. Ethernet cable to laptop. Video viewed in MPV.net (RTSP) or GStreamer inside Mission Planner on second screen (USB-C).</p>
 
+  <figure class="man-photo">
+    <img src="img/siyi_hm30.jpg" alt="SIYI HM30 digital video link system" loading="lazy" onerror="this.closest('figure').style.display='none'">
+    <figcaption>SIYI HM30 — full HD digital link · 30km range · 1080p 60fps · MAVLink telemetry</figcaption>
+  </figure>
+
   <div class="section-title">Frequency Summary</div>
   <table>
     <tr><th>Link</th><th>Frequency</th><th>Hardware</th><th>Purpose</th></tr>
@@ -541,10 +546,16 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>TRIM_THROTTLE</code></td><td class="val">35%</td><td>Cruise throttle setting</td></tr>
   </table>
 
-  <figure class="man-photo">
-    <img src="img/t2_vtol.jpg" alt="Fixed-wing VTOL carrier aircraft in flight" loading="lazy" onerror="this.closest('figure').style.display='none'">
-    <figcaption>Heewing T2 Ranger — fixed-wing VTOL carrier platform</figcaption>
-  </figure>
+  <div class="man-photo-row">
+    <figure class="man-photo" style="margin:0">
+      <img src="img/t2_vtol.jpg" alt="Heewing T2 VTOL carrier aircraft" loading="lazy" onerror="this.closest('figure').style.display='none'">
+      <figcaption>Heewing T2 Ranger — fixed-wing VTOL carrier platform</figcaption>
+    </figure>
+    <figure class="man-photo" style="margin:0">
+      <img src="img/t2_vtol2.jpg" alt="Heewing T2 VTOL side view" loading="lazy" onerror="this.closest('figure').style.display='none'">
+      <figcaption>T2 Ranger — 3S/6S compatible · 1.2m wingspan · ArduPlane/QuadPlane</figcaption>
+    </figure>
+  </div>
 
   <div class="section-title">Battery & Power</div>
   <table>
@@ -1081,80 +1092,16 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <p>The FPV sub-drone is a <strong>5" GPS quad running Betaflight</strong>. It is operated via the relay link from the carrier drone and has no direct RF connection to the ground station. All control and video passes through the carrier as a relay node.</p>
   <div class="alert alert-info">This vehicle is configured and flown entirely independently of ArduPlane. The carrier FC has no visibility of FPV link state, battery level, or position.</div>
 
-  <!-- FPV platform illustration -->
-  <svg viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;margin:20px 0;font-family:'Share Tech Mono',monospace">
-    <text x="280" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">FPV SUB-DRONE — HARDWARE LAYOUT (TOP VIEW)</text>
-
-    <!-- ── Frame arms (X config) ── -->
-    <line x1="108" y1="70"  x2="232" y2="194" stroke="#333" stroke-width="10" stroke-linecap="round"/>
-    <line x1="328" y1="70"  x2="452" y2="194" stroke="#333" stroke-width="10" stroke-linecap="round"/>
-    <line x1="232" y1="70"  x2="108" y2="194" stroke="#333" stroke-width="10" stroke-linecap="round"/>
-    <line x1="452" y1="70"  x2="328" y2="194" stroke="#333" stroke-width="10" stroke-linecap="round"/>
-
-    <!-- ── Centre stack ── -->
-    <rect x="228" y="95" width="104" height="74" rx="6" fill="#1c1c1c" stroke="#555" stroke-width="1.5"/>
-    <!-- FC label -->
-    <text x="280" y="126" fill="#888" font-size="8" text-anchor="middle" letter-spacing="1">MATEK F405 STD</text>
-    <text x="280" y="138" fill="#555" font-size="7" text-anchor="middle">FC / ESC STACK</text>
-    <!-- Battery indicator bar (underside, conceptual) -->
-    <rect x="228" y="152" width="104" height="14" rx="3" fill="#f97316" opacity=".15" stroke="#f97316" stroke-width=".8"/>
-    <text x="280" y="162" fill="#f97316" font-size="7" text-anchor="middle" letter-spacing="1">6S 1300mAh</text>
-
-    <!-- ── Motors (props shown as dashed circles) ── -->
-    <!-- FL -->
-    <circle cx="108" cy="70"  r="38" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5 3" opacity=".7"/>
-    <circle cx="108" cy="70"  r="9"  fill="#2a2a2a" stroke="#888" stroke-width="2"/>
-    <text x="108" y="28" fill="#aaa" font-size="9" text-anchor="middle" letter-spacing="1">FL</text>
-    <text x="108" y="39" fill="#666" font-size="7" text-anchor="middle">1960KV</text>
-    <!-- FR -->
-    <circle cx="452" cy="70"  r="38" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5 3" opacity=".7"/>
-    <circle cx="452" cy="70"  r="9"  fill="#2a2a2a" stroke="#888" stroke-width="2"/>
-    <text x="452" y="28" fill="#aaa" font-size="9" text-anchor="middle" letter-spacing="1">FR</text>
-    <text x="452" y="39" fill="#666" font-size="7" text-anchor="middle">1960KV</text>
-    <!-- RL -->
-    <circle cx="108" cy="194" r="38" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5 3" opacity=".7"/>
-    <circle cx="108" cy="194" r="9"  fill="#2a2a2a" stroke="#888" stroke-width="2"/>
-    <text x="108" y="248" fill="#aaa" font-size="9" text-anchor="middle" letter-spacing="1">RL</text>
-    <text x="108" y="258" fill="#666" font-size="7" text-anchor="middle">DSHOT300</text>
-    <!-- RR -->
-    <circle cx="452" cy="194" r="38" fill="none" stroke="#444" stroke-width="1" stroke-dasharray="5 3" opacity=".7"/>
-    <circle cx="452" cy="194" r="9"  fill="#2a2a2a" stroke="#888" stroke-width="2"/>
-    <text x="452" y="248" fill="#aaa" font-size="9" text-anchor="middle" letter-spacing="1">RR</text>
-    <text x="452" y="258" fill="#666" font-size="7" text-anchor="middle">BIDIR-DSHOT</text>
-
-    <!-- ── Front camera ── -->
-    <rect x="255" y="68" width="50" height="24" rx="3" fill="#111" stroke="#555" stroke-width="1.2"/>
-    <circle cx="280" cy="80" r="7" fill="#0a0a0a" stroke="#888" stroke-width="1.5"/>
-    <circle cx="280" cy="80" r="3" fill="#1a1aff" opacity=".5"/>
-    <text x="280" y="62" fill="#888" font-size="8" text-anchor="middle" letter-spacing="1">FPV CAM</text>
-
-    <!-- ── GPS tower (rear centre) ── -->
-    <circle cx="280" cy="196" r="14" fill="#1c1c1c" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="3 2"/>
-    <text x="280" y="200" fill="#22c55e" font-size="7" text-anchor="middle">GPS</text>
-    <text x="280" y="215" fill="#22c55e" font-size="7" text-anchor="middle">+MAG</text>
-
-    <!-- ── VTX + antenna (right side) ── -->
-    <rect x="504" y="115" width="44" height="34" rx="3" fill="#1c1c1c" stroke="#a78bfa" stroke-width="1.2"/>
-    <text x="526" y="130" fill="#a78bfa" font-size="7" text-anchor="middle">VTX</text>
-    <text x="526" y="141" fill="#a78bfa" font-size="7" text-anchor="middle">5806MHz</text>
-    <line x1="548" y1="132" x2="556" y2="132" stroke="#a78bfa" stroke-width="1.5"/>
-    <line x1="556" y1="120" x2="556" y2="145" stroke="#a78bfa" stroke-width="1.5"/>
-
-    <!-- ── ELRS receiver (left side) ── -->
-    <rect x="12" y="115" width="44" height="34" rx="3" fill="#1c1c1c" stroke="#facc15" stroke-width="1.2"/>
-    <text x="34" y="130" fill="#facc15" font-size="7" text-anchor="middle">ELRS RX</text>
-    <text x="34" y="141" fill="#facc15" font-size="7" text-anchor="middle">2.4 GHz</text>
-    <line x1="12" y1="132" x2="4"  y2="132" stroke="#facc15" stroke-width="1.5"/>
-    <line x1="4"  y1="120" x2="4"  y2="145" stroke="#facc15" stroke-width="1.5"/>
-
-    <!-- ── "FRONT" label ── -->
-    <text x="280" y="249" fill="#444" font-size="8" text-anchor="middle" letter-spacing="2">▲ FRONT</text>
-  </svg>
-
-  <figure class="man-photo">
-    <img src="img/fpv_drone.jpg" alt="5-inch FPV racing quadcopter" loading="lazy" onerror="this.closest('figure').style.display='none'">
-    <figcaption>5" FPV sub-drone — 1960KV · 6S 1300mAh · ELRS 2.4GHz relay link</figcaption>
-  </figure>
+  <div class="man-photo-row">
+    <figure class="man-photo" style="margin:0">
+      <img src="img/fpv_drone.jpg" alt="5-inch FPV racing quadcopter" loading="lazy" onerror="this.closest('figure').style.display='none'">
+      <figcaption>5" FPV sub-drone — X-frame · 1960KV · 6S 1300mAh</figcaption>
+    </figure>
+    <figure class="man-photo" style="margin:0">
+      <img src="img/matek_f405.jpg" alt="Matek F405 STD flight controller" loading="lazy" onerror="this.closest('figure').style.display='none'">
+      <figcaption>Matek F405 STD — FC · Betaflight 4.5.2 · Blackbox · OSD</figcaption>
+    </figure>
+  </div>
 
   <div class="section-title">Hardware Configuration</div>
   <div class="card">
