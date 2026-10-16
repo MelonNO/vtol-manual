@@ -254,6 +254,7 @@
   function exportJSON() { return JSON.stringify(load(), null, 2); }
 
   // Merge a JSON string into the stored data (never replaces local records wholesale). Throws on invalid JSON.
+  // opts {merge:true} per C1 — merging is the only mode. Counts of the last import: importJSON.lastStats.
   function importJSON(str, opts) {
     const obj = JSON.parse(str);
     const res = mergeStores(load(), obj);
