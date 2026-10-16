@@ -95,7 +95,7 @@ I fetched the sources with `curl` from `raw.githubusercontent.com` at the commit
 
 **Contract C3 issues and decisions:**
 
-1. **µs → CRSF formula.** The C3 formula maps **988 µs to 173, not 172**; 172 is 987.5 µs. EdgeTX uses the same 1.6 slope, so I kept the formula exactly as written and documented the difference (README §4). PM: accept, or change C3 to ELRS's `fmap(172..1811 → 988..2012)`.
+1. **µs → CRSF formula.** *Resolved in rework round 1: the PM chose the endpoint-exact mapping (see §7).* Original note: the C3 formula mapped **988 µs to 173, not 172**; 172 is 987.5 µs. EdgeTX uses the same 1.6 slope, so I kept the formula exactly as written and documented the difference (README §4). PM: accept, or change C3 to ELRS's `fmap(172..1811 → 988..2012)`.
 2. **`rx_bad_crc` is overloaded.** v1 has no counters for wrong version, bad magic, length or source IP. I defined `rx_bad_crc` as "rejected by format checks" (magic, version, length, CRC). Source-IP rejects are logged but not reported. Suggested for v2: per-cause counters and `rx_bad_src`.
 3. **`sync_period_x10us` / `sync_offset_x10us`.** Interpreted as 0.1 µs units (µs × 10), the unit the ELRS 0x3A frame uses. 0 means no timing frame seen. Documented.
 4. **`fw_ver` encoding** was undefined. Proposed `(major << 8) | minor`, with `fw_ver_str()` for C2's `bridge.fw_version` string.
