@@ -87,13 +87,13 @@ test('fmtFreq', () => {
 
 test('forest colour classification is source-specific (MAP-11)', () => {
   assert.ok(M.isForestColour(210, 224, 150, 'norgeskart'));
-  assert.ok(M.isForestColour(217, 241, 164, 'opentopomap'));
   // shaded forest keeps the channel differences
   assert.ok(M.isForestColour(196, 210, 136, 'norgeskart'));
   // open land, water, white, generic park green → not forest
   assert.ok(!M.isForestColour(241, 236, 177, 'norgeskart'));
   assert.ok(!M.isForestColour(224, 254, 254, 'norgeskart'));
-  assert.ok(!M.isForestColour(245, 245, 245, 'opentopomap'));
-  assert.ok(!M.isForestColour(100, 180, 100, 'opentopomap'));
+  assert.ok(!M.isForestColour(245, 245, 245, 'norgeskart'));
+  assert.ok(!M.isForestColour(100, 180, 100, 'norgeskart'), 'generic green');
+  assert.ok(!M.isForestColour(217, 241, 164, 'norgeskart'), 'other map style');
   assert.ok(!M.isForestColour(210, 224, 150, 'unknown-source'));
 });

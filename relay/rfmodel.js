@@ -597,15 +597,14 @@ function binSamples(samples, cellM) {
 }
 
 // ─── Vegetation from topo-map tile colours (MAP-11) ──────────────────────────
-// Forest fill colours measured on z13 tiles over forest in Innlandet (61.0N 11.4E, 60.5N 11.9E),
-// 2026-10-16. Hill shading changes brightness but keeps the channel differences, so a pixel is
-// forest when G−R, G−B and G all fall in the source's range:
-//   Norgeskart topo  forest ≈ RGB(210,224,150): G−R 8…16, G−B 69…77, G 165…240
-//   OpenTopoMap      forest ≈ RGB(217,241,164): G−R 21…27, G−B 73…82, G 210…253
-// Fields, open land, water, marsh and roads in the same tiles fall outside these ranges.
+// Forest fill colour of the Kartverket topo map, measured on z13 tiles over forest in Innlandet
+// (61.0N 11.4E, 60.5N 11.9E), 2026-10-16: ≈ RGB(210,224,150). Hill shading changes brightness
+// but keeps the channel differences, so a pixel is forest when G−R 8…16, G−B 69…77, G 165…240.
+// Fields, open land, water, marsh and roads in the same tiles fall outside this range.
+// (Only Norgeskart is sampled: its CC BY 4.0 licence allows fetching tiles that are not on screen;
+// other topo sources' tile policies do not — see relay/map.html, MAP-08.)
 const FOREST_RGB = {
-  norgeskart:  { gr: [8, 16],  gb: [69, 77], g: [165, 240] },
-  opentopomap: { gr: [21, 27], gb: [73, 82], g: [210, 253] },
+  norgeskart: { gr: [8, 16], gb: [69, 77], g: [165, 240] },
 };
 function isForestColour(r, g, b, src) {
   const f = FOREST_RGB[src];

@@ -415,7 +415,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     <div class="fld"><label>Forest canopy height (m)</label>
       <input id="md-tree" type="number" value="15" min="0" max="40" step="1" onchange="setModel()"/></div>
     <div class="info-txt" id="md-info">Clearance = k × F1 + margin. Samples at the DEM pixel size (z11 terrain tiles).</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">Forest is detected from Norgeskart / OpenTopoMap forest colours. If wrong, draw zones manually:</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">Forest is detected from Norgeskart forest colour (Norway only). Elsewhere, or if wrong, draw zones manually:</div>
     <div style="display:flex;gap:4px;margin-top:4px">
       <button type="button" class="btn" id="veg-draw-btn" onclick="startVegDraw()" style="flex:1;font-size:11px">✏ Draw forest zone</button>
       <button type="button" class="btn stop" onclick="clearManualVeg()" style="width:auto;padding:5px 10px;font-size:11px" title="Clear manual zones">✕</button>
@@ -1595,16 +1595,16 @@ map.on('mouseout', () => {
 });
 
 // ─── Vegetation — topo tile colour sampling (MAP-11) ─────────────────────────
-// A topo tile at the coordinate is drawn to a canvas (crossOrigin='anonymous') and the pixel
-// is classified with the forest colour range measured for that source (RfModel.FOREST_RGB).
-// One key format for every cache: "z/x/y". A failing source is retried up to 3× in a row
-// before it is disabled for the session; then the next source is used.
+// A Norgeskart topo tile at the coordinate is drawn to a canvas (crossOrigin='anonymous') and the
+// pixel is classified with the forest colour range measured for it (RfModel.FOREST_RGB). Only
+// Norgeskart is sampled: its CC BY 4.0 licence allows fetching tiles that are not on screen (MAP-08).
+// Elsewhere, draw forest zones by hand. One key format for every cache: "z/x/y". A failing source
+// is retried up to 3× in a row before it is disabled for the session.
 const VEG_ZOOM = 13;  // ~2.4 km/tile at 60°N, ~10 m/px
 const VEG_TILE = 256;
 const VEG_MAX_FAILS = 3;
 const VEG_SRCS = [
-  { name:'Norgeskart',  key:'norgeskart',  url:(z,x,y)=>`https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/${z}/${y}/${x}.png` },
-  { name:'OpenTopoMap', key:'opentopomap', url:(z,x,y)=>`https://tile.opentopomap.org/${z}/${x}/${y}.png` },
+  { name:'Norgeskart', key:'norgeskart', url:(z,x,y)=>`https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/${z}/${y}/${x}.png` },
 ];
 const vegTileCache = new Map();   // "13/x/y" → {data, src} | null (no source works)
 const vegPending = new Map();     // "13/x/y" → Promise
