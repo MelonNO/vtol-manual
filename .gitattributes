@@ -1,0 +1,2 @@
+# Vendored third-party files: store byte-for-byte (keeps the official SRI hashes valid).
+relay/vendor/** -text

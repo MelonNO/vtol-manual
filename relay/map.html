@@ -1,17 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HEEWING T2 — RELAY COVERAGE MAP</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/gcs-client.js"></script>
+<script src="rfmodel.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
 :root{
   --bg:#0f0f0f;--surface:#1a1a1a;--surface2:#222;--border:#2a2a2a;--border2:#333;
   --text:#e8e8e8;--muted:#666;--accent:#f97316;--amber:#facc15;--red:#ef4444;
   --green:#22c55e;--dim:#444;--mono:'Share Tech Mono',monospace;--head:'Oswald',sans-serif;
+  /* map link colours (same hues as the Tools page section colours) */
+  --blue:#60a5fa;--purple:#a78bfa;--rose:#f43f5e;--teal:#2dd4bf;--grey:#555;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--mono);background:var(--bg);color:var(--text);
@@ -39,6 +44,7 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
             padding:3px 10px;display:none;white-space:nowrap;text-transform:uppercase}
 #sim-banner.sim{background:#1c1000;border:1px solid var(--amber);color:var(--amber)}
 #sim-banner.manual{background:var(--surface2);border:1px solid var(--border2);color:var(--muted)}
+#sim-banner.live{background:var(--surface2);border:1px solid var(--green);color:var(--green)}
 .nav-btns{margin-left:auto;display:flex;align-items:stretch;flex-shrink:0;
           border-left:1px solid var(--border2)}
 .nav-btn{font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;
@@ -46,6 +52,7 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
          padding:0 16px;white-space:nowrap;text-transform:uppercase;
          transition:all .15s;display:flex;align-items:center}
 .nav-btn:hover{color:var(--accent);background:var(--surface2)}
+@media (max-width:600px){.hdr-title{white-space:normal;font-size:13px}.nav-btn{padding:0 10px}}
 
 /* Map */
 #map{flex:1}
@@ -57,7 +64,7 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
         padding:10px 5px;font-family:var(--head);font-size:13px;align-self:flex-start;
         margin-top:8px;transition:all .15s}
 #sb-tog:hover{background:var(--surface2)}
-#sb{width:278px;display:flex;flex-direction:column;gap:6px;
+#sb{width:278px;max-width:calc(100vw - 40px);display:flex;flex-direction:column;gap:6px;
     max-height:calc(100vh - 70px);overflow-y:auto;padding-right:1px}
 #sb-wrap.sb-off #sb{display:none}
 #sb-wrap.sb-off #sb-tog{border-right:1px solid var(--border2);border-radius:4px}
@@ -74,10 +81,13 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
 .fld{margin-bottom:7px}
 .fld label{font-family:var(--head);font-size:10px;font-weight:600;color:var(--muted);
            letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:3px}
-.fld input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
+.fld input,.fld select{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
            padding:5px 8px;font-family:var(--mono);font-size:13px}
-.fld input:focus{outline:none;border-color:var(--accent)}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--accent)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.chk{display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;color:var(--text);cursor:pointer}
+.chk input{width:20px;height:20px;accent-color:var(--accent);flex-shrink:0}
+.warn-val{color:var(--amber)}
 
 /* Alt mode buttons */
 .amode-btn{padding:1px 6px;font-size:10px;background:transparent;
@@ -93,6 +103,8 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
 .btn.active{background:var(--accent);color:#000}
 .btn.stop{border-color:var(--red);color:var(--red)}
 .btn.stop:hover{background:var(--red);color:#000}
+.btn-row{display:flex;gap:4px;margin-top:4px}
+.btn-row .btn{margin:0;flex:1;padding:6px 2px;font-size:11px}
 
 /* Slider rows */
 .vtx-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
@@ -129,6 +141,9 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
 .center-lbl{font-size:11px;color:var(--muted);margin:4px 0;word-break:break-all;
             font-family:var(--head);letter-spacing:.5px}
 .info-txt{font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--head);letter-spacing:.5px}
+.info-txt.ok{color:var(--green)}
+.info-txt.warn{color:var(--amber)}
+.info-txt.bad{color:var(--red)}
 
 /* ── ATTITUDE PANEL ── */
 #att{position:absolute;bottom:28px;left:8px;z-index:900}
@@ -148,6 +163,7 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
 .rng-row span{color:var(--muted);font-family:var(--head);font-size:10px;
               text-transform:uppercase;letter-spacing:1px}
 .rng-row b{color:var(--text);font-family:var(--head)}
+.rng-row b.warn-val{color:var(--amber)}
 .ter-txt{font-size:11px;margin-top:6px;color:var(--dim);font-family:var(--head);
          letter-spacing:1px;text-transform:uppercase}
 .ter-txt.ready{color:var(--green)}
@@ -155,13 +171,25 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
 
 /* Legend */
 .lr{display:flex;align-items:center;gap:9px;margin-bottom:5px;color:var(--muted);font-size:12px}
-.ls{width:22px;height:4px;border-radius:1px}
+.ls{width:22px;height:4px;border-radius:1px;flex-shrink:0}
+.ls.dot{height:8px;width:8px;border-radius:50%}
+.c-blue{background:var(--blue)}.c-teal{background:var(--teal)}.c-accent{background:var(--accent)}
+.c-green{background:var(--green)}.c-red{background:var(--red)}.c-amber{background:var(--amber)}
+.c-purple{background:var(--purple)}.c-rose{background:var(--rose)}
+.c-op{background:var(--green);height:8px;opacity:.6}.c-worst{background:var(--green);height:8px;opacity:.7}
+.c-best{background:var(--amber);height:8px;opacity:.5}.c-null{background:var(--red);opacity:.5}
+.c-nodata{background:var(--grey);border:1px dashed var(--muted)}.c-shadow{border-top:2px dotted var(--muted);height:0}
+.lg-note{font-size:11px;color:var(--amber);margin:2px 0 6px;font-family:var(--head);letter-spacing:.5px}
+.lg-note:empty{display:none}
 
 /* Leaflet overrides */
 .leaflet-container{background:#111}
 .leaflet-popup-content-wrapper{background:var(--surface);color:var(--text);
                                border:1px solid var(--border2);font-family:var(--mono);font-size:13px}
 .leaflet-popup-tip{background:var(--surface)}
+.op-lbl{background:transparent;border:none;box-shadow:none;color:var(--green);font-family:var(--head);
+        font-weight:700;font-size:11px;letter-spacing:2px}
+.op-lbl::before{display:none}
 
 /* ── CURSOR BAR ── */
 #cursor-bar{position:absolute;bottom:0;left:50%;transform:translateX(-50%);z-index:900;
@@ -203,14 +231,15 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
   <div class="hdr-badge">MAP</div>
   <div class="hdr-inner">
     <div class="dot" id="dot"></div>
-    <span class="hdr-title">5.8GHz RELAY COVERAGE</span>
+    <span class="hdr-title" id="hdr-title">RELAY COVERAGE</span>
     <div id="sim-banner">SIMULATED</div>
     <div class="hsep"></div>
-    <div class="hs">SRC <b id="h-src">offline</b></div>
+    <div class="hs">SRC <b id="h-src">—</b></div>
     <div class="hs"><b id="h-alt">—</b></div>
-    <div class="hs">BORESIGHT <b id="h-bs">—</b></div>
-    <div class="hs">COVERAGE <b id="h-cov">—</b></div>
+    <div class="hs">VIDEO <b id="h-bs">—</b></div>
+    <div class="hs">OP AREA <b id="h-cov">—</b></div>
     <div class="hs">TERRAIN <b id="h-ter">idle</b></div>
+    <div class="hs">GCS APP <b id="h-live">NOT RUNNING</b></div>
   </div>
   <div class="nav-btns">
     <a href="../index.html" class="nav-btn">◀ TOOLS</a>
@@ -220,7 +249,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
 
 <div id="map"></div>
 <div id="toast"></div>
-<div id="maphint">Click anywhere on map to place relay aircraft</div>
+<div id="maphint">Click map or use My Location to place the relay aircraft</div>
 <div id="cursor-bar">
   <span id="cursor-ll">— , —</span>
   <span style="color:var(--border2)">│</span>
@@ -229,45 +258,50 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
 </div>
 
 <div id="sb-wrap">
-<button id="sb-tog" onclick="toggleSb()" title="Toggle controls">◀</button>
+<button type="button" id="sb-tog" onclick="toggleSb()" title="Toggle controls">◀</button>
 <div id="sb">
   <div class="pnl">
     <h2>Simulation</h2>
     <div class="fld">
       <div class="vtx-row">
         <label>Speed</label>
-        <input type="range" id="sim-speed" min="9" max="35" step="0.5" value="15"
-               oninput="document.getElementById('sim-spd-lbl').textContent=this.value+'m/s'"/>
-        <span id="sim-spd-lbl">15m/s</span>
+        <input type="range" id="sim-speed" min="11" max="35" step="0.5" value="13"
+               oninput="document.getElementById('sim-spd-lbl').textContent=this.value+'m/s'">
+        <span id="sim-spd-lbl">13m/s</span>
       </div>
+      <div class="info-txt">Min 11 m/s = AIRSPEED_MIN · default 13 m/s = AIRSPEED_CRUISE</div>
     </div>
     <div class="sim-tabs">
-      <button class="btn" id="btn-straight" onclick="selectSimMode('straight')">Straight</button>
-      <button class="btn" id="btn-orbit"    onclick="selectSimMode('orbit')">Orbit</button>
-      <button class="btn" id="btn-mission"  onclick="selectSimMode('mission')">Mission</button>
+      <button type="button" class="btn" id="btn-straight" onclick="selectSimMode('straight')">Straight</button>
+      <button type="button" class="btn" id="btn-orbit"    onclick="selectSimMode('orbit')">Orbit</button>
+      <button type="button" class="btn" id="btn-mission"  onclick="selectSimMode('mission')">Mission</button>
     </div>
     <div class="sim-sub" id="sp-straight" style="display:none">
       <div class="fld"><label>Travel Heading (°)</label>
-        <input id="sim-hdg" type="number" value="0" min="0" max="359" step="1"/></div>
+        <input id="sim-hdg" type="number" value="0" min="0" max="359" step="1"></div>
     </div>
     <div class="sim-sub" id="sp-orbit" style="display:none">
-      <div class="fld"><label>Orbit Radius (m)</label>
-        <input id="sim-orb-r" type="number" value="200" min="50" max="5000" step="10"/></div>
+      <div class="fld"><label>Orbit Radius (m) — also the default loiter radius</label>
+        <input id="sim-orb-r" type="number" value="200" min="50" max="5000" step="10"></div>
       <div class="center-lbl" id="orb-center-lbl">No orbit center set</div>
-      <button class="btn" id="btn-pick-center" onclick="startOrbitCenterPick()">⊕ Click Map to Set Center</button>
+      <button type="button" class="btn" id="btn-pick-center" onclick="startOrbitCenterPick()">⊕ Click Map to Set Center</button>
+      <label class="chk"><input type="checkbox" id="sw-worst" checked onchange="drawSweep()">Worst case (inside all orbit positions)</label>
+      <label class="chk"><input type="checkbox" id="sw-best" checked onchange="drawSweep()">Best case (inside any orbit position)</label>
+      <div class="info-txt" id="sw-st">Orbit sweep: start an orbit to accumulate</div>
     </div>
     <div class="sim-sub" id="sp-mission" style="display:none">
       <div class="fld">
         <label>Mission Planner .waypoints file</label>
         <input type="file" id="mis-file" accept=".waypoints,.txt,.mission,.wp"
                onchange="loadMission(this)"
-               style="color:var(--muted);padding:2px 0;cursor:pointer"/>
+               style="color:var(--muted);padding:2px 0;cursor:pointer">
       </div>
       <div id="mis-status" class="info-txt" style="margin-bottom:4px">No mission loaded</div>
+      <div class="info-txt">NAV commands played: WAYPOINT 16, LOITER_UNLIM 17, LOITER_TURNS 18, LOITER_TIME 19, LAND 21, TAKEOFF 22, LOITER_TO_ALT 31, SPLINE_WAYPOINT 82, VTOL_TAKEOFF 84, VTOL_LAND 85. Climb/sink 5 m/s (TECS_CLMB_MAX / TECS_SINK_MAX).</div>
     </div>
     <div style="display:flex;gap:4px;margin-top:8px">
-      <button class="btn" id="sim-start-btn" onclick="startSim()" style="flex:1">▶ Start</button>
-      <button class="btn stop" onclick="stopSim()" style="width:auto;padding:5px 10px">⏹</button>
+      <button type="button" class="btn" id="sim-start-btn" onclick="startSim()" style="flex:1">▶ Start</button>
+      <button type="button" class="btn stop" onclick="stopSim()" style="width:auto;padding:5px 10px">⏹</button>
     </div>
     <div id="sim-st" class="sim-st stop">Stopped</div>
   </div>
@@ -275,134 +309,229 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
   <div class="pnl">
     <h2>Manual Placement</h2>
     <div class="fld"><label>Latitude</label>
-      <input id="m-lat" type="number" step="0.00001" placeholder="click map or enter"/></div>
+      <input id="m-lat" type="number" step="0.00001" placeholder="click map or enter"></div>
     <div class="fld"><label>Longitude</label>
-      <input id="m-lon" type="number" step="0.00001" placeholder="click map or enter"/></div>
+      <input id="m-lon" type="number" step="0.00001" placeholder="click map or enter"></div>
     <div class="row2">
       <div class="fld">
-        <label>Alt (m) <span style="display:inline-flex;gap:2px;vertical-align:middle">
-          <button id="amode-rel"  class="amode-btn amode-on"  onclick="setAltMode('rel')">Rel</button>
-          <button id="amode-agl"  class="amode-btn"           onclick="setAltMode('agl')">AGL</button>
-          <button id="amode-amsl" class="amode-btn"           onclick="setAltMode('amsl')">AMSL</button>
+        <label>Alt (m <span id="alt-mode-lbl">REL</span>) <span style="display:inline-flex;gap:2px;vertical-align:middle">
+          <button type="button" id="amode-rel"  class="amode-btn amode-on" onclick="setAltMode('rel')"
+                  title="Relative to HOME (ArduPlane: where the carrier armed)">Rel</button>
+          <button type="button" id="amode-agl"  class="amode-btn" onclick="setAltMode('agl')"
+                  title="Above the terrain under the carrier">AGL</button>
+          <button type="button" id="amode-amsl" class="amode-btn" onclick="setAltMode('amsl')"
+                  title="Above mean sea level">AMSL</button>
         </span></label>
-        <input id="m-alt" type="number" value="120" min="10" max="9000"/></div>
+        <input id="m-alt" type="number" value="120" min="-500" max="9000"></div>
       <div class="fld"><label>Heading (°)</label>
         <input id="m-hdg" type="number" value="0" min="0" max="359"
-               oninput="syncHdgSlider(this.value); applyManual()"/></div>
+               oninput="syncHdgSlider(this.value); applyManual(true)"></div>
     </div>
     <div class="fld">
       <div class="vtx-row" style="gap:4px">
         <label style="white-space:nowrap">Hdg</label>
         <input type="range" id="m-hdg-sl" min="0" max="359" step="1" value="0"
-               oninput="document.getElementById('m-hdg').value=this.value; applyManual()"/>
+               oninput="document.getElementById('m-hdg').value=this.value; applyManual(true)">
         <span id="hdg-sl-lbl" style="width:32px;text-align:right">N</span>
       </div>
     </div>
     <div class="row2">
       <div class="fld"><label>Roll (°)</label>
-        <input id="m-roll" type="number" value="0" min="-90" max="90"/></div>
+        <input id="m-roll" type="number" value="0" min="-90" max="90"></div>
       <div class="fld"><label>Pitch (°)</label>
-        <input id="m-pitch" type="number" value="0" min="-30" max="30"/></div>
+        <input id="m-pitch" type="number" value="0" min="-30" max="30"></div>
     </div>
-    <div class="row2">
-      <div class="fld"><label>VTX Power</label>
-        <div class="vtx-row">
-          <input type="range" id="m-vtx" min="20" max="33" step="0.1" value="27.8"
-                 oninput="document.getElementById('vtx-lbl').textContent=dbmToMw(this.value)+'mW';applyManual()"/>
-          <span id="vtx-lbl">600mW</span>
-        </div>
+    <div class="fld"><label>Client VTX Power (default from client profile)</label>
+      <div class="vtx-row">
+        <input type="range" id="m-vtx" min="0" max="33" step="0.1" value="14"
+               oninput="setVtx(+this.value)">
+        <span id="vtx-lbl" style="width:auto;min-width:52px">—</span>
       </div>
-      <div class="fld"><label>Quad AGL (m)</label>
-        <input id="m-quad" type="number" value="3" min="1" max="50"/></div>
     </div>
-    <button class="btn" onclick="applyManual()">▶ Apply / Update</button>
-    <button class="btn" onclick="geolocate()">⊕ Use My Location</button>
+    <div class="fld"><label>Client height AGL (m)</label>
+      <input id="m-cagl" type="number" value="3" min="0" max="500" step="1" onchange="setClientAgl(+this.value)">
+      <div class="btn-row">
+        <button type="button" class="btn" onclick="setClientAgl(3)">Ground 3</button>
+        <button type="button" class="btn" onclick="setClientAgl(30)">Hover 30</button>
+        <button type="button" class="btn" onclick="setClientAgl(100)">Cruise 100</button>
+      </div>
+    </div>
+    <button type="button" class="btn" onclick="applyManual()">▶ Apply / Update</button>
+    <button type="button" class="btn" onclick="geolocate()">⊕ Use My Location</button>
+    <div class="btn-row">
+      <button type="button" class="btn" id="home-pick-btn" onclick="startHomePick()" title="HOME is the reference for REL altitudes">⌂ Set Home</button>
+      <button type="button" class="btn stop" onclick="clearHome()" style="flex:0 0 auto;padding:6px 10px">✕</button>
+    </div>
+    <div class="center-lbl" id="home-lbl">Home not set — REL uses the terrain under the carrier</div>
   </div>
 
   <div class="pnl" id="hint-pnl">
-    Click anywhere on the map to place the relay aircraft
+    Click map or use My Location to place the relay aircraft
   </div>
 
   <div class="pnl">
-    <h2>GCS Coverage</h2>
-    <div class="fld"><label>GCS Latitude</label>
-      <input id="g-lat" type="number" step="0.00001" placeholder="click map or enter"/></div>
-    <div class="fld"><label>GCS Longitude</label>
-      <input id="g-lon" type="number" step="0.00001" placeholder="click map or enter"/></div>
+    <h2>Link Profiles</h2>
+    <div class="fld"><label>Client profile</label>
+      <select id="pf-client" onchange="pickClient(this.value)"></select></div>
+    <div class="sim-tabs">
+      <button type="button" class="btn" id="pk-video" onclick="pickProfileKind('video')">Video</button>
+      <button type="button" class="btn" id="pk-rc"    onclick="pickProfileKind('rc')">RC</button>
+      <button type="button" class="btn" id="pk-gcs"   onclick="pickProfileKind('gcs')">GCS</button>
+    </div>
+    <div class="info-txt" id="pf-dir" style="margin:0 0 6px"></div>
+    <div class="fld"><label>Active profile</label>
+      <select id="pf-sel" onchange="pickLink(this.value)"></select></div>
+    <div class="fld"><label>Name</label><input id="pf-name" type="text"></div>
     <div class="row2">
-      <div class="fld"><label>Ant. Height (m)</label>
-        <input id="g-anth" type="number" value="2" min="0.5" max="30" step="0.5"/></div>
-      <div class="fld"><label>Forest canopy (m)</label>
-        <input id="g-tree" type="number" value="15" min="0" max="40" step="1"/></div>
+      <div class="fld"><label>Freq (MHz)</label><input id="pf-freq" type="number" step="1"></div>
+      <div class="fld"><label>TX power (dBm)</label><input id="pf-txp" type="number" step="0.1"></div>
     </div>
-    <div class="fld"><label>Max Range (km)</label>
-      <input id="g-range" type="number" value="15" min="1" max="50"/></div>
-    <button class="btn" id="g-pick-btn" onclick="startGcsPick()">⊕ Click Map for GCS</button>
-    <div class="center-lbl" id="g-pos-lbl">No GCS position set</div>
-    <div style="display:flex;gap:4px;margin-top:4px">
-      <button class="btn" onclick="computeGcsCoverage()" style="flex:1">▶ Compute</button>
-      <button class="btn stop" onclick="clearGcsCoverage()" style="width:auto;padding:5px 10px">✕</button>
+    <div class="row2">
+      <div class="fld"><label>TX gain (dBi)</label><input id="pf-txg" type="number" step="0.1"></div>
+      <div class="fld"><label>RX gain (dBi)</label><input id="pf-rxg" type="number" step="0.1"></div>
     </div>
-    <div id="g-status" class="info-txt"></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4">Forest detected from topo tile colours. If wrong, draw zones manually:</div>
+    <div class="row2">
+      <div class="fld"><label>RX sens (dBm)</label><input id="pf-sens" type="number" step="0.5"></div>
+      <div class="fld"><label>Fade margin (dB)</label><input id="pf-mrg" type="number" step="0.5"></div>
+    </div>
+    <div class="fld"><label>Carrier antenna</label>
+      <select id="pf-ant">
+        <option value="">— (not set)</option>
+        <option value="dual_patch">Dual patch (VRX patches)</option>
+        <option value="dipole">Dipole (vertical)</option>
+        <option value="omni">Omni</option>
+      </select></div>
+    <div class="fld"><label>Notes</label><input id="pf-notes" type="text"></div>
+    <div class="btn-row">
+      <button type="button" class="btn" onclick="saveProfileForm()">✓ Save profile</button>
+      <button type="button" class="btn" onclick="copyProfile()" style="flex:0 0 auto;padding:6px 10px">+ Copy</button>
+    </div>
+    <div class="info-txt" id="pf-status"></div>
+    <div class="info-txt">Empty field = unknown (TBD): that link is not drawn. ELRS sensitivity depends on band and packet rate — take it from the ExpressLRS documentation. Saved to <span id="pf-dest">—</span>.</div>
+  </div>
+
+  <div class="pnl">
+    <h2>Terrain Model</h2>
+    <div class="row2">
+      <div class="fld"><label>Fresnel k (× F1)</label>
+        <input id="md-k" type="number" value="0.6" min="0" max="1.5" step="0.1" onchange="setModel()"></div>
+      <div class="fld"><label>Extra margin (m)</label>
+        <input id="md-mrg" type="number" value="0" min="0" max="100" step="1" onchange="setModel()"></div>
+    </div>
+    <div class="fld"><label>Forest canopy height (m)</label>
+      <input id="md-tree" type="number" value="15" min="0" max="40" step="1" onchange="setModel()"></div>
+    <div class="info-txt" id="md-info">Clearance = k × F1 + margin. Samples at the DEM pixel size (z11 terrain tiles).</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">Forest is detected from Norgeskart forest colour (Norway only). Elsewhere, or if wrong, draw zones manually:</div>
     <div style="display:flex;gap:4px;margin-top:4px">
-      <button class="btn" id="veg-draw-btn" onclick="startVegDraw()" style="flex:1;font-size:11px">✏ Draw forest zone</button>
-      <button class="btn stop" onclick="clearManualVeg()" style="width:auto;padding:5px 10px;font-size:11px" title="Clear manual zones">✕</button>
+      <button type="button" class="btn" id="veg-draw-btn" onclick="startVegDraw()" style="flex:1;font-size:11px">✏ Draw forest zone</button>
+      <button type="button" class="btn stop" onclick="clearManualVeg()" style="width:auto;padding:5px 10px;font-size:11px" title="Clear manual zones">✕</button>
     </div>
     <div id="veg-draw-hint" style="display:none;font-size:11px;color:var(--amber);margin-top:3px">Click to add points · double-click to close</div>
   </div>
 
   <div class="pnl">
+    <h2>GCS Coverage (HM30)</h2>
+    <div class="fld"><label>GCS Latitude</label>
+      <input id="g-lat" type="number" step="0.00001" placeholder="click map or enter"></div>
+    <div class="fld"><label>GCS Longitude</label>
+      <input id="g-lon" type="number" step="0.00001" placeholder="click map or enter"></div>
+    <div class="row2">
+      <div class="fld"><label>Ant. Height (m)</label>
+        <input id="g-anth" type="number" value="2" min="0.5" max="30" step="0.5"></div>
+      <div class="fld"><label>Max Range (km)</label>
+        <input id="g-range" type="number" value="15" min="1" max="50"></div>
+    </div>
+    <button type="button" class="btn" id="g-pick-btn" onclick="startGcsPick()">⊕ Click Map for GCS</button>
+    <div class="center-lbl" id="g-pos-lbl">No GCS position set</div>
+    <div style="display:flex;gap:4px;margin-top:4px">
+      <button type="button" class="btn" onclick="computeGcsCoverage()" style="flex:1">▶ Compute</button>
+      <button type="button" class="btn stop" onclick="clearGcsCoverage()" style="width:auto;padding:5px 10px">✕</button>
+    </div>
+    <div id="g-status" class="info-txt"></div>
+    <div id="g-note" class="info-txt warn"></div>
+  </div>
+
+  <div class="pnl">
+    <h2>Live (GCS App)</h2>
+    <label class="chk"><input type="checkbox" id="lv-on" onchange="setLiveEnabled(this.checked)">Connect to GCS app (127.0.0.1:47800)</label>
+    <label class="chk"><input type="checkbox" id="lv-follow" onchange="setLiveFollow(this.checked)">Coverage follows live carrier</label>
+    <div class="info-txt" id="lv-st">GCS APP: NOT RUNNING</div>
+    <div class="divider"></div>
+    <label class="chk"><input type="checkbox" id="lv-heat" onchange="toggleHeatmap(this.checked)">Measured LQ heatmap (logged samples)</label>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="info-txt" id="lv-log" style="margin:0">Log: —</div>
+      <button type="button" class="btn stop" onclick="clearLiveLog()"
+              style="width:auto;padding:4px 10px;margin:0;font-size:10px;letter-spacing:1px">✕ Clear log</button>
+    </div>
+  </div>
+
+  <div class="pnl">
     <h2>Map Layer</h2>
     <div class="layer-dd" id="layer-dd">
-      <button class="layer-dd-btn" id="layer-dd-btn" onclick="toggleLayerDd(event)">Topo (OpenTopoMap)</button>
+      <button type="button" class="layer-dd-btn" id="layer-dd-btn" onclick="toggleLayerDd(event)">Topo (OpenTopoMap)</button>
       <div class="layer-dd-list" id="layer-dd-list">
-        <div class="layer-dd-item active" onclick="pickLayer('topo','Topo (OpenTopoMap)')">Topo (OpenTopoMap)</div>
-        <div class="layer-dd-item" onclick="pickLayer('norgeskart','Norgeskart (Kartverket)')">Norgeskart (Kartverket)</div>
-        <div class="layer-dd-item" onclick="pickLayer('sat','Satellite (ESRI)')">Satellite (ESRI)</div>
-        <div class="layer-dd-item" onclick="pickLayer('osm','Street (OSM)')">Street (OSM)</div>
-        <div class="layer-dd-item" onclick="pickLayer('dark','Dark (CartoDB)')">Dark (CartoDB)</div>
+        <div class="layer-dd-item active" onclick="pickLayer('topo')">Topo (OpenTopoMap)</div>
+        <div class="layer-dd-item" onclick="pickLayer('norgeskart')">Norgeskart (Kartverket)</div>
+        <div class="layer-dd-item" onclick="pickLayer('sat')">Satellite (ESRI)</div>
+        <div class="layer-dd-item" onclick="pickLayer('osm')">Street (OSM)</div>
+        <div class="layer-dd-item" onclick="pickLayer('dark')">Dark (CartoDB)</div>
       </div>
     </div>
   </div>
 
   <div class="pnl">
     <h2>Legend</h2>
-    <div class="lr"><div class="ls" style="background:#60a5fa"></div>Relay: RF-limited</div>
-    <div class="lr"><div class="ls" style="background:#f97316"></div>Relay: terrain blocked</div>
-    <div class="lr"><div class="ls" style="background:#444;border:1px dashed #555"></div>No terrain data</div>
-    <div class="lr"><div class="ls" style="background:#ef4444;opacity:.5"></div>No signal (behind patches)</div>
-    <div class="lr"><div class="ls" style="background:#22c55e;border-radius:50%;height:8px;width:8px"></div>Relay aircraft</div>
-    <div class="lr" style="color:var(--muted);font-size:10px;margin-top:2px">→ Orange arrow = patch boresight</div>
+    <div class="lr"><div class="ls c-blue"></div><span id="lg-video">Video limit (RF)</span></div>
+    <div class="lg-note" id="lg-video-note"></div>
+    <div class="lr"><div class="ls c-teal"></div><span id="lg-rc">RC limit (RF)</span></div>
+    <div class="lg-note" id="lg-rc-note"></div>
+    <div class="lr"><div class="ls c-op"></div>OPERATING AREA = video ∩ RC</div>
+    <div class="lr"><div class="ls c-accent"></div>Terrain / Fresnel blocked</div>
+    <div class="lr"><div class="ls c-nodata"></div>No terrain data (RF only)</div>
+    <div class="lr"><div class="ls c-null"></div>No signal (antenna null / behind patches)</div>
+    <div class="lr"><div class="ls c-shadow"></div>Shadow re-acquired (not coverage)</div>
+    <div class="lr"><div class="ls dot c-green"></div>Relay aircraft</div>
+    <div class="lr" style="color:var(--muted);font-size:10px;margin-top:2px">→ Orange arrow = patches face <span id="lg-face">right</span></div>
     <div class="divider"></div>
-    <div class="lr"><div class="ls" style="background:#22c55e"></div>GCS: LOS clear to carrier</div>
-    <div class="lr"><div class="ls" style="background:#a78bfa"></div>GCS: terrain / trees blocked</div>
-    <div class="lr"><div class="ls" style="background:#22c55e;border-radius:50%;height:8px;width:8px"></div>GCS position</div>
+    <div class="lr"><div class="ls c-worst"></div>Orbit worst case (always covered)</div>
+    <div class="lr"><div class="ls c-best"></div>Orbit best case (covered at some point)</div>
+    <div class="divider"></div>
+    <div class="lr"><div class="ls c-purple"></div>GCS: LOS clear to carrier</div>
+    <div class="lr"><div class="ls c-rose"></div>GCS: terrain / trees blocked</div>
+    <div class="lr"><div class="ls dot c-purple"></div>GCS position</div>
+    <div class="lr"><div class="ls dot c-amber"></div>Home (REL altitude reference)</div>
+    <div class="lg-note" id="lg-gcs-note"></div>
+    <div class="divider"></div>
+    <div class="lr"><div class="ls dot c-accent"></div>Live carrier</div>
+    <div class="lr"><div class="ls c-green"></div>Live client · LQ ≥ 70 %</div>
+    <div class="lr"><div class="ls c-red"></div>Live client · LQ &lt; 70 % (FPV LINK WEAK)</div>
   </div>
 
   <div class="pnl">
     <h2>Offline Data</h2>
-    <button class="btn" id="off-draw-btn" onclick="startOfflineDraw()">▭ Draw Area</button>
+    <button type="button" class="btn" id="off-draw-btn" onclick="startOfflineDraw()">▭ Draw Area</button>
     <div class="center-lbl" id="off-area-lbl" style="margin-top:6px">No area selected</div>
+    <div class="divider" style="margin:10px 0 8px"></div>
+    <div class="info-txt" id="off-terr-info" style="margin-top:4px">Select area to see tile count</div>
+    <progress class="off-prog" id="off-terr-prog" value="0" max="1" style="display:none"></progress>
+    <button type="button" class="btn" id="off-terr-btn" onclick="downloadTerrainArea()" style="margin-top:4px">↓ Cache Terrain Tiles</button>
     <div class="divider" style="margin:10px 0 8px"></div>
     <div class="fld">
       <label>Map tiles — max zoom</label>
       <div class="vtx-row" style="margin-bottom:0">
         <input type="range" id="off-maxz" min="10" max="16" value="14" step="1"
-               oninput="document.getElementById('off-maxz-lbl').textContent=this.value; updateOfflineStats()"/>
+               oninput="document.getElementById('off-maxz-lbl').textContent=this.value; updateOfflineStats()">
         <span id="off-maxz-lbl">14</span>
       </div>
     </div>
-    <div class="info-txt" id="off-terr-info" style="margin-top:4px">Select area to see tile count</div>
-    <progress class="off-prog" id="off-terr-prog" value="0" max="1" style="display:none"></progress>
-    <button class="btn" id="off-terr-btn" onclick="downloadTerrainArea()" style="margin-top:4px">↓ Cache Terrain Tiles</button>
-    <div class="info-txt" id="off-map-info" style="margin-top:10px">Select area to see tile count</div>
+    <div class="info-txt" id="off-map-info">Select area to see tile count</div>
     <progress class="off-prog" id="off-map-prog" value="0" max="1" style="display:none"></progress>
-    <button class="btn" id="off-map-btn" onclick="downloadMapArea()" style="margin-top:4px">↓ Cache Map Tiles</button>
+    <button type="button" class="btn" id="off-map-btn" onclick="downloadMapArea()" style="margin-top:4px">↓ Cache Map Tiles</button>
+    <div class="info-txt warn" id="off-map-policy"></div>
     <div class="divider" style="margin:10px 0 8px"></div>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div class="info-txt" id="off-cache-stats" style="margin:0">Cache: loading…</div>
-      <button class="btn stop" onclick="clearOfflineCache()"
+      <button type="button" class="btn stop" onclick="clearOfflineCache()"
               style="width:auto;padding:4px 10px;margin:0;font-size:10px;letter-spacing:1px">✕ Clear</button>
     </div>
   </div>
@@ -423,67 +552,173 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
         <span id="hdg-lbl" style="font-size:10px;color:var(--accent)"></span></div>
       <b id="vh">0°</b></div>
     <div class="divider"></div>
-    <div class="rng-row"><span>Boresight (5.8G):</span><b id="r-bs">—</b></div>
-    <div class="rng-row"><span>Min coverage:</span><b id="r-min">—</b></div>
-    <div class="rng-row"><span>Max coverage:</span><b id="r-max">—</b></div>
-    <div class="rng-row"><span>Patches face:</span><b id="r-dir">right</b></div>
+    <div class="rng-row"><span>Video boresight:</span><b id="r-bs">—</b></div>
+    <div class="rng-row"><span>RC max range:</span><b id="r-rc">—</b></div>
+    <div class="rng-row"><span>Op. area:</span><b id="r-op">—</b></div>
+    <div class="rng-row"><span>Patches face:</span><b id="r-dir">—</b></div>
     <div class="divider"></div>
     <div class="ter-txt" id="ter-st">Terrain: idle</div>
   </div>
 </div>
 
 <script>
-// ─── Constants (mirrored from app.py) ────────────────────────────────────────
-const EARTH_R = 6371000, EARTH_R_EFF = EARTH_R * 4/3;
-const N_BRG = 72, TERR_PTS = 15, QUAD_ALT_DEF = 3.0, NO_DATA_RANGE = 200.0;
-const PATCH_N = 3.5;
-const PATCH1_B = [0, 1, 0];
-const PATCH2_B = [0, Math.SQRT1_2, Math.SQRT1_2];
-const FREQ_MHZ = 5800, TX_DBI = 2.0, RX_DBI = 10.0, RX_SENS = -85.0, MARGIN_DB = 6.0;
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+const RM = RfModel;
+const { dest, distM, bearingTo, isNum } = RM;
 const R2D = 180 / Math.PI, D2R = Math.PI / 180;
-
-let altMode = 'rel'; // 'rel' | 'agl' | 'amsl'
-
-function setAltMode(m) {
-  altMode = m;
-  ['rel','agl','amsl'].forEach(k => {
-    document.getElementById('amode-'+k).classList.toggle('amode-on', k===m);
-  });
-  recomputePolygon();
+const N_BRG = 72, MIN_DRAW_R = 30, TERR_ZOOM = 11;
+const MAP_KEY = 'vtol_map_state';
+const $ = id => document.getElementById(id);
+const escH = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+// Leaflet path colours come from the CSS variables in :root.
+const _cssCache = {};
+function cssVar(name) {
+  if (_cssCache[name]) return _cssCache[name];
+  let v = '';
+  try { v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); } catch {}
+  return (_cssCache[name] = v || `var(${name})`);
 }
 
-// Convert entered alt to AMSL given aircraft lat/lon
+// ─── Map-only UI state (localStorage['vtol_map_state']) ──────────────────────
+function loadMapState() {
+  try { const s = JSON.parse(localStorage.getItem(MAP_KEY)); return s && typeof s === 'object' ? s : {}; }
+  catch { return {}; }
+}
+const mapState = loadMapState();
+mapState.active = mapState.active || {};
+mapState.model = Object.assign({ k: 0.6, marginM: 0, clientAgl: 3, treeH: 15 }, mapState.model);
+mapState.live = Object.assign({ enabled: true, follow: false }, mapState.live);
+let _saveT = null;
+function saveMapState() {
+  clearTimeout(_saveT);
+  _saveT = setTimeout(() => { try { localStorage.setItem(MAP_KEY, JSON.stringify(mapState)); } catch {} }, 300);
+}
+const model = mapState.model;
+
+// ─── Profiles: shared store (C1) when present, else map-local copies ─────────
+const hasStore = () => typeof VtolStore === 'object' && VtolStore && typeof VtolStore.load === 'function';
+let profiles = { links: [], clients: [], storeClientId: null };
+function loadProfiles() {
+  let links = null, clients = null, storeClientId = null;
+  if (hasStore()) {
+    try {
+      const s = VtolStore.load();
+      links = s.links; clients = s.clients;
+      storeClientId = s.settings ? s.settings.activeClientId : null;
+    } catch {}
+  }
+  if (!Array.isArray(links) || !links.length)
+    links = Array.isArray(mapState.links) && mapState.links.length ? mapState.links : clone(RM.DEFAULT_PROFILES.links);
+  if (!Array.isArray(clients) || !clients.length) clients = clone(RM.DEFAULT_PROFILES.clients);
+  profiles = { links: links.filter(l => l && !l.deleted), clients: clients.filter(c => c && !c.deleted), storeClientId };
+}
+function activeLink(kind) {
+  const id = mapState.active[kind];
+  return profiles.links.find(l => l.id === id && l.kind === kind) || profiles.links.find(l => l.kind === kind) || null;
+}
+function activeClient() {
+  const id = mapState.active.client || profiles.storeClientId;
+  return profiles.clients.find(c => c.id === id) || profiles.clients[0] || null;
+}
+function newId() {
+  if (hasStore() && typeof VtolStore.uid === 'function') { try { return VtolStore.uid(); } catch {} }
+  return 'link-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+// Saves a link profile; returns a message for the user. If the shared store cannot be written
+// (storage full or blocked: VtolStore.save() → false), the edit stays in memory for this session only.
+function persistLink(p) {
+  p.updatedAt = new Date().toISOString();
+  const keep = () => {
+    const i = profiles.links.findIndex(l => l.id === p.id);
+    if (i >= 0) profiles.links[i] = p; else profiles.links.push(p);
+  };
+  if (hasStore()) {
+    let ok = false;
+    try {
+      const s = VtolStore.load();
+      s.links = Array.isArray(s.links) ? s.links : [];
+      const i = s.links.findIndex(l => l.id === p.id);
+      if (i >= 0) s.links[i] = p; else s.links.push(p);
+      ok = VtolStore.save(s) !== false;
+    } catch {}
+    if (ok) { loadProfiles(); return 'Profile saved to the shared store (vtol_store)'; }
+    keep();
+    return '⚠ Profile NOT saved — browser storage full or blocked (kept for this session only)';
+  }
+  keep();
+  mapState.links = profiles.links; saveMapState();
+  return 'Profile saved to map state (vtol_map_state)';
+}
+
+// ─── Altitude reference ───────────────────────────────────────────────────────
+let altMode = ['rel', 'agl', 'amsl'].includes(mapState.altMode) ? mapState.altMode : 'rel';
+let home = mapState.home || null;     // {lat, lon, amsl|null, src:'mission'|'manual'}
+
+function setAltMode(m) {
+  altMode = m; mapState.altMode = m; saveMapState();
+  ['rel','agl','amsl'].forEach(k => $('amode-'+k).classList.toggle('amode-on', k===m));
+  $('alt-mode-lbl').textContent = m.toUpperCase();
+  scheduleRecompute(); renderState();
+}
+function homeGround() {
+  if (!home) return null;
+  return isNum(home.amsl) ? home.amsl : lookupElev(home.lat, home.lon);
+}
+// Entered altitude (current mode) → AMSL at lat/lon.
 function computeRasl(lat, lon, alt) {
   if (altMode === 'amsl') return alt;
-  const aircTer = lookupElev(lat, lon) ?? 0;
-  if (altMode === 'agl') return aircTer + alt;
-  // 'rel': relative to GCS terrain if GCS placed, aircraft terrain otherwise
-  const refTer = gcsState.lat !== null
-    ? (lookupElev(gcsState.lat, gcsState.lon) ?? aircTer)
-    : aircTer;
-  return refTer + alt;
+  const ter = lookupElev(lat, lon);
+  if (altMode === 'agl') return (ter ?? 0) + alt;
+  return (homeGround() ?? ter ?? 0) + alt;           // REL: relative to HOME
+}
+function amslToMode(amsl, lat, lon) {
+  if (altMode === 'amsl') return amsl;
+  const ter = lookupElev(lat, lon);
+  if (altMode === 'agl') return amsl - (ter ?? 0);
+  return amsl - (homeGround() ?? ter ?? 0);
+}
+function altText() {
+  if (state.lat === null) return '—';
+  const amsl = computeRasl(state.lat, state.lon, state.alt_m);
+  const ter = lookupElev(state.lat, state.lon), hg = homeGround();
+  const rel = hg !== null ? Math.round(amsl - hg) + ' m REL' : 'REL — (no home)';
+  const agl = ter !== null ? Math.round(amsl - ter) + ' m AGL' : '— AGL';
+  return `${rel} · ${agl} · ${Math.round(amsl)} m / ${Math.round(amsl*3.28084)} ft AMSL`;
 }
 
 // ─── Application state ────────────────────────────────────────────────────────
 const state = {
   lat: null, lon: null, alt_m: 120.0,
   roll: 0.0, pitch: 0.0, heading: 0.0,
-  vtx_dbm: 27.8, quad_alt: QUAD_ALT_DEF,
-  source: 'offline',
-  polygon: [], seg_types: [],
-  boresight_km: 0, min_range_km: 0, max_range_km: 0,
-  terrain_status: 'idle',
+  vtx_dbm: null, source: '—',
+  cov: null, terrain_status: 'idle',
 };
 const sim = {
-  mode: null, speed_ms: 15.0, heading: 0.0,
+  mode: null, speed_ms: 13.0, heading: 0.0,
   orbit_lat: null, orbit_lon: null,
   orbit_r: 200.0, orbit_angle: 0.0,
-  waypoints: [], wp_idx: 0,
+  mission: null, ms: null,
 };
 
-// ─── AWS Terrain Tiles (Terrarium PNG, zoom 11 ~76m/px, full CORS) ───────────
-const TERR_ZOOM = 11;
-const tileCache = new Map(); // key: "11/tx/ty" → ImageData | null (null = loading)
+// ─── Tile sources and their bulk-download policies (MAP-08) ──────────────────
+// bulk:true only where the terms allow pre-fetching tiles the user is not viewing.
+//  • OpenStreetMap — OSMF Tile Usage Policy, https://operations.osmfoundation.org/policies/tiles/
+//    "Bulk downloading … is prohibited", "Offline use is not permitted on tile.openstreetmap.org".
+//  • OpenTopoMap — community server, CC-BY-SA tiles (https://opentopomap.org/about); no permission
+//    for bulk/offline download is given, so it is treated like OSM: not allowed.
+//  • ESRI World Imagery — Esri terms of use (https://www.esri.com/en-us/legal/terms/full-master-agreement):
+//    offline use needs an ArcGIS licence (tile export); not allowed here.
+//  • CARTO basemaps — https://carto.com/basemaps (CARTO terms): limited free use, no offline/bulk grant.
+//  • Kartverket topo cache — Norwegian open data, CC BY 4.0 (Geonorge / data.norge.no); reuse incl.
+//    caching allowed with attribution. Service fair-use limits: TBD (not published) — downloads are
+//    capped at 3000 tiles per request.
+//  • Terrain: AWS Terrain Tiles (Mapzen "Terrarium"), Registry of Open Data on AWS,
+//    https://registry.opendata.aws/terrain-tiles/ — open data, attribution required
+//    (https://github.com/tilezen/joerd/blob/master/docs/attribution.md). Downloadable.
+const TERR_URL = (z,x,y) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`;
+const TERR_ATTR = 'Terrain: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen / AWS Terrain Tiles</a>';
 
 // ─── IndexedDB — persistent offline tile cache ────────────────────────────────
 let _offlineDB = null;
@@ -521,12 +756,14 @@ async function _idbPut(store, key, val) {
   } catch {}
 }
 async function _idbClear(store) {
-  const db = await _openOfflineDB();
-  return new Promise(res => {
-    const tx = db.transaction(store,'readwrite');
-    tx.objectStore(store).clear();
-    tx.oncomplete = res; tx.onerror = res;
-  });
+  try {
+    const db = await _openOfflineDB();
+    return new Promise(res => {
+      const tx = db.transaction(store,'readwrite');
+      tx.objectStore(store).clear();
+      tx.oncomplete = res; tx.onerror = res;
+    });
+  } catch {}
 }
 async function _idbCount(store) {
   try {
@@ -539,60 +776,22 @@ async function _idbCount(store) {
   } catch { return 0; }
 }
 
-// ─── Geometry ─────────────────────────────────────────────────────────────────
-function roundTo(x, n) { const f = 10**n; return Math.round(x*f)/f; }
-
-function dest(lat, lon, brg, dist) {
-  const d = dist/EARTH_R, θ = brg*D2R;
-  const φ1 = lat*D2R, λ1 = lon*D2R;
-  const φ2 = Math.asin(Math.sin(φ1)*Math.cos(d)+Math.cos(φ1)*Math.sin(d)*Math.cos(θ));
-  const λ2 = λ1+Math.atan2(Math.sin(θ)*Math.sin(d)*Math.cos(φ1),
-                             Math.cos(d)-Math.sin(φ1)*Math.sin(φ2));
-  return [φ2*R2D, λ2*R2D];
-}
-
-function distM(la1,lo1,la2,lo2) {
-  const φ1=la1*D2R, φ2=la2*D2R;
-  const a = Math.sin((la2-la1)*D2R/2)**2
-          + Math.cos(φ1)*Math.cos(φ2)*Math.sin((lo2-lo1)*D2R/2)**2;
-  return 2*EARTH_R*Math.asin(Math.sqrt(a));
-}
-
-function bearingTo(la1,lo1,la2,lo2) {
-  const φ1=la1*D2R, φ2=la2*D2R, dλ=(lo2-lo1)*D2R;
-  return (Math.atan2(Math.sin(dλ)*Math.cos(φ2),
-    Math.cos(φ1)*Math.sin(φ2)-Math.sin(φ1)*Math.cos(φ2)*Math.cos(dλ))*R2D+360)%360;
-}
-
-// ─── Tile coordinate helpers ──────────────────────────────────────────────────
-function _tile(lat, lon) {
-  const n = 1 << TERR_ZOOM;
-  const tx = Math.floor((lon + 180) / 360 * n);
-  const sinLat = Math.sin(lat * D2R);
-  const ty = Math.floor((1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2 * n);
-  return [tx, ty];
-}
-
-function _tilePixel(lat, lon, tx, ty) {
-  const n = 1 << TERR_ZOOM;
-  const px = Math.min(255, Math.max(0, Math.floor(((lon + 180) / 360 * n - tx) * 256)));
-  const sinLat = Math.sin(lat * D2R);
-  const py = Math.min(255, Math.max(0, Math.floor(((1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2 * n - ty) * 256)));
-  return [px, py];
-}
+// ─── Terrain tiles (Terrarium PNG, z11) ──────────────────────────────────────
+const tileCache = new Map();  // "11/tx/ty" → ImageData | null (null = loading)
+const tileFail = new Map();   // "11/tx/ty" → time of last failure (retry after 30 s)
+const TILE_RETRY_MS = 30000;
 
 async function _fetchTile(tx, ty) {
-  const key = `${TERR_ZOOM}/${tx}/${ty}`;
+  const key = RM.tileKey(TERR_ZOOM, tx, ty);
   if (tileCache.has(key)) return tileCache.get(key);
+  if (Date.now() - (tileFail.get(key) || 0) < TILE_RETRY_MS) return null;
   tileCache.set(key, null);
   const cached = await _idbGet('terrain', key);
   if (cached) { tileCache.set(key, cached); return cached; }
   try {
-    const url = `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${TERR_ZOOM}/${tx}/${ty}.png`;
-    const r = await fetch(url, {mode:'cors'});
-    if (!r.ok) { tileCache.delete(key); return null; }
-    const blob = await r.blob();
-    const img = await createImageBitmap(blob);
+    const r = await fetch(TERR_URL(TERR_ZOOM, tx, ty), {mode:'cors'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const img = await createImageBitmap(await r.blob());
     const can = typeof OffscreenCanvas !== 'undefined'
       ? new OffscreenCanvas(256, 256)
       : Object.assign(document.createElement('canvas'), {width:256, height:256});
@@ -601,258 +800,158 @@ async function _fetchTile(tx, ty) {
     tileCache.set(key, data);
     _idbPut('terrain', key, data);
     return data;
-  } catch(e) {
-    tileCache.delete(key);
-    console.warn('[tile]', e.message);
+  } catch {
+    tileCache.delete(key); tileFail.set(key, Date.now());
     return null;
   }
 }
 
 function lookupElev(lat, lon) {
-  const [tx, ty] = _tile(lat, lon);
-  const data = tileCache.get(`${TERR_ZOOM}/${tx}/${ty}`);
+  const [tx, ty] = RM.tileOf(lat, lon, TERR_ZOOM);
+  const data = tileCache.get(RM.tileKey(TERR_ZOOM, tx, ty));
   if (!data) return null;
-  const [px, py] = _tilePixel(lat, lon, tx, ty);
+  const [px, py] = RM.tilePixel(lat, lon, tx, ty, TERR_ZOOM);
   const i = (py * 256 + px) * 4, d = data.data;
-  const e = (d[i] * 256 + d[i+1] + d[i+2] / 256) - 32768;
+  const e = RM.terrariumM(d[i], d[i+1], d[i+2]);
   return e > -1000 ? e : null;
 }
 
-// ─── RF math (ported from app.py) ────────────────────────────────────────────
-function boresightRange() {
-  const pl = state.vtx_dbm + TX_DBI + RX_DBI - RX_SENS - MARGIN_DB;
-  return 10**((pl - 20*Math.log10(4*Math.PI*FREQ_MHZ*1e6/3e8))/20);
+// Tiles of zoom z covering a circle of radius R around lat/lon.
+function tilesAround(lat, lon, R, z) {
+  const n = dest(lat, lon, 0, R)[0], s = dest(lat, lon, 180, R)[0];
+  const e = dest(lat, lon, 90, R)[1], w = dest(lat, lon, 270, R)[1];
+  const b = RM.tilesForBounds(s, w, n, e, z), out = [];
+  for (let x = b.tx1; x <= b.tx2; x++) for (let y = b.ty1; y <= b.ty2; y++) out.push([x, y]);
+  return out;
+}
+const missingTerrain = tiles => tiles.filter(([x, y]) => !tileCache.has(RM.tileKey(TERR_ZOOM, x, y)));
+
+// ─── Coverage computation ─────────────────────────────────────────────────────
+function clientMaxR() {
+  const v = RM.linkRangeM(activeLink('video'), isNum(state.vtx_dbm) ? {txPowerDbm: state.vtx_dbm} : null);
+  const r = RM.linkRangeM(activeLink('rc'));
+  return Math.max(v || 0, r || 0, 200);
 }
 
-function brgToNed(brg, depM, dstM) {
-  const B=brg*D2R, da=Math.atan2(Math.max(depM,0), Math.max(dstM,1)), ca=Math.cos(da);
-  return [Math.cos(B)*ca, Math.sin(B)*ca, Math.sin(da)];
+function computeClient() {
+  const R = clientMaxR(), step = RM.demStep(state.lat, R, TERR_ZOOM);
+  const ter = lookupElev(state.lat, state.lon);
+  $('md-info').textContent = `Clearance = k × F1 + margin. Sample spacing ${Math.round(step)} m (≤ z11 DEM pixel here).`;
+  return RM.clientCoverage({
+    lat: state.lat, lon: state.lon, hAsl: computeRasl(state.lat, state.lon, state.alt_m),
+    hdg: state.heading, pitch: state.pitch, roll: state.roll, clientAgl: model.clientAgl,
+    nBrg: N_BRG, step, k: model.k, marginM: model.marginM,
+    elev: lookupElev, canopy: canopyAt, groundFallback: ter ?? homeGround() ?? 0,
+    video: activeLink('video'), rc: activeLink('rc'), vtxDbm: state.vtx_dbm,
+  });
 }
 
-function nedToBody(n, hdg, pitch, roll) {
-  const ψ=hdg*D2R,θ=pitch*D2R,φ=roll*D2R;
-  const cψ=Math.cos(ψ),sψ=Math.sin(ψ),cθ=Math.cos(θ),sθ=Math.sin(θ),cφ=Math.cos(φ),sφ=Math.sin(φ);
-  const x1=n[0]*cψ+n[1]*sψ, y1=-n[0]*sψ+n[1]*cψ, z1=n[2];
-  const x2=x1*cθ+z1*sθ, y2=y1, z2=-x1*sθ+z1*cθ;
-  return [x2, y2*cφ+z2*sφ, -y2*sφ+z2*cφ];
+function rangeSpan(ranges) {
+  const a = (ranges || []).filter(r => r > 50);
+  return a.length ? [Math.min(...a) / 1000, Math.max(...a) / 1000] : null;
 }
-
-function patchGain(b, bs) {
-  return Math.max(b[0]*bs[0]+b[1]*bs[1]+b[2]*bs[2], 0)**PATCH_N;
-}
-
-function combinedRF(brg, alt, dist, hdg, pitch, roll) {
-  const altDrop = Math.max(alt - state.quad_alt, 0);
-  const dBody = nedToBody(brgToNed(brg, altDrop, dist), hdg, pitch, roll);
-  const g = Math.max(patchGain(dBody, PATCH1_B), patchGain(dBody, PATCH2_B));
-  return g > 0 ? Math.sqrt(g) : 0;
-}
-
-// ─── Terrain LOS ──────────────────────────────────────────────────────────────
-function terrainLos(rLat, rLon, rAsl, brg, capR, sampleR, qa) {
-  const samp = [];
-  for (let k=1; k<=TERR_PTS; k++) {
-    const d = sampleR*k/TERR_PTS;
-    const [sl,so] = dest(rLat, rLon, brg, d);
-    samp.push([d, lookupElev(sl,so)]);
-  }
-  if (!samp.some(s=>s[1]!==null)) return [Math.min(NO_DATA_RANGE,capR),'nodata'];
-
-  let maxC=NO_DATA_RANGE, lim='nodata';
-  for (let i=0; i<samp.length; i++) {
-    const [dT,hT]=samp[i];
-    if (dT>capR) { if(lim==='nodata'){maxC=capR;lim='rf';} break; }
-    if (hT===null) break;
-    const tAsl=hT+qa;
-    let ok=true;
-    for (let j=0; j<i; j++) {
-      const [dM,hM]=samp[j];
-      if (hM===null) { ok=false; break; }
-      const frac=dM/dT;
-      const losH=rAsl+(tAsl-rAsl)*frac - dM*(dT-dM)/(2*EARTH_R_EFF);
-      if (hM > losH - 25*4*frac*(1-frac)) { ok=false; break; }
-    }
-    if (ok) { maxC=dT; lim=i<TERR_PTS-1?'terrain':'rf'; }
-    else break;
-  }
-  return [Math.min(maxC,capR), lim];
-}
-
-// ─── Coverage polygon ─────────────────────────────────────────────────────────
-function computePolygon() {
-  const {lat,lon,alt_m:alt,roll,pitch,heading,quad_alt:qa} = state;
-  const rAsl = computeRasl(lat, lon, alt);
-  const bs   = boresightRange();
-  const polygon=[], segTypes=[], ranges=[];
-
-  for (let i=0; i<N_BRG; i++) {
-    const brg = i*360/N_BRG;
-    const rf  = combinedRF(brg, alt, bs, heading, pitch, roll);
-    if (rf < 0.05) {
-      polygon.push(dest(lat,lon,brg,30)); segTypes.push('patch'); ranges.push(0.03);
-      continue;
-    }
-    const adjR = bs*rf;
-    const [terR,lim] = terrainLos(lat,lon,rAsl,brg,adjR,bs,qa);
-    const finalR = Math.max(terR,30);
-    polygon.push(dest(lat,lon,brg,finalR).map(v=>Math.round(v*1e6)/1e6));
-    segTypes.push(lim==='nodata'?'nodata': terR<adjR*0.95?'terrain':'rf');
-    ranges.push(finalR/1000);
-  }
-  return {polygon, segTypes, ranges};
-}
+const fmtKm = m => isNum(m) ? (Math.round(m / 100) / 10) + ' km' : 'TBD';
 
 function recomputePolygon() {
-  if (state.lat===null) return;
-  const {polygon,segTypes,ranges} = computePolygon();
-  state.polygon=polygon; state.seg_types=segTypes;
-  const bs=boresightRange();
-  state.boresight_km = Math.round(bs/100)/10;
-  const active = ranges.filter((_,i)=>segTypes[i]!=='patch' && ranges[i]>0.05);
-  state.min_range_km = active.length ? Math.round(Math.min(...active)*100)/100 : 0;
-  state.max_range_km = active.length ? Math.round(Math.max(...active)*100)/100 : 0;
+  clearTimeout(_recT); _recT = null;
+  if (state.lat !== null) {
+    state.cov = computeClient();
+    drawClient(state.cov);
+    sweepAdd(state.cov);
+  }
   _recomputeGcsSync();
   renderState();
 }
-
-function _recomputeGcsSync() {
-  if (gcsState.lat===null) return;
-  const {lat,lon,ant_h:antH,tree_h:treeH,max_range:maxR} = gcsState;
-  // Carrier AMSL: convert entered alt using selected mode (aircraft position or GCS fallback)
-  const aLat = state.lat ?? lat, aLon = state.lon ?? lon;
-  const carrierAmsl = computeRasl(aLat, aLon, state.alt_m ?? 120);
-  const polygon=[], segTypes=[];
-  for (let i=0; i<N_BRG; i++) {
-    const brg=i*360/N_BRG;
-    const [terR,lim]=gcsTerrainLos(lat,lon,antH,treeH,brg,maxR,maxR,carrierAmsl);
-    polygon.push(dest(lat,lon,brg,Math.max(terR,30)).map(v=>Math.round(v*1e6)/1e6));
-    segTypes.push(lim);
-  }
-  drawGcsPoly(polygon, segTypes);
+// MAP-13: tile loads, slider moves etc. coalesce into one recompute.
+let _recT = null;
+function scheduleRecompute() {
+  clearTimeout(_recT);
+  _recT = setTimeout(recomputePolygon, 150);
 }
 
 // ─── Tile-based terrain prefetch (every 2 s) ─────────────────────────────────
+// Automatic fetches stay within AUTO_TERRAIN_R (bandwidth: an ELRS profile can give ~100 km of
+// free-space range). Rays beyond it are drawn as "no terrain data". Forest tiles are only
+// fetched within the video range — the operating area always lies inside it.
+const AUTO_TERRAIN_R = 20000;
 let _terRunning = false;
 async function terrainPrefetch() {
   if (_terRunning || state.lat === null) return;
   _terRunning = true;
   try {
-    const {lat, lon} = state, bs = boresightRange();
-    const needed = new Set();
-    needed.add(_tile(lat, lon).join('/'));
-    for (let b = 0; b < 360; b += 5)
-      for (let k = 1; k <= TERR_PTS; k++) {
-        const [sl, so] = dest(lat, lon, b, bs * k / TERR_PTS);
-        needed.add(_tile(sl, so).join('/'));
-      }
-    const missing = [...needed].filter(k => !tileCache.has(`${TERR_ZOOM}/${k}`));
+    const R = Math.min(clientMaxR(), AUTO_TERRAIN_R);
+    const missing = missingTerrain(tilesAround(state.lat, state.lon, R, TERR_ZOOM));
+    const vR = state.cov && state.cov.video.R0;
+    if (model.treeH > 0 && vR) prefetchVegTiles(state.lat, state.lon, Math.min(vR, AUTO_TERRAIN_R));
     if (!missing.length) {
       if (state.terrain_status !== 'ready') { state.terrain_status = 'ready'; renderState(); }
       return;
     }
     state.terrain_status = 'fetching'; renderState();
-    await Promise.all(missing.map(k => {
-      const [tx, ty] = k.split('/').map(Number);
-      return _fetchTile(tx, ty).then(() => recomputePolygon());
-    }));
-    state.terrain_status = 'ready';
-    recomputePolygon(); renderState();
-  } catch(e) {
-    state.terrain_status = 'error: ' + e.message;
-    renderState(); console.warn('[terrain]', e);
+    const got = await Promise.all(missing.map(([x, y]) => _fetchTile(x, y).then(d => { if (d) scheduleRecompute(); return d; })));
+    state.terrain_status = got.every(Boolean) ? 'ready' : got.some(Boolean) ? 'partial' : 'unavailable';
+    scheduleRecompute(); renderState();
   } finally { _terRunning = false; }
 }
 
-// ─── Wide-area tile prefetch (30km radius, 30s delay then every 60s) ─────────
+// ─── Wide-area tile prefetch (30 km, for the cursor AMSL readout) ────────────
 let _wideRunning = false;
 async function widePrefetch() {
   if (_wideRunning || state.lat === null) return;
   _wideRunning = true;
   try {
-    const {lat, lon} = state;
-    const needed = new Set();
-    needed.add(_tile(lat, lon).join('/'));
+    const needed = new Map();
+    const add = (la, lo) => { const t = RM.tileOf(la, lo, TERR_ZOOM); needed.set(t.join('/'), t); };
+    add(state.lat, state.lon);
     for (let b = 0; b < 360; b += 45)
-      for (const d of [10000, 20000, 30000]) {
-        const [sl, so] = dest(lat, lon, b, d);
-        needed.add(_tile(sl, so).join('/'));
-      }
-    const missing = [...needed].filter(k => !tileCache.has(`${TERR_ZOOM}/${k}`));
-    if (!missing.length) return;
-    console.log(`[wide] fetching ${missing.length} tiles`);
-    await Promise.all(missing.map(k => {
-      const [tx, ty] = k.split('/').map(Number);
-      return _fetchTile(tx, ty);
-    }));
-  } catch(e) { console.warn('[wide]', e); }
-  finally { _wideRunning = false; }
+      for (const d of [10000, 20000, 30000]) add(...dest(state.lat, state.lon, b, d));
+    await Promise.all(missingTerrain([...needed.values()]).map(([x, y]) => _fetchTile(x, y)));
+  } finally { _wideRunning = false; }
 }
 
 // ─── Simulation engine (2 Hz) ─────────────────────────────────────────────────
-const SIM_DT=0.5;
+const SIM_DT = 0.5;
+function loiterR() { return parseFloat($('sim-orb-r').value) || 200; }
 function simStep() {
-  if (!sim.mode || state.lat===null) return;
-  if (sim.mode==='straight') {
-    const [nl,no]=dest(state.lat,state.lon,sim.heading,sim.speed_ms*SIM_DT);
-    Object.assign(state,{lat:nl,lon:no,heading:sim.heading,roll:0,pitch:0,source:'simulated'});
-  } else if (sim.mode==='orbit') {
-    if (sim.orbit_lat===null) return;
-    const r=Math.max(sim.orbit_r,50);
-    sim.orbit_angle=(sim.orbit_angle+sim.speed_ms/r*SIM_DT)%(2*Math.PI);
-    const [nl,no]=dest(sim.orbit_lat,sim.orbit_lon,sim.orbit_angle*R2D,r);
-    const roll=Math.atan2(sim.speed_ms**2,r*9.81)*R2D;
-    Object.assign(state,{lat:nl,lon:no,heading:(sim.orbit_angle*R2D+90+360)%360,
-                         roll,pitch:0,source:'simulated'});
-  } else if (sim.mode==='mission') {
-    if (!sim.waypoints.length||sim.wp_idx>=sim.waypoints.length) {
-      sim.mode=null; renderState(); return;
-    }
-    const {lat:wl,lon:wo,alt:wa}=sim.waypoints[sim.wp_idx];
-    const step=sim.speed_ms*SIM_DT;
-    const d=distM(state.lat,state.lon,wl,wo);
-    if (d<=Math.max(step,20)) {
-      Object.assign(state,{lat:wl,lon:wo,alt_m:wa,source:'simulated'});
-      sim.wp_idx++;
-      if (sim.wp_idx>=sim.waypoints.length) sim.mode=null;
-    } else {
-      const hdg=bearingTo(state.lat,state.lon,wl,wo);
-      const [nl,no]=dest(state.lat,state.lon,hdg,step);
-      Object.assign(state,{lat:nl,lon:no,heading:hdg,roll:0,pitch:0,source:'simulated'});
-    }
+  if (!sim.mode || state.lat === null) return;
+  if (sim.mode === 'straight') {
+    const [nl, no] = dest(state.lat, state.lon, sim.heading, sim.speed_ms * SIM_DT);
+    Object.assign(state, {lat:nl, lon:no, heading:sim.heading, roll:0, pitch:0, source:'simulated'});
+  } else if (sim.mode === 'orbit') {
+    if (sim.orbit_lat === null) return;
+    const r = Math.max(sim.orbit_r, 50);
+    sim.orbit_angle = (sim.orbit_angle + sim.speed_ms / r * SIM_DT) % (2 * Math.PI);
+    const [nl, no] = dest(sim.orbit_lat, sim.orbit_lon, sim.orbit_angle * R2D, r);
+    const roll = Math.atan2(sim.speed_ms ** 2, r * 9.81) * R2D;
+    Object.assign(state, {lat:nl, lon:no, heading:(sim.orbit_angle*R2D + 90 + 360) % 360,
+                          roll, pitch:0, source:'simulated'});
+  } else if (sim.mode === 'mission') {
+    const ms = RM.missionStep(sim.ms, SIM_DT, {speed: sim.speed_ms, loiterR: loiterR()});
+    Object.assign(state, {lat: ms.lat, lon: ms.lon, heading: ms.hdg, roll: ms.roll, pitch: 0,
+                          alt_m: amslToMode(ms.altAmsl, ms.lat, ms.lon), source: 'simulated'});
+    $('m-alt').value = Math.round(state.alt_m);
+    const it = ms.items[Math.min(ms.idx, ms.items.length - 1)];
+    $('mis-status').textContent = ms.done ? 'Mission complete'
+      : `Item ${ms.idx + 1}/${ms.items.length} ${it.name} · ${ms.phase}`;
+    if (ms.done) sim.mode = null;
   }
-  recomputePolygon();
+  renderState();
+  scheduleRecompute();
 }
-setInterval(simStep,500);
-
-// ─── Mission file parser (QGC WPL 110) ───────────────────────────────────────
-function parseMission(text) {
-  const wps=[];
-  for (const raw of text.split('\n')) {
-    const line=raw.trim();
-    if (!line||line.startsWith('#')||line.startsWith('QGC')) continue;
-    const p=line.split('\t');
-    if (p.length<12) continue;
-    const idx=parseInt(p[0]);
-    if (isNaN(idx)||idx===0) continue;
-    const cmd=parseInt(p[3]);
-    if (![16,22,21].includes(cmd)) continue;
-    const lat=parseFloat(p[8]),lon=parseFloat(p[9]),alt=parseFloat(p[10]);
-    if (Math.abs(lat)<0.001&&Math.abs(lon)<0.001) continue;
-    wps.push({lat,lon,alt});
-  }
-  return wps;
-}
+setInterval(simStep, SIM_DT * 1000);
 
 // ─── Offline-aware tile layer ─────────────────────────────────────────────────
 const OfflineTileLayer = L.TileLayer.extend({
   createTile(coords, done) {
     const img = L.DomUtil.create('img', 'leaflet-tile');
     img.alt = '';
-    img.onload = () => done(null, img);
-    img.onerror = e => done(e, img);
     const url = this._buildUrl(coords);
     _idbGet('maptiles', url).then(blob => {
-      img.src = blob ? URL.createObjectURL(blob) : url;
+      const obj = blob ? URL.createObjectURL(blob) : null;
+      const free = () => { if (obj) URL.revokeObjectURL(obj); };    // MAP-07
+      img.onload = () => { free(); done(null, img); };
+      img.onerror = e => { free(); done(e, img); };
+      img.src = obj || url;
     });
     return img;
   },
@@ -870,364 +969,532 @@ const OfflineTileLayer = L.TileLayer.extend({
   }
 });
 
-function _buildTileUrl(layer, z, x, y) {
-  return layer._buildUrl({z, x, y});
-}
-
 // ─── Leaflet map ──────────────────────────────────────────────────────────────
-const LAYERS={
-  topo:       new OfflineTileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'©OpenTopoMap',maxZoom:17,subdomains:'abc'}),
-  sat:        new OfflineTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'©ESRI',maxZoom:18}),
-  osm:        new OfflineTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'©OSM',maxZoom:19,subdomains:'abc'}),
-  dark:       new OfflineTileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'©CartoDB',maxZoom:19,subdomains:'abcd'}),
-  norgeskart: new OfflineTileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',{attribution:'©<a href="https://www.kartverket.no">Kartverket</a>',maxZoom:19}),
+const LAYERS = {
+  topo:       { label: 'Topo (OpenTopoMap)', bulk: false, policy: 'OpenTopoMap',
+                layer: new OfflineTileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'©OpenTopoMap',maxZoom:17,subdomains:'abc'}) },
+  sat:        { label: 'Satellite (ESRI)', bulk: false, policy: 'Esri',
+                layer: new OfflineTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'©ESRI',maxZoom:18}) },
+  osm:        { label: 'Street (OSM)', bulk: false, policy: 'OpenStreetMap',
+                layer: new OfflineTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'©OSM',maxZoom:19,subdomains:'abc'}) },
+  dark:       { label: 'Dark (CartoDB)', bulk: false, policy: 'CARTO',
+                layer: new OfflineTileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'©CartoDB',maxZoom:19,subdomains:'abcd'}) },
+  norgeskart: { label: 'Norgeskart (Kartverket)', bulk: true, policy: 'Kartverket (CC BY 4.0)',
+                layer: new OfflineTileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',{attribution:'©<a href="https://www.kartverket.no">Kartverket</a> CC BY 4.0',maxZoom:19}) },
 };
-const map=L.map('map').setView([61.222,10.769],13);
-LAYERS.topo.addTo(map);
-let activeLayer='topo';
-
-function switchLayer(k) { map.removeLayer(LAYERS[activeLayer]); LAYERS[k].addTo(map); activeLayer=k; }
+const _view = mapState.view;
+// MAP-09: no built-in site — last view, else a neutral world view.
+const map = L.map('map').setView(_view ? [_view.lat, _view.lon] : [20, 0], _view ? _view.z : 2);
+map.attributionControl.addAttribution(TERR_ATTR);
+let activeLayer = LAYERS[mapState.layer] ? mapState.layer : 'topo';
+LAYERS[activeLayer].layer.addTo(map);
+map.on('moveend', () => {
+  const c = map.getCenter();
+  mapState.view = { lat: +c.lat.toFixed(5), lon: +c.lng.toFixed(5), z: map.getZoom() };
+  saveMapState();
+});
 
 function toggleLayerDd(e) {
   e.stopPropagation();
-  const list=document.getElementById('layer-dd-list');
-  const btn=document.getElementById('layer-dd-btn');
-  const open=list.classList.toggle('open');
-  btn.classList.toggle('open',open);
+  const open = $('layer-dd-list').classList.toggle('open');
+  $('layer-dd-btn').classList.toggle('open', open);
 }
-function pickLayer(key,label) {
-  switchLayer(key);
-  document.getElementById('layer-dd-btn').textContent=label;
-  document.getElementById('layer-dd-list').classList.remove('open');
-  document.getElementById('layer-dd-btn').classList.remove('open');
-  document.querySelectorAll('.layer-dd-item').forEach(el=>
-    el.classList.toggle('active', el.textContent===label));
+function pickLayer(key) {
+  map.removeLayer(LAYERS[activeLayer].layer); LAYERS[key].layer.addTo(map);
+  activeLayer = key; mapState.layer = key; saveMapState();
+  const label = LAYERS[key].label;
+  $('layer-dd-btn').textContent = label;
+  $('layer-dd-list').classList.remove('open');
+  $('layer-dd-btn').classList.remove('open');
+  document.querySelectorAll('.layer-dd-item').forEach(el => el.classList.toggle('active', el.textContent === label));
+  updateOfflineUi();
 }
-document.addEventListener('click',()=>{
-  document.getElementById('layer-dd-list').classList.remove('open');
-  document.getElementById('layer-dd-btn').classList.remove('open');
+document.addEventListener('click', () => {
+  $('layer-dd-list').classList.remove('open');
+  $('layer-dd-btn').classList.remove('open');
 });
 
-function acIcon(hdg) {
-  return L.divIcon({className:'',iconSize:[44,44],iconAnchor:[22,22],
+function acIcon(hdg, fill) {
+  return L.divIcon({className:'', iconSize:[44,44], iconAnchor:[22,22],
     html:`<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-      <g transform="rotate(${hdg},22,22)">
-        <ellipse cx="22" cy="22" rx="3" ry="11" fill="#22c55e" stroke="#111" stroke-width="1"/>
-        <polygon points="22,19 5,26 22,23 39,26" fill="#22c55e" stroke="#111" stroke-width="1"/>
-        <polygon points="22,30 15,38 22,34 29,38" fill="#22c55e" stroke="#111" stroke-width="1"/>
-        <line x1="22" y1="22" x2="38" y2="22" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
-        <polygon points="38,22 33,19 33,25" fill="#f97316"/>
-        <circle cx="22" cy="11" r="2.5" fill="#fff" opacity=".5"/>
+      <g transform="rotate(${+hdg || 0},22,22)">
+        <ellipse cx="22" cy="22" rx="3" ry="11" fill="var(${fill})" stroke="var(--bg)" stroke-width="1"/>
+        <polygon points="22,19 5,26 22,23 39,26" fill="var(${fill})" stroke="var(--bg)" stroke-width="1"/>
+        <polygon points="22,30 15,38 22,34 29,38" fill="var(${fill})" stroke="var(--bg)" stroke-width="1"/>
+        ${patchArrow()}
+        <circle cx="22" cy="11" r="2.5" fill="var(--text)" opacity=".5"/>
       </g></svg>`});
 }
+// Arrow towards the side the video patches face (derived from the antenna model, MAP-15).
+function patchArrow() {
+  const f = RM.antennaFacing((activeLink('video') || {}).antenna, 0);
+  if (f.absDeg === null) return '';
+  const a = (f.absDeg - 90) * D2R, x = 22 + 16 * Math.cos(a), y = 22 + 16 * Math.sin(a);
+  return `<line x1="22" y1="22" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="var(--accent)"/>`;
+}
+function homeIcon() {
+  return L.divIcon({className:'', iconSize:[22,22], iconAnchor:[11,11],
+    html:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+      <polygon points="11,2 20,10 17,10 17,20 5,20 5,10 2,10" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linejoin="round"/>
+      <rect x="9" y="13" width="4" height="7" fill="var(--amber)"/></svg>`});
+}
 
-let marker=null, polyLayer=null, firstFix=true;
-let orbitCenterMarker=null, orbitCircle=null;
+let marker = null, firstFix = !_view;
+let orbitCenterMarker = null, orbitCircle = null, homeMarker = null;
+const layers = {};                    // named Leaflet layer groups
+function clearLayer(k) { if (layers[k]) { map.removeLayer(layers[k]); layers[k] = null; } }
 
-const SEG_COLOR={rf:'#60a5fa',terrain:'#f97316',nodata:'#555',patch:'#ef4444'};
+// ─── Drawing the client links ─────────────────────────────────────────────────
+const LINK_STYLE = {
+  video: { edge: '--blue', fill: '--blue', fillOpacity: 0.08, dash: null },
+  rc:    { edge: '--teal', fill: '--teal', fillOpacity: 0.05, dash: '8,4' },
+};
+function edgeStyle(lim, st) {
+  if (lim === 'terrain') return { color: cssVar('--accent'), weight: 2.5, dashArray: st.dash };
+  if (lim === 'nodata')  return { color: cssVar('--grey'), weight: 2, dashArray: '6,4' };
+  if (lim === 'antnull') return { color: cssVar('--red'), weight: 1, dashArray: '2,4' };
+  return { color: cssVar(st.edge), weight: 2.5, dashArray: st.dash };
+}
+function drawLink(kind, res) {
+  clearLayer(kind);
+  if (!res || !res.ranges) return;
+  const st = LINK_STYLE[kind], poly = RM.starPolygon(state.lat, state.lon, res.ranges, MIN_DRAW_R);
+  const g = layers[kind] = L.layerGroup().addTo(map);
+  L.polygon(poly, {stroke:false, fillColor:cssVar(st.fill), fillOpacity:st.fillOpacity, interactive:false}).addTo(g);
+  // merge consecutive segments with the same limit into one polyline
+  const n = poly.length;
+  let i = 0;
+  while (i < n) {
+    const lim = res.radials[i].limit, pts = [poly[i]];
+    let j = i;
+    while (j < n && res.radials[j].limit === lim) { pts.push(poly[(j + 1) % n]); j++; }
+    L.polyline(pts, Object.assign({opacity:0.85, interactive:false}, edgeStyle(lim, st))).addTo(g);
+    i = j;
+  }
+}
+function drawClient(cov) {
+  drawLink('video', cov.video);
+  drawLink('rc', cov.rc);
+  clearLayer('op');
+  if (cov.op) {
+    const g = layers.op = L.layerGroup().addTo(map);
+    L.polygon(RM.starPolygon(state.lat, state.lon, cov.op, MIN_DRAW_R), {color:cssVar('--green'), weight:2,
+      opacity:0.9, fillColor:cssVar('--green'), fillOpacity:0.18, interactive:false}).addTo(g)
+      .bindTooltip('OPERATING AREA', {permanent:true, direction:'center', className:'op-lbl'});
+  }
+  // "shadow re-acquired" radial segments — LOS returns behind a ridge; not coverage.
+  clearLayer('shadow');
+  const segs = [];
+  for (const res of [cov.video, cov.rc]) {
+    if (!res.radials) continue;
+    res.radials.forEach((r, i) => r.shadows.forEach(([d0, d1]) => {
+      const b = i * 360 / res.radials.length;
+      segs.push([dest(state.lat, state.lon, b, d0), dest(state.lat, state.lon, b, d1)]);
+    }));
+  }
+  if (segs.length)
+    layers.shadow = L.polyline(segs, {color:cssVar('--muted'), weight:1.5, opacity:0.8, dashArray:'1,4',
+      interactive:false}).addTo(map);
+}
 
-function drawPoly(poly,types) {
-  if (polyLayer) map.removeLayer(polyLayer);
-  if (!poly||poly.length<3) return;
-  polyLayer=L.layerGroup().addTo(map);
-  L.polygon(poly,{color:'transparent',fillColor:'#60a5fa',fillOpacity:0.10,weight:0}).addTo(polyLayer);
-  for (let i=0;i<poly.length;i++) {
-    const j=(i+1)%poly.length, col=SEG_COLOR[types[i]]||'#60a5fa';
-    L.polyline([poly[i],poly[j]],{
-      color:col,weight:types[i]==='patch'?1:2.5,opacity:0.85,
-      dashArray:types[i]==='nodata'?'6,4':types[i]==='patch'?'2,4':null
-    }).addTo(polyLayer);
+// ─── Orbit sweep: worst / best case operating area (plan §8.2-8) ─────────────
+let sweep = null;
+function resetSweep() {
+  sweep = null; clearLayer('worst'); clearLayer('best');
+  $('sw-st').textContent = 'Orbit sweep: start an orbit to accumulate';
+}
+function startSweep() {
+  resetSweep();
+  // what is accumulated (operating area, else video) always lies inside the video range
+  const vR = RM.linkRangeM(activeLink('video'), isNum(state.vtx_dbm) ? {txPowerDbm: state.vtx_dbm} : null);
+  const ext = sim.orbit_r + (vR || clientMaxR()) + 50;
+  const n = dest(sim.orbit_lat, sim.orbit_lon, 0, ext)[0], s = dest(sim.orbit_lat, sim.orbit_lon, 180, ext)[0];
+  const e = dest(sim.orbit_lat, sim.orbit_lon, 90, ext)[1], w = dest(sim.orbit_lat, sim.orbit_lon, 270, ext)[1];
+  sweep = { grid: RM.gridCreate(s, w, n, e, Math.max(5, 2 * ext / 160)), lastAng: null, swept: 0, done: false, what: '' };
+}
+function sweepAdd(cov) {
+  if (!sweep || sweep.done || sim.mode !== 'orbit') return;
+  const ranges = cov.op || cov.video.ranges;
+  if (!ranges) return;
+  sweep.what = cov.op ? 'operating area' : 'video only (RC TBD)';
+  RM.gridAddPolygon(sweep.grid, RM.starPolygon(state.lat, state.lon, ranges, 0));
+  if (sweep.lastAng !== null) {
+    let d = sim.orbit_angle - sweep.lastAng;
+    if (d < 0) d += 2 * Math.PI;
+    sweep.swept += d;
+  }
+  sweep.lastAng = sim.orbit_angle;
+  if (sweep.swept >= 2 * Math.PI) sweep.done = true;
+  if (sweep.done || sweep.grid.snaps % 4 === 1) drawSweep();
+}
+function drawSweep() {
+  clearLayer('worst'); clearLayer('best');
+  if (!sweep) return;
+  const pct = Math.min(100, Math.round(sweep.swept / (2 * Math.PI) * 100));
+  $('sw-st').textContent = `Orbit sweep (${sweep.what}): ${sweep.done ? 'one full orbit — complete' : pct + ' % of one orbit'}`;
+  if ($('sw-best').checked) {
+    const r = RM.gridRings(sweep.grid, 'best');
+    if (r.length) layers.best = L.polygon(r.map(x => [x]), {stroke:false, fillColor:cssVar('--amber'),
+      fillOpacity:0.14, interactive:false}).addTo(map);
+  }
+  if ($('sw-worst').checked) {
+    const r = RM.gridRings(sweep.grid, 'worst');
+    if (r.length) layers.worst = L.polygon(r.map(x => [x]), {stroke:false, fillColor:cssVar('--green'),
+      fillOpacity:0.35, interactive:false}).addTo(map);
   }
 }
 
-function attBar(id,val,max) {
-  const el=document.getElementById(id), pct=Math.min(Math.abs(val)/max*50,50);
-  el.style.width=pct+'%'; el.style.left=val>=0?'50%':(50-pct)+'%';
-  el.style.background=Math.abs(val)>max*0.65?'#facc15':'#f97316';
+function attBar(id, val, max) {
+  const el = $(id), pct = Math.min(Math.abs(val) / max * 50, 50);
+  el.style.width = pct + '%'; el.style.left = val >= 0 ? '50%' : (50 - pct) + '%';
+  el.style.background = Math.abs(val) > max * 0.65 ? 'var(--amber)' : 'var(--accent)';
 }
 
-const COMPASS8=['N','NE','E','SE','S','SW','W','NW'];
-const COMPASS16=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const COMPASS8 = ['N','NE','E','SE','S','SW','W','NW'];
+const COMPASS16 = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const tbdText = (what, f) => `${what}: TBD — set ${f.map(k => RM.FIELD_LABELS[k] || k).join(', ')} in profile`;
 
 // ─── Render state to DOM ──────────────────────────────────────────────────────
-const hint=document.getElementById('maphint');
+const hint = $('maphint');
 function renderState() {
-  const isSim=sim.mode!==null||state.source==='simulated';
-  const dot=document.getElementById('dot');
-  dot.className='dot'+(isSim?' sim':'');
+  const isSim = sim.mode !== null || state.source === 'simulated';
+  $('dot').className = 'dot' + (isSim ? ' sim' : state.source === 'live' ? ' on' : '');
+  const video = activeLink('video'), rc = activeLink('rc');
+  $('hdr-title').textContent = `RELAY COVERAGE — video ${RM.fmtFreq(video && video.freqMHz)} · RC ${RM.fmtFreq(rc && rc.freqMHz)}`;
 
-  const banner=document.getElementById('sim-banner');
+  const banner = $('sim-banner');
   if (isSim) {
-    banner.textContent='SIMULATED — '+(sim.mode||'manual').toUpperCase();
-    banner.className='sim'; banner.style.display='block';
-  } else if (state.lat!==null) {
-    banner.textContent='MANUAL POSITION'; banner.className='manual'; banner.style.display='block';
+    banner.textContent = 'SIMULATED — ' + (sim.mode || 'manual').toUpperCase();
+    banner.className = 'sim'; banner.style.display = 'block';
+  } else if (state.source === 'live') {
+    banner.textContent = 'LIVE CARRIER'; banner.className = 'live'; banner.style.display = 'block';
+  } else if (state.lat !== null) {
+    banner.textContent = 'MANUAL POSITION'; banner.className = 'manual'; banner.style.display = 'block';
   } else {
-    banner.style.display='none';
+    banner.style.display = 'none';
   }
 
-  const stEl=document.getElementById('sim-st');
+  const stEl = $('sim-st');
   if (sim.mode) {
-    stEl.textContent='Running: '+sim.mode; stEl.className='sim-st run';
+    stEl.textContent = 'Running: ' + sim.mode; stEl.className = 'sim-st run';
   } else if (stEl.textContent.startsWith('Running')) {
-    stEl.textContent='Mission complete'; stEl.className='sim-st done';
+    stEl.textContent = 'Simulation complete'; stEl.className = 'sim-st done';
   }
 
-  document.getElementById('h-src').textContent=state.source;
-  if (state.alt_m!=null && state.lat!=null) {
-    const _aircTer = lookupElev(state.lat, state.lon);
-    const _amsl    = Math.round(computeRasl(state.lat, state.lon, state.alt_m));
-    const _agl     = _aircTer!==null ? Math.round(_amsl - _aircTer) : null;
-    const _aglStr  = _agl!==null ? _agl+' m AGL'  : '— AGL';
-    const _amslStr = _amsl+' m / '+Math.round(_amsl*3.28084)+' ft AMSL';
-    document.getElementById('h-alt').textContent = _aglStr+' · '+_amslStr;
-  } else if (state.alt_m!=null) {
-    document.getElementById('h-alt').textContent = state.alt_m+' m · — AMSL';
-  } else {
-    document.getElementById('h-alt').textContent='—';
-  }
-  const bs=boresightRange();
-  document.getElementById('h-bs').textContent=Math.round(bs/100)/10+' km';
-  const covEl=document.getElementById('h-cov');
-  covEl.textContent=state.max_range_km>0?state.min_range_km+'–'+state.max_range_km+' km':'—';
-  const terEl=document.getElementById('h-ter');
-  terEl.className=state.terrain_status==='ready'?'ok':state.terrain_status==='fetching'?'warn':'';
-  terEl.textContent=state.terrain_status;
+  $('h-src').textContent = state.source;
+  $('h-alt').textContent = altText();
+  const cov = state.cov;
+  const R0v = cov && cov.video.R0, R0r = cov && cov.rc.R0;
+  $('h-bs').textContent = cov ? fmtKm(R0v) : '—';
+  const span = cov && rangeSpan(cov.op);
+  $('h-cov').textContent = span ? span[0].toFixed(2) + '–' + span[1].toFixed(2) + ' km' : cov && !cov.op ? 'TBD' : '—';
+  $('h-cov').className = cov && !cov.op ? 'warn' : '';
+  const terEl = $('h-ter');
+  terEl.className = state.terrain_status === 'ready' ? 'ok' : state.terrain_status === 'idle' ? '' : 'warn';
+  terEl.textContent = state.terrain_status;
 
-  attBar('br',state.roll,90); attBar('bp',state.pitch,30);
-  document.getElementById('vr').textContent=(state.roll||0).toFixed(1)+'°';
-  document.getElementById('vp').textContent=(state.pitch||0).toFixed(1)+'°';
-  document.getElementById('vh').textContent=(state.heading||0).toFixed(0)+'°';
-  document.getElementById('hdg-lbl').textContent=COMPASS8[Math.round(((state.heading||0)%360+360)/45)%8];
-  document.getElementById('r-bs').textContent=Math.round(bs/100)/10+' km';
-  document.getElementById('r-min').textContent=state.min_range_km>0?state.min_range_km+' km':'—';
-  document.getElementById('r-max').textContent=state.max_range_km>0?state.max_range_km+' km':'—';
-  const ph=((state.heading||0)+90+360)%360;
-  document.getElementById('r-dir').textContent=COMPASS8[Math.round(ph/45)%8]+' ('+ph.toFixed(0)+'°)';
-  const tst=document.getElementById('ter-st');
-  tst.textContent='Terrain: '+state.terrain_status;
-  tst.className='ter-txt '+(state.terrain_status==='ready'?'ready':state.terrain_status==='fetching'?'fetching':'');
+  attBar('br', state.roll, 90); attBar('bp', state.pitch, 30);
+  $('vr').textContent = (state.roll || 0).toFixed(1) + '°';
+  $('vp').textContent = (state.pitch || 0).toFixed(1) + '°';
+  $('vh').textContent = (state.heading || 0).toFixed(0) + '°';
+  $('hdg-lbl').textContent = COMPASS8[Math.round(((state.heading||0)%360+360)/45)%8];
+  $('r-bs').textContent = cov ? fmtKm(R0v) : '—';
+  $('r-rc').textContent = cov ? fmtKm(R0r) : '—';
+  $('r-rc').className = cov && !isNum(R0r) ? 'warn-val' : '';
+  $('r-op').textContent = span ? span[0].toFixed(2) + '–' + span[1].toFixed(2) + ' km' : cov ? 'TBD' : '—';
+  $('r-op').className = cov && !cov.op ? 'warn-val' : '';
+  const face = RM.antennaFacing(video && video.antenna, state.heading || 0);
+  $('r-dir').textContent = face.absDeg === null ? face.text
+    : `${face.text} · ${COMPASS8[Math.round(face.absDeg/45)%8]} (${face.absDeg.toFixed(0)}°)`;
+  $('lg-face').textContent = face.text;
+  const tst = $('ter-st');
+  tst.textContent = 'Terrain: ' + state.terrain_status;
+  tst.className = 'ter-txt ' + (state.terrain_status === 'ready' ? 'ready' : state.terrain_status === 'fetching' ? 'fetching' : '');
 
-  if (isSim||state.source==='simulated') {
-    document.getElementById('m-hdg').value=Math.round(state.heading);
+  // legend: profile names and TBD notes (R8)
+  $('lg-video').textContent = 'Video limit — ' + (video ? video.name : 'no profile');
+  $('lg-rc').textContent = 'RC limit — ' + (rc ? rc.name : 'no profile');
+  $('lg-video-note').textContent = cov && cov.video.tbd ? tbdText('Video link', cov.video.tbd) : '';
+  const rcTbd = cov ? cov.rc.tbd : RM.missingFields(rc || {});
+  $('lg-rc-note').textContent = rcTbd && rcTbd.length ? tbdText('RC link', rcTbd) : '';
+
+  if (isSim || state.source === 'live') {
+    $('m-hdg').value = Math.round(state.heading);
     syncHdgSlider(state.heading);
   }
 
-  hint.style.display=state.lat===null?'':'none';
-  if (state.lat===null) return;
+  hint.style.display = state.lat === null ? '' : 'none';
+  if (state.lat === null) return;
 
-  if (firstFix) { map.setView([state.lat,state.lon],13); firstFix=false; }
-  const icon=acIcon(state.heading||0);
-  if (!marker) marker=L.marker([state.lat,state.lon],{icon,zIndexOffset:1000}).addTo(map);
-  else { marker.setLatLng([state.lat,state.lon]); marker.setIcon(icon); }
+  if (firstFix) { map.setView([state.lat, state.lon], 13); firstFix = false; }
+  const icon = acIcon(state.heading || 0, '--green');
+  if (!marker) marker = L.marker([state.lat, state.lon], {icon, zIndexOffset:1000}).addTo(map);
+  else { marker.setLatLng([state.lat, state.lon]); marker.setIcon(icon); }
   marker.bindPopup(
-    `<b>${isSim?'⚠ SIMULATED':'Relay Aircraft'}</b><br>`+
-    `Alt: ${(state.alt_m||0).toFixed(1)} m AGL<br>`+
+    `<b>${isSim ? '⚠ SIMULATED' : state.source === 'live' ? 'Relay aircraft (live)' : 'Relay aircraft'}</b><br>` +
+    `Alt: ${escH(altText())}<br>` +
     `Hdg: ${(state.heading||0).toFixed(0)}°   Roll: ${(state.roll||0).toFixed(1)}°`
   );
-  drawPoly(state.polygon, state.seg_types);
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
-let _toastT=null;
-function toast(msg,ms=2200) {
-  const el=document.getElementById('toast');
-  el.textContent=msg; el.classList.add('show');
-  clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove('show'),ms);
+let _toastT = null;
+function toast(msg, ms = 2200) {
+  const el = $('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(_toastT); _toastT = setTimeout(() => el.classList.remove('show'), ms);
 }
 
 // ─── Manual placement ─────────────────────────────────────────────────────────
-function dbmToMw(dbm) { return Math.round(10**(dbm/10)); }
+function fmtMw(dbm) { const mw = RM.dbmToMw(dbm); return (mw < 10 ? mw.toFixed(1) : Math.round(mw)) + ' mW'; }
+function setVtx(dbm, fromProfile) {
+  state.vtx_dbm = isNum(dbm) ? Math.round(dbm * 10) / 10 : null;
+  $('m-vtx').value = isNum(state.vtx_dbm) ? state.vtx_dbm : 0;
+  $('vtx-lbl').textContent = isNum(state.vtx_dbm) ? state.vtx_dbm.toFixed(1) + ' dBm · ' + fmtMw(state.vtx_dbm) : 'TBD';
+  if (!fromProfile) { resetSweep(); scheduleRecompute(); }
+}
+// Default VTX power: active client profile's vtx.powerMw, else the video link profile.
+function vtxFromProfiles() {
+  const c = activeClient(), v = activeLink('video');
+  const mw = c && c.vtx ? c.vtx.powerMw : null;
+  setVtx(isNum(mw) && mw > 0 ? RM.mwToDbm(mw) : v ? v.txPowerDbm : null, true);
+}
+function setClientAgl(h) {
+  model.clientAgl = isNum(h) && h >= 0 ? h : 3;
+  $('m-cagl').value = model.clientAgl; saveMapState();
+  resetSweep(); scheduleRecompute();
+}
+function setModel() {
+  model.k = Math.max(0, parseFloat($('md-k').value) || 0);
+  model.marginM = Math.max(0, parseFloat($('md-mrg').value) || 0);
+  model.treeH = Math.max(0, parseFloat($('md-tree').value) || 0);
+  saveMapState(); resetSweep(); scheduleRecompute();
+}
 
-function applyManual() {
-  const lat=parseFloat(document.getElementById('m-lat').value);
-  const lon=parseFloat(document.getElementById('m-lon').value);
-  if (isNaN(lat)||isNaN(lon)) { toast('Click the map or enter coordinates first',3000); return; }
-  Object.assign(state,{
+function applyManual(quiet) {
+  const lat = parseFloat($('m-lat').value), lon = parseFloat($('m-lon').value);
+  if (isNaN(lat) || isNaN(lon)) { if (!quiet) toast('Click the map or enter coordinates first', 3000); return; }
+  Object.assign(state, {
     lat, lon,
-    alt_m:    parseFloat(document.getElementById('m-alt').value)||120,
-    roll:     parseFloat(document.getElementById('m-roll').value)||0,
-    pitch:    parseFloat(document.getElementById('m-pitch').value)||0,
-    heading:  parseFloat(document.getElementById('m-hdg').value)||0,
-    vtx_dbm:  parseFloat(document.getElementById('m-vtx').value)||27.8,
-    quad_alt: parseFloat(document.getElementById('m-quad').value)||3,
-    source:   'manual',
+    alt_m:   isNum(parseFloat($('m-alt').value)) ? parseFloat($('m-alt').value) : 120,
+    roll:    parseFloat($('m-roll').value) || 0,
+    pitch:   parseFloat($('m-pitch').value) || 0,
+    heading: parseFloat($('m-hdg').value) || 0,
+    source:  'manual',
   });
-  hint.style.display='none';
-  recomputePolygon();
-  toast('Coverage computing — terrain loading');
+  mapState.aircraft = { lat, lon, alt: state.alt_m, roll: state.roll, pitch: state.pitch, hdg: state.heading };
+  saveMapState();
+  hint.style.display = 'none';
+  scheduleRecompute(); renderState();
+  if (!quiet) toast('Coverage computing — terrain loading');
 }
 
 function geolocate() {
   if (!navigator.geolocation) { toast('Geolocation not available'); return; }
-  toast('Getting location…',5000);
-  navigator.geolocation.getCurrentPosition(p=>{
-    const lat=p.coords.latitude, lon=p.coords.longitude;
-    map.setView([lat,lon],14);
-    document.getElementById('m-lat').value=lat.toFixed(6);
-    document.getElementById('m-lon').value=lon.toFixed(6);
+  toast('Getting location…', 5000);
+  navigator.geolocation.getCurrentPosition(p => {
+    const lat = p.coords.latitude, lon = p.coords.longitude;
+    map.setView([lat, lon], 14);
+    $('m-lat').value = lat.toFixed(6);
+    $('m-lon').value = lon.toFixed(6);
     toast('Location set — click Apply to place aircraft');
-  },()=>toast('Location access denied'));
+  }, () => toast('Location access denied'));
 }
+
+// ─── Home (REL altitude reference, MAP-10) ────────────────────────────────────
+let pickingHome = false;
+function startHomePick() {
+  pickingHome = true; map.getContainer().classList.add('picking');
+  toast('Click map to set HOME', 4000);
+}
+function setHome(h) {
+  home = h; mapState.home = h; saveMapState();
+  if (homeMarker) { map.removeLayer(homeMarker); homeMarker = null; }
+  if (h) {
+    const src = h.src === 'mission' ? 'mission line 0' : 'set by you';
+    homeMarker = L.marker([h.lat, h.lon], {icon: homeIcon(), zIndexOffset: 800}).addTo(map)
+      .bindTooltip(`HOME (${src}) — reference for REL altitudes. ArduPlane sets home where the carrier arms; ` +
+                   `mission REL altitudes are relative to it.`);
+    $('home-lbl').textContent = `Home: ${h.lat.toFixed(5)}, ${h.lon.toFixed(5)} (${src})` +
+      (isNum(h.amsl) ? ` · ${Math.round(h.amsl)} m AMSL` : '');
+  } else {
+    $('home-lbl').textContent = 'Home not set — REL uses the terrain under the carrier';
+  }
+  scheduleRecompute(); renderState();
+}
+function clearHome() { setHome(null); }
 
 // ─── Heading slider ───────────────────────────────────────────────────────────
 function syncHdgSlider(deg) {
-  const d=((+deg%360)+360)%360;
-  document.getElementById('m-hdg-sl').value=d;
-  document.getElementById('hdg-sl-lbl').textContent=COMPASS16[Math.round(d/22.5)%16];
+  const d = ((+deg % 360) + 360) % 360;
+  $('m-hdg-sl').value = d;
+  $('hdg-sl-lbl').textContent = COMPASS16[Math.round(d / 22.5) % 16];
 }
 
 // ─── Simulation controls ──────────────────────────────────────────────────────
-let currentSimMode=null, missionLoaded=false;
-let orbitCenter=null, pickingOrbitCenter=false;
+let currentSimMode = null;
+let orbitCenter = null, pickingOrbitCenter = false;
 
 function selectSimMode(mode) {
-  currentSimMode=mode;
-  ['straight','orbit','mission'].forEach(m=>{
-    document.getElementById('sp-'+m).style.display=m===mode?'':'none';
-    document.getElementById('btn-'+m).classList.toggle('active',m===mode);
+  currentSimMode = mode;
+  ['straight','orbit','mission'].forEach(m => {
+    $('sp-' + m).style.display = m === mode ? '' : 'none';
+    $('btn-' + m).classList.toggle('active', m === mode);
   });
 }
 
 function startOrbitCenterPick() {
-  pickingOrbitCenter=true;
+  pickingOrbitCenter = true;
   map.getContainer().classList.add('picking');
-  toast('Click map to set orbit center',5000);
+  toast('Click map to set orbit center', 5000);
 }
 
 function updateOrbitCircle() {
   if (orbitCircle) map.removeLayer(orbitCircle);
   if (!orbitCenter) return;
-  const r=parseInt(document.getElementById('sim-orb-r').value)||200;
-  orbitCircle=L.circle(orbitCenter,{radius:r,color:'#facc15',fillColor:'#facc15',
-    fillOpacity:0.04,weight:1,dashArray:'4,4'}).addTo(map);
+  orbitCircle = L.circle(orbitCenter, {radius: loiterR(), color:cssVar('--amber'), fillColor:cssVar('--amber'),
+    fillOpacity:0.04, weight:1, dashArray:'4,4', interactive:false}).addTo(map);
 }
-document.getElementById('sim-orb-r').addEventListener('input',updateOrbitCircle);
+$('sim-orb-r').addEventListener('input', updateOrbitCircle);
 
 function setOrbitCenter(latlng) {
-  orbitCenter=latlng;
-  sim.orbit_lat=latlng.lat; sim.orbit_lon=latlng.lng;
-  document.getElementById('orb-center-lbl').textContent=
-    `Center: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+  orbitCenter = latlng;
+  sim.orbit_lat = latlng.lat; sim.orbit_lon = latlng.lng;
+  $('orb-center-lbl').textContent = `Center: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
   if (orbitCenterMarker) map.removeLayer(orbitCenterMarker);
-  orbitCenterMarker=L.circleMarker(latlng,{radius:6,color:'#facc15',fillColor:'#facc15',
-    fillOpacity:0.8,weight:2}).addTo(map).bindTooltip('Orbit Center');
+  orbitCenterMarker = L.circleMarker(latlng, {radius:6, color:cssVar('--amber'), fillColor:cssVar('--amber'),
+    fillOpacity:0.8, weight:2}).addTo(map).bindTooltip('Orbit Center');
   updateOrbitCircle();
+  if (sim.mode === 'orbit') startSweep();
 }
 
 function startSim() {
-  if (!currentSimMode) { toast('Select Straight, Orbit, or Mission first',3000); return; }
-  const alt=parseFloat(document.getElementById('m-alt').value)||120;
-  if (state.lat===null) { toast('Place the aircraft on the map first',3000); return; }
-
-  sim.speed_ms=parseFloat(document.getElementById('sim-speed').value)||15;
-  sim.mode=currentSimMode;
-  state.alt_m=alt;
-
-  if (currentSimMode==='straight') {
-    sim.heading=parseFloat(document.getElementById('sim-hdg').value)||0;
-  } else if (currentSimMode==='orbit') {
-    if (!orbitCenter) { toast('Set orbit center first',3000); sim.mode=null; return; }
-    sim.orbit_r=parseFloat(document.getElementById('sim-orb-r').value)||200;
-    sim.orbit_angle=bearingTo(sim.orbit_lat,sim.orbit_lon,state.lat,state.lon)*D2R;
-  } else if (currentSimMode==='mission') {
-    if (!missionLoaded||!sim.waypoints.length) { toast('Load a .waypoints file first',3000); sim.mode=null; return; }
-    sim.wp_idx=0;
+  if (!currentSimMode) { toast('Select Straight, Orbit, or Mission first', 3000); return; }
+  if (state.lat === null && currentSimMode !== 'mission') { toast('Place the aircraft on the map first', 3000); return; }
+  sim.speed_ms = parseFloat($('sim-speed').value) || 13;
+  if (currentSimMode === 'straight') {
+    sim.heading = parseFloat($('sim-hdg').value) || 0;
+  } else if (currentSimMode === 'orbit') {
+    if (!orbitCenter) { toast('Set orbit center first', 3000); return; }
+    sim.orbit_r = loiterR();
+    sim.orbit_angle = bearingTo(sim.orbit_lat, sim.orbit_lon, state.lat, state.lon) * D2R;
+  } else if (currentSimMode === 'mission') {
+    if (!sim.mission) { toast('Load a .waypoints file first', 3000); return; }
+    const m = RM.resolveMissionAlts(sim.mission, lookupElev);
+    const h = m.home || m.items[0];
+    sim.ms = RM.missionStart(m, {lat: h.lat, lon: h.lon, altAmsl: m.home ? m.homeAmsl : m.items[0].altAmsl, hdg: state.heading});
+    if (m.items.some(i => i.altApprox)) toast('Terrain-frame items without terrain data use home altitude', 4000);
   }
-  state.source='simulated';
-  const stEl=document.getElementById('sim-st');
-  stEl.textContent='Running: '+currentSimMode; stEl.className='sim-st run';
-  toast('Simulation started: '+currentSimMode);
+  sim.mode = currentSimMode;
+  state.source = 'simulated';
+  if (sim.mode === 'orbit') startSweep(); else resetSweep();
+  $('sim-st').textContent = 'Running: ' + currentSimMode; $('sim-st').className = 'sim-st run';
+  toast('Simulation started: ' + currentSimMode);
   renderState();
 }
 
 function stopSim() {
-  sim.mode=null;
-  if (state.source==='simulated') state.source='manual';
-  const stEl=document.getElementById('sim-st');
-  stEl.textContent='Stopped'; stEl.className='sim-st stop';
+  sim.mode = null;
+  if (state.source === 'simulated') state.source = 'manual';
+  if (sweep && !sweep.done) drawSweep();
+  $('sim-st').textContent = 'Stopped'; $('sim-st').className = 'sim-st stop';
   renderState();
 }
 
 function loadMission(input) {
-  const file=input.files[0]; if (!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const wps=parseMission(e.target.result);
-    const el=document.getElementById('mis-status');
-    if (wps.length) {
-      sim.waypoints=wps; missionLoaded=true;
-      el.textContent=`${wps.length} waypoints from ${file.name}`; el.style.color='#4f8';
-      toast(`Mission loaded: ${wps.length} waypoints`);
-      if (state.lat===null) {
-        Object.assign(state,{lat:wps[0].lat,lon:wps[0].lon,alt_m:wps[0].alt,source:'manual'});
-        document.getElementById('m-lat').value=wps[0].lat.toFixed(6);
-        document.getElementById('m-lon').value=wps[0].lon.toFixed(6);
-        recomputePolygon();
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const m = RM.parseMission(e.target.result);
+    const el = $('mis-status');
+    if (m.items.length) {
+      sim.mission = m;
+      el.textContent = `${m.items.length} NAV items from ${file.name}` +
+        (m.ignored ? ` · ${m.ignored} other lines ignored` : '') +
+        (m.warnings.length ? ` · ⚠ ${m.warnings.join('; ')}` : '');
+      el.className = 'info-txt ok';
+      toast(`Mission loaded: ${m.items.length} items`);
+      if (m.home) setHome({lat: m.home.lat, lon: m.home.lon, amsl: m.home.alt || null, src: 'mission'});
+      drawMissionPath(m);
+      if (state.lat === null) {
+        const p = m.home || m.items[0];
+        $('m-lat').value = p.lat.toFixed(6); $('m-lon').value = p.lon.toFixed(6);
+        applyManual(true);
       }
     } else {
-      missionLoaded=false; el.textContent='No valid waypoints found'; el.style.color='#f44';
+      sim.mission = null; el.textContent = 'No NAV items with coordinates found'; el.className = 'info-txt bad';
+      clearLayer('mission');
     }
   };
   reader.readAsText(file);
 }
+function drawMissionPath(m) {
+  clearLayer('mission');
+  const pts = (m.home ? [[m.home.lat, m.home.lon]] : []).concat(m.items.map(i => [i.lat, i.lon]));
+  const g = layers.mission = L.layerGroup().addTo(map);
+  L.polyline(pts, {color:cssVar('--amber'), weight:1.5, opacity:0.7, dashArray:'4,6', interactive:false}).addTo(g);
+  m.items.forEach(i => L.circleMarker([i.lat, i.lon], {radius:4, color:cssVar('--amber'), weight:1, fillOpacity:0.6})
+    .addTo(g).bindTooltip(escH(`${i.seq} ${i.name} · ${i.alt} m ${i.ref.toUpperCase()}`)));
+}
 
 // ─── Distance measurement tool ────────────────────────────────────────────────
-let measuring=false, measurePts=[], measureLayer=null, rubberLayer=null, clickTimer=null;
+let measuring = false, measurePts = [], measureLayer = null, rubberLayer = null, clickTimer = null;
 
-function fmtDist(m) { return m>=1000?(m/1000).toFixed(2)+' km':Math.round(m)+' m'; }
-function labelIcon(txt,r) {
-  return L.divIcon({className:'',iconSize:[0,0],iconAnchor:[0,0],
-    html:`<div class="mlabel" style="transform:translate(${r?6:-4}px,-50%)">${txt}</div>`});
+function fmtDist(m) { return m >= 1000 ? (m/1000).toFixed(2) + ' km' : Math.round(m) + ' m'; }
+function labelIcon(txt, r) {
+  return L.divIcon({className:'', iconSize:[0,0], iconAnchor:[0,0],
+    html:`<div class="mlabel" style="transform:translate(${r?6:-4}px,-50%)">${escH(txt)}</div>`});
 }
 
 function redrawMeasure() {
   if (!measureLayer) return;
   measureLayer.clearLayers();
   if (!measurePts.length) return;
-  if (measurePts.length>=2)
-    L.polyline(measurePts,{color:'#facc15',weight:2.5,opacity:.9}).addTo(measureLayer);
-  let cum=0;
-  measurePts.forEach((p,i)=>{
-    L.circleMarker(p,{radius:4,color:'#facc15',fillColor:'#facc15',fillOpacity:1,weight:1}).addTo(measureLayer);
-    if (i>0) {
-      cum+=measurePts[i-1].distanceTo(p);
-      L.marker(p,{icon:labelIcon(fmtDist(cum),true),zIndexOffset:500}).addTo(measureLayer);
+  const amb = cssVar('--amber');
+  if (measurePts.length >= 2)
+    L.polyline(measurePts, {color:amb, weight:2.5, opacity:.9}).addTo(measureLayer);
+  let cum = 0;
+  measurePts.forEach((p, i) => {
+    L.circleMarker(p, {radius:4, color:amb, fillColor:amb, fillOpacity:1, weight:1}).addTo(measureLayer);
+    if (i > 0) {
+      cum += measurePts[i-1].distanceTo(p);
+      L.marker(p, {icon:labelIcon(fmtDist(cum), true), zIndexOffset:500}).addTo(measureLayer);
     }
   });
 }
 
 function startMeasure() {
-  measuring=true; measurePts=[];
+  measuring = true; measurePts = [];
   if (measureLayer) map.removeLayer(measureLayer);
-  measureLayer=L.layerGroup().addTo(map);
+  measureLayer = L.layerGroup().addTo(map);
   map.doubleClickZoom.disable();
   map.getContainer().classList.add('measuring');
-  document.getElementById('cursor-measure').style.display='';
-  toast('Click to add points · Double-click to finish · Click 📏 again to clear',5000);
+  $('cursor-measure').style.display = '';
+  toast('Click to add points · Double-click to finish · Click 📏 again to clear', 5000);
 }
 
 function clearMeasure() {
-  measuring=false; measurePts=[];
-  if (measureLayer){map.removeLayer(measureLayer);measureLayer=null;}
-  if (rubberLayer){map.removeLayer(rubberLayer);rubberLayer=null;}
+  measuring = false; measurePts = [];
+  if (measureLayer) { map.removeLayer(measureLayer); measureLayer = null; }
+  if (rubberLayer) { map.removeLayer(rubberLayer); rubberLayer = null; }
   map.doubleClickZoom.enable();
   map.getContainer().classList.remove('measuring');
-  document.getElementById('cursor-measure').style.display='none';
+  $('cursor-measure').style.display = 'none';
 }
 
-L.Control.Measure=L.Control.extend({
-  options:{position:'topleft'},
-  onAdd(){
-    const c=L.DomUtil.create('div','leaflet-bar leaflet-control');
-    c.innerHTML=`<a id="btn-measure" href="#" title="Measure distance"
+L.Control.Measure = L.Control.extend({
+  options: {position:'topleft'},
+  onAdd() {
+    const c = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    c.innerHTML = `<a id="btn-measure" href="#" title="Measure distance"
       style="font-size:15px;line-height:1;color:var(--accent);display:flex;align-items:center;
              justify-content:center;width:30px;height:30px;text-decoration:none">📏</a>`;
     L.DomEvent.disableClickPropagation(c);
-    L.DomEvent.on(c.querySelector('a'),'click',e=>{
+    L.DomEvent.on(c.querySelector('a'), 'click', e => {
       L.DomEvent.preventDefault(e);
       if (measuring) clearMeasure(); else startMeasure();
-      c.querySelector('a').style.background=measuring?'#1c0a00':'';
+      c.querySelector('a').style.background = measuring ? 'var(--surface2)' : '';
     });
     return c;
   }
@@ -1251,595 +1518,628 @@ map.on('mouseup', e => {
   drawingOffline = false; offlineDrawStart = null;
   map.dragging.enable();
   map.getContainer().classList.remove('measuring');
-  document.getElementById('off-draw-btn').textContent = '▭ Redraw';
-  document.getElementById('off-area-lbl').textContent =
-    `${offlineArea.sw.lat.toFixed(4)}°, ${offlineArea.sw.lng.toFixed(4)}° → `+
+  $('off-draw-btn').textContent = '▭ Redraw';
+  $('off-area-lbl').textContent =
+    `${offlineArea.sw.lat.toFixed(4)}°, ${offlineArea.sw.lng.toFixed(4)}° → ` +
     `${offlineArea.ne.lat.toFixed(4)}°, ${offlineArea.ne.lng.toFixed(4)}°`;
   updateOfflineStats();
 });
 
-map.on('click',e=>{
+map.on('click', e => {
+  if (_vegDrawing) return;                       // handled by the forest-zone drawing handlers
   if (pickingGcs) {
-    pickingGcs=false; map.getContainer().classList.remove('picking-gcs');
+    pickingGcs = false; map.getContainer().classList.remove('picking-gcs');
     setGcsPos(e.latlng); toast('GCS position set'); return;
   }
+  if (pickingHome) {
+    pickingHome = false; map.getContainer().classList.remove('picking');
+    setHome({lat: e.latlng.lat, lon: e.latlng.lng, amsl: null, src: 'manual'}); toast('Home set'); return;
+  }
   if (pickingOrbitCenter) {
-    pickingOrbitCenter=false; map.getContainer().classList.remove('picking');
+    pickingOrbitCenter = false; map.getContainer().classList.remove('picking');
     setOrbitCenter(e.latlng); toast('Orbit center set'); return;
   }
   if (drawingOffline) return;
   if (measuring) {
     clearTimeout(clickTimer);
-    clickTimer=setTimeout(()=>{ measurePts.push(e.latlng); redrawMeasure(); },220);
+    clickTimer = setTimeout(() => { measurePts.push(e.latlng); redrawMeasure(); }, 220);
     return;
   }
-  if (sim.mode==='orbit') {
+  if (sim.mode === 'orbit') {
     setOrbitCenter(e.latlng);
     toast(`Orbit center → ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
     return;
   }
   if (sim.mode) return;
-  const lat=e.latlng.lat, lon=e.latlng.lng;
-  document.getElementById('m-lat').value=lat.toFixed(6);
-  document.getElementById('m-lon').value=lon.toFixed(6);
-  applyManual();
+  const lat = e.latlng.lat, lon = e.latlng.lng;
+  $('m-lat').value = lat.toFixed(6);
+  $('m-lon').value = lon.toFixed(6);
+  applyManual(true);
   toast(`Aircraft placed at ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
 });
 
-map.on('dblclick',e=>{
+map.on('dblclick', () => {
   if (!measuring) return;
   clearTimeout(clickTimer);
-  if (measurePts.length>=2) {
-    const total=measurePts.reduce((s,p,i)=>i?s+measurePts[i-1].distanceTo(p):0,0);
-    toast(`Total: ${fmtDist(total)}`,6000);
+  if (measurePts.length >= 2) {
+    const total = measurePts.reduce((s, p, i) => i ? s + measurePts[i-1].distanceTo(p) : 0, 0);
+    toast(`Total: ${fmtDist(total)}`, 6000);
   }
-  measuring=false;
-  if (rubberLayer){map.removeLayer(rubberLayer);rubberLayer=null;}
+  measuring = false;
+  if (rubberLayer) { map.removeLayer(rubberLayer); rubberLayer = null; }
   map.doubleClickZoom.enable();
   map.getContainer().classList.remove('measuring');
-  document.getElementById('cursor-measure').style.display='none';
-  const btn=document.getElementById('btn-measure');
-  if (btn) btn.style.background='';
+  $('cursor-measure').style.display = 'none';
+  const btn = $('btn-measure');
+  if (btn) btn.style.background = '';
 });
 
-let elevTimer=null;
-map.on('mousemove',e=>{
-  const lat=e.latlng.lat, lon=e.latlng.lng;
-  document.getElementById('cursor-ll').textContent=lat.toFixed(5)+' , '+lon.toFixed(5);
+let elevTimer = null;
+map.on('mousemove', e => {
+  const lat = e.latlng.lat, lon = e.latlng.lng;
+  $('cursor-ll').textContent = lat.toFixed(5) + ' , ' + lon.toFixed(5);
   clearTimeout(elevTimer);
-  elevTimer=setTimeout(()=>{
-    const v=lookupElev(lat,lon);
-    document.getElementById('cursor-elev').textContent=v!==null?Math.round(v)+' m / '+Math.round(v*3.28084)+' ft':'—';
-  },60);
+  elevTimer = setTimeout(() => {
+    const v = lookupElev(lat, lon);
+    $('cursor-elev').textContent = v !== null ? Math.round(v) + ' m / ' + Math.round(v*3.28084) + ' ft' : '—';
+  }, 60);
   if (drawingOffline && offlineDrawStart) {
     const b = L.latLngBounds(offlineDrawStart, e.latlng);
     if (!offlineRect) {
-      offlineRect = L.rectangle(b, {
-        color:'#f97316', weight:2, fillColor:'#f97316', fillOpacity:0.08, dashArray:'6,4'
-      }).addTo(map);
+      const acc = cssVar('--accent');
+      offlineRect = L.rectangle(b, {color:acc, weight:2, fillColor:acc, fillOpacity:0.08, dashArray:'6,4'}).addTo(map);
     } else {
       offlineRect.setBounds(b);
     }
   }
-  if (!measuring||!measurePts.length) {
-    if (rubberLayer){map.removeLayer(rubberLayer);rubberLayer=null;} return;
+  if (!measuring || !measurePts.length) {
+    if (rubberLayer) { map.removeLayer(rubberLayer); rubberLayer = null; } return;
   }
   if (rubberLayer) map.removeLayer(rubberLayer);
-  rubberLayer=L.layerGroup().addTo(map);
-  const last=measurePts[measurePts.length-1], d=last.distanceTo(e.latlng);
-  L.polyline([last,e.latlng],{color:'#facc15',weight:1.5,opacity:.5,dashArray:'5,5'}).addTo(rubberLayer);
-  L.marker(e.latlng,{icon:labelIcon(fmtDist(d),true),zIndexOffset:600}).addTo(rubberLayer);
+  rubberLayer = L.layerGroup().addTo(map);
+  const last = measurePts[measurePts.length-1], d = last.distanceTo(e.latlng);
+  L.polyline([last, e.latlng], {color:cssVar('--amber'), weight:1.5, opacity:.5, dashArray:'5,5'}).addTo(rubberLayer);
+  L.marker(e.latlng, {icon:labelIcon(fmtDist(d), true), zIndexOffset:600}).addTo(rubberLayer);
 });
 
-map.on('mouseout',()=>{
-  document.getElementById('cursor-ll').textContent='— , —';
-  document.getElementById('cursor-elev').textContent='—';
+map.on('mouseout', () => {
+  $('cursor-ll').textContent = '— , —';
+  $('cursor-elev').textContent = '—';
 });
 
-// ─── Diagnostics ─────────────────────────────────────────────────────────────
-async function testApi() {
-  const el = document.getElementById('api-test-result');
-  const lat = state.lat ?? 51.5074, lon = state.lon ?? -0.1278;
-  el.style.color = '#fa4'; el.textContent = 'Fetching tile…';
-  try {
-    const [tx, ty] = _tile(lat, lon);
-    const data = await _fetchTile(tx, ty);
-    if (!data) { el.style.color = '#f44'; el.textContent = 'Tile fetch failed'; return; }
-    const e = lookupElev(lat, lon);
-    el.style.color = e !== null ? '#4f8' : '#fa4';
-    el.textContent = e !== null
-      ? `OK ✓  elevation=${e.toFixed(1)} m  tile=${TERR_ZOOM}/${tx}/${ty}`
-      : `Tile loaded but elevation=null (ocean/gap)`;
-  } catch(err) {
-    el.style.color = '#f44';
-    el.textContent = 'Error: ' + err.message;
-  }
-}
-
-function updateCacheInfo() {
-  const el = document.getElementById('cache-info');
-  if (!el) return;
-  const loaded = [...tileCache.values()].filter(v => v !== null).length;
-  el.textContent = `Tiles: ${loaded}/${tileCache.size} loaded (zoom ${TERR_ZOOM})`;
-}
-setInterval(updateCacheInfo, 2000);
-
-// ─── Vegetation — satellite tile pixel sampling ───────────────────────────────
-// Instead of unreliable polygon databases, we sample the colour of a map tile
-// at the coordinate.  Topo tiles (Norgeskart / OpenTopoMap) paint forest in
-// a distinctive medium-green that is easy to threshold.
-//
-// Tiles are loaded at VEG_ZOOM with crossOrigin='anonymous', drawn to an
-// offscreen canvas, and the RGBA pixel at the exact coordinate is read.
-// The isForest() function is synchronous (loop-safe); tiles are pre-fetched
-// asynchronously before the coverage computation begins.
-
-const VEG_ZOOM = 13;  // ~1.2km/tile at 60°N — fast, still ~5m/px resolution
-const VEG_TILE = 256; // tile pixel size
-const vegTileCache = new Map(); // `${tx}/${ty}` → ImageData | null
-// Which URL template served a CORS-readable tile (-1=untested, null=none work)
-let vegSrcWorking = -1;
-let vegSrcName    = '';
-
-// Tile URL builders tried in order. Norgeskart first (best for Norway).
+// ─── Vegetation — topo tile colour sampling (MAP-11) ─────────────────────────
+// A Norgeskart topo tile at the coordinate is drawn to a canvas (crossOrigin='anonymous') and the
+// pixel is classified with the forest colour range measured for it (RfModel.FOREST_RGB). Only
+// Norgeskart is sampled: its CC BY 4.0 licence allows fetching tiles that are not on screen (MAP-08).
+// Elsewhere, draw forest zones by hand. One key format for every cache: "z/x/y". A failing source
+// is retried up to 3× in a row before it is disabled for the session.
+const VEG_ZOOM = 13;  // ~2.4 km/tile at 60°N, ~10 m/px
+const VEG_TILE = 256;
+const VEG_MAX_FAILS = 3;
 const VEG_SRCS = [
-  { name:'Norgeskart',  url:(z,x,y)=>`https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/${z}/${y}/${x}.png` },
-  { name:'OpenTopoMap', url:(z,x,y)=>`https://tile.opentopomap.org/${z}/${x}/${y}.png` },
-  { name:'Stamen topo', url:(z,x,y)=>`https://tiles.stadiamaps.com/tiles/stamen_terrain/${z}/${x}/${y}.png` },
+  { name:'Norgeskart', key:'norgeskart', url:(z,x,y)=>`https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/${z}/${y}/${x}.png` },
 ];
+const vegTileCache = new Map();   // "13/x/y" → {data, src} | null (no source works)
+const vegPending = new Map();     // "13/x/y" → Promise
+const vegFails = VEG_SRCS.map(() => 0);
+let vegSrcName = '';
+const vegAvailable = () => vegFails.some(n => n < VEG_MAX_FAILS);
 
-// Load a tile image and extract its ImageData via an offscreen canvas.
-// Returns null if the image fails to load OR if CORS blocks pixel reads.
+const VEG_TIMEOUT_MS = 8000;      // a stalled tile counts as a failure
 function _loadTilePixels(url) {
   return new Promise(resolve => {
     const img = new Image();
+    const t = setTimeout(() => { img.onload = img.onerror = null; img.src = ''; resolve(null); }, VEG_TIMEOUT_MS);
+    const finish = v => { clearTimeout(t); resolve(v); };
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
         const c = document.createElement('canvas');
         c.width = c.height = VEG_TILE;
-        c.getContext('2d').drawImage(img, 0, 0);
-        resolve(c.getContext('2d').getImageData(0, 0, VEG_TILE, VEG_TILE));
-      } catch(_) { resolve(null); } // SecurityError — no CORS header
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        finish(ctx.getImageData(0, 0, VEG_TILE, VEG_TILE));
+      } catch(_) { finish(null); } // SecurityError (no CORS) or no canvas
     };
-    img.onerror = () => resolve(null);
+    img.onerror = () => finish(null);
     img.src = url;
   });
 }
 
-async function _fetchVegTile(tx, ty) {
-  const key = `${tx}/${ty}`;
-  if (vegTileCache.has(key)) return vegTileCache.get(key);
-
-  let data = null;
-  if (vegSrcWorking === null) {
-    // All sources already tried and failed — skip
-  } else if (vegSrcWorking >= 0) {
-    data = await _loadTilePixels(VEG_SRCS[vegSrcWorking].url(VEG_ZOOM, tx, ty));
-  } else {
-    // Not yet tested — try each source once
-    for (let i = 0; i < VEG_SRCS.length; i++) {
-      data = await _loadTilePixels(VEG_SRCS[i].url(VEG_ZOOM, tx, ty));
-      if (data) { vegSrcWorking = i; vegSrcName = VEG_SRCS[i].name; break; }
+function _fetchVegTile(tx, ty) {
+  const key = RM.tileKey(VEG_ZOOM, tx, ty);
+  if (vegTileCache.has(key)) return Promise.resolve(vegTileCache.get(key));
+  if (vegPending.has(key)) return vegPending.get(key);
+  const p = (async () => {
+    for (;;) {
+      const i = vegFails.findIndex(n => n < VEG_MAX_FAILS);
+      if (i < 0) { vegTileCache.set(key, null); return null; }
+      const data = await _loadTilePixels(VEG_SRCS[i].url(VEG_ZOOM, tx, ty));
+      if (data) {
+        vegFails[i] = 0; vegSrcName = VEG_SRCS[i].name;
+        const v = {data, src: VEG_SRCS[i].key};
+        vegTileCache.set(key, v); return v;
+      }
+      vegFails[i]++;
     }
-    if (!data) vegSrcWorking = null; // give up for this session
-  }
-  vegTileCache.set(key, data);
-  return data;
+  })().finally(() => vegPending.delete(key));
+  vegPending.set(key, p);
+  return p;
 }
 
-// Standard Web Mercator lat/lon → tile coordinate + pixel offset
-function _latLonToVegPx(lat, lon) {
-  const n = 1 << VEG_ZOOM;
-  const xf = (lon + 180) / 360 * n;
-  const sinLat = Math.sin(lat * Math.PI / 180);
-  const yf = (1 - Math.log((1 + sinLat) / (1 - sinLat)) / (2 * Math.PI)) / 2 * n;
-  return {
-    tx: Math.floor(xf),
-    ty: Math.floor(yf),
-    px: Math.min(Math.floor((xf - Math.floor(xf)) * VEG_TILE), VEG_TILE - 1),
-    py: Math.min(Math.floor((yf - Math.floor(yf)) * VEG_TILE), VEG_TILE - 1),
-  };
-}
-
-// Classify one pixel as vegetation.
-// Topo-map forest green (Norgeskart ~RGB 149,190,122, OpenTopoMap ~172,214,138):
-//   G clearly exceeds R and B, mid-brightness (not white/black/gray).
-// Satellite forest green (Norway summer ~RGB 60-100, 90-140, 40-80):
-//   Same rule, just darker.
-function _isVegPixel(r, g, b) {
-  return g > r + 12 && g > b + 8 && g > 55 && g < 235;
-}
-
-// Pre-fetch all vegetation tiles that cover the GCS coverage sample grid.
-// Must be called before _recomputeGcsSync() so isForest() is synchronous.
 async function prefetchVegTiles(cLat, cLon, rangeM) {
-  const needed = new Set();
-  // GCS point itself
-  const {tx:gx, ty:gy} = _latLonToVegPx(cLat, cLon);
-  needed.add(`${gx},${gy}`);
-  // All LOS sample points
-  for (let i = 0; i < N_BRG; i++) {
-    const brg = i * 360 / N_BRG;
-    for (let k = 1; k <= TERR_PTS; k++) {
-      const [lat, lon] = dest(cLat, cLon, brg, rangeM * k / TERR_PTS);
-      const {tx, ty} = _latLonToVegPx(lat, lon);
-      needed.add(`${tx},${ty}`);
-    }
-  }
-  const missing = [...needed].filter(k => !vegTileCache.has(k));
-  if (!missing.length) return;
-  await Promise.all(missing.map(k => {
-    const [tx, ty] = k.split(',').map(Number);
-    return _fetchVegTile(tx, ty);
-  }));
-  console.log(`[veg] ${needed.size} tiles (${missing.length} new) via ${vegSrcName||'?'}`);
+  const tiles = tilesAround(cLat, cLon, rangeM, VEG_ZOOM)
+    .filter(([x, y]) => !vegTileCache.has(RM.tileKey(VEG_ZOOM, x, y)));
+  if (!tiles.length || !vegAvailable()) return;
+  await Promise.all(tiles.map(([x, y]) => _fetchVegTile(x, y)));
+  scheduleRecompute();
 }
 
-// Manual forest zones drawn by user (array of same structure as vegPolygons)
-let manualVegZones = [];
-let _vegDrawing = false;
-let _vegDrawPts = [];
-let _vegDrawLayer = null;
-let _vegZoneLayer = null;
-
-function _ptInPoly(lat, lon, poly) {
-  let inside = false;
-  for (let i=0, j=poly.length-1; i<poly.length; j=i++) {
-    const [yi,xi]=poly[i], [yj,xj]=poly[j];
-    if ((yi>lat)!==(yj>lat) && lon < (xj-xi)*(lat-yi)/(yj-yi)+xi)
-      inside=!inside;
-  }
-  return inside;
-}
+// Manual forest zones drawn by the user
+let manualVegZones = mapState.vegZones || [];
+let _vegDrawing = false, _vegDrawPts = [], _vegDrawLayer = null, _vegZoneLayer = null;
 
 function isForest(lat, lon) {
-  // 1. Manual zones always win (drawn by user)
-  for (const {poly,minLat,maxLat,minLon,maxLon} of manualVegZones) {
-    if (lat<minLat||lat>maxLat||lon<minLon||lon>maxLon) continue;
-    if (_ptInPoly(lat,lon,poly)) return true;
+  for (const {poly, minLat, maxLat, minLon, maxLon} of manualVegZones) {
+    if (lat < minLat || lat > maxLat || lon < minLon || lon > maxLon) continue;
+    if (RM.pointInPoly(lat, lon, poly)) return true;
   }
-  // 2. Satellite tile pixel classification
-  const {tx, ty, px, py} = _latLonToVegPx(lat, lon);
-  const imgData = vegTileCache.get(`${tx}/${ty}`);
-  if (!imgData) return false; // tile not loaded or CORS blocked
-  const i = (py * VEG_TILE + px) * 4;
-  return _isVegPixel(imgData.data[i], imgData.data[i+1], imgData.data[i+2]);
+  const [tx, ty] = RM.tileOf(lat, lon, VEG_ZOOM);
+  const v = vegTileCache.get(RM.tileKey(VEG_ZOOM, tx, ty));
+  if (!v) return false;
+  const [px, py] = RM.tilePixel(lat, lon, tx, ty, VEG_ZOOM, VEG_TILE);
+  const i = (py * VEG_TILE + px) * 4, d = v.data.data;
+  return RM.isForestColour(d[i], d[i+1], d[i+2], v.src);
 }
+function canopyAt(lat, lon) { return model.treeH > 0 && isForest(lat, lon) ? model.treeH : 0; }
 
 function _drawManualVegPoly() {
-  if (_vegDrawLayer) { map.removeLayer(_vegDrawLayer); _vegDrawLayer=null; }
+  if (_vegDrawLayer) { map.removeLayer(_vegDrawLayer); _vegDrawLayer = null; }
   if (_vegDrawPts.length < 2) return;
+  const amb = cssVar('--amber');
   _vegDrawLayer = L.polygon(_vegDrawPts,
-    {color:'#facc15',weight:2,fillColor:'#facc15',fillOpacity:0.15,opacity:0.8,dashArray:'4'}).addTo(map);
+    {color:amb, weight:2, fillColor:amb, fillOpacity:0.15, opacity:0.8, dashArray:'4'}).addTo(map);
 }
 
 function _redrawVegZones() {
-  if (_vegZoneLayer) { map.removeLayer(_vegZoneLayer); _vegZoneLayer=null; }
+  if (_vegZoneLayer) { map.removeLayer(_vegZoneLayer); _vegZoneLayer = null; }
   if (!manualVegZones.length) return;
   _vegZoneLayer = L.layerGroup().addTo(map);
+  const amb = cssVar('--amber');
   for (const {poly} of manualVegZones)
-    L.polygon(poly.map(p=>[p[0],p[1]]),
-      {color:'#facc15',weight:1.5,fillColor:'#facc15',fillOpacity:0.15,opacity:0.7}
-    ).addTo(_vegZoneLayer);
+    L.polygon(poly.map(p => [p[0], p[1]]),
+      {color:amb, weight:1.5, fillColor:amb, fillOpacity:0.15, opacity:0.7, interactive:false}).addTo(_vegZoneLayer);
 }
 
 function startVegDraw() {
   if (_vegDrawing) return;
   _vegDrawing = true;
   _vegDrawPts = [];
-  document.getElementById('veg-draw-btn').classList.add('active');
-  document.getElementById('veg-draw-hint').style.display = '';
+  $('veg-draw-btn').classList.add('active');
+  $('veg-draw-hint').style.display = '';
   map.getContainer().style.cursor = 'crosshair';
-
+  map.doubleClickZoom.disable();
   function onMapClick(e) {
     if (!_vegDrawing) return;
     _vegDrawPts.push([e.latlng.lat, e.latlng.lng]);
     _drawManualVegPoly();
   }
-  function onMapDbl(e) {
-    L.DomEvent.stopPropagation(e); // prevent zoom
+  function onMapDbl() {
     if (!_vegDrawing || _vegDrawPts.length < 3) return;
     _finishVegDraw();
-    map.off('click', onMapClick);
-    map.off('dblclick', onMapDbl);
   }
   map._vegClickH = onMapClick;
-  map._vegDblH   = onMapDbl;
+  map._vegDblH = onMapDbl;
   map.on('click', onMapClick);
   map.on('dblclick', onMapDbl);
 }
 
 function _finishVegDraw() {
   _vegDrawing = false;
-  document.getElementById('veg-draw-btn').classList.remove('active');
-  document.getElementById('veg-draw-hint').style.display = 'none';
+  $('veg-draw-btn').classList.remove('active');
+  $('veg-draw-hint').style.display = 'none';
   map.getContainer().style.cursor = '';
-  if (_vegDrawLayer) { map.removeLayer(_vegDrawLayer); _vegDrawLayer=null; }
+  map.doubleClickZoom.enable();
+  if (_vegDrawLayer) { map.removeLayer(_vegDrawLayer); _vegDrawLayer = null; }
   if (_vegDrawPts.length >= 3) {
     const poly = [..._vegDrawPts];
-    const lats=poly.map(p=>p[0]), lons=poly.map(p=>p[1]);
+    const lats = poly.map(p => p[0]), lons = poly.map(p => p[1]);
     manualVegZones.push({poly,
       minLat:Math.min(...lats), maxLat:Math.max(...lats),
       minLon:Math.min(...lons), maxLon:Math.max(...lons)});
+    mapState.vegZones = manualVegZones; saveMapState();
     _redrawVegZones();
-    _recomputeGcsSync(); // refresh coverage with the new zone
+    scheduleRecompute();
   }
   _vegDrawPts = [];
-  if (map._vegClickH) { map.off('click', map._vegClickH); map._vegClickH=null; }
-  if (map._vegDblH)   { map.off('dblclick', map._vegDblH); map._vegDblH=null; }
+  if (map._vegClickH) { map.off('click', map._vegClickH); map._vegClickH = null; }
+  if (map._vegDblH) { map.off('dblclick', map._vegDblH); map._vegDblH = null; }
 }
 
 function clearManualVeg() {
-  manualVegZones = [];
-  if (_vegZoneLayer) { map.removeLayer(_vegZoneLayer); _vegZoneLayer=null; }
+  manualVegZones = []; mapState.vegZones = []; saveMapState();
+  if (_vegZoneLayer) { map.removeLayer(_vegZoneLayer); _vegZoneLayer = null; }
   if (_vegDrawing) _finishVegDraw();
-  _recomputeGcsSync();
+  scheduleRecompute();
 }
 
-// ITU-R P.833 vegetation attenuation for 5.8 GHz.
-// Saturates at A_MAX — signal diffracts around after enough depth.
-const FOREST_DB_M = 0.40;  // specific attenuation dB/m (dense forest, 5.8 GHz)
-const FOREST_A_MAX = 20.0; // max excess attenuation dB before diffraction takes over
-function forestAttnDB(depthM) {
-  if (depthM <= 0) return 0;
-  return FOREST_A_MAX * (1 - Math.exp(-depthM * FOREST_DB_M / FOREST_A_MAX));
-}
-
-// ─── GCS Coverage ─────────────────────────────────────────────────────────────
-const gcsState = {lat:null, lon:null, ant_h:2.0, tree_h:15.0, max_range:15000};
-let gcsMarker=null, gcsPolyLayer=null, pickingGcs=false;
-
-const GCS_SEG_COLOR = {rf:'#22c55e', terrain:'#a78bfa', nodata:'#555'};
+// ─── GCS ↔ carrier coverage (HM30 profile, MAP-16) ───────────────────────────
+const gcsState = {lat:null, lon:null, ant_h:2.0, max_range:15000, computed:false};
+let gcsMarker = null, pickingGcs = false;
 
 function gcsIcon() {
-  return L.divIcon({className:'',iconSize:[22,22],iconAnchor:[11,11],
+  return L.divIcon({className:'', iconSize:[22,22], iconAnchor:[11,11],
     html:`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-      <polygon points="11,2 20,18 2,18" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round"/>
-      <circle cx="11" cy="11" r="3" fill="#22c55e"/>
+      <polygon points="11,2 20,18 2,18" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="11" cy="11" r="3" fill="var(--purple)"/>
     </svg>`});
 }
 
 function startGcsPick() {
-  pickingGcs=true;
+  pickingGcs = true;
   map.getContainer().classList.add('picking-gcs');
-  toast('Click map to set GCS position',4000);
-  document.getElementById('g-pick-btn').textContent='… click map';
+  toast('Click map to set GCS position', 4000);
+  $('g-pick-btn').textContent = '… click map';
 }
 
 function setGcsPos(latlng) {
-  gcsState.lat=latlng.lat; gcsState.lon=latlng.lng;
-  document.getElementById('g-lat').value=latlng.lat.toFixed(6);
-  document.getElementById('g-lon').value=latlng.lng.toFixed(6);
-  document.getElementById('g-pos-lbl').textContent=
-    `GCS: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
-  document.getElementById('g-pick-btn').textContent='⊕ Click Map for GCS';
+  gcsState.lat = latlng.lat; gcsState.lon = latlng.lng;
+  $('g-lat').value = latlng.lat.toFixed(6);
+  $('g-lon').value = latlng.lng.toFixed(6);
+  $('g-pos-lbl').textContent = `GCS: ${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}`;
+  $('g-pick-btn').textContent = '⊕ Click Map for GCS';
   if (gcsMarker) map.removeLayer(gcsMarker);
-  gcsMarker=L.marker(latlng,{icon:gcsIcon(),zIndexOffset:900})
-    .addTo(map).bindTooltip('GCS');
+  gcsMarker = L.marker(latlng, {icon:gcsIcon(), zIndexOffset:900}).addTo(map).bindTooltip('GCS');
+  mapState.gcs = { lat: latlng.lat, lon: latlng.lng }; saveMapState();
 }
 
-function gcsTerrainLos(gLat, gLon, antH, treeH, brg, capR, sampleR, carrierAlt) {
-  const gcsTer = lookupElev(gLat, gLon) ?? 0;
-  // Raise LOS origin to canopy level when antenna is below the treetops.
-  const gcsCanopyH = treeH > 0 && isForest(gLat, gLon) ? treeH : 0;
-  const gcsAsl = gcsTer + Math.max(antH, gcsCanopyH);
-
-  // samp[i] = [dist, baseTer, blockTer]
-  const samp = [];
-  for (let k=1; k<=TERR_PTS; k++) {
-    const d = sampleR * k / TERR_PTS;
-    const [sl, so] = dest(gLat, gLon, brg, d);
-    const ter = lookupElev(sl, so);
-    const inf = treeH > 0 && isForest(sl, so);
-    const canopy = ter !== null && inf ? treeH : 0;
-    samp.push([d, ter, ter !== null ? ter + canopy : null]);
-  }
-
-  if (!samp.some(s => s[1] !== null)) return [Math.min(NO_DATA_RANGE, capR), 'nodata'];
-
-  let maxC = NO_DATA_RANGE, lim = 'nodata';
-  for (let i=0; i<samp.length; i++) {
-    const [dT, baseTer] = samp[i];
-
-    // When the GCS antenna is below the local canopy, the signal must punch through
-    // (treeH - antH) metres of canopy at the elevation angle to the target.
-    // Shallower angle = longer path through canopy = heavier attenuation.
-    // Open-area GCS: gcsCanopyH === 0, no penalty applied.
-    let effCapR = capR;
-    if (gcsCanopyH > antH) {
-      const dV = Math.max(carrierAlt - gcsAsl, 1);
-      const elevSin = dV / Math.sqrt(dT * dT + dV * dV);
-      const exitPath = (gcsCanopyH - antH) / Math.max(elevSin, 0.03);
-      effCapR = capR * Math.pow(10, -forestAttnDB(exitPath) / 20);
-    }
-
-    if (dT > Math.min(capR, effCapR)) {
-      if (lim === 'nodata') { maxC = Math.min(capR, effCapR); lim = 'rf'; }
-      break;
-    }
-    if (baseTer === null) break;
-
-    const tAsl = carrierAlt;
-    let ok = true;
-    for (let j=0; j<i; j++) {
-      const [dM,, blockM] = samp[j];
-      if (blockM === null) { ok=false; break; }
-      const frac = dM / dT;
-      const losH = gcsAsl + (tAsl - gcsAsl) * frac - dM * (dT - dM) / (2 * EARTH_R_EFF);
-      if (blockM > losH - 25 * 4 * frac * (1 - frac)) { ok=false; break; }
-    }
-    if (ok) { maxC = Math.min(dT, effCapR); lim = i<TERR_PTS-1 ? 'terrain' : 'rf'; }
-    else break;
-  }
-  return [Math.min(maxC, capR), lim];
+function _recomputeGcsSync() {
+  if (!gcsState.computed || gcsState.lat === null) return;
+  const {lat, lon, ant_h, max_range} = gcsState;
+  const aLat = state.lat ?? lat, aLon = state.lon ?? lon;
+  const res = RM.gcsCoverage({
+    lat, lon, antH: ant_h, maxR: max_range, carrierAsl: computeRasl(aLat, aLon, state.alt_m ?? 120),
+    profile: activeLink('gcs'), nBrg: N_BRG, step: RM.demStep(lat, max_range, TERR_ZOOM),
+    k: model.k, marginM: model.marginM, elev: lookupElev, canopy: canopyAt,
+  });
+  drawGcsPoly(RM.starPolygon(lat, lon, res.ranges, MIN_DRAW_R), res.radials.map(r => r.limit));
+  $('g-note').textContent = res.notes.join(' · ');
+  $('lg-gcs-note').textContent = res.budgetOk ? '' : 'GCS link: TBD — set HM30 profile; polygon = geometry only';
+  return res;
 }
 
 function drawGcsPoly(poly, types) {
-  if (gcsPolyLayer) map.removeLayer(gcsPolyLayer);
+  clearLayer('gcs');
   if (!poly || poly.length < 3) return;
-  gcsPolyLayer = L.layerGroup().addTo(map);
-  L.polygon(poly,{color:'transparent',fillColor:'#22c55e',fillOpacity:0.10,weight:0}).addTo(gcsPolyLayer);
-  for (let i=0; i<poly.length; i++) {
-    const j=(i+1)%poly.length, col=GCS_SEG_COLOR[types[i]]||'#22c55e';
-    L.polyline([poly[i],poly[j]],{
-      color:col, weight:2.5, opacity:0.85,
-      dashArray:types[i]==='nodata'?'6,4':null
-    }).addTo(gcsPolyLayer);
+  const g = layers.gcs = L.layerGroup().addTo(map);
+  L.polygon(poly, {stroke:false, fillColor:cssVar('--purple'), fillOpacity:0.08, interactive:false}).addTo(g);
+  for (let i = 0; i < poly.length; i++) {
+    const t = types[i];
+    L.polyline([poly[i], poly[(i+1) % poly.length]], {
+      color: t === 'terrain' ? cssVar('--rose') : t === 'nodata' ? cssVar('--grey') : cssVar('--purple'),
+      weight:2.5, opacity:0.85, dashArray: t === 'nodata' ? '6,4' : null, interactive:false,
+    }).addTo(g);
   }
 }
 
+// On demand only (MAP-09): fetches terrain + vegetation tiles for the whole range.
 async function computeGcsCoverage() {
-  const lat = parseFloat(document.getElementById('g-lat').value);
-  const lon = parseFloat(document.getElementById('g-lon').value);
-  if (isNaN(lat)||isNaN(lon)) { toast('Place GCS on map first',3000); return; }
-  const antH  = parseFloat(document.getElementById('g-anth').value) || 2;
-  const treeH = parseFloat(document.getElementById('g-tree').value) || 0;
-  const maxR  = (parseFloat(document.getElementById('g-range').value)||15)*1000;
+  const lat = parseFloat($('g-lat').value), lon = parseFloat($('g-lon').value);
+  if (isNaN(lat) || isNaN(lon)) { toast('Place GCS on map first', 3000); return; }
+  const antH = parseFloat($('g-anth').value) || 2;
+  const maxR = (parseFloat($('g-range').value) || 15) * 1000;
+  if (gcsState.lat !== lat || gcsState.lon !== lon || !gcsMarker) setGcsPos({lat, lng: lon});
+  Object.assign(gcsState, {lat, lon, ant_h: antH, max_range: maxR});
 
-  Object.assign(gcsState,{lat,lon,ant_h:antH,tree_h:treeH,max_range:maxR});
-  if (!gcsMarker) setGcsPos({lat,lng:lon});
-
-  const stEl = document.getElementById('g-status');
-  stEl.style.color='#fa4'; stEl.textContent='Loading terrain tiles…';
-
-  // Prefetch all tiles needed for coverage area
-  const needed = new Set();
-  needed.add(_tile(lat,lon).join('/'));
-  for (let b=0; b<360; b+=5)
-    for (let k=1; k<=TERR_PTS; k++) {
-      const [sl,so]=dest(lat,lon,b,maxR*k/TERR_PTS);
-      needed.add(_tile(sl,so).join('/'));
-    }
-  const missing=[...needed].filter(k=>!tileCache.has(`${TERR_ZOOM}/${k}`));
-  if (missing.length) {
-    await Promise.all(missing.map(k=>{
-      const [tx,ty]=k.split('/').map(Number);
-      return _fetchTile(tx,ty);
-    }));
-  }
-
-  if (treeH > 0) {
-    stEl.textContent = `Sampling ${VEG_SRCS.map(s=>s.name).join(' / ')} tiles…`;
+  const stEl = $('g-status');
+  stEl.className = 'info-txt warn'; stEl.textContent = 'Loading terrain tiles…';
+  await Promise.all(missingTerrain(tilesAround(lat, lon, maxR, TERR_ZOOM)).map(([x, y]) => _fetchTile(x, y)));
+  if (model.treeH > 0) {
+    stEl.textContent = `Sampling ${VEG_SRCS.map(s => s.name).join(' / ')} tiles…`;
     await prefetchVegTiles(lat, lon, maxR);
-    if (vegSrcWorking === null) {
-      stEl.style.color='#fa4';
-      stEl.textContent='⚠ All tile sources blocked CORS — use manual forest zones instead';
-      // Still compute (manual zones may exist)
-    }
-  } else {
-    stEl.textContent='Computing…';
   }
-
-  _recomputeGcsSync();
-  stEl.style.color='#4f8';
-  if (treeH > 0) {
-    const inF = isForest(lat, lon);
-    const src  = vegSrcWorking !== null ? (vegSrcName||'tiles') : 'manual zones only';
-    stEl.textContent = `${inF ? 'GCS IN FOREST' : 'GCS in open'} · ${src} · live`;
+  gcsState.computed = true;
+  const res = _recomputeGcsSync();
+  stEl.className = 'info-txt ok';
+  if (model.treeH > 0) {
+    const src = vegAvailable() ? (vegSrcName || 'tiles') : 'manual zones only (tile sources blocked)';
+    stEl.textContent = `${res && res.inForest ? 'GCS BELOW CANOPY' : 'GCS in open'} · ${src} · live`;
   } else {
-    stEl.textContent='Ready — updates with aircraft alt';
+    stEl.textContent = 'Ready — updates with aircraft alt';
   }
 }
 
 function clearGcsCoverage() {
-  if (gcsPolyLayer) { map.removeLayer(gcsPolyLayer); gcsPolyLayer=null; }
-  if (gcsMarker)    { map.removeLayer(gcsMarker);    gcsMarker=null; }
-  gcsState.lat=null; gcsState.lon=null;
-  document.getElementById('g-lat').value='';
-  document.getElementById('g-lon').value='';
-  document.getElementById('g-pos-lbl').textContent='No GCS position set';
-  document.getElementById('g-status').textContent='';
+  clearLayer('gcs');
+  if (gcsMarker) { map.removeLayer(gcsMarker); gcsMarker = null; }
+  Object.assign(gcsState, {lat:null, lon:null, computed:false});
+  delete mapState.gcs; saveMapState();
+  $('g-lat').value = ''; $('g-lon').value = '';
+  $('g-pos-lbl').textContent = 'No GCS position set';
+  $('g-status').textContent = ''; $('g-note').textContent = ''; $('lg-gcs-note').textContent = '';
+}
+
+// ─── Link profile editor (§8.2-1, R7) ─────────────────────────────────────────
+let pfKind = 'video';
+const PF_DIR = {
+  video: 'Client VTX (TX, omni) → carrier VRX (RX). Carrier antenna = VRX patches. The VTX power slider overrides TX power.',
+  rc:    'Carrier ELRS TX module (TX) → client ELRS RX (RX, omni).',
+  gcs:   'HM30 ground unit on the mast ↔ HM30 air unit.',
+};
+const PF_FIELDS = [['pf-freq','freqMHz'],['pf-txp','txPowerDbm'],['pf-txg','txGainDbi'],
+                   ['pf-rxg','rxGainDbi'],['pf-sens','rxSensDbm'],['pf-mrg','marginDb']];
+function fillSelect(sel, items, activeId, label) {
+  sel.textContent = '';
+  for (const it of items) {
+    const o = document.createElement('option');
+    o.value = it.id; o.textContent = label(it); o.selected = it.id === activeId;
+    sel.appendChild(o);
+  }
+}
+function renderProfileUi() {
+  const c = activeClient();
+  fillSelect($('pf-client'), profiles.clients, c && c.id, x => x.name || x.id);
+  ['video','rc','gcs'].forEach(k => $('pk-' + k).classList.toggle('active', k === pfKind));
+  $('pf-dir').textContent = PF_DIR[pfKind];
+  const p = activeLink(pfKind);
+  fillSelect($('pf-sel'), profiles.links.filter(l => l.kind === pfKind), p && p.id, x => x.name || x.id);
+  $('pf-name').value = p ? p.name || '' : '';
+  for (const [id, f] of PF_FIELDS) $(id).value = p && isNum(p[f]) ? p[f] : '';
+  $('pf-ant').value = p && p.antenna ? p.antenna : '';
+  $('pf-notes').value = p ? p.notes || '' : '';
+  const miss = p ? RM.missingFields(p) : RM.LINK_FIELDS;
+  $('pf-status').textContent = miss.length ? tbdText('Profile', miss) : 'Profile complete · range at peak gain ' + fmtKm(RM.linkRangeM(p));
+  $('pf-status').className = 'info-txt ' + (miss.length ? 'warn' : 'ok');
+  $('pf-dest').textContent = hasStore() ? 'the shared store (Tools page profiles)' : 'this map only (store not loaded)';
+}
+function pickProfileKind(k) { pfKind = k; renderProfileUi(); }
+function pickLink(id) {
+  mapState.active[pfKind] = id; saveMapState();
+  if (pfKind === 'video') vtxFromProfiles();
+  renderProfileUi(); profilesChanged();
+}
+function pickClient(id) {
+  mapState.active.client = id; saveMapState();
+  vtxFromProfiles(); renderProfileUi(); profilesChanged();
+}
+function readNum(id) { const v = $(id).value.trim(); if (v === '') return null; const n = parseFloat(v); return isFinite(n) ? n : null; }
+function saveProfileForm() {
+  const cur = activeLink(pfKind);
+  const p = Object.assign({}, cur || { id: newId(), kind: pfKind });
+  p.name = $('pf-name').value.trim() || p.name || pfKind.toUpperCase() + ' link';
+  for (const [id, f] of PF_FIELDS) p[f] = readNum(id);
+  p.antenna = $('pf-ant').value || null;
+  p.notes = $('pf-notes').value;
+  saveNotice(persistLink(p), p.id);
+}
+function copyProfile() {
+  const cur = activeLink(pfKind);
+  const p = Object.assign({}, cur || { kind: pfKind }, { id: newId(), name: (cur ? cur.name : pfKind) + ' (copy)' });
+  saveNotice(persistLink(p), p.id);
+}
+function saveNotice(msg, id) {
+  mapState.active[pfKind] = id; saveMapState();
+  renderProfileUi(); profilesChanged();
+  const failed = msg.startsWith('⚠');
+  toast(msg, failed ? 6000 : 2200);
+  if (failed) { $('pf-status').textContent = msg; $('pf-status').className = 'info-txt bad'; }
+}
+function profilesChanged() {
+  if (marker) marker.setIcon(acIcon(state.heading || 0, '--green'));
+  resetSweep(); scheduleRecompute(); renderState();
+}
+// The Tools page (or another tab) may change the shared store.
+window.addEventListener('storage', e => {
+  if (e.key === (hasStore() && VtolStore.KEY || 'vtol_store')) { loadProfiles(); renderProfileUi(); profilesChanged(); }
+});
+
+// ─── Live layer: GCS companion app (contract C2, plan §8.3) ──────────────────
+const live = { trail: [], lastTrail: 0, lastLog: 0, carrier: null, client: null };
+const TRAIL_MS = 5 * 60 * 1000;
+const lqColour = lq => cssVar({ok: '--green', weak: '--red', unknown: '--muted'}[RM.lqClass(lq)]);
+
+function setLiveEnabled(on) {
+  mapState.live.enabled = on; saveMapState();
+  if (typeof GcsClient === 'undefined') return;
+  if (on) GcsClient.start({ onStatus: onLiveStatus, onAlarm: onLiveAlarm, onConnection: onLiveConnection });
+  else { GcsClient.stop(); onLiveConnection(false); }
+}
+function setLiveFollow(on) { mapState.live.follow = on; saveMapState(); }
+
+function onLiveConnection(on) {
+  $('h-live').textContent = on ? 'LIVE' : 'NOT RUNNING';
+  $('h-live').className = on ? 'ok' : '';
+  $('lv-st').textContent = 'GCS APP: ' + (on ? 'LIVE' : 'NOT RUNNING');
+  $('lv-st').className = 'info-txt' + (on ? ' ok' : '');
+  if (!on) {
+    if (live.carrier) { map.removeLayer(live.carrier); live.carrier = null; }
+    if (live.client) { map.removeLayer(live.client); live.client = null; }
+    if (state.source === 'live') { state.source = 'manual'; renderState(); }
+  }
+}
+function onLiveAlarm(a) {
+  if (a && a.text) toast('GCS ALARM: ' + a.text, 4000);
+}
+function onLiveStatus(s) {
+  if (!s || typeof s !== 'object') return;
+  const now = Date.now();
+  const c = s.carrier || {}, cl = s.client || {}, gps = cl.gps || {}, link = cl.link || {};
+  // carrier
+  if (isNum(c.lat) && isNum(c.lon)) {
+    const icon = acIcon(c.hdg_deg || 0, '--accent');
+    if (!live.carrier) live.carrier = L.marker([c.lat, c.lon], {icon, zIndexOffset:1100}).addTo(map)
+      .bindTooltip('LIVE CARRIER');
+    else { live.carrier.setLatLng([c.lat, c.lon]); live.carrier.setIcon(icon); }
+    if (mapState.live.follow && !sim.mode) followCarrier(c);
+  }
+  // client
+  if (isNum(gps.lat) && isNum(gps.lon)) {
+    const col = lqColour(link.lq_pct);
+    const tip = escH(`CLIENT · LQ ${isNum(link.lq_pct) ? link.lq_pct + ' %' : '—'} · RSSI ${isNum(link.rssi1_dbm) ? link.rssi1_dbm + ' dBm' : '—'}` +
+      ` · ${isNum(gps.alt_m) ? Math.round(gps.alt_m) + ' m' : '—'} · ${isNum(gps.sats) ? gps.sats + ' sats' : '—'}` +
+      (cl.flight_mode && cl.flight_mode.raw ? ' · ' + cl.flight_mode.raw : ''));
+    if (!live.client) live.client = L.circleMarker([gps.lat, gps.lon], {radius:7, weight:2, color:cssVar('--bg'),
+      fillColor:col, fillOpacity:1}).addTo(map).bindTooltip(tip);
+    else { live.client.setLatLng([gps.lat, gps.lon]); live.client.setStyle({fillColor: col}); live.client.setTooltipContent(tip); }
+    if (now - live.lastTrail >= 1000) {
+      live.lastTrail = now;
+      live.trail.push({t: now, lat: gps.lat, lon: gps.lon, lq: link.lq_pct});
+      live.trail = RM.pruneTrail(live.trail, now, TRAIL_MS);
+      drawTrail();
+    }
+    if (now - live.lastLog >= 1000) {
+      live.lastLog = now;
+      logSample({ t: now, lat: gps.lat, lon: gps.lon, alt: gps.alt_m ?? null, lq: link.lq_pct ?? null,
+                  rssi: link.rssi1_dbm ?? null, cLat: c.lat ?? null, cLon: c.lon ?? null, cAlt: c.alt_rel_m ?? null });
+    }
+  }
+}
+function followCarrier(c) {
+  const altRel = isNum(c.alt_rel_m) ? c.alt_rel_m : null;
+  Object.assign(state, {lat: c.lat, lon: c.lon, heading: c.hdg_deg || 0, roll: 0, pitch: 0, source: 'live'});
+  // alt_rel_m is relative to the carrier's home; shown in the current altitude mode
+  if (altRel !== null) state.alt_m = amslToMode((homeGround() ?? lookupElev(c.lat, c.lon) ?? 0) + altRel, c.lat, c.lon);
+  scheduleRecompute(); renderState();
+}
+function drawTrail() {
+  clearLayer('trail');
+  if (live.trail.length < 2) return;
+  const g = layers.trail = L.layerGroup().addTo(map);
+  let run = [live.trail[0]];
+  const flush = () => {
+    if (run.length > 1) L.polyline(run.map(p => [p.lat, p.lon]), {color: lqColour(run[1].lq), weight: 3,
+      opacity: 0.85, interactive: false}).addTo(g);
+  };
+  for (let i = 1; i < live.trail.length; i++) {
+    const p = live.trail[i];
+    run.push(p);
+    const nx = live.trail[i + 1];
+    if (!nx || RM.lqClass(nx.lq) !== RM.lqClass(p.lq)) { flush(); run = [p]; }
+  }
+}
+
+// ─── Live sample log (IndexedDB) and measured-LQ heatmap (plan §14.5) ────────
+let _logDB = null;
+function _openLogDB() {
+  if (_logDB) return Promise.resolve(_logDB);
+  if (typeof indexedDB === 'undefined') return Promise.reject(new Error('no IndexedDB'));
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('vtol-livelog-v1', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('samples', {autoIncrement: true});
+    req.onsuccess = e => { _logDB = e.target.result; resolve(_logDB); };
+    req.onerror = () => reject(req.error);
+  });
+}
+function _logTx(mode, fn) {
+  return _openLogDB().then(db => new Promise(res => {
+    const tx = db.transaction('samples', mode), r = fn(tx.objectStore('samples'));
+    tx.oncomplete = () => res(r && 'result' in r ? r.result : null);
+    tx.onerror = () => res(null);
+  })).catch(() => null);
+}
+let _logCount = null;
+function logSample(rec) {
+  _logTx('readwrite', s => s.add(rec)).then(() => { if (_logCount !== null) _logCount++; updateLogInfo(); });
+}
+async function updateLogInfo() {
+  if (_logCount === null) _logCount = await _logTx('readonly', s => s.count());
+  $('lv-log').textContent = _logCount === null ? 'Log: unavailable' : `Log: ${_logCount} samples`;
+}
+async function clearLiveLog() {
+  await _logTx('readwrite', s => s.clear());
+  _logCount = 0; updateLogInfo();
+  if ($('lv-heat').checked) toggleHeatmap(true);
+  toast('Live log cleared');
+}
+async function toggleHeatmap(on) {
+  clearLayer('heat');
+  if (!on) return;
+  const samples = (await _logTx('readonly', s => s.getAll())) || [];
+  const cells = RM.binSamples(samples, 25);
+  if (!cells.length) { toast('No logged samples yet', 3000); return; }
+  const g = layers.heat = L.layerGroup().addTo(map);
+  for (const c of cells)
+    L.rectangle([[c.s, c.w], [c.n, c.e]], {stroke:false, fillColor:lqColour(c.lq), fillOpacity:0.45})
+      .addTo(g).bindTooltip(`LQ ${isNum(c.lq) ? Math.round(c.lq) + ' %' : '—'} · ${c.count} samples`);
 }
 
 // ─── Offline tile download ────────────────────────────────────────────────────
 let drawingOffline = false, offlineDrawStart = null;
 let offlineArea = null; // {sw, ne} as L.LatLng
-let offlineRect = null; // L.Rectangle on map
+let offlineRect = null;
 
 function startOfflineDraw() {
   if (drawingOffline) {
     drawingOffline = false; offlineDrawStart = null;
     map.dragging.enable();
     map.getContainer().classList.remove('measuring');
-    document.getElementById('off-draw-btn').textContent = offlineRect ? '▭ Redraw' : '▭ Draw Area';
+    $('off-draw-btn').textContent = offlineRect ? '▭ Redraw' : '▭ Draw Area';
     return;
   }
   drawingOffline = true;
   map.dragging.disable();
   map.getContainer().classList.add('measuring');
-  document.getElementById('off-draw-btn').textContent = '✕ Cancel';
+  $('off-draw-btn').textContent = '✕ Cancel';
   toast('Drag on map to select download area', 4000);
 }
 
-function _tilesForBounds(sw, ne, zoom) {
-  const n = 1 << zoom;
-  function latToY(lat) {
-    const s = Math.sin(lat.lat * D2R);
-    return Math.floor((1 - Math.log((1 + s) / (1 - s)) / (2 * Math.PI)) / 2 * n);
-  }
-  const tx1 = Math.floor((sw.lng + 180) / 360 * n);
-  const tx2 = Math.floor((ne.lng + 180) / 360 * n);
-  const ty1 = latToY(ne); // north = smaller y
-  const ty2 = latToY(sw);
-  return {tx1, ty1, tx2, ty2, count: Math.max(0, (tx2 - tx1 + 1) * (ty2 - ty1 + 1))};
+const areaTiles = z => RM.tilesForBounds(offlineArea.sw.lat, offlineArea.sw.lng, offlineArea.ne.lat, offlineArea.ne.lng, z);
+
+function updateOfflineUi() {
+  const L0 = LAYERS[activeLayer];
+  $('off-map-btn').disabled = !L0.bulk;
+  $('off-map-policy').textContent = L0.bulk
+    ? `${L0.policy}: offline caching allowed (attribution kept). Service fair-use limits TBD — keep areas small.`
+    : `Bulk download not permitted by the ${L0.policy} tile policy. Switch the map layer to Norgeskart to cache map tiles. Terrain tiles can always be cached.`;
 }
 
 function updateOfflineStats() {
   if (!offlineArea) return;
-  const {sw, ne} = offlineArea;
-  const tc = _tilesForBounds(sw, ne, TERR_ZOOM).count;
-  const maxZ = parseInt(document.getElementById('off-maxz').value) || 14;
+  const tc = areaTiles(TERR_ZOOM).count;
+  const maxZ = parseInt($('off-maxz').value) || 14;
   let mc = 0;
-  for (let z = 10; z <= maxZ; z++) mc += _tilesForBounds(sw, ne, z).count;
-  document.getElementById('off-terr-info').textContent =
-    `${tc} terrain tile${tc!==1?'s':''} (~${(tc*0.05).toFixed(1)} MB)`;
-  document.getElementById('off-map-info').textContent =
-    `${mc} map tile${mc!==1?'s':''} (~${(mc*0.05).toFixed(1)} MB, zoom 10–${maxZ})`;
+  for (let z = 10; z <= maxZ; z++) mc += areaTiles(z).count;
+  $('off-terr-info').textContent = `${tc} terrain tile${tc!==1?'s':''} (~${(tc*0.05).toFixed(1)} MB)`;
+  $('off-map-info').textContent = `${mc} map tile${mc!==1?'s':''} (~${(mc*0.05).toFixed(1)} MB, zoom 10–${maxZ})`;
 }
 
 async function downloadTerrainArea() {
   if (!offlineArea) { toast('Draw an area first', 3000); return; }
-  const {sw, ne} = offlineArea;
-  const {tx1, ty1, tx2, ty2, count} = _tilesForBounds(sw, ne, TERR_ZOOM);
+  const {tx1, ty1, tx2, ty2, count} = areaTiles(TERR_ZOOM);
   if (count > 600) { toast(`Too many tiles (${count}). Reduce area.`, 4000); return; }
-  const btn = document.getElementById('off-terr-btn');
-  const prog = document.getElementById('off-terr-prog');
+  const btn = $('off-terr-btn'), prog = $('off-terr-prog');
   btn.disabled = true; prog.style.display = '';
-  let done = 0;
+  let done = 0, ok = 0;
   for (let tx = tx1; tx <= tx2; tx++) {
     for (let ty = ty1; ty <= ty2; ty++) {
-      await _fetchTile(tx, ty);
+      if (await _fetchTile(tx, ty)) ok++;
       prog.value = ++done / count;
-      if (done % 5 === 0)
-        document.getElementById('off-terr-info').textContent = `${done}/${count} terrain tiles…`;
+      if (done % 5 === 0) $('off-terr-info').textContent = `${done}/${count} terrain tiles…`;
     }
   }
   btn.disabled = false; prog.style.display = 'none';
   await updateOfflineCacheStats();
-  toast(`${count} terrain tiles cached`, 3000);
+  toast(`${ok} of ${count} terrain tiles cached`, 3000);
   updateOfflineStats();
 }
 
 async function downloadMapArea() {
   if (!offlineArea) { toast('Draw an area first', 3000); return; }
-  const {sw, ne} = offlineArea;
-  const maxZ = parseInt(document.getElementById('off-maxz').value) || 14;
+  const src = LAYERS[activeLayer];
+  if (!src.bulk) { updateOfflineUi(); toast('Not permitted for this map layer', 3000); return; }
+  const maxZ = parseInt($('off-maxz').value) || 14;
   const tiles = [];
   for (let z = 10; z <= maxZ; z++) {
-    const {tx1, ty1, tx2, ty2} = _tilesForBounds(sw, ne, z);
+    const {tx1, ty1, tx2, ty2} = areaTiles(z);
     for (let tx = tx1; tx <= tx2; tx++)
-      for (let ty = ty1; ty <= ty2; ty++)
-        tiles.push({z, x: tx, y: ty});
+      for (let ty = ty1; ty <= ty2; ty++) tiles.push({z, x: tx, y: ty});
   }
   if (tiles.length > 3000) { toast(`Too many tiles (${tiles.length}). Lower max zoom.`, 4000); return; }
-  const btn = document.getElementById('off-map-btn');
-  const prog = document.getElementById('off-map-prog');
+  const btn = $('off-map-btn'), prog = $('off-map-prog');
   btn.disabled = true; prog.style.display = '';
   let done = 0, errors = 0;
-  const layer = LAYERS[activeLayer];
   for (const coords of tiles) {
-    const url = _buildTileUrl(layer, coords.z, coords.x, coords.y);
+    const url = src.layer._buildUrl(coords);
     if (!(await _idbGet('maptiles', url))) {
       try {
         const r = await fetch(url, {mode:'cors'});
@@ -1848,20 +2148,18 @@ async function downloadMapArea() {
       } catch { errors++; }
     }
     prog.value = ++done / tiles.length;
-    if (done % 20 === 0)
-      document.getElementById('off-map-info').textContent =
-        `${done}/${tiles.length} map tiles (${errors} failed)…`;
+    if (done % 20 === 0) $('off-map-info').textContent = `${done}/${tiles.length} map tiles (${errors} failed)…`;
   }
   btn.disabled = false; prog.style.display = 'none';
   await updateOfflineCacheStats();
-  toast(`${done - errors} map tiles cached${errors ? ` (${errors} failed — CORS limit)` : ''}`, 4000);
+  toast(`${done - errors} map tiles cached${errors ? ` (${errors} failed)` : ''}`, 4000);
   updateOfflineStats();
 }
 
 async function clearOfflineCache() {
   await _idbClear('terrain');
   await _idbClear('maptiles');
-  tileCache.clear();
+  tileCache.clear(); tileFail.clear();
   await updateOfflineCacheStats();
   toast('Offline cache cleared', 3000);
 }
@@ -1869,29 +2167,45 @@ async function clearOfflineCache() {
 async function updateOfflineCacheStats() {
   const tc = await _idbCount('terrain');
   const mc = await _idbCount('maptiles');
-  const el = document.getElementById('off-cache-stats');
-  if (el) el.textContent = `Cached: ${tc} terrain, ${mc} map tiles`;
+  $('off-cache-stats').textContent = `Cached: ${tc} terrain, ${mc} map tiles`;
 }
 
 // ─── Sidebar toggle ───────────────────────────────────────────────────────────
 function toggleSb() {
-  const w = document.getElementById('sb-wrap');
-  const b = document.getElementById('sb-tog');
+  const w = $('sb-wrap');
   w.classList.toggle('sb-off');
-  b.textContent = w.classList.contains('sb-off') ? '▶' : '◀';
+  $('sb-tog').textContent = w.classList.contains('sb-off') ? '▶' : '◀';
 }
 
-// ─── Start background tasks ───────────────────────────────────────────────────
-setInterval(terrainPrefetch,2000);
-setTimeout(()=>{ widePrefetch(); setInterval(widePrefetch,60000); },30000);
-
-// Default positions
-document.getElementById('m-lat').value = '61.224117';
-document.getElementById('m-lon').value = '10.768342';
-applyManual();
-setGcsPos({lat: 61.220179414089365, lng: 10.769059956005174});
-computeGcsCoverage();
+// ─── Start-up: restore the last session, never a built-in site (MAP-09) ──────
+loadProfiles();
+vtxFromProfiles();
+renderProfileUi();
+$('md-k').value = model.k; $('md-mrg').value = model.marginM; $('md-tree').value = model.treeH;
+$('m-cagl').value = model.clientAgl;
+setAltMode(altMode);
+pickLayer(activeLayer);
+_redrawVegZones();
+if (home) setHome(home);
+if (mapState.gcs) setGcsPos({lat: mapState.gcs.lat, lng: mapState.gcs.lon});   // marker only; compute on demand
+const _ac = mapState.aircraft;
+if (_ac && isNum(_ac.lat) && isNum(_ac.lon)) {
+  $('m-lat').value = _ac.lat.toFixed(6); $('m-lon').value = _ac.lon.toFixed(6);
+  if (isNum(_ac.alt)) $('m-alt').value = _ac.alt;
+  $('m-roll').value = _ac.roll || 0; $('m-pitch').value = _ac.pitch || 0;
+  $('m-hdg').value = _ac.hdg || 0; syncHdgSlider(_ac.hdg || 0);
+  applyManual(true);
+}
+renderState();
 updateOfflineCacheStats();
+updateLogInfo();
+$('lv-on').checked = mapState.live.enabled;
+$('lv-follow').checked = mapState.live.follow;
+onLiveConnection(false);
+if (mapState.live.enabled) setLiveEnabled(true);
+
+setInterval(terrainPrefetch, 2000);
+setTimeout(() => { widePrefetch(); setInterval(widePrefetch, 60000); }, 30000);
 </script>
 </body>
 </html>
