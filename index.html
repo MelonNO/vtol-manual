@@ -349,6 +349,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 </div>
 
 <div class="content">
+<div id="store-notice" class="alert alert-warn" role="status" style="display:none"></div>
 
 <!-- PRE-FLIGHT -->
 <div id="tab-preflight" class="tab-panel">
@@ -886,7 +887,7 @@ function blActivePack() {
 function blSelectPack(id) {
   try { localStorage.setItem('vtol_bl_pack', id); } catch (e) {}
   const p = VtolStore.find(store, 'packs', id);
-  if (p && p.role === 'carrier' && store.settings.activeCarrierPackId !== id) storeUpdate(s => { s.settings.activeCarrierPackId = id; });
+  if (p && p.role === 'carrier' && store.settings.activeCarrierPackId !== id) storeUpdate(s => { s.settings.activeCarrierPackId = id; s.settings.updatedAt = new Date().toISOString(); });
   renderBattLog();
 }
 function renderPackSelect(pack) {
@@ -969,7 +970,7 @@ function renderBattLog() {
 
   analysis.innerHTML = battTrendSVG(entries, pack) + `
   <div class="card amber" style="margin-bottom:14px">
-    <div class="card-title">Analysis — ${st.n} flight${st.n>1?'s':''} · ${escH(pack.label)} · ${cells}S ${escH(chem.name)}</div>
+    <div class="card-title">Analysis — ${st.n} flight${st.n>1?'s':''} · ${escH(pack.label)} · ${escH(cells)}S ${escH(chem.name)}</div>
     <div style="overflow-x:auto"><table>
       <tr><th>Metric</th><th>Pack</th><th>Per cell</th><th>Notes</th></tr>
       <tr><td>Avg start voltage</td><td>${v1(st.avgStart)}V</td><td>${v2(st.avgStart/cells)}V</td><td style="color:var(--muted)">Typical charge at power-on</td></tr>
@@ -977,7 +978,7 @@ function renderBattLog() {
       <tr><td>Lowest min seen</td><td style="color:var(--red);font-weight:bold">${v1(st.lowestMin)}V</td><td style="color:var(--red)">${v2(st.lowestMin/cells)}V</td><td style="color:var(--muted)">Absolute worst recorded</td></tr>
       <tr><td>Avg flight sag</td><td>${v2(st.avgSag)}V</td><td>${(st.avgSag/cells).toFixed(3)}V</td><td style="color:var(--muted)">Typical start→landing drop</td></tr>
       <tr><td>Worst sag</td><td style="color:var(--amber)">${v2(st.worstSag)}V</td><td>${(st.worstSag/cells).toFixed(3)}V</td><td style="color:var(--muted)">Largest drop in one flight</td></tr>
-      <tr><th colspan="4" style="padding-top:10px;color:var(--muted)">CHEMISTRY THRESHOLDS — ${cells}S ${escH(chem.name)}</th></tr>
+      <tr><th colspan="4" style="padding-top:10px;color:var(--muted)">CHEMISTRY THRESHOLDS — ${escH(cells)}S ${escH(chem.name)}</th></tr>
       <tr><td>Full charge</td><td>${v1(th.fullV)}V</td><td>${chem.full}V</td><td style="color:var(--muted)">After a complete charge</td></tr>
       <tr><td>Longevity floor</td><td>${v1(th.lowV)}V</td><td>${chem.low}V</td><td style="color:var(--amber)">SEI degradation accelerates below this — avoid as a habit</td></tr>
       <tr><td>Hard floor</td><td style="color:var(--red)">${v1(th.critV)}V</td><td style="color:var(--red)">${chem.critical}V</td><td style="color:var(--red)">Deep SEI damage zone — consistent use here shortens pack life significantly</td></tr>
@@ -1012,6 +1013,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 Object.keys(CHECKLISTS).forEach(n => { clLoad(n); buildChecklist(n); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') clRecheck(); });
+setInterval(clRecheck, 60000);   // a page left open in the foreground expires too
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
 
@@ -1060,10 +1062,20 @@ window.addEventListener('storage', e => { if (e.key === VtolStore.KEY) vtolRefre
 // Merge the linked file into the store (merge by id — local records are never replaced wholesale).
 async function vtolMergeFromFile(handle) {
   const f = await handle.getFile(), t = await f.text();
-  if (t.trim()) store = VtolStore.importJSON(t, { merge: true });
+  if (t.trim()) { store = VtolStore.importJSON(t, { merge: true }); showStoreIssues(VtolStore.importJSON.lastStats.issues); }
+}
+// Visible notice for records/settings the store rejected or repaired (bad types from imports or old data).
+function showStoreIssues(issues) {
+  if (!issues || !issues.length) return;
+  const el = document.getElementById('store-notice');
+  const list = issues.slice(0, 6).map(t => '<li>' + escH(t) + '</li>').join('') + (issues.length > 6 ? '<li>… and ' + (issues.length - 6) + ' more</li>' : '');
+  el.innerHTML = 'Invalid data was rejected or repaired:<ul style="margin:6px 0 6px 18px">' + list + '</ul>'
+    + '<button class="cl-reset" onclick="this.parentElement.style.display=\'none\'">DISMISS</button>';
+  el.style.display = '';
 }
 function vtolRefreshAll() {
   store = VtolStore.load();
+  showStoreIssues(VtolStore.takeIssues());
   renderSettingsInputs(); renderWxLimits();
   pfRenderArchive(); wxRenderFavorites(); renderBattLog();
 }
@@ -1121,8 +1133,11 @@ function vtolImportData() {
       store = VtolStore.importJSON(await f.text(), { merge: true });
       const st = VtolStore.importJSON.lastStats;
       vtolRefreshAll();
+      showStoreIssues(st.issues);
       alert('Imported and merged: ' + st.added + ' new, ' + st.updated + ' updated'
-        + (st.deleted ? ', ' + st.deleted + ' removed (deleted later on the other device)' : '') + '. Local records not in the file are kept.');
+        + (st.deleted ? ', ' + st.deleted + ' removed (deleted later on the other device)' : '') + '. Local records not in the file are kept.'
+        + (st.settings ? ' Settings were taken from the file (edited more recently there).' : ' Local settings kept.')
+        + (st.issues.length ? ' ' + st.issues.length + ' invalid item(s) rejected — see the notice.' : ''));
     } catch(err) { alert('Import failed: '+err.message); }
   };
   inp.click();
@@ -1480,7 +1495,7 @@ function renderBinResult(d, filename) {
   const modeSegs=d.modes.map((m,k)=>{
     const tEnd=k+1<d.modes.length?d.modes[k+1].t:d.lastT;
     const dur=(tEnd-m.t)/1e6;
-    const name=QPLANE_MODES[m.mode]||('MODE_'+m.mode);
+    const name=QPLANE_MODES[m.mode]||('MODE_'+m.mode);   // m.mode comes from the log: escaped at output
     const pct=((tEnd-m.t)/totalUs*100).toFixed(2);
     return {name,dur,pct,clr:MODE_CLR[name]||'#6b7280',tSec:(m.t-d.firstT)/1e6};
   });
@@ -1506,7 +1521,7 @@ function renderBinResult(d, filename) {
     '<div style="margin-bottom:18px">'
       +'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:3px">DATAFLASH LOG</div>'
       +'<div style="font-family:var(--head);font-size:20px;font-weight:700;color:var(--text);letter-spacing:1px;word-break:break-all">'+escH(filename)+'</div>'
-      +'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+flightDate+' &nbsp;·&nbsp; Start: '+startStr+' &nbsp;·&nbsp; Duration: '+durStr+' &nbsp;·&nbsp; '+escH(pack.label)+' ('+cells+'S '+chem.name+')</div>'
+      +'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+flightDate+' &nbsp;·&nbsp; Start: '+startStr+' &nbsp;·&nbsp; Duration: '+durStr+' &nbsp;·&nbsp; '+escH(pack.label)+' ('+escH(cells)+'S '+escH(chem.name)+')</div>'
     +'</div>'
 
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px">'
@@ -1531,12 +1546,12 @@ function renderBinResult(d, filename) {
     +(modeSegs.length?
       '<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">FLIGHT MODE TIMELINE</div>'
       +'<div style="height:34px;display:flex;border:1px solid var(--border2);overflow:hidden;margin-bottom:8px">'
-      +modeSegs.map(s=>'<div style="flex:0 0 '+s.pct+'%;background:'+s.clr+'33;border-right:1px solid '+s.clr+'66" title="'+s.name+' — '+tFmt(s.dur)+'"></div>').join('')
+      +modeSegs.map(s=>'<div style="flex:0 0 '+s.pct+'%;background:'+s.clr+'33;border-right:1px solid '+s.clr+'66" title="'+escH(s.name)+' — '+tFmt(s.dur)+'"></div>').join('')
       +'</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px">'
       +modeSegs.map(s=>'<div style="display:flex;align-items:center;gap:6px;font-size:13px">'
         +'<div style="width:10px;height:10px;background:'+s.clr+'"></div>'
-        +'<span style="color:var(--muted)">'+s.name+'</span>'
+        +'<span style="color:var(--muted)">'+escH(s.name)+'</span>'
         +'<span style="color:var(--text);font-family:var(--mono)">'+tFmt(s.dur)+'</span></div>').join('')
       +'</div>':'')
 

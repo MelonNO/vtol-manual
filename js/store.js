@@ -97,8 +97,90 @@
     };
   }
 
-  // Fill missing parts so consumers can rely on the shape; drop expired tombstones.
-  function normalize(s, nowMs) {
+  // ── validation ──
+  // Stored and imported data is untrusted (other devices, hand-edited files): numbers must be numbers and enums
+  // must be known values before any page renders them. Bad records are dropped, bad settings fall back to the
+  // default; every such repair is reported through takeIssues() so the page can show it.
+  const ENUM = {
+    role: ['carrier', 'mast', 'client'], chem: ['lipo', 'liion', 'life'], source: ['manual', 'tlog', 'bin', 'gcs']
+  };
+  const NUM_SETTINGS = ['battCrtVolt', 'manualRtlVolt', 'hardLimitVolt', 'storageVoltPerCell', 'checklistExpiryHours',
+    'windGoMaxMs', 'windCautionMaxMs', 'gustMaxMs'];
+  let pendingIssues = [];
+
+  const num = v => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '')) ? Number(v) : NaN;
+  const str = v => (v === null || v === undefined) ? '' : String(v);
+  const short = v => { const t = str(typeof v === 'object' ? JSON.stringify(v) : v); return t.length > 40 ? t.slice(0, 40) + '…' : t; };
+
+  function cleanPack(r, issues) {
+    const def = defaults().packs.find(p => p.id === r.id);
+    const out = Object.assign({}, r, { id: str(r.id), label: str(r.label || r.id) });
+    const bad = [];
+    const cells = num(r.cells);
+    if (Number.isInteger(cells) && cells >= 1 && cells <= 24) out.cells = cells; else bad.push('cells');
+    if (ENUM.chem.includes(r.chem)) out.chem = r.chem; else bad.push('chem');
+    if (ENUM.role.includes(r.role)) out.role = r.role; else bad.push('role');
+    const cap = num(r.capacityMah); out.capacityMah = isFinite(cap) && cap > 0 ? cap : null;
+    const cyc = num(r.cycles); out.cycles = Number.isInteger(cyc) && cyc >= 0 ? cyc : 0;
+    out.purchased = str(r.purchased); out.notes = str(r.notes);
+    if (!bad.length) return out;
+    if (!def) { issues.push(`Pack "${short(out.label)}" dropped: invalid ${bad.join(', ')}`); return null; }
+    bad.forEach(k => { out[k] = def[k]; });
+    issues.push(`Pack "${short(out.label)}": invalid ${bad.join(', ')} — reset to the default profile value`);
+    return out;
+  }
+  function cleanBatt(r, issues) {
+    const out = Object.assign({}, r, { id: str(r.id) });
+    for (const k of ['start', 'min', 'rest']) {
+      const v = num(r[k]);
+      if (!isFinite(v)) { issues.push(`Battery entry ${short(r.date)} dropped: invalid ${k} (${short(r[k])})`); return null; }
+      out[k] = v;
+    }
+    const sag = num(r.sag); out.sag = isFinite(sag) ? sag : +(out.start - out.min).toFixed(2);
+    out.packId = str(r.packId || ID.carrierPack);
+    out.source = ENUM.source.includes(r.source) ? r.source : 'manual';
+    ['date', 'flight', 'time', 'notes'].forEach(k => { out[k] = str(r[k]); });
+    return out;
+  }
+  function cleanArchive(r) {
+    const ms = num(r.durationMs);
+    return Object.assign({}, r, { id: str(r.id), date: str(r.date), duration: str(r.duration), durationMs: isFinite(ms) ? ms : null,
+      status: str(r.status), notes: str(r.notes) });
+  }
+  function cleanFavorite(r, issues) {
+    const lat = num(r.lat), lon = num(r.lon);
+    if (!(isFinite(lat) && Math.abs(lat) <= 90 && isFinite(lon) && Math.abs(lon) <= 180)) {
+      issues.push(`Saved location "${short(r.name)}" dropped: invalid coordinates`); return null;
+    }
+    return Object.assign({}, r, { id: str(r.id), lat, lon, name: str(r.name) });
+  }
+  const CLEAN = { packs: cleanPack, battLog: cleanBatt, archive: cleanArchive, weatherFavorites: cleanFavorite,
+    clients: r => Object.assign({}, r, { id: str(r.id) }), links: r => Object.assign({}, r, { id: str(r.id) }) };
+
+  function cleanRecord(coll, r, issues) {
+    if (!r || typeof r !== 'object' || r.id == null || r.id === '') return null;
+    if (r.deleted) return { id: str(r.id), deleted: true, updatedAt: str(r.updatedAt) };
+    const out = CLEAN[coll](r, issues);
+    if (out && r.updatedAt != null) out.updatedAt = str(r.updatedAt);
+    return out;
+  }
+
+  // Settings object → valid settings. base: values to fall back to (local settings, or defaults).
+  function cleanSettings(s, base, issues) {
+    const out = Object.assign({}, base, s && typeof s === 'object' ? s : {});
+    NUM_SETTINGS.forEach(k => {
+      const v = num(out[k]);
+      if (isFinite(v) && v > 0) out[k] = v;
+      else { issues.push(`Setting ${k} was invalid (${short(out[k])}) — kept ${base[k]}`); out[k] = base[k]; }
+    });
+    ['activeClientId', 'activeCarrierPackId'].forEach(k => { if (typeof out[k] !== 'string') out[k] = base[k]; });
+    if (typeof out.updatedAt !== 'string') delete out.updatedAt;
+    return out;
+  }
+
+  // Fill missing parts, validate every record and setting, drop expired tombstones. Repairs go to `issues`.
+  function normalize(s, nowMs, issues) {
+    issues = issues || [];
     const d = defaults();
     const out = (s && typeof s === 'object') ? s : {};
     out.schemaVersion = SCHEMA_VERSION;
@@ -106,12 +188,15 @@
     const cutoff = (nowMs || Date.now()) - TOMBSTONE_MS;
     COLLECTIONS.forEach(c => {
       if (!Array.isArray(out[c])) out[c] = d[c];
-      out[c] = out[c].filter(r => r && typeof r === 'object' && r.id != null &&
-        !(r.deleted && Date.parse(r.updatedAt || 0) < cutoff));
+      out[c] = out[c].map(r => cleanRecord(c, r, issues))
+        .filter(r => r && !(r.deleted && Date.parse(r.updatedAt || 0) < cutoff));
     });
-    out.settings = Object.assign({}, d.settings, out.settings && typeof out.settings === 'object' ? out.settings : {});
+    out.settings = cleanSettings(out.settings, d.settings, issues);
     return out;
   }
+
+  // Repairs made since the last call (load-time or import-time), for a visible notice. Clears the list.
+  function takeIssues() { const t = pendingIssues; pendingIssues = []; return t; }
 
   function legacyBattEntry(e, packId) {
     const r = Object.assign({}, e);
@@ -166,15 +251,21 @@
     GIST_KEYS.forEach(removeItem);
     const raw = getItem(KEY);
     if (raw) {
-      try { return normalize(JSON.parse(raw)); }
+      let parsed;
+      try { parsed = JSON.parse(raw); }
       catch (e) {
         // Corrupt store: keep a copy for manual recovery, continue with defaults.
         try { setItem(KEY + '_corrupt_' + Date.now(), raw); } catch (_) { /* ignore */ }
+        pendingIssues.push('Stored data was unreadable — started from defaults (a copy was kept under ' + KEY + '_corrupt_*)');
         return defaults();
       }
+      const issues = [];
+      const s = normalize(parsed, Date.now(), issues);
+      if (issues.length) { pendingIssues.push(...issues); save(s); }   // persist the repair once
+      return s;
     }
     let s;
-    try { s = normalize(migrateLegacy()); } catch (e) { return defaults(); }
+    try { s = normalize(migrateLegacy(), Date.now(), pendingIssues); } catch (e) { return defaults(); }
     if (save(s)) LEGACY_KEYS.forEach(removeItem);   // legacy keys go only after a successful save
     return s;
   }
@@ -225,48 +316,52 @@
   }
 
   // Bring an imported object (v2 store or legacy {archive, weatherFavorites, battLog?}) to store shape.
-  function coerceIncoming(obj) {
+  // Invalid records are rejected here, before they can overwrite a valid local copy.
+  function coerceIncoming(obj, issues) {
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) throw new Error('Not a VTOL data file');
     const inc = {};
     const arr = k => Array.isArray(obj[k]) ? obj[k].filter(r => r && typeof r === 'object') : [];
     inc.archive = arr('archive').map(legacyArchiveEntry);
     inc.weatherFavorites = arr('weatherFavorites').map(legacyFavorite);
     inc.battLog = arr('battLog').map(e => legacyBattEntry(e, ID.carrierPack));
-    ['packs', 'clients', 'links'].forEach(k => { inc[k] = arr(k).filter(r => r.id != null); });
-    inc.settings = obj.settings && typeof obj.settings === 'object' ? obj.settings : null;
-    inc.updatedAt = typeof obj.updatedAt === 'string' ? obj.updatedAt : '';
+    ['packs', 'clients', 'links'].forEach(k => { inc[k] = arr(k); });
+    COLLECTIONS.forEach(c => { inc[c] = inc[c].map(r => cleanRecord(c, r, issues)).filter(Boolean); });
+    inc.settings = obj.settings && typeof obj.settings === 'object' && !Array.isArray(obj.settings) ? obj.settings : null;
     return inc;
   }
 
   function mergeStores(local, incomingObj) {
-    const inc = coerceIncoming(incomingObj);
-    const stats = { added: 0, updated: 0, deleted: 0 };
+    const issues = [];
+    const inc = coerceIncoming(incomingObj, issues);
+    const stats = { added: 0, updated: 0, deleted: 0, settings: false, issues };
     COLLECTIONS.forEach(c => { local[c] = mergeLists(local[c], inc[c], stats); });
-    // Settings are one record: settings.updatedAt is set when a user edits them (never in defaults()).
-    // Incoming settings win when edited more recently than the local ones (a file without that stamp counts as of its own updatedAt).
-    if (inc.settings) {
-      const incAt = inc.settings.updatedAt || inc.updatedAt, localAt = (local.settings && local.settings.updatedAt) || '';
-      if (incAt > localAt) local.settings = Object.assign({}, local.settings, inc.settings, { updatedAt: incAt });
+    // Settings are one record, stamped with settings.updatedAt only when a user edits them (never in defaults()).
+    // Incoming settings replace local ones only when they carry a stamp newer than the local stamp: settings that
+    // were never edited on the other device never overwrite edited local thresholds. Invalid values keep the local value.
+    if (inc.settings && typeof inc.settings.updatedAt === 'string' && inc.settings.updatedAt > ((local.settings && local.settings.updatedAt) || '')) {
+      local.settings = cleanSettings(inc.settings, local.settings, issues);
+      stats.settings = true;
     }
-    return { store: normalize(local), stats };
+    return { store: normalize(local, Date.now(), issues), stats };
   }
 
   function exportJSON() { return JSON.stringify(load(), null, 2); }
 
   // Merge a JSON string into the stored data (never replaces local records wholesale). Throws on invalid JSON.
-  // opts {merge:true} per C1 — merging is the only mode. Counts of the last import: importJSON.lastStats.
-  function importJSON(str, opts) {
-    const obj = JSON.parse(str);
+  // opts {merge:true} per C1 — merging is the only mode. Counts and rejected records of the last import:
+  // importJSON.lastStats {added, updated, deleted, settings, issues}. Throws when the merged store cannot be saved.
+  function importJSON(text, opts) {
+    const obj = JSON.parse(text);
     const res = mergeStores(load(), obj);
-    save(res.store);
     importJSON.lastStats = res.stats;
+    if (!save(res.store)) throw new Error('the merged data could not be saved (browser storage full or blocked) — nothing was imported');
     return res.store;
   }
 
   return {
     KEY, SCHEMA_VERSION, IDS: ID,
     load, save, update, uid, defaults, exportJSON, importJSON,
-    live, find, upsert, remove, mergeStores,
+    live, find, upsert, remove, mergeStores, takeIssues,
     _setStorage(s) { storageOverride = s; }
   };
 });

@@ -99,8 +99,8 @@ jsdom smoke test (outside the repo): `S\wp01smoke\smoke.js`. It inlines `js/*.js
    - I chose this over silently resetting (which loses data) and over stamping them "now" without a notice (which hides S-06).
 3. **C1 extensions (additive):**
    - `settings.windGoMaxMs` / `windCautionMaxMs` / `gustMaxMs` (R19 asks for limits in `settings`).
-   - `settings.updatedAt`, set when the user edits a setting. Settings have no id, so the merge needs a time: incoming settings win when edited more recently (a file without the stamp counts as of its own `updatedAt`).
-   - Extra helpers: `VtolStore.live/find/upsert/remove/mergeStores/IDS/SCHEMA_VERSION`, `importJSON.lastStats`, and `_setStorage` (tests only).
+   - `settings.updatedAt`, set when the user edits a setting. Settings have no id, so the merge needs a time: incoming settings win only when they carry a newer stamp (corrected in rework round 1 — see below).
+   - Extra helpers: `VtolStore.live/find/upsert/remove/mergeStores/takeIssues/IDS/SCHEMA_VERSION`, `importJSON.lastStats`, and `_setStorage` (tests only).
    - `save()` returns a boolean.
    - The PM may want to add these to `02-CONTRACTS.md`.
 4. **Tombstone rule:** import never deletes a local record just because the file lacks it. A tombstone from the file wins only if it is newer than the local record's `updatedAt`, which is the purpose of C1's tombstones. Tombstones older than 30 days are purged on `load()`.
@@ -119,3 +119,41 @@ jsdom smoke test (outside the repo): `S\wp01smoke\smoke.js`. It inlines `js/*.js
 - **Battery:** the Battery Log tab shows the PACK selector and the carrier threshold inputs. The recommendation reads "… V above BATT_CRT_VOLT (22.2V)". Selecting "Mast 6S 3000" removes the recommendation.
 - **Weather:** stub `fetch`. A rejected promise gives the cached view with location and age; `{ok:false}` gives the error. With data, the "WIND AT RELAY ALTITUDE" table appears.
 - **Gist check:** `grep -rin "gist\|vtol_gh" index.html js/` only matches `js/store.js` cleanup and the word "re**gist**er" in the service-worker registration line.
+
+## Rework round 1
+
+This round answers verifier report `S\verify\WP01\VERIFY-round1.md`.
+
+| Finding | Severity | Fix | Evidence |
+|---|---|---|---|
+| 1 Settings merge overwrote edited local settings | MAJOR | Incoming settings replace local ones **only when they carry their own `settings.updatedAt` newer than the local stamp**. Unstamped settings (never edited on the other device) never overwrite, however new the file's top-level `updatedAt` is. Invalid incoming values keep the local value. The import alert now says whether the settings were taken or kept. | `js/store.js:333-347`. Tests: `store.test.js:195` (rewritten; it now also asserts that an unstamped file dated 2030 does not overwrite) and `store.test.js:211` (new regression test of the verifier's phone→laptop scenario: local 22.4 V / 4 h stay after importing the never-edited phone file, and the phone's records are still merged). |
+| 2 Profile values reached `innerHTML` unescaped; `.bin` mode name | MAJOR | `cells` and chemistry name are escaped in the analysis title, the threshold header and the `.bin` header. The `.bin` mode name is escaped in the title attribute and the legend. Bad values can no longer reach the page at all (see 3). | `index.html:973`, `:981`, `:1524`, `:1549`, `:1554` |
+| 3 No type checks; a malformed file broke the Battery tab | MINOR | `normalize()` now validates every record and setting on **load and import**. Invalid records are rejected (on import, before they can overwrite a valid local copy). Every repair is reported through `VtolStore.takeIssues()` / `importJSON.lastStats.issues`. The page shows a visible, dismissable notice (`#store-notice`). A repaired stored copy is saved once, so the notice appears once. See the rules below. | `js/store.js:100-199` (`cleanPack/cleanBatt/cleanArchive/cleanFavorite/cleanSettings`, `normalize`, `takeIssues`), `:264`; `index.html:1068-1078`. Tests: `store.test.js:232` (import: the XSS-cells pack is rejected, the default carrier pack falls back to cells 6, `'4'` is coerced to 4, a bad battery entry and favourite are dropped), `store.test.js:256` (load: `'22.6'` → 22.6, `'abc'`/`null` → default, reported once, repair saved). |
+| 4 Failed save during import reported as success | MINOR | `importJSON` now throws "the merged data could not be saved … nothing was imported". The page shows "Import failed: …". | `js/store.js:353-358`; test `store.test.js:273` |
+| 5 Migrated legacy ticks get a 6 h session | MINOR (judgement) | Unchanged, as documented in §5.2 (visible notice; rows say "time unknown"). The PM can ask for immediate expiry instead; that is a one-line change in `clLoad`. | — |
+| 6 Pack selector did not stamp `settings.updatedAt` | MINOR | Now stamped when the active carrier pack changes. | `index.html:890` |
+| 7 Expiry only re-checked on load / tab switch | MINOR | `setInterval(clRecheck, 60000)` added. | `index.html:1016` |
+| 8 4-motor note / "120m AGL" texts | info | Left for WP05, as the brief says. | — |
+
+Validation rules for finding 3:
+- **Packs**
+  - `cells` must be an integer 1–24.
+  - `chem` and `role` must be values from the C1 enums.
+  - `capacityMah` falls back to null and `cycles` to 0.
+  - If a *default* profile is invalid, the bad field is reset to its default. Any other invalid pack is dropped.
+- **Battery entries:** `start`, `min` and `rest` must be finite numbers, otherwise the entry is dropped. `sag` is recomputed if needed. `source` must be a value from the enum.
+- **Favourites:** `lat`/`lon` must be finite and in range.
+- **Archive and text fields** are coerced to strings.
+- **Numeric settings** must be finite and > 0. Numeric strings are coerced. Anything else falls back to the local value (import) or the default (load).
+- **Clients and links** keep only id coercion. WP01 does not render them; WP05, which adds that UI, should extend `CLEAN.clients`/`CLEAN.links`.
+
+Tests:
+```
+export PATH="/c/Program Files/nodejs:$PATH"; node --test test/
+ℹ tests 61  ℹ pass 61  ℹ fail 0
+```
+
+jsdom smoke (`S\wp01smoke\smoke.js`, extended): no script errors.
+- A stored `battCrtVolt:'abc'` shows the repair notice, and the analysis renders with 22.2 V.
+- An imported pack with `cells:'6<img …>'` is rejected: 0 `<img>` elements in the page.
+- After an edit to 22.4 V, importing a never-edited settings file dated 2099 keeps 22.4.

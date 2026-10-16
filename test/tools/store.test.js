@@ -124,16 +124,17 @@ test('remove() leaves a tombstone; live() hides it; tombstones expire after 30 d
 });
 
 test('mergeStores: by id, newer updatedAt wins, missing records are never deleted', () => {
+  const v = { start: 25, min: 23, rest: 23.5, sag: 2 };
   const local = VtolStore.defaults();
   local.battLog = [
-    { id: 'x', date: '2025-01-01', notes: 'local-new', updatedAt: '2025-02-02T00:00:00Z' },
-    { id: 'y', date: '2025-01-02', notes: 'local-old', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'only-local', date: '2025-01-03', updatedAt: '2025-01-01T00:00:00Z' }
+    { ...v, id: 'x', date: '2025-01-01', notes: 'local-new', updatedAt: '2025-02-02T00:00:00Z' },
+    { ...v, id: 'y', date: '2025-01-02', notes: 'local-old', updatedAt: '2025-01-01T00:00:00Z' },
+    { ...v, id: 'only-local', date: '2025-01-03', updatedAt: '2025-01-01T00:00:00Z' }
   ];
   const incoming = { battLog: [
-    { id: 'x', date: '2025-01-01', notes: 'remote-old', updatedAt: '2025-01-01T00:00:00Z' },
-    { id: 'y', date: '2025-01-02', notes: 'remote-new', updatedAt: '2025-03-01T00:00:00Z' },
-    { id: 'z', date: '2025-01-04', notes: 'remote-only', updatedAt: '2025-01-01T00:00:00Z' }
+    { ...v, id: 'x', date: '2025-01-01', notes: 'remote-old', updatedAt: '2025-01-01T00:00:00Z' },
+    { ...v, id: 'y', date: '2025-01-02', notes: 'remote-new', updatedAt: '2025-03-01T00:00:00Z' },
+    { ...v, id: 'z', date: '2025-01-04', notes: 'remote-only', updatedAt: '2025-01-01T00:00:00Z' }
   ] };
   const { store, stats } = VtolStore.mergeStores(local, incoming);
   const by = Object.fromEntries(store.battLog.map(r => [r.id, r.notes]));
@@ -141,7 +142,7 @@ test('mergeStores: by id, newer updatedAt wins, missing records are never delete
   assert.equal(by.y, 'remote-new');
   assert.equal(by.z, 'remote-only');
   assert.ok('only-local' in by);
-  assert.deepEqual(stats, { added: 1, updated: 1, deleted: 0 });
+  assert.deepEqual(stats, { added: 1, updated: 1, deleted: 0, settings: false, issues: [] });
 });
 
 test('mergeStores: a tombstone wins only when newer than the local record', () => {
@@ -191,14 +192,89 @@ test('exportJSON → importJSON round trip keeps the whole store (battery log in
   assert.equal(s.settings.battCrtVolt, 22.0);   // never-edited local settings take the imported ones
 });
 
-test('settings are taken from an import only when edited more recently', () => {
+test('settings are taken from an import only when they were edited more recently (settings.updatedAt)', () => {
   const local = VtolStore.defaults();
   local.settings.updatedAt = '2025-06-01T00:00:00Z';
-  local.settings.battCrtVolt = 22.2;
-  const older = { updatedAt: '2025-01-01T00:00:00Z', settings: { battCrtVolt: 21.0 } };
-  assert.equal(VtolStore.mergeStores(JSON.parse(JSON.stringify(local)), older).store.settings.battCrtVolt, 22.2);
-  const newer = { updatedAt: '2025-07-01T00:00:00Z', settings: { battCrtVolt: 21.5 } };
-  assert.equal(VtolStore.mergeStores(JSON.parse(JSON.stringify(local)), newer).store.settings.battCrtVolt, 21.5);
+  local.settings.battCrtVolt = 22.4;
+  const copy = () => JSON.parse(JSON.stringify(local));
+  const older = { updatedAt: '2025-09-01T00:00:00Z', settings: { battCrtVolt: 21.0, updatedAt: '2025-01-01T00:00:00Z' } };
+  assert.equal(VtolStore.mergeStores(copy(), older).store.settings.battCrtVolt, 22.4);
+  const newer = { updatedAt: '2025-07-01T00:00:00Z', settings: { battCrtVolt: 21.5, updatedAt: '2025-07-01T00:00:00Z' } };
+  const r = VtolStore.mergeStores(copy(), newer);
+  assert.equal(r.store.settings.battCrtVolt, 21.5);
+  assert.equal(r.stats.settings, true);
+  // never-stamped settings never overwrite, however new the file is
+  const unstamped = { updatedAt: '2030-01-01T00:00:00Z', settings: { battCrtVolt: 21.0 } };
+  assert.equal(VtolStore.mergeStores(copy(), unstamped).store.settings.battCrtVolt, 22.4);
+});
+
+test('regression: importing from a device that never edited its settings keeps edited local thresholds', async () => {
+  // laptop: the user edited BATT_CRT to 22.4 and the checklist expiry to 4 h
+  const laptop = fresh();
+  VtolStore.update(s => { s.settings.battCrtVolt = 22.4; s.settings.checklistExpiryHours = 4; s.settings.updatedAt = new Date().toISOString(); });
+  const laptopRaw = laptop.getItem('vtol_store');
+  await new Promise(r => setTimeout(r, 5));
+  // phone: default settings, logs a flight later (its top-level updatedAt is newer than the laptop's settings edit)
+  fresh();
+  VtolStore.update(s => { VtolStore.upsert(s, 'battLog', { id: 'phone-1', packId: VtolStore.IDS.carrierPack, date: '2030-01-01', start: 25, min: 23, rest: 23.4, sag: 2 }); });
+  const phoneFile = VtolStore.exportJSON();
+  assert.ok(JSON.parse(phoneFile).updatedAt > JSON.parse(laptopRaw).settings.updatedAt);
+  // back on the laptop: import the phone's file
+  fresh({ vtol_store: laptopRaw });
+  VtolStore.importJSON(phoneFile, { merge: true });
+  const s = VtolStore.load();
+  assert.equal(s.settings.battCrtVolt, 22.4);
+  assert.equal(s.settings.checklistExpiryHours, 4);
+  assert.ok(s.battLog.find(e => e.id === 'phone-1'), 'records are still merged');
+  assert.equal(VtolStore.importJSON.lastStats.settings, false);
+});
+
+test('validation: imported records with bad types are rejected, local valid copies survive', () => {
+  fresh();
+  const xss = '6<img src=x onerror=alert(1)>';
+  VtolStore.importJSON(JSON.stringify({
+    packs: [
+      { id: 'evil', label: 'Evil', role: 'client', cells: xss, chem: 'lipo' },
+      { id: VtolStore.IDS.carrierPack, label: 'Carrier 6S 7000', role: 'carrier', cells: '<b>', chem: 'lipo', updatedAt: '2099-01-01T00:00:00Z' },
+      { id: 'ok4s', label: 'Client 4S', role: 'client', cells: '4', chem: 'liion', capacityMah: 'x' }
+    ],
+    battLog: [{ id: 'b-bad', date: '2025-01-01', start: 'abc', min: 22, rest: 23 }, { id: 'b-ok', date: '2025-01-02', start: '25.0', min: 23, rest: 23.5 }],
+    weatherFavorites: [{ id: 'f-bad', lat: 'north', lon: 10, name: 'x' }]
+  }), { merge: true });
+  const s = VtolStore.load();
+  const ids = VtolStore.live(s.packs).map(p => p.id);
+  assert.ok(!ids.includes('evil'));
+  const carrier = VtolStore.find(s, 'packs', VtolStore.IDS.carrierPack);
+  assert.equal(carrier.cells, 6, 'a default profile falls back to the default value');
+  const p4 = VtolStore.find(s, 'packs', 'ok4s');
+  assert.deepEqual([p4.cells, p4.capacityMah], [4, null]);
+  assert.deepEqual(VtolStore.live(s.battLog).map(e => [e.id, e.start]), [['b-ok', 25]]);
+  assert.equal(VtolStore.live(s.weatherFavorites).length, 0);
+  assert.ok(VtolStore.importJSON.lastStats.issues.length >= 4);
+});
+
+test('validation on load: string or garbage settings fall back, are reported once and the repair is saved', () => {
+  const d = VtolStore.defaults();
+  d.settings.battCrtVolt = '22.6';          // numeric string → coerced
+  d.settings.manualRtlVolt = 'abc';          // garbage → default
+  d.settings.hardLimitVolt = null;
+  d.packs[0].cells = '6"><svg onload=x>';
+  const ls = fresh({ vtol_store: JSON.stringify(d) });
+  VtolStore.takeIssues();
+  const s = VtolStore.load();
+  assert.deepEqual([s.settings.battCrtVolt, s.settings.manualRtlVolt, s.settings.hardLimitVolt, s.packs[0].cells], [22.6, 23.0, 22.5, 6]);
+  const issues = VtolStore.takeIssues();
+  assert.ok(issues.length >= 3 && issues.some(t => /manualRtlVolt/.test(t)));
+  assert.equal(JSON.parse(ls.getItem('vtol_store')).settings.manualRtlVolt, 23.0, 'repair saved');
+  VtolStore.load();
+  assert.deepEqual(VtolStore.takeIssues(), [], 'reported once');
+});
+
+test('importJSON throws when the merged store cannot be saved', () => {
+  const ls = fresh();
+  VtolStore.load();
+  ls.setItem = () => { throw new Error('QuotaExceededError'); };
+  assert.throws(() => VtolStore.importJSON(JSON.stringify({ archive: [{ date: '2025-01-01T00:00:00Z' }] })), /could not be saved/);
 });
 
 test('uid() returns distinct short strings', () => {
