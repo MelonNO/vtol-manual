@@ -230,13 +230,14 @@ test('regression: importing from a device that never edited its settings keeps e
 });
 
 test('validation: imported records with bad types are rejected, local valid copies survive', () => {
-  fresh();
+  fresh({ vtol_batt_type: JSON.stringify({ cells: 4, chem: 'liion' }) });   // local carrier pack: 4S Li-Ion (≠ default)
   const xss = '6<img src=x onerror=alert(1)>';
   VtolStore.importJSON(JSON.stringify({
     packs: [
       { id: 'evil', label: 'Evil', role: 'client', cells: xss, chem: 'lipo' },
       { id: VtolStore.IDS.carrierPack, label: 'Carrier 6S 7000', role: 'carrier', cells: '<b>', chem: 'lipo', updatedAt: '2099-01-01T00:00:00Z' },
-      { id: 'ok4s', label: 'Client 4S', role: 'client', cells: '4', chem: 'liion', capacityMah: 'x' }
+      { id: 'ok4s', label: 'Client 4S', role: 'client', cells: '4', chem: 'liion', capacityMah: '' },
+      { id: 'badcap', label: 'Bad capacity', role: 'client', cells: 4, chem: 'lipo', capacityMah: 'x' }
     ],
     battLog: [{ id: 'b-bad', date: '2025-01-01', start: 'abc', min: 22, rest: 23 }, { id: 'b-ok', date: '2025-01-02', start: '25.0', min: 23, rest: 23.5 }],
     weatherFavorites: [{ id: 'f-bad', lat: 'north', lon: 10, name: 'x' }]
@@ -245,9 +246,12 @@ test('validation: imported records with bad types are rejected, local valid copi
   const ids = VtolStore.live(s.packs).map(p => p.id);
   assert.ok(!ids.includes('evil'));
   const carrier = VtolStore.find(s, 'packs', VtolStore.IDS.carrierPack);
-  assert.equal(carrier.cells, 6, 'a default profile falls back to the default value');
+  // WP05 R11(a): an invalid incoming record is dropped — even for a default id it never resets the local record.
+  assert.deepEqual([carrier.cells, carrier.chem], [4, 'liion'], 'invalid incoming default-pack record dropped, local pack kept');
+  assert.ok(VtolStore.importJSON.lastStats.issues.some(t => /Carrier 6S 7000.*dropped/.test(t)));
   const p4 = VtolStore.find(s, 'packs', 'ok4s');
-  assert.deepEqual([p4.cells, p4.capacityMah], [4, null]);
+  assert.deepEqual([p4.cells, p4.capacityMah], [4, null], 'numeric string coerced, empty capacity = unknown');
+  assert.equal(VtolStore.find(s, 'packs', 'badcap'), null, 'WP05 F5: an invalid capacity on import drops the record');
   assert.deepEqual(VtolStore.live(s.battLog).map(e => [e.id, e.start]), [['b-ok', 25]]);
   assert.equal(VtolStore.live(s.weatherFavorites).length, 0);
   assert.ok(VtolStore.importJSON.lastStats.issues.length >= 4);

@@ -163,6 +163,61 @@ tr:last-child td{border-bottom:none;}
 .ci-ts{font-size:11px;color:var(--green);letter-spacing:.5px;flex-shrink:0;display:none;}
 .ci.done .ci-ts{display:inline;}
 .ci-checked-at{display:block;font-size:12px;color:var(--green);margin-top:6px;}
+/* shared content (js/render-content.js) */
+.emerg-pill{background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer;min-height:44px;}
+.emerg-pill.primary{background:var(--red);color:#fff;}
+.emerg-pill.note{background:#1f1a08;border-color:var(--amber);color:var(--amber);}
+.emerg-card{margin-top:14px;}
+.emerg-primary{border:1px solid var(--red);border-left-width:4px;}
+.emerg-summary{font-size:12px;margin:0 0 10px;}
+.emerg-note .emerg-note-text{font-size:13px;margin:6px 0;}
+.emerg-note-close{margin-top:10px;padding:10px 12px;background:#1a1206;border-left:3px solid var(--amber);}
+.emerg-note-close-title{font-size:13px;color:var(--text);margin-bottom:4px;}
+.emerg-note-close .emerg-imm-step{border-bottom:none;}
+.fs-primary td{background:#1a0e0e;}
+.ci-extra{margin-top:6px;}
+.ci-extra-label{font-size:10px;color:var(--muted);letter-spacing:1px;}
+.ci-auto{font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1px;padding:1px 6px;border:1px solid var(--border2);color:var(--muted);flex-shrink:0;white-space:nowrap;}
+.ci-auto.ok{color:var(--green);border-color:var(--green);}
+.ci-auto.fail{color:var(--red);border-color:var(--red);}
+.ci-auto[hidden]{display:none;}
+/* link tab */
+.lk-bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:8px 12px;background:var(--surface);border:1px solid var(--border2);margin-bottom:12px;font-size:12px;}
+.lk-bar label{display:flex;gap:8px;align-items:center;min-height:44px;cursor:pointer;color:var(--text);}
+.lk-bar input{width:20px;height:20px;}
+.lk-badge{display:inline-block;font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;padding:2px 8px;border:1px solid var(--border2);color:var(--muted);}
+.lk-badge.ok{color:var(--green);border-color:var(--green);}
+.lk-badge.warn{color:var(--amber);border-color:var(--amber);}
+.lk-badge.crit{color:var(--red);border-color:var(--red);}
+.lk-meta{font-size:11px;color:var(--muted);letter-spacing:.5px;margin-bottom:10px;}
+.lk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.lk-panel{background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--dim);padding:10px 12px;margin-bottom:12px;}
+.lk-grid .lk-panel{margin-bottom:0;}
+.lk-panel.crit{border-left-color:var(--red);}
+.lk-title{font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:2px;color:var(--accent);margin-bottom:6px;}
+.lk-row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.lk-row:last-child{border-bottom:none;}
+.lk-k{color:var(--muted);font-size:11px;letter-spacing:1px;}
+.lk-v{color:var(--text);text-align:right;}
+.lk-row.warn .lk-v{color:var(--amber);}
+.lk-row.crit .lk-v{color:var(--red);font-weight:bold;}
+.lk-na{color:var(--muted);}
+.lk-alarm{padding:5px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.lk-alarm.crit strong{color:var(--red);}
+.lk-alarm.warn strong{color:var(--amber);}
+/* profiles tab */
+.prof-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--dim);margin-bottom:8px;}
+.prof-row.active{border-left-color:var(--accent);}
+.prof-main{flex:1;min-width:200px;}
+.prof-name{color:var(--text);font-size:14px;}
+.prof-sum{color:var(--muted);font-size:12px;}
+.prof-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.prof-btns .cl-reset{min-height:44px;padding:8px 12px;}
+.prof-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 12px;margin:10px 0;}
+.prof-form .wide{grid-column:1/-1;}
+.prof-form .bl-input{min-height:44px;}
+.prof-check{display:flex;gap:8px;align-items:center;min-height:44px;color:var(--text);font-size:13px;}
+.prof-errors{color:var(--red);font-size:12px;margin:6px 0;}
 footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:40px;}
 @media(max-width:600px){
   .hdr-badge{writing-mode:horizontal-tb;padding:6px 12px;font-size:10px;}
@@ -185,13 +240,14 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <div class="hdr-top">
     <div class="hdr-badge">TOOLS</div>
     <div class="hdr-main">
-      <div class="hdr-doc-id">HEEWING T2 VTOL · ARDUPLANE · ELRS 915/868/2.4GHz · SIYI HM30</div>
+      <div class="hdr-doc-id" id="hdr-doc-id">HEEWING T2 CRUZA · ARDUPLANE · ELRS 915 (carrier) · ELRS TBD (client) · SIYI HM30</div>
       <div class="hdr-title">RELAY CARRIER — FLIGHT TOOLS</div>
-      <div class="hdr-sub">CHECKLISTS · BATTERY LOG · EMERGENCY PROCEDURES</div>
+      <div class="hdr-sub">CHECKLISTS · EMERGENCY PROCEDURES · LINK · PROFILES · BATTERY LOG</div>
     </div>
   </div>
   <div class="hdr-meta">
-    <span><strong>PLATFORM</strong> Heewing T2 VTOL</span>
+    <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
+    <span><strong>CLIENT</strong> <span id="hdr-client"></span></span>
     <span><strong>BATT</strong> 6S 7000mAh</span>
     <span><strong>CRIT VOLT</strong> 22.2V</span>
     <span><strong>RTL ALT</strong> 120m REL (above home)</span>
@@ -204,9 +260,11 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <button onclick="switchTab('preflight',this)">Pre-Flight</button>
   <button onclick="switchTab('turnaround',this)">Turnaround</button>
   <button onclick="switchTab('postflight',this)">Post-Flight</button>
+  <button onclick="switchTab('link',this)">Link</button>
   <button onclick="switchTab('battlog',this)">Battery Log</button>
   <button onclick="switchTab('tlog',this)">Telemetry</button>
   <button onclick="switchTab('weather',this)">Weather</button>
+  <button onclick="switchTab('profiles',this)">Profiles</button>
   <a class="nav-manual-btn" href="manual.html">MANUAL ▶</a>
   <a class="nav-manual-btn" href="relay/map.html" style="margin-left:0;border-left:none">MAP ▶</a>
 </nav>
@@ -220,131 +278,8 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <button onclick="closeEmerg()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:6px 14px;cursor:pointer;letter-spacing:1px">CLOSE ✕</button>
     </div>
     <div class="alert alert-danger">Memorise the <strong>immediate actions</strong>. Perform them without reference. When stable, open the clean-up section.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px">
-      <button onclick="emergJump('emerg-rc')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">RC LOSS</button>
-      <button onclick="emergJump('emerg-relay')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">RELAY LOSS</button>
-      <button onclick="emergJump('emerg-video')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">VIDEO LOSS</button>
-      <button onclick="emergJump('emerg-trans')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">TRANSITION</button>
-      <button onclick="emergJump('emerg-batt')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">BATTERY</button>
-      <button onclick="emergJump('emerg-gcs')" style="background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer">GCS LOSS</button>
-    </div>
-    <div id="emerg-rc" class="card danger" style="margin-top:14px">
-      <div class="emerg-hdr">RC Link Loss — 915MHz (Carrier Control)</div>
-      <div class="emerg-imm">
-        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
-        <div class="emerg-imm-step"><div class="n">1</div><div>WAIT — do not touch TX</div></div>
-        <div class="emerg-imm-step"><div class="n">2</div><div>1.5s: <span class="mbadge m-fbwb">FBWA</span> AUTO — monitor MP</div></div>
-        <div class="emerg-imm-step"><div class="n">3</div><div>5s: <span class="mbadge m-rtl">RTL</span> AUTO — 120m AGL</div></div>
-        <div class="emerg-imm-step"><div class="n">4</div><div>GCS STILL LIVE: MP mode commands</div></div>
-        <div class="emerg-imm-step"><div class="n">5</div><div>NO TX POWER-CYCLE in flight</div></div>
-      </div>
-      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
-      <div class="emerg-cleanup">
-        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
-        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Confirm RTL altitude in MP — should show 120m AGL before descent begins.</div></div>
-        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Monitor airspeed — must stay above 11 m/s. Use MP GCS for mode commands if needed.</div></div>
-        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Monitor battery — extended RTL draws higher current during VTOL descent phase.</div></div>
-        <div class="emerg-cu-step"><div class="n">4</div><div class="t">If link recovers: assess battery and position before resuming AUTO mission.</div></div>
-        <div class="emerg-cu-step"><div class="n">5</div><div class="t">After landing: inspect TX/RX antennas, check bind, log the incident.</div></div>
-      </div>
-    </div>
-    <div id="emerg-relay" class="card danger">
-      <div class="emerg-hdr">Relay Link Loss — 2.4GHz (FPV Sub-Drone)</div>
-      <div class="emerg-imm">
-        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
-        <div class="emerg-imm-step"><div class="n">1</div><div>FPV PILOT: HANDS OFF — now</div></div>
-        <div class="emerg-imm-step"><div class="n">2</div><div>CARRIER: HOLD LOITER</div></div>
-        <div class="emerg-imm-step"><div class="n">3</div><div>GPS RESCUE fires in 2.5s — wait</div></div>
-        <div class="emerg-imm-step"><div class="n">4</div><div>DO NOT touch FPV TX sticks</div></div>
-        <div class="emerg-imm-step"><div class="n">5</div><div>WATCH OSD: need 8+ GPS sats</div></div>
-      </div>
-      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
-      <div class="emerg-cleanup">
-        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
-        <div class="emerg-cu-step"><div class="n">1</div><div class="t">GPS Rescue: climbs 30m, cruises home at 100m AGL / 7.5 m/s, motor cut at 4m.</div></div>
-        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Monitor using SIYI carrier camera if FPV is in view.</div></div>
-        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Keep carrier loitering until FPV lands — sub-drone may be returning toward carrier position.</div></div>
-        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Confirm FPV disarmed before approach on ground.</div></div>
-        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Check relay bind was completed pre-flight. Inspect carrier Nomad relay TX antenna.</div></div>
-      </div>
-    </div>
-    <div id="emerg-video" class="card danger">
-      <div class="emerg-hdr">Video Loss — 5.8GHz or SIYI Chain</div>
-      <div class="emerg-imm">
-        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
-        <div class="emerg-imm-step"><div class="n">1</div><div>FPV PILOT: ZERO INPUTS — hover</div></div>
-        <div class="emerg-imm-step"><div class="n">2</div><div>CARRIER: DESCEND — reduce range</div></div>
-        <div class="emerg-imm-step"><div class="n">3</div><div>WAIT 10 SECONDS</div></div>
-        <div class="emerg-imm-step"><div class="n">4</div><div>STILL LOST: FPV return home</div></div>
-        <div class="emerg-imm-step"><div class="n">5</div><div>CARRIER: independent recovery</div></div>
-      </div>
-      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
-      <div class="emerg-cleanup">
-        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
-        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check CVBS→HDMI converter — connector, power light on, no heat damage.</div></div>
-        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check SIYI HDMI→IP encoder — connected to SIYI switch, LED status normal.</div></div>
-        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Verify FPV VTX channel: Raceband R5 / 5806 MHz.</div></div>
-        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Check 5.8G VRX antenna orientation on carrier.</div></div>
-        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Restart GStreamer and MPV stream. Verify video in MPV.net before FPV re-arms.</div></div>
-      </div>
-    </div>
-    <div id="emerg-trans" class="card danger">
-      <div class="emerg-hdr">Transition Failure — VTOL → FW</div>
-      <div class="emerg-imm">
-        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
-        <div class="emerg-imm-step"><div class="n">1</div><div><span class="mbadge m-qhov">QHOVER</span> — switch now</div></div>
-        <div class="emerg-imm-step"><div class="n">2</div><div>GAIN ALTITUDE — full VTOL power</div></div>
-        <div class="emerg-imm-step"><div class="n">3</div><div>HOLD — assess before any retry</div></div>
-      </div>
-      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
-      <div class="emerg-cleanup">
-        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
-        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check pitot — airspeed reading in MP? Zero = blocked/disconnected. Do not retry without airspeed data.</div></div>
-        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check tilt servos — switch to FBWB and observe in MP. Do front rotors tilt forward?</div></div>
-        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Check battery — sufficient for another transition attempt plus VTOL recovery?</div></div>
-        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Check wind — clear corridor ahead? Crosswind/tailwind can prevent successful transition.</div></div>
-        <div class="emerg-cu-step"><div class="n">5</div><div class="t">If retrying: climb to 60m+ in QHOVER first. Clear 300m corridor ahead. Monitor airspeed immediately on AUTO.</div></div>
-        <div class="emerg-cu-step"><div class="n">6</div><div class="t">Log failure phase: no airspeed build in 3s vs pitch-down upset. Note battery voltage.</div></div>
-      </div>
-    </div>
-    <div id="emerg-batt" class="card danger">
-      <div class="emerg-hdr">Battery Critical — Carrier</div>
-      <div class="emerg-imm">
-        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
-        <div class="emerg-imm-step"><div class="n">1</div><div>23.0V → <span class="mbadge m-rtl">RTL</span> NOW — left button</div></div>
-        <div class="emerg-imm-step"><div class="n">2</div><div>22.5V → RTL MUST BE ACTIVE</div></div>
-        <div class="emerg-imm-step"><div class="n">3</div><div>22.2V → AUTOLAND HERE — not home</div></div>
-        <div class="emerg-imm-step"><div class="n">4</div><div>CLEAR AREA BELOW</div></div>
-      </div>
-      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
-      <div class="emerg-cleanup">
-        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
-        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Log landing voltage in battery log — note start voltage and any anomalies.</div></div>
-        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Inspect battery for puffing, heat, smell. If any present — quarantine, do not charge.</div></div>
-        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Allow pack to cool 30 minutes minimum before charging.</div></div>
-        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Review: was RTL initiated on time? Use battery log analysis to check sag vs previous flights.</div></div>
-        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Set BATT_LOW_VOLT using the battery log recommendation in the Tools page.</div></div>
-      </div>
-    </div>
-    <div id="emerg-gcs" class="card danger">
-      <div class="emerg-hdr">GCS Link Loss (SIYI HM30)</div>
-      <div class="emerg-imm">
-        <div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
-        <div class="emerg-imm-step"><div class="n">1</div><div>SWITCH — 915MHz Nomad TX now</div></div>
-        <div class="emerg-imm-step"><div class="n">2</div><div>CONFIRM carrier responds</div></div>
-        <div class="emerg-imm-step"><div class="n">3</div><div>AUTO: GCS failsafe → RTL fires</div></div>
-        <div class="emerg-imm-step"><div class="n">4</div><div>OTHER: Nomad switch + left button</div></div>
-      </div>
-      <button class="emerg-cleanup-btn" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
-      <div class="emerg-cleanup">
-        <div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
-        <div class="emerg-cu-step"><div class="n">1</div><div class="t">Check ethernet cable — mast to laptop. Reseat both ends.</div></div>
-        <div class="emerg-cu-step"><div class="n">2</div><div class="t">Check HM30 ground unit LED — blue = linked. If not: check mast battery and HM30 power.</div></div>
-        <div class="emerg-cu-step"><div class="n">3</div><div class="t">Check mast battery voltage — below 21.0V may cause HM30 brownout.</div></div>
-        <div class="emerg-cu-step"><div class="n">4</div><div class="t">Restart MP UDPCI: IP 192.168.144.12 / Port 19856.</div></div>
-        <div class="emerg-cu-step"><div class="n">5</div><div class="t">Do not re-enter AUTO until GCS telemetry stable for 30+ seconds.</div></div>
-      </div>
-    </div>
+    <div id="emerg-pills" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px"></div>
+    <div id="emerg-list"></div>
   </div>
 </div>
 
@@ -403,27 +338,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 
 <!-- POST-FLIGHT -->
 <div id="tab-postflight" class="tab-panel">
-  <div class="section-title">Immediate Post-Landing</div>
-  <div class="card accent">
-    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Disarm carrier</strong><p>Confirm disarmed in Mission Planner. All motors stopped. Do not approach until disarmed.</p></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Disarm FPV sub-drone</strong><p>Co-pilot confirms FPV disarmed. Props stopped.</p></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Disconnect carrier battery</strong><p>Disconnect 6S pack. All systems power down. Record landing voltage.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Disconnect FPV battery</strong><p>Record FPV landing voltage.</p></div></div>
-  </div>
-  <div class="section-title">Ground Station Teardown</div>
-  <div class="card">
-    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Check mast battery voltage</strong><p>Disconnect and measure 6S 3000mAh mast battery. Below <span class="warn-val">21.0V</span>: charge immediately, do not store discharged.</p></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Power down HM30 ground unit</strong><p>Disconnect ethernet. Remove mast battery safely.</p></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Lower and secure mast</strong><p>Confirm HM30 and cabling secured before transport.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Close Mission Planner</strong><p>Save log if required.</p></div></div>
-  </div>
-  <div class="section-title">Inspection</div>
-  <div class="card">
-    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Carrier airframe</strong><p>Inspect tilt motor mounts, wing joins, prop blades, connectors. Check for heat or smell from ESCs/motors.</p></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier battery</strong><p>Check for puffing, heat, damage. Store at 22.8V (3.8V/cell) if not flying within 48h. Never store discharged — BATT_CRT voltage (22.2V) is not a storage target.</p></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Video chain</strong><p>Check CVBS→HDMI and SIYI HDMI→IP for heat. Inspect VRX antenna.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>FPV sub-drone</strong><p>Inspect props, motors, frame.</p></div></div>
-  </div>
+  <div id="postflight-body"></div>
 </div>
 
 <!-- BATTERY LOG -->
@@ -538,6 +453,49 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <div id="wx-result"></div>
 </div>
 
+<!-- LINK (GCS companion app, contract C2) -->
+<div id="tab-link" class="tab-panel">
+  <div class="section-title" style="margin-top:0">Link — GCS Companion App</div>
+  <p>Live relay and client status from the GCS companion app's local, read-only API (<code>http://127.0.0.1:47800</code>). Display only — the pilots' callouts stay primary.</p>
+  <div class="lk-bar">
+    <span id="lk-conn" class="lk-badge crit">GCS APP NOT RUNNING</span>
+    <span id="lk-updated" style="flex:1;color:var(--muted);font-size:11px;letter-spacing:1px"></span>
+    <label><input type="checkbox" id="lk-audio" onchange="linkAudioToggle(this)"> AUDIO CUE — CRIT ALARMS</label>
+  </div>
+  <div id="lk-view"></div>
+</div>
+
+<!-- PROFILES (clients, packs, links, settings — shared store C1) -->
+<div id="tab-profiles" class="tab-panel">
+  <div class="section-title" style="margin-top:0">Active Selection</div>
+  <div class="card accent">
+    <div class="cfg-row">
+      <div style="flex:2;min-width:200px"><label class="bl-label" for="prof-active-client">ACTIVE CLIENT (DRIVES CHECKLISTS, HEADER, LINK TAB)</label><select id="prof-active-client" class="bl-input cfg-input" onchange="profSetActive('activeClientId', this.value)"></select></div>
+      <div style="flex:2;min-width:200px"><label class="bl-label" for="prof-active-pack">ACTIVE CARRIER PACK</label><select id="prof-active-pack" class="bl-input cfg-input" onchange="profSetActive('activeCarrierPackId', this.value)"></select></div>
+    </div>
+  </div>
+  <div id="prof-sections"></div>
+  <div class="section-title">Settings — Thresholds</div>
+  <div class="card">
+    <div class="bl-label" style="margin-bottom:6px">CARRIER (V, PACK)</div>
+    <div class="cfg-row" style="margin-bottom:12px">
+      <div><label class="bl-label" for="pset-crt">BATT_CRT_VOLT (V)</label><input type="number" id="pset-crt" class="bl-input cfg-input" step="0.1" min="0" data-setting="battCrtVolt" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-rtl">MANUAL RTL (V)</label><input type="number" id="pset-rtl" class="bl-input cfg-input" step="0.1" min="0" data-setting="manualRtlVolt" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-hard">RTL MUST BE ACTIVE (V)</label><input type="number" id="pset-hard" class="bl-input cfg-input" step="0.1" min="0" data-setting="hardLimitVolt" onchange="saveSetting(this)"></div>
+    </div>
+    <div class="cfg-row" style="margin-bottom:12px">
+      <div><label class="bl-label" for="pset-storage">STORAGE (V/CELL, LIPO)</label><input type="number" id="pset-storage" class="bl-input cfg-input" step="0.01" min="0" data-setting="storageVoltPerCell" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-expiry">CHECKLIST EXPIRY (h)</label><input type="number" id="pset-expiry" class="bl-input cfg-input" step="0.5" min="0" data-setting="checklistExpiryHours" onchange="saveSetting(this)"></div>
+    </div>
+    <div class="bl-label" style="margin-bottom:6px">WIND LIMITS (m/s)</div>
+    <div class="cfg-row">
+      <div><label class="bl-label" for="pset-wind-go">GO UP TO</label><input type="number" id="pset-wind-go" class="bl-input cfg-input" step="0.5" min="0" data-setting="windGoMaxMs" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-wind-caution">CAUTION UP TO</label><input type="number" id="pset-wind-caution" class="bl-input cfg-input" step="0.5" min="0" data-setting="windCautionMaxMs" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-gust">GUST NO-GO ABOVE</label><input type="number" id="pset-gust" class="bl-input cfg-input" step="0.5" min="0" data-setting="gustMaxMs" onchange="saveSetting(this)"></div>
+    </div>
+  </div>
+</div>
+
 </div><!-- /content -->
 
 <footer>HEEWING T2 VTOL RELAY CARRIER · FLIGHT TOOLS · ARDUPLANE · v<span class="ver-app"></span> · CONTENT <span class="ver-content"></span></footer>
@@ -546,6 +504,9 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 <script src="js/common.js"></script>
 <script src="js/store.js"></script>
 <script src="js/tools-core.js"></script>
+<script src="js/gcs-client.js"></script>
+<script src="data/content.js"></script>
+<script src="js/render-content.js"></script>
 <script>
 const { escH, fmtTime } = VtolCommon;
 const toggleCleanup = VtolCommon.toggleCleanup;
@@ -583,7 +544,7 @@ function saveSetting(el) {
   const v = parseFloat(el.value), key = el.dataset.setting;
   if (!isFinite(v) || v <= 0) { renderSettingsInputs(); return; }
   storeUpdate(s => { s.settings[key] = v; s.settings.updatedAt = new Date().toISOString(); });
-  renderBattLog(); renderWxLimits();
+  renderSettingsInputs(); renderBattLog(); renderWxLimits(); renderContent();   // thresholds appear in checklists and emergency cards
 }
 
 // ── CHECKLIST SECTION COLOURS ──
@@ -592,75 +553,11 @@ const SEC_COLORS = {
   T1:'#f97316', T2:'#a78bfa', T3:'#f43f5e'
 };
 
-// ── CHECKLISTS ── (item ids are stable keys for saved state: never reuse or renumber them)
-const CL = [
-  { id:'A', name:'SITE', items:[
-    { id:'site-airspace', s:'Airspace verified & pilots briefed', t:'Airspace verified — NOTAMs checked, operation permitted. Both pilots briefed on roles and emergency actions.', w:true },
-    { id:'site-wind', s:'Wind within limits', t:'Wind within limits — crosswind acceptable for VTOL.', n:'Wind vane active — carrier will weathervane into wind automatically.' },
-    { id:'site-lz', s:'Landing zone clear', t:'VTOL landing zone clear — 5m radius, level, no obstacles.' },
-  ]},
-  { id:'B', name:'VTOL BUILD & POWER-ON', items:[
-    { id:'build-airframe', s:'Airframe inspected', t:'Carrier drone assembled and inspected — no cracks at tilt motor mounts or wing joins.' },
-    { id:'build-pitot-cover', s:'Pitot cover on', t:'Pitot cover installed.', n:'Leave on until pitot calibration step.', w:true },
-    { id:'build-battery-power', s:'Battery secured & power on', t:'Battery secured — strap tight, no movement. Power on carrier drone immediately to allow GPS fix acquisition while ground station is being set up.', n:'Power on early for best GPS fix quality. Do not arm yet.' },
-    { id:'build-props', s:'Props tight, rotation correct', t:'All props tight — correct rotation direction confirmed for all 3 motors (M1/M2 tilt, M4 tail).', n:'Front pair: both tilt motor props. Rear pair: fixed lift motor props.', w:true },
-  ]},
-  { id:'C', name:'GROUND STATION', items:[
-    { id:'gs-mast', s:'Mast up and powered', t:'HM30 mast erected and powered — 6S 3000mAh secured to mast.' },
-    { id:'gs-ethernet', s:'Ethernet connected', t:'Ethernet cable connected mast → laptop.' },
-    { id:'gs-hm30-link', s:'HM30 linked, battery OK', t:'HM30 ground unit linked — verify LED is blue. Check mast battery voltage.' },
-    { id:'gs-subnet', s:'Subnet verified', t:'Ethernet network adapter on correct subnet.', n:'IP must be <code>192.168.144.X</code> — subnet mask <code>255.255.255.0</code>' },
-    { id:'gs-mp-connect', s:'Mission Planner connected', t:'Mission Planner open — second screen via USB-C. Select <strong>UDPCI</strong> in MP connection dropdown.', extras:[{label:'IP',val:'192.168.144.12'},{label:'Port',val:'19856'}] },
-    { id:'gs-gstreamer', s:'GStreamer configured', t:'GStreamer: right-click avionics screen → Video → Set GStreamer Source. Paste pipeline:', n:'rtspsrc location=rtsp://192.168.144.26:8554/main.264 latency=41 udp-reconnect=1 timeout=0 do-retransmission=false ! application/x-rtp ! decodebin3 ! queue max-size-buffers=1 leaky=2 ! videoconvert ! video/x-raw,format=BGRA ! appsink name=outsink sync=false', copy:true },
-    { id:'gs-mpv-conf', s:'mpv.conf verified', t:'MPV.net — verify mpv.conf contains correct low-latency config:', n:'profile=low-latency\nno-cache\nuntimed\nhwdec=auto\nrtsp-transport=udp', copy:true },
-    { id:'gs-mpv-stream', s:'MPV stream open', t:'MPV.net — open stream: copy URL, right-click screen → File → Open URL or file from clipboard', n:'rtsp://192.168.144.25:8554/main.264', copy:true },
-    { id:'gs-charged', s:'All devices charged', t:'All controllers, TX units and EcoFlow charged and ready.' },
-  ]},
-  { id:'D', name:'CARRIER DRONE', items:[
-    { id:'carrier-compass', s:'Compass calibrated', t:'Compass calibration — Mission Planner: Initial Setup → Mandatory Hardware → Compass → Start. Rotate through all axes. Verify no compass errors.' },
-    { id:'carrier-home', s:'Home position set', t:'Home position set correctly — verify on map.' },
-    { id:'carrier-mission', s:'Mission verified', t:'Mission loaded and verified on map — all 7 waypoints in correct positions.' },
-    { id:'carrier-failsafe-params', s:'Failsafe params verified', t:'Failsafe parameters verified in Mission Planner Full Parameter List:', n:'THR_FAILSAFE = 2  (RC failsafe enabled)\nTHR_FS_VALUE = 950  (throttle loss threshold)\nFS_SHORT_ACTN = 0  (short loss → FBWA)\nFS_SHORT_TIMEOUT = 1.5  (seconds)\nFS_LONG_ACTN = 1  (long loss → RTL)\nFS_LONG_TIMEOUT = 5  (seconds)\nBATT_CRT_VOLT = 22.2  (critical voltage, V)\nBATT_FS_CRT_ACT = 6  (critical → Loiter to QLand)\nFS_GCS_ENABL = 2  (GCS failsafe in AUTO only)', w:true, copy:true },
-    { id:'carrier-servo-check', s:'Servo check (MANUAL)', t:'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and in correct direction. Switch back to QHOVER when done.', n:'MANUAL must never be used in flight.', w:true },
-    { id:'carrier-mode-cycle', s:'Mode cycle verified', t:'Cycle through all 3 Nomad switch positions, confirm QHOVER / FBWB / AUTO update in Mission Planner. Verify tilt servos rotate forward on FBWB.' },
-    { id:'carrier-pitot-cal', s:'Pitot calibrated, cover removed', t:'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated" in Messages. Confirm airspeed stable and below 2 m/s. Remove pitot cover.', w:true },
-    { id:'carrier-auto-wp', s:'Correct AUTO waypoint selected', t:'Verify correct starting waypoint for AUTO mode. If launching without co-pilot, WP 1 must NOT be the active waypoint.', w:true },
-  ]},
-  { id:'E', name:'FPV SUB-DRONE', items:[
-    { id:'fpv-battery', s:'FPV battery connected', t:'FPV battery connected — voltage nominal.' },
-    { id:'fpv-props', s:'FPV props checked', t:'FPV props tight — correct rotation direction.', n:'7"+ quad — check motor bell screws and prop nuts.' },
-    { id:'fpv-vtx-video', s:'VTX on, video confirmed', t:'5.8GHz VTX powered — correct channel and band. Verify FPV video feed visible in MPV.net.', n:'Must show live FPV view — not static or blank.', w:true },
-    { id:'fpv-relay-bind', s:'Relay link bound', t:'Bind FPV RX to carrier relay Nomad: hold LEFT button on carrier Nomad for 3s. Confirm ELRS 2.4GHz relay link established.', n:'Required every preflight. Bind to carrier Nomad only — not the ground TX.', w:true },
-  ]}
-];
-
-const CL2 = [
-  { id:'T1', name:'CARRIER — BATTERY & INSPECTION', items:[
-    { id:'ta-airframe', s:'Airframe inspected', t:'Quick visual — check tilt motor mounts, wing joins, props for damage from previous flight.' },
-    { id:'ta-battery-swap', s:'Battery swapped', t:'Remove used battery, record landing voltage, place on charger immediately. Install fresh battery — strap tight, verify above 25.0V.', n:'Used batteries must be set to charge before the next flight begins.', w:true },
-    { id:'ta-power-gps', s:'Power on, GPS acquiring', t:'Power on carrier drone. Allow GPS to re-acquire fix before proceeding.' },
-  ]},
-  { id:'T2', name:'CARRIER — PRE-ARM', items:[
-    { id:'ta-home', s:'Home position reset', t:'Home position updated on map — verify correct location.' },
-    { id:'ta-mission', s:'Mission verified', t:'Mission still loaded and correct — all 7 waypoints in correct positions.' },
-    { id:'ta-auto-wp', s:'Correct AUTO waypoint selected', t:'Verify correct starting waypoint for AUTO. If no co-pilot, WP 1 must NOT be active.', w:true },
-    { id:'ta-servo-check', s:'Servo check (MANUAL)', t:'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and correctly. Switch back to QHOVER when done.', n:'MANUAL must never be used in flight.', w:true },
-    { id:'ta-pitot-cal', s:'Pitot calibrated, cover removed', t:'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated". Confirm airspeed below 2 m/s. Remove pitot cover.', w:true },
-    { id:'ta-mode-cycle', s:'Mode cycle verified', t:'Cycle all 3 Nomad switch positions. Confirm QHOVER / FBWB / AUTO in Mission Planner. Verify tilt servos rotate on FBWB.' },
-    { id:'ta-gstreamer', s:'GStreamer restarted', t:'GStreamer must be restarted after power cycle. Right-click avionics → Video → Set GStreamer Source → confirm pipeline → start.' },
-    { id:'ta-mpv-stream', s:'MPV stream restarted', t:'MPV.net stream must be reopened. Copy URL, right-click screen → File → Open URL or file from clipboard.', n:'rtsp://192.168.144.25:8554/main.264', copy:true },
-  ]},
-  { id:'T3', name:'FPV SUB-DRONE', items:[
-    { id:'ta-fpv-battery', s:'FPV battery swapped', t:'Remove used FPV battery, place on charger. Install fresh pack. Verify voltage nominal.' },
-    { id:'ta-fpv-props', s:'FPV props checked', t:'Quick visual — props undamaged, tight.' },
-    { id:'ta-fpv-vtx-video', s:'VTX on, video confirmed', t:'5.8GHz VTX powered. Verify FPV feed visible in MPV.net.', n:'Must show live FPV view — not static or blank.', w:true },
-    { id:'ta-fpv-relay-bind', s:'Relay link bound', t:'Re-bind FPV RX to carrier relay Nomad: hold LEFT button for 3s. Confirm ELRS 2.4GHz link established.', n:'Required every flight — bind to carrier Nomad only.', w:true },
-  ]}
-];
-
+// ── CHECKLISTS ── content from data/content.js (VtolContent), rendered by js/render-content.js (VtolRender).
+// Item ids are the keys of saved state (never reused or renumbered there).
 const CHECKLISTS = {
-  preflight:  { data: CL,  key: 'vtol_cl_preflight',  legacyKey: 'vtol_cl2', container: 'cl-container',  prefix: 'csp-',  pb: 'pb',  pl: 'pl',  gn: 'go-nogo',  notice: 'cl-notice',  expandBtn: 'expand-btn',  goText: '// GO — ALL ITEMS COMPLETE — CLEAR TO ARM //' },
-  turnaround: { data: CL2, key: 'vtol_cl_turnaround', legacyKey: 'vtol_cl3', container: 'cl-container2', prefix: 'csp2-', pb: 'pb2', pl: 'pl2', gn: 'go-nogo2', notice: 'cl-notice2', expandBtn: 'expand-btn2', goText: '// GO — TURNAROUND COMPLETE — CLEAR TO ARM //' }
+  preflight:  { list: VtolContent.checklists.preflight,  key: 'vtol_cl_preflight',  legacyKey: 'vtol_cl2', container: 'cl-container',  prefix: 'csp-',  pb: 'pb',  pl: 'pl',  gn: 'go-nogo',  notice: 'cl-notice',  expandBtn: 'expand-btn' },
+  turnaround: { list: VtolContent.checklists.turnaround, key: 'vtol_cl_turnaround', legacyKey: 'vtol_cl3', container: 'cl-container2', prefix: 'csp2-', pb: 'pb2', pl: 'pl2', gn: 'go-nogo2', notice: 'cl-notice2', expandBtn: 'expand-btn2' }
 };
 const clState = {};   // name → { session:{id, startedAt}, items:{ [itemId]: {checked, ts} } }
 
@@ -673,28 +570,35 @@ function clShowNotice(name, text) {
   el.textContent = text; el.style.display = text ? '' : 'none';
 }
 
-// Load saved state: migrate the old index-keyed format once, then auto-reset state older than the expiry setting.
+// Load saved state, then auto-reset state older than the expiry setting. Untimed ticks never count towards GO
+// (PM decision, WP05 R11c): the old index-keyed vtol_cl2/vtol_cl3 ticks and any tick without a time stamp
+// (e.g. migrated by the previous version) are cleared with a one-time notice. Ticks of items that no longer
+// exist in the content are dropped silently.
 function clLoad(name) {
   const cfg = CHECKLISTS[name], now = Date.now(), hours = store.settings.checklistExpiryHours;
-  let st = ToolsCore.clNormalize(clReadJSON(cfg.key));
-  if (!st) {
-    const legacy = clReadJSON(cfg.legacyKey);
-    st = legacy && typeof legacy === 'object'
-      ? ToolsCore.clMigrateLegacy(legacy, cfg.data, now, VtolStore.uid())
-      : ToolsCore.clNew(now, VtolStore.uid());
-    clState[name] = st;
-    if (clSave(name)) localStorage.removeItem(cfg.legacyKey);
+  const notices = [];
+  let legacy = null;
+  try { legacy = localStorage.getItem(cfg.legacyKey); } catch (e) {}
+  if (legacy !== null) {
+    notices.push('Checklist ticks saved by the previous version had no time stamp and were cleared. Re-check every item.');
+    try { localStorage.removeItem(cfg.legacyKey); } catch (e) {}
   }
+  const st = ToolsCore.clNormalize(clReadJSON(cfg.key)) || ToolsCore.clNew(now, VtolStore.uid());
+  const valid = new Set(VtolRender.checklistItemIds(cfg.list));
+  let untimed = 0;
+  Object.keys(st.items).forEach(id => {
+    if (!valid.has(id)) delete st.items[id];
+    else if (!st.items[id].ts) { delete st.items[id]; untimed++; }
+  });
+  if (untimed && legacy === null) notices.push(untimed + ' tick(s) without a time stamp (carried over from an earlier version) were cleared. Re-check those items.');
+  delete st.session.migrated;
   clState[name] = st;
-  let notice = '';
   if (ToolsCore.clIsExpired(st, now, hours)) {
-    notice = 'Checklist from ' + (fmtTime(st.session.startedAt, { date: true }) || 'an unknown time') + ' expired — reset (older than ' + hours + ' h).';
+    notices.push('Checklist from ' + (fmtTime(st.session.startedAt, { date: true }) || 'an unknown time') + ' expired — reset (older than ' + hours + ' h).');
     clState[name] = ToolsCore.clNew(now, VtolStore.uid());
-    clSave(name);
-  } else if (st.session.migrated && ToolsCore.clCheckedCount(st)) {
-    notice = 'Ticks were carried over from the previous version and their times are unknown. Re-verify each item or RESET before flight.';
   }
-  clShowNotice(name, notice);
+  clSave(name);
+  clShowNotice(name, notices.join(' '));
 }
 
 // Phone resumed from background: apply the expiry rule without a reload.
@@ -712,36 +616,31 @@ function clShowTs(row, saved) {
   if (det) det.querySelector('.ci-checked-at').textContent = t;
 }
 
+// Rows come from VtolRender (escaped; tokens filled from the active client profile and settings).
 function buildChecklist(name) {
   const cfg = CHECKLISTS[name], st = clState[name];
   const c = document.getElementById(cfg.container);
-  c.innerHTML = '';
-  cfg.data.forEach(sec => {
-    const wrap = document.createElement('div');
-    wrap.className = 'cl-section';
-    wrap.id = 'cls-' + sec.id;
-    const sc = SEC_COLORS[sec.id] || 'var(--accent)';
-    wrap.innerHTML = `<div class="cl-section-hdr" style="border-bottom-color:${sc}44"><span class="cl-section-letter" style="background:${sc}22;border:1px solid ${sc}66;color:${sc}">${sec.id}</span><span class="cl-section-name" style="color:${sc}">${sec.name}</span><span class="cl-section-prog" id="${cfg.prefix}${sec.id}"></span></div>`;
-    sec.items.forEach(item => {
-      const saved = st.items[item.id];
-      const hasDetail = item.t || item.n || (item.extras && item.extras.length);
-      const noteClass = item.copy ? ' copy-val' : (item.w ? ' w' : '');
-      const noteHtml = item.n ? `<span class="ci-note${noteClass}"${item.copy ? ` onclick="copyVal(this,event)"` : ''}>${item.n}</span>` : '';
-      const extrasHtml = (item.extras||[]).map(e => `<div style="margin-top:6px"><span style="font-size:10px;color:var(--muted);letter-spacing:1px">${e.label}</span><span class="ci-note copy-val" onclick="copyVal(this,event)">${e.val}</span></div>`).join('');
-      const detailHtml = hasDetail ? `<div class="ci-detail" id="det-${item.id}"><span class="ci-detail-text">${item.t||''}</span>${noteHtml}${extrasHtml}<span class="ci-checked-at"></span></div>` : '';
-      const row = document.createElement('div');
-      row.className = 'ci' + (saved ? ' done' : '') + (item.w ? ' warn-item' : '');
-      row.dataset.id = item.id; row.dataset.sec = sec.id; row.dataset.list = name;
-      const warnDot = item.w ? '<span class="ci-warn-dot">!</span>' : '';
-      row.innerHTML = `<div class="ci-left" onclick="toggleCI(this.closest('.ci'),event)"><div class="ci-box"></div><span class="ci-short">${item.s||item.t}</span>${warnDot}<span class="ci-ts"></span></div><div class="ci-right${hasDetail?'':' no-detail'}" ${hasDetail?`onclick="toggleDetail('${item.id}',this,event)"`:''}>${hasDetail?`<span class="expand-icon">▶</span><span class="expand-hint">DETAILS</span>`:''}</div>`;
-      wrap.appendChild(row);
-      if (hasDetail) { const d = document.createElement('div'); d.innerHTML = detailHtml; wrap.appendChild(d.firstChild); }
-      clShowTs(row, saved);
-    });
-    c.appendChild(wrap);
-    updateSecProg(name, sec.id);
-  });
+  c.innerHTML = VtolRender.checklist(cfg.list, st, contentCtx, { colors: SEC_COLORS, prefix: cfg.prefix });
+  c.querySelectorAll('.ci').forEach(row => clShowTs(row, st.items[row.dataset.id]));
+  cfg.list.sections.forEach(sec => updateSecProg(name, sec.id));
   updateOverall(name);
+  const eb = document.getElementById(cfg.expandBtn);
+  if (eb) eb.textContent = 'EXPAND ALL';
+  linkApplyAuto();
+}
+
+// ── SHARED CONTENT ── header, checklists, post-flight and emergency modal from VtolContent + active profile.
+let contentCtx = VtolRender.ctxFrom(store);
+function renderContent() {
+  contentCtx = VtolRender.ctxFrom(store);
+  document.getElementById('hdr-doc-id').textContent = VtolRender.headerDocId(contentCtx);
+  document.getElementById('hdr-client').textContent = contentCtx.client ? contentCtx.client.name : 'TBD — no active client';
+  Object.keys(CHECKLISTS).forEach(n => { if (clState[n]) buildChecklist(n); });
+  document.getElementById('postflight-body').innerHTML = VtolRender.postflight(VtolContent.postflight, contentCtx);
+  document.getElementById('emerg-pills').innerHTML = VtolRender.emergencyPills(VtolContent.emergencies, VtolContent.emergencyNotes);
+  document.getElementById('emerg-list').innerHTML = VtolRender.designIntent(VtolContent.designIntent, contentCtx)
+    + VtolRender.emergencies(VtolContent.emergencies, VtolContent.emergencyNotes, contentCtx, { compact: true });
+  linkRender();
 }
 
 function toggleCI(el, e) {
@@ -807,7 +706,7 @@ function updateOverall(name) {
   document.getElementById(cfg.pb).style.width = pct + '%';
   document.getElementById(cfg.pl).textContent = `${done.length} / ${all.length} ITEMS COMPLETE`;
   const gn = document.getElementById(cfg.gn);
-  if (done.length === all.length && all.length > 0) { gn.className = 'go-nogo go'; gn.textContent = cfg.goText; }
+  if (done.length === all.length && all.length > 0) { gn.className = 'go-nogo go'; gn.textContent = cfg.list.goText; }
   else if (done.length > 0) { gn.className = 'go-nogo nogo'; gn.textContent = `// NO-GO — ${all.length - done.length} ITEMS REMAINING //`; }
   else { gn.className = 'go-nogo'; }
 }
@@ -887,7 +786,10 @@ function blActivePack() {
 function blSelectPack(id) {
   try { localStorage.setItem('vtol_bl_pack', id); } catch (e) {}
   const p = VtolStore.find(store, 'packs', id);
-  if (p && p.role === 'carrier' && store.settings.activeCarrierPackId !== id) storeUpdate(s => { s.settings.activeCarrierPackId = id; s.settings.updatedAt = new Date().toISOString(); });
+  if (p && p.role === 'carrier' && store.settings.activeCarrierPackId !== id) {
+    storeUpdate(s => { s.settings.activeCarrierPackId = id; s.settings.updatedAt = new Date().toISOString(); });
+    renderProfiles();
+  }
   renderBattLog();
 }
 function renderPackSelect(pack) {
@@ -1011,7 +913,294 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-Object.keys(CHECKLISTS).forEach(n => { clLoad(n); buildChecklist(n); });
+// ══════════════════════════════════════
+// LINK TAB — GCS companion app, read-only (contract C2 via js/gcs-client.js)
+// ══════════════════════════════════════
+let linkConnected = false, linkStatusLast = null, linkStatusAt = 0, linkRenderQueued = false;
+let linkAudioCtx = null, linkAudioOn = false;   // audio cue: off by default, per session
+const linkCritSeen = new Set();                 // crit alarm ids already announced
+
+function linkOnConnection(on) {
+  linkConnected = !!on;
+  if (!linkConnected) { linkStatusLast = null; linkStatusAt = 0; linkCritSeen.clear(); }
+  linkRender();
+}
+function linkOnStatus(s) {
+  if (!s || typeof s !== 'object') return;
+  linkConnected = true;
+  linkStatusLast = s; linkStatusAt = Date.now();
+  const alarms = Array.isArray(s.alarms) ? s.alarms.filter(a => a && typeof a === 'object') : [];
+  alarms.forEach(linkAlarmSeen);
+  const active = new Set(alarms.filter(a => a.severity === 'crit').map(a => String(a.id)));
+  [...linkCritSeen].forEach(id => { if (!active.has(id)) linkCritSeen.delete(id); });   // a re-raised alarm sounds again
+  if (!linkRenderQueued) {                      // status arrives at ≈ 5 Hz: render once per frame at most
+    linkRenderQueued = true;
+    (window.requestAnimationFrame || (f => setTimeout(f, 50)))(() => { linkRenderQueued = false; linkRender(); });
+  }
+}
+function linkOnAlarm(a) {
+  if (!a || typeof a !== 'object') return;
+  if (a.cleared === true || a.active === false) { linkCritSeen.delete(String(a.id)); return; }
+  linkAlarmSeen(a);
+}
+function linkAlarmSeen(a) {
+  if (!a || a.severity !== 'crit' || linkCritSeen.has(String(a.id))) return;
+  linkCritSeen.add(String(a.id));
+  linkBeep();
+}
+function linkAudioToggle(cb) {
+  linkAudioOn = cb.checked;
+  if (!linkAudioOn) return;
+  try {
+    linkAudioCtx = linkAudioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (linkAudioCtx.resume) linkAudioCtx.resume();
+  } catch (e) { linkAudioOn = false; cb.checked = false; alert('Audio is not available in this browser.'); return; }
+  linkBeep();   // test beep, so the pilot knows the volume
+}
+function linkBeep() {
+  if (!linkAudioOn || !linkAudioCtx) return;
+  try {
+    const t = linkAudioCtx.currentTime;
+    [0, 0.25].forEach(dt => {
+      const o = linkAudioCtx.createOscillator(), g = linkAudioCtx.createGain();
+      o.type = 'square'; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.15, t + dt); g.gain.setValueAtTime(0, t + dt + 0.15);
+      o.connect(g); g.connect(linkAudioCtx.destination); o.start(t + dt); o.stop(t + dt + 0.16);
+    });
+  } catch (e) { /* audio unavailable */ }
+}
+function linkRender() {
+  const conn = document.getElementById('lk-conn'), view = document.getElementById('lk-view'), upd = document.getElementById('lk-updated');
+  if (!linkConnected) {
+    conn.className = 'lk-badge crit'; conn.textContent = 'GCS APP NOT RUNNING';
+    upd.textContent = '';
+    view.innerHTML = '<div class="card amber"><div class="card-title">GCS APP NOT RUNNING</div><p>Start the GCS companion app on this computer — this tab reads its local API at <code>http://127.0.0.1:47800</code> and connects by itself (checked every 3 s).</p></div>';
+  } else {
+    conn.className = 'lk-badge ok'; conn.textContent = 'GCS APP CONNECTED';
+    upd.textContent = linkStatusAt ? 'LAST STATUS ' + new Date(linkStatusAt).toTimeString().slice(0, 8) : 'WAITING FOR STATUS…';
+    view.innerHTML = linkStatusLast ? VtolRender.linkStatus(linkStatusLast, contentCtx) : '<p>Connected — waiting for the first status…</p>';
+  }
+  linkApplyAuto();
+}
+// Checklist automation (plan §14.7): live AUTO ✓ / ✗ hints next to items with `auto`. Hidden without the app.
+// The pilot still ticks every item by hand.
+function linkApplyAuto() {
+  document.querySelectorAll('.ci-auto').forEach(el => {
+    if (!linkConnected || !linkStatusLast) { el.hidden = true; return; }
+    const h = VtolRender.autoHint(el.dataset.auto, linkStatusLast, contentCtx);
+    el.hidden = false;
+    el.className = 'ci-auto' + (h.state === 'ok' ? ' ok' : h.state === 'fail' ? ' fail' : '');
+    el.textContent = VtolRender.autoHintLabel(h);
+    el.title = h.text + ' — live hint from the GCS app; tick the item yourself';
+  });
+}
+
+// ══════════════════════════════════════
+// PROFILES — clients, packs, links (contract C1.3) and settings
+// ══════════════════════════════════════
+const NONE = [['', 'TBD']];
+const PROF = {
+  clients: { title: 'Clients', noun: 'client', nameKey: 'name',
+    blank: id => ({ id, name: 'New client', sizeIn: null, fc: '', firmware: '', vtx: { band: '', channel: null, freqMHz: null, powerMw: null }, videoStandard: null,
+      elrs: { band: null, packetRateHz: null, modelId: null, telemetryRatio: null, geminiRx: false }, failsafe: { type: null, minSats: null, delayS: null }, packId: null, notes: '' }),
+    summary: r => { const t = p => VtolRender.tokenValue('client.' + p, { client: r }) || 'TBD';
+      return 'VTX ' + t('vtx.band') + t('vtx.channel') + ' · ' + t('vtx.freqMHz') + ' MHz · ' + t('vtx.powerMw') + ' mW · ELRS ' + t('elrs.band') + ' · ' + t('videoStandard') + ' · failsafe ' + t('failsafe.type'); },
+    fields: [
+      ['name', 'NAME', 'text'], ['sizeIn', 'SIZE (in)', 'num', { step: 0.5 }], ['fc', 'FLIGHT CONTROLLER', 'text'], ['firmware', 'FIRMWARE', 'text'],
+      ['vtx.band', 'VTX BAND (e.g. R)', 'text'], ['vtx.channel', 'VTX CHANNEL', 'int'], ['vtx.freqMHz', 'VTX FREQUENCY (MHz)', 'num'], ['vtx.powerMw', 'VTX POWER (mW)', 'num'],
+      ['videoStandard', 'VIDEO STANDARD', 'select', { options: NONE.concat([['PAL', 'PAL'], ['NTSC', 'NTSC']]) }],
+      ['elrs.band', 'ELRS BAND', 'select', { options: NONE.concat([['868', '868 MHz'], ['915', '915 MHz'], ['2.4', '2.4 GHz'], ['gemini', 'Gemini']]) }],
+      ['elrs.packetRateHz', 'ELRS PACKET RATE (Hz)', 'num'], ['elrs.modelId', 'ELRS MODEL ID', 'int'], ['elrs.telemetryRatio', 'TELEMETRY RATIO 1:N (0 = OFF)', 'int'],
+      ['elrs.geminiRx', 'GEMINI-CAPABLE RECEIVER', 'check'],
+      ['failsafe.type', 'FAILSAFE TYPE', 'select', { options: NONE.concat([['gps_rescue', 'GPS Rescue'], ['land', 'Land'], ['drop', 'Drop']]) }],
+      ['failsafe.minSats', 'FAILSAFE MIN SATS', 'int'], ['failsafe.delayS', 'FAILSAFE DELAY (s)', 'num', { step: 0.1 }],
+      ['packId', 'BATTERY PACK', 'ref', { coll: 'packs' }], ['notes', 'NOTES', 'text', { wide: true }]
+    ] },
+  packs: { title: 'Battery Packs', noun: 'pack', nameKey: 'label',
+    blank: id => ({ id, label: 'New pack', role: 'client', cells: null, chem: 'lipo', capacityMah: null, cycles: 0, purchased: '', notes: '' }),
+    summary: r => (r.cells || 'TBD') + 'S ' + ToolsCore.chemOf(r).name + ' · ' + (r.capacityMah ? r.capacityMah + ' mAh' : 'capacity TBD') + ' · role ' + r.role + ' · ' + (r.cycles || 0) + ' cycles',
+    fields: [
+      ['label', 'LABEL', 'text'], ['role', 'ROLE', 'select', { options: [['carrier', 'Carrier'], ['mast', 'Mast'], ['client', 'Client']] }],
+      ['cells', 'CELLS (S)', 'int'], ['chem', 'CHEMISTRY', 'select', { options: [['lipo', 'LiPo'], ['liion', 'Li-Ion'], ['life', 'LiFe']] }],
+      ['capacityMah', 'CAPACITY (mAh)', 'num'], ['cycles', 'CYCLES', 'int'], ['purchased', 'PURCHASED', 'date'], ['notes', 'NOTES', 'text', { wide: true }]
+    ] },
+  links: { title: 'Link Profiles (coverage map)', noun: 'link', nameKey: 'name',
+    blank: id => ({ id, name: 'New link', kind: 'video', freqMHz: null, txPowerDbm: null, txGainDbi: null, rxGainDbi: null, rxSensDbm: null, marginDb: null, antenna: null, notes: '' }),
+    summary: r => { const v = (x, u) => (x === null || x === undefined ? 'TBD' : x) + (u ? ' ' + u : '');
+      return r.kind + ' · ' + v(r.freqMHz, 'MHz') + ' · TX ' + v(r.txPowerDbm, 'dBm') + ' · gains ' + v(r.txGainDbi) + '/' + v(r.rxGainDbi, 'dBi') + ' · sens ' + v(r.rxSensDbm, 'dBm') + ' · margin ' + v(r.marginDb, 'dB'); },
+    fields: [
+      ['name', 'NAME', 'text'], ['kind', 'KIND', 'select', { options: [['video', 'Video (client → carrier)'], ['rc', 'RC (carrier → client)'], ['gcs', 'GCS (HM30)']] }],
+      ['freqMHz', 'FREQUENCY (MHz)', 'num'], ['txPowerDbm', 'TX POWER (dBm)', 'num'], ['txGainDbi', 'TX ANTENNA GAIN (dBi)', 'num'], ['rxGainDbi', 'RX ANTENNA GAIN (dBi)', 'num'],
+      ['rxSensDbm', 'RX SENSITIVITY (dBm)', 'num'], ['marginDb', 'FADE MARGIN (dB)', 'num'],
+      ['antenna', 'CARRIER ANTENNA', 'select', { options: NONE.concat([['dual_patch', 'Dual patch (VRX patches)'], ['omni', 'Omni'], ['dipole', 'Dipole']]) }],
+      ['notes', 'NOTES', 'text', { wide: true }]
+    ] }
+};
+let profEdit = null, profErrors = [];   // profEdit: { coll, id, isNew, draft }
+
+const profGet = (o, p) => p.split('.').reduce((v, k) => (v && typeof v === 'object' ? v[k] : undefined), o);
+function profSet(o, p, val) { const ks = p.split('.'), last = ks.pop(); ks.forEach(k => { if (!o[k] || typeof o[k] !== 'object') o[k] = {}; o = o[k]; }); o[last] = val; }
+const profFieldId = p => 'pff-' + p.replace(/\./g, '-');
+function profMapActive() { try { const m = JSON.parse(localStorage.getItem('vtol_map_state')); return (m && m.active) || {}; } catch (e) { return {}; } }
+
+function profIsActive(coll, r) {
+  return (coll === 'clients' && store.settings.activeClientId === r.id) || (coll === 'packs' && store.settings.activeCarrierPackId === r.id);
+}
+// Where a profile is used — shown in the delete confirmation.
+function profUses(coll, id) {
+  const uses = [], map = profMapActive();
+  if (coll === 'clients') {
+    if (store.settings.activeClientId === id) uses.push('the ACTIVE client (checklists, header, Link tab)');
+    if (map.client === id) uses.push('selected on the coverage map');
+  } else if (coll === 'packs') {
+    if (store.settings.activeCarrierPackId === id) uses.push('the ACTIVE carrier pack');
+    VtolStore.live(store.clients).filter(c => c.packId === id).forEach(c => uses.push('battery of client "' + c.name + '"'));
+    const n = VtolStore.live(store.battLog).filter(e => e.packId === id).length;
+    if (n) uses.push(n + ' battery-log entries');
+  } else if (coll === 'links') {
+    const l = VtolStore.find(store, 'links', id);
+    if (l && map[l.kind] === id) uses.push('selected on the coverage map');
+    if (l && VtolStore.live(store.links).filter(x => x.kind === l.kind).length === 1) uses.push('the only ' + l.kind + ' link profile');
+  }
+  return uses;
+}
+
+function renderProfiles() {
+  const s = store.settings, clients = VtolStore.live(store.clients), carriers = VtolStore.live(store.packs).filter(p => p.role === 'carrier');
+  const opt = (v, label, sel) => '<option value="' + escH(v) + '"' + (sel ? ' selected' : '') + '>' + escH(label) + '</option>';
+  document.getElementById('prof-active-client').innerHTML = (clients.some(c => c.id === s.activeClientId) ? '' : opt('', 'TBD — no active client', true))
+    + clients.map(c => opt(c.id, c.name, c.id === s.activeClientId)).join('');
+  document.getElementById('prof-active-pack').innerHTML = (carriers.some(p => p.id === s.activeCarrierPackId) ? '' : opt('', 'TBD — no carrier pack', true))
+    + carriers.map(p => opt(p.id, p.label, p.id === s.activeCarrierPackId)).join('');
+  document.getElementById('prof-sections').innerHTML = Object.keys(PROF).map(profSectionHTML).join('');
+}
+function profSectionHTML(coll) {
+  const P = PROF[coll];
+  return '<div class="section-title">' + escH(P.title) + '</div>'
+    + VtolStore.live(store[coll]).map(r => profRowHTML(coll, r)).join('')
+    + (profEdit && profEdit.coll === coll && profEdit.isNew ? profFormHTML(coll) : '')
+    + '<button class="cl-reset" style="min-height:44px;margin-bottom:6px" data-coll="' + coll + '" onclick="profNew(this.dataset.coll)">+ NEW ' + P.noun.toUpperCase() + '</button>';
+}
+function profRowHTML(coll, r) {
+  const P = PROF[coll], active = profIsActive(coll, r);
+  const editing = profEdit && profEdit.coll === coll && !profEdit.isNew && profEdit.id === r.id;
+  const btn = (label, fn) => '<button class="cl-reset" onclick="' + fn + '(this.closest(\'.prof-row\').dataset.coll,this.closest(\'.prof-row\').dataset.id)">' + label + '</button>';
+  return '<div class="prof-row' + (active ? ' active' : '') + '" data-coll="' + coll + '" data-id="' + escH(r.id) + '">'
+    + '<div class="prof-main"><div class="prof-name">' + escH(r[P.nameKey]) + (active ? ' <span class="lk-badge ok">ACTIVE</span>' : '') + '</div>'
+    + '<div class="prof-sum">' + escH(P.summary(r)) + '</div></div>'
+    + '<div class="prof-btns">' + btn('EDIT', 'profEditStart') + btn('DUPLICATE', 'profDuplicate') + btn('DELETE', 'profDelete') + '</div></div>'
+    + (editing ? profFormHTML(coll) : '');
+}
+function profFieldHTML(f, d) {
+  const [path, label, kind] = f, o = f[3] || {}, id = profFieldId(path), v = profGet(d, path);
+  const val = v === null || v === undefined ? '' : String(v);
+  if (kind === 'check') return '<label class="prof-check' + (o.wide ? ' wide' : '') + '"><input type="checkbox" id="' + id + '"' + (v ? ' checked' : '') + ' style="width:20px;height:20px"> ' + escH(label) + '</label>';
+  let input;
+  if (kind === 'select' || kind === 'ref') {
+    const opts = kind === 'ref' ? [['', 'TBD — none']].concat(VtolStore.live(store[o.coll]).map(p => [p.id, p.label || p.name])) : o.options;
+    input = '<select id="' + id + '" class="bl-input">' + opts.map(([ov, ol]) => '<option value="' + escH(ov) + '"' + (ov === val ? ' selected' : '') + '>' + escH(ol) + '</option>').join('') + '</select>';
+  } else {
+    const type = kind === 'text' ? 'text' : kind === 'date' ? 'date' : 'number';
+    const step = kind === 'int' ? ' step="1"' : kind === 'num' ? ' step="' + (o.step || 'any') + '"' : '';
+    input = '<input type="' + type + '" id="' + id + '" class="bl-input"' + step + ' value="' + escH(val) + '"' + (type === 'number' ? ' placeholder="TBD"' : '') + '>';
+  }
+  return '<div' + (o.wide ? ' class="wide"' : '') + '><label class="bl-label" for="' + id + '">' + escH(label) + '</label>' + input + '</div>';
+}
+function profFormHTML(coll) {
+  const P = PROF[coll];
+  return '<div class="card accent" id="prof-form"><div class="card-title">' + (profEdit.isNew ? 'NEW ' : 'EDIT ') + P.noun.toUpperCase() + '</div>'
+    + '<div class="prof-form">' + P.fields.map(f => profFieldHTML(f, profEdit.draft)).join('') + '</div>'
+    + (profErrors.length ? '<div class="prof-errors" role="alert">' + profErrors.map(escH).join('<br>') + '</div>' : '')
+    + '<p style="font-size:12px">An empty number means unknown — it shows as TBD and is never used in calculations.</p>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="bl-btn" style="min-height:44px" onclick="profSave()">SAVE</button>'
+    + '<button class="cl-reset" style="min-height:44px" onclick="profCancel()">CANCEL</button></div></div>';
+}
+function profShowForm() {
+  renderProfiles();
+  const f = document.getElementById('prof-form');
+  if (f && f.scrollIntoView) f.scrollIntoView({ block: 'nearest' });
+}
+function profNew(coll) {
+  const id = VtolStore.uid();
+  profEdit = { coll, id, isNew: true, draft: PROF[coll].blank(id) }; profErrors = [];
+  profShowForm();
+}
+function profEditStart(coll, id) {
+  const r = VtolStore.find(store, coll, id);
+  if (!r) return;
+  profEdit = { coll, id, isNew: false, draft: JSON.parse(JSON.stringify(r)) }; profErrors = [];
+  profShowForm();
+}
+function profCancel() { profEdit = null; profErrors = []; renderProfiles(); }
+function profReadForm() {
+  const rec = JSON.parse(JSON.stringify(profEdit.draft));
+  PROF[profEdit.coll].fields.forEach(([path, , kind]) => {
+    const el = document.getElementById(profFieldId(path));
+    if (!el) return;
+    let v;
+    if (kind === 'check') v = el.checked;
+    else if (kind === 'num' || kind === 'int') v = el.value.trim() === '' ? (el.validity && el.validity.badInput ? 'invalid' : null) : el.value.trim();
+    else if (kind === 'select' || kind === 'ref') v = el.value === '' ? null : el.value;
+    else v = el.value;
+    profSet(rec, path, v);
+  });
+  return rec;
+}
+function profSave() {
+  if (!profEdit) return;
+  const coll = profEdit.coll, P = PROF[coll], rec = profReadForm();
+  profEdit.draft = rec;
+  const res = VtolStore.validateRecord(coll, rec);
+  if (!res.record) {
+    const label = p => (P.fields.find(f => f[0] === p) || [p, p])[1];
+    profErrors = (res.issues.length ? res.issues : ['Invalid values']).map(t => t.replace(/ dropped: invalid (.*)$/, (m, list) => ' not saved — check: ' + list.split(', ').map(label).join(', ')));
+    renderProfiles();
+    return;
+  }
+  const out = Object.assign(res.record, { id: profEdit.id });
+  storeUpdate(s => { VtolStore.upsert(s, coll, out); });
+  profEdit = null; profErrors = [];
+  profAfterChange();
+}
+function profDuplicate(coll, id) {
+  const r = VtolStore.find(store, coll, id);
+  if (!r) return;
+  const copy = JSON.parse(JSON.stringify(r)), key = PROF[coll].nameKey;
+  copy.id = VtolStore.uid(); copy[key] = r[key] + ' (copy)'; delete copy.updatedAt;
+  storeUpdate(s => { VtolStore.upsert(s, coll, copy); });
+  profAfterChange();
+}
+function profDelete(coll, id) {
+  const r = VtolStore.find(store, coll, id);
+  if (!r) return;
+  const uses = profUses(coll, id);
+  // The replacement for an active client / carrier pack is named in the confirmation (it drives checklists and header).
+  const nextClient = VtolStore.live(store.clients).find(c => c.id !== id);
+  const nextPack = VtolStore.live(store.packs).find(p => p.role === 'carrier' && p.id !== id);
+  let after = '';
+  if (coll === 'clients' && store.settings.activeClientId === id) after = '\n\nThe active client becomes: ' + (nextClient ? '"' + nextClient.name + '"' : 'none (TBD in checklists)') + '.';
+  if (coll === 'packs' && store.settings.activeCarrierPackId === id) after = '\n\nThe active carrier pack becomes: ' + (nextPack ? '"' + nextPack.label + '"' : 'none') + '.';
+  const msg = 'Delete ' + PROF[coll].noun + ' "' + r[PROF[coll].nameKey] + '"?' + (uses.length ? '\n\nIN USE:\n• ' + uses.join('\n• ') : '') + after;
+  if (!confirm(msg)) return;
+  storeUpdate(s => {
+    VtolStore.remove(s, coll, id);
+    const now = new Date().toISOString();
+    if (coll === 'clients' && s.settings.activeClientId === id) { s.settings.activeClientId = nextClient ? nextClient.id : ''; s.settings.updatedAt = now; }
+    if (coll === 'packs' && s.settings.activeCarrierPackId === id) { s.settings.activeCarrierPackId = nextPack ? nextPack.id : ''; s.settings.updatedAt = now; }
+  });
+  if (profEdit && profEdit.coll === coll && profEdit.id === id) { profEdit = null; profErrors = []; }
+  profAfterChange();
+}
+function profSetActive(key, val) {
+  if (!val) { renderProfiles(); return; }
+  storeUpdate(s => { s.settings[key] = val; s.settings.updatedAt = new Date().toISOString(); });
+  profAfterChange();
+}
+function profAfterChange() { renderProfiles(); renderContent(); renderBattLog(); }
+
+Object.keys(CHECKLISTS).forEach(n => clLoad(n));
+renderContent(); renderProfiles();
+GcsClient.start({ onStatus: linkOnStatus, onAlarm: linkOnAlarm, onConnection: linkOnConnection });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') clRecheck(); });
 setInterval(clRecheck, 60000);   // a page left open in the foreground expires too
 
@@ -1078,6 +1267,8 @@ function vtolRefreshAll() {
   showStoreIssues(VtolStore.takeIssues());
   renderSettingsInputs(); renderWxLimits();
   pfRenderArchive(); wxRenderFavorites(); renderBattLog();
+  if (profEdit && !VtolStore.find(store, profEdit.coll, profEdit.id) && !profEdit.isNew) profEdit = null;   // edited record deleted elsewhere
+  renderContent(); renderProfiles();
 }
 function vtolUpdateFileStatus() {
   document.querySelectorAll('.vtol-file-status').forEach(function(el){
@@ -1847,7 +2038,7 @@ function wxRender(data, geoData, lat, lon) {
 
 // ── SWIPE TAB NAVIGATION ── (not while the emergency modal is open, nor from inside horizontally scrollable content)
 (function() {
-  const TABS = ['preflight','turnaround','postflight','battlog','tlog','weather'];
+  const TABS = ['preflight','turnaround','postflight','link','battlog','tlog','weather','profiles'];   // = nav order
   let x0 = 0, y0 = 0, ignore = false;
   function inHScroll(el) {
     for (; el && el.nodeType === 1 && el !== document.body; el = el.parentElement) {

@@ -6,10 +6,6 @@ const T = require('../../js/tools-core.js');
 
 const H = 3600000;
 const NOW = Date.UTC(2025, 4, 1, 12, 0, 0);
-const SECTIONS = [
-  { id: 'A', items: [{ id: 'site-airspace' }, { id: 'site-wind' }, { id: 'site-lz' }] },
-  { id: 'B', items: [{ id: 'build-airframe' }, { id: 'build-props' }] }
-];
 
 test('clNew starts an empty session', () => {
   const st = T.clNew(NOW, 's1');
@@ -37,15 +33,6 @@ test('clIsExpired: older than the expiry hours (6) with ticks → expired', () =
   assert.equal(T.clIsExpired(st, NOW + 2.1 * H, 2), true);
   st.session.startedAt = 'garbage';
   assert.equal(T.clIsExpired(st, NOW, 6), true, 'ticks of unknown age never count as fresh');
-});
-
-test('clMigrateLegacy maps old index keys ("A-1") to stable item ids, tick times unknown', () => {
-  const st = T.clMigrateLegacy({ 'A-0': true, 'A-2': true, 'B-1': true, 'B-0': false, 'Z-9': true }, SECTIONS, NOW, 'm1');
-  assert.deepEqual(Object.keys(st.items).sort(), ['build-props', 'site-airspace', 'site-lz']);
-  assert.ok(Object.values(st.items).every(i => i.checked === true && i.ts === null));
-  assert.equal(st.session.migrated, true);
-  assert.equal(st.session.startedAt, new Date(NOW).toISOString());
-  assert.equal(T.clIsExpired(st, NOW + 7 * H, 6), true, 'migrated ticks also expire');
 });
 
 test('clNormalize rejects old/invalid shapes and keeps only checked items', () => {

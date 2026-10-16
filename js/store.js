@@ -112,21 +112,123 @@
   const str = v => (v === null || v === undefined) ? '' : String(v);
   const short = v => { const t = str(typeof v === 'object' ? JSON.stringify(v) : v); return t.length > 40 ? t.slice(0, 40) + '…' : t; };
 
-  function cleanPack(r, issues) {
-    const def = defaults().packs.find(p => p.id === r.id);
+  // mode 'load' (data already on this device): a default profile with a bad field is repaired from the default.
+  // mode 'import' (incoming file, or a form): any invalid record is dropped, so it can never reset a valid local
+  // record — not even for the default profile ids (WP01 verification round 2, finding 1).
+  function cleanPack(r, issues, mode) {
+    const def = mode === 'import' ? null : defaults().packs.find(p => p.id === r.id);
     const out = Object.assign({}, r, { id: str(r.id), label: str(r.label || r.id) });
     const bad = [];
     const cells = num(r.cells);
     if (Number.isInteger(cells) && cells >= 1 && cells <= 24) out.cells = cells; else bad.push('cells');
     if (ENUM.chem.includes(r.chem)) out.chem = r.chem; else bad.push('chem');
     if (ENUM.role.includes(r.role)) out.role = r.role; else bad.push('role');
-    const cap = num(r.capacityMah); out.capacityMah = isFinite(cap) && cap > 0 ? cap : null;
-    const cyc = num(r.cycles); out.cycles = Number.isInteger(cyc) && cyc >= 0 ? cyc : 0;
+    const given = v => !(v === null || v === undefined || v === '');
+    const cap = num(r.capacityMah), capOk = isFinite(cap) && cap > 0;
+    const cyc = num(r.cycles), cycOk = Number.isInteger(cyc) && cyc >= 0;
+    out.capacityMah = capOk ? cap : null;       // empty = unknown (TBD)
+    out.cycles = cycOk ? cyc : 0;
+    // On load a bad optional value is coerced (as before); on import / in a form it is an error like any other.
+    if (mode === 'import' && given(r.capacityMah) && !capOk) bad.push('capacityMah');
+    if (mode === 'import' && given(r.cycles) && !cycOk) bad.push('cycles');
     out.purchased = str(r.purchased); out.notes = str(r.notes);
     if (!bad.length) return out;
     if (!def) { issues.push(`Pack "${short(out.label)}" dropped: invalid ${bad.join(', ')}`); return null; }
     bad.forEach(k => { out[k] = def[k]; });
     issues.push(`Pack "${short(out.label)}": invalid ${bad.join(', ')} — reset to the default profile value`);
+    return out;
+  }
+
+  // Client and link profiles (C1.3). [path, type, options]; null / '' = unknown (TBD) unless required.
+  // Ranges are plausibility bounds against garbage, not operating limits.
+  const FIELDS = {
+    clients: [
+      ['name', 'text', { required: true }],
+      ['sizeIn', 'num', { min: 0.5, max: 100 }],
+      ['fc', 'text'], ['firmware', 'text'],
+      ['vtx.band', 'text'],
+      ['vtx.channel', 'int', { min: 1, max: 99 }],
+      ['vtx.freqMHz', 'num', { min: 1, max: 100000 }],
+      ['vtx.powerMw', 'num', { min: 0.01, max: 100000 }],
+      ['videoStandard', 'enum', { values: ['PAL', 'NTSC'] }],
+      ['elrs.band', 'enum', { values: ['868', '915', '2.4', 'gemini'] }],
+      ['elrs.packetRateHz', 'num', { min: 1, max: 10000 }],
+      ['elrs.modelId', 'int', { min: 0, max: 255 }],
+      ['elrs.telemetryRatio', 'int', { min: 0, max: 1024 }],    // 1:N; 0 = off
+      ['elrs.geminiRx', 'bool'],
+      ['failsafe.type', 'enum', { values: ['gps_rescue', 'land', 'drop'] }],
+      ['failsafe.minSats', 'int', { min: 0, max: 64 }],
+      ['failsafe.delayS', 'num', { min: 0, max: 600 }],
+      ['packId', 'ref'],
+      ['notes', 'text']
+    ],
+    links: [
+      ['name', 'text', { required: true }],
+      ['kind', 'enum', { values: ['video', 'rc', 'gcs'], required: true }],
+      ['freqMHz', 'num', { min: 1, max: 100000 }],
+      ['txPowerDbm', 'num', { min: -60, max: 60 }],
+      ['txGainDbi', 'num', { min: -30, max: 60 }],
+      ['rxGainDbi', 'num', { min: -30, max: 60 }],
+      ['rxSensDbm', 'num', { min: -200, max: 0 }],
+      ['marginDb', 'num', { min: 0, max: 100 }],
+      ['antenna', 'enum', { values: ['dual_patch', 'omni', 'dipole'] }],
+      ['notes', 'text']
+    ]
+  };
+  const getPath = (o, p) => p.split('.').reduce((v, k) => (v && typeof v === 'object' ? v[k] : undefined), o);
+  function setPath(o, p, val) {
+    const ks = p.split('.'), last = ks.pop();
+    ks.forEach(k => { o[k] = (o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) ? Object.assign({}, o[k]) : {}; o = o[k]; });
+    o[last] = val;
+  }
+  // One field value → { ok, v } (v = the coerced value).
+  function cleanField(type, opt, raw) {
+    opt = opt || {};
+    const empty = raw === null || raw === undefined || raw === '';
+    if (type === 'text') {
+      if (empty) return { ok: !opt.required, v: '' };
+      if (typeof raw !== 'string' && typeof raw !== 'number') return { ok: false };
+      const t = String(raw);
+      return { ok: !opt.required || t.trim() !== '', v: t };
+    }
+    if (type === 'bool') {
+      if (empty) return { ok: true, v: false };
+      if (raw === true || raw === 'true') return { ok: true, v: true };
+      if (raw === false || raw === 'false') return { ok: true, v: false };
+      return { ok: false };
+    }
+    if (empty) return { ok: !opt.required, v: null };
+    if (type === 'num' || type === 'int') {
+      const v = num(raw);
+      const ok = isFinite(v) && (type === 'num' || Number.isInteger(v)) && (opt.min === undefined || v >= opt.min) && (opt.max === undefined || v <= opt.max);
+      return ok ? { ok, v } : { ok: false };
+    }
+    if (type === 'enum') {
+      const v = typeof raw === 'number' ? String(raw) : raw;
+      return opt.values.includes(v) ? { ok: true, v } : { ok: false };
+    }
+    if (type === 'ref') return typeof raw === 'string' ? { ok: true, v: raw } : { ok: false };
+    return { ok: false };
+  }
+  const FALLBACK = { text: '', bool: false };
+  // Same modes as cleanPack. On load a non-default profile keeps its record with the bad optional field set to
+  // unknown (TBD); a bad required field (name, kind) drops it.
+  function cleanProfile(coll, label, r, issues, mode) {
+    const def = mode === 'import' ? null : defaults()[coll].find(p => p.id === r.id);
+    const out = Object.assign({}, r, { id: str(r.id) });
+    const bad = [];
+    let badRequired = false;
+    FIELDS[coll].forEach(([path, type, opt]) => {
+      const res = cleanField(type, opt, getPath(r, path));
+      if (res.ok) { setPath(out, path, res.v); return; }
+      bad.push(path);
+      if (opt && opt.required) badRequired = true;
+      setPath(out, path, def ? getPath(def, path) : (type in FALLBACK ? FALLBACK[type] : null));
+    });
+    if (!bad.length) return out;
+    const name = short(r.name || r.id);
+    if (mode === 'import' || (badRequired && !def)) { issues.push(`${label} "${name}" dropped: invalid ${bad.join(', ')}`); return null; }
+    issues.push(`${label} "${name}": invalid ${bad.join(', ')} — ${def ? 'reset to the default profile value' : 'set to TBD'}`);
     return out;
   }
   function cleanBatt(r, issues) {
@@ -155,14 +257,24 @@
     return Object.assign({}, r, { id: str(r.id), lat, lon, name: str(r.name) });
   }
   const CLEAN = { packs: cleanPack, battLog: cleanBatt, archive: cleanArchive, weatherFavorites: cleanFavorite,
-    clients: r => Object.assign({}, r, { id: str(r.id) }), links: r => Object.assign({}, r, { id: str(r.id) }) };
+    clients: (r, issues, mode) => cleanProfile('clients', 'Client', r, issues, mode),
+    links: (r, issues, mode) => cleanProfile('links', 'Link', r, issues, mode) };
 
-  function cleanRecord(coll, r, issues) {
+  // mode: 'load' (repair, default) or 'import' (drop invalid records).
+  function cleanRecord(coll, r, issues, mode) {
     if (!r || typeof r !== 'object' || r.id == null || r.id === '') return null;
     if (r.deleted) return { id: str(r.id), deleted: true, updatedAt: str(r.updatedAt) };
-    const out = CLEAN[coll](r, issues);
+    const out = CLEAN[coll](r, issues, mode || 'load');
     if (out && r.updatedAt != null) out.updatedAt = str(r.updatedAt);
     return out;
+  }
+
+  // Validate one record from a form, as strictly as an import. → { record (null when invalid), issues: [text] }
+  function validateRecord(coll, rec) {
+    const issues = [];
+    if (!CLEAN[coll] || !rec || typeof rec !== 'object') return { record: null, issues: ['invalid record'] };
+    const record = cleanRecord(coll, Object.assign({}, rec, { id: rec.id || 'new' }), issues, 'import');
+    return { record, issues };
   }
 
   // Settings object → valid settings. base: values to fall back to (local settings, or defaults).
@@ -325,7 +437,7 @@
     inc.weatherFavorites = arr('weatherFavorites').map(legacyFavorite);
     inc.battLog = arr('battLog').map(e => legacyBattEntry(e, ID.carrierPack));
     ['packs', 'clients', 'links'].forEach(k => { inc[k] = arr(k); });
-    COLLECTIONS.forEach(c => { inc[c] = inc[c].map(r => cleanRecord(c, r, issues)).filter(Boolean); });
+    COLLECTIONS.forEach(c => { inc[c] = inc[c].map(r => cleanRecord(c, r, issues, 'import')).filter(Boolean); });
     inc.settings = obj.settings && typeof obj.settings === 'object' && !Array.isArray(obj.settings) ? obj.settings : null;
     return inc;
   }
@@ -361,7 +473,7 @@
   return {
     KEY, SCHEMA_VERSION, IDS: ID,
     load, save, update, uid, defaults, exportJSON, importJSON,
-    live, find, upsert, remove, mergeStores, takeIssues,
+    live, find, upsert, remove, mergeStores, takeIssues, validateRecord, FIELDS,
     _setStorage(s) { storageOverride = s; }
   };
 });
