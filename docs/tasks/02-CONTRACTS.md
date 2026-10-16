@@ -196,3 +196,10 @@ The relay design defines `rc_up` and the content of the status packet but not th
 
 - `data/content.js` (global `VtolContent`): checklists (`preflight`, `turnaround`, each item with a **stable `id`**), `emergencies` (immediate + clean-up steps, used by both the Tools modal and the manual Emergency tab), `failsafeTable`, `network` (IP/port table), `callouts`.
 - Renderers live in `js/render-content.js` (owner WP05).
+
+### C5.1 Extensions accepted with WP05 (normative)
+
+- **Extra `VtolContent` keys:** `postflight`, `emergencyNotes` (e.g. the 915 backup note), `clientFailsafeChain`, `pipelines` (GStreamer PAL/NTSC viewer/MP strings), `sdp` (client-video.sdp, port 5601), `failsafeParams`, `version`.
+- **Text markup** (documented at the top of `data/content.js`): `{token}` template values (null → TBD), `[[TBD — …]]` and `[[VERIFY — …]]` amber markers. Renderers handle all three; consumers must not render the raw markup.
+- **AUTO rule ids** for checklist hints, including `camera-sortie`.
+- **`VtolStore.validateRecord(kind, rec)` / `VtolStore.FIELDS`:** client and link profiles are validated like packs. `elrs.telemetryRatio` is stored as **N of 1:N** (0 = off).
