@@ -1,8 +1,12 @@
-const CACHE = 'vtol-manual-v10';
+const CACHE = 'vtol-manual-v11';
 const ASSETS = [
   './',
   './index.html',
   './manual.html',
+  './js/version.js',
+  './js/common.js',
+  './js/store.js',
+  './js/tools-core.js',
 ];
 
 self.addEventListener('install', e => {
@@ -24,9 +28,10 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return; // never intercept cross-origin (API, CDN fonts)
   const isHTML = url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/');
+  const isJS = url.pathname.endsWith('.js');   // shared js/*.js must stay in step with the HTML that loads them
 
-  if (isHTML) {
-    // Network-first for HTML: always try to get the latest version,
+  if (isHTML || isJS) {
+    // Network-first for HTML and JS: always try to get the latest version,
     // fall back to cache only when offline.
     e.respondWith(
       fetch(e.request).then(response => {
