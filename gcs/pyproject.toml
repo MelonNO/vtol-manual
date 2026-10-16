@@ -5,12 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vtolgcs"
 version = "0.1.0"
-description = "Windows GCS companion app for the vtol-manual relay (protocol layer, WP03)"
+description = "Windows GCS companion app for the vtol-manual relay (protocol layer WP03, headless runtime WP08a)"
 requires-python = ">=3.12"
-dependencies = []   # the protocol, CRSF and simulator modules use the standard library only
+dependencies = []   # standard library only, except the joystick input below
 
 [project.optional-dependencies]
-dev = ["pytest"]
+controller = ["pygame-ce"]   # vtolgcs.controller.PygameController (imported only when used)
+dev = ["pytest", "pygame-ce"]
 
 [tool.setuptools]
 packages = ["vtolgcs"]
