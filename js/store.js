@@ -10,7 +10,8 @@
   const KEY = 'vtol_store';
   const SCHEMA_VERSION = 2;
   const TOMBSTONE_MS = 30 * 86400000;                 // keep deleted-record markers for 30 days
-  const COLLECTIONS = ['archive', 'weatherFavorites', 'battLog', 'packs', 'clients', 'links'];
+  // Extension (WP11): flights (flight records) and maintenance (mark-done records) are collections like the others.
+  const COLLECTIONS = ['archive', 'weatherFavorites', 'battLog', 'packs', 'clients', 'links', 'flights', 'maintenance'];
   const LEGACY_KEYS = ['vtol_battlog', 'vtol_pf_archive', 'vtol_wx_fav', 'vtol_batt_type'];
   const GIST_KEYS = ['vtol_gh_pat', 'vtol_gh_gist_id', 'vtol_last_sync'];   // Gist sync removed (plan Q11)
 
@@ -93,7 +94,11 @@
         // settings.updatedAt (ISO) is added when the user edits a setting; used for import merging.
         // Extension (WP01, R19): weather wind limits, m/s. GO ≤ windGoMaxMs < CAUTION ≤ windCautionMaxMs < NO-GO; gust > gustMaxMs = NO-GO.
         windGoMaxMs: 5, windCautionMaxMs: 8, gustMaxMs: 10
-      }
+      },
+      // Extension (WP11, R4/R5): flight records and maintenance mark-done records. The optional key paramFile
+      // ({name, importedAt, params: {NAME: number}}) is absent until a .param file is imported.
+      flights: [],
+      maintenance: []
     };
   }
 
@@ -239,6 +244,7 @@
       out[k] = v;
     }
     const sag = num(r.sag); out.sag = isFinite(sag) ? sag : +(out.start - out.min).toFixed(2);
+    if ('usedMah' in r) { const u = num(r.usedMah); out.usedMah = isFinite(u) && u >= 0 ? u : null; }   // optional (WP11: entries from GCS telemetry)
     out.packId = str(r.packId || ID.carrierPack);
     out.source = ENUM.source.includes(r.source) ? r.source : 'manual';
     ['date', 'flight', 'time', 'notes'].forEach(k => { out[k] = str(r[k]); });
@@ -256,7 +262,46 @@
     }
     return Object.assign({}, r, { id: str(r.id), lat, lon, name: str(r.name) });
   }
-  const CLEAN = { packs: cleanPack, battLog: cleanBatt, archive: cleanArchive, weatherFavorites: cleanFavorite,
+  // ── WP11 extensions: flight records, maintenance records, param file ──
+  // Summaries are display data: flat objects of short strings / finite numbers / booleans / null, nested one level.
+  function cleanSummary(s, depth) {
+    if (!s || typeof s !== 'object' || Array.isArray(s)) return null;
+    const out = {};
+    Object.keys(s).slice(0, 40).forEach(k => {
+      const v = s[k];
+      if (v === null || typeof v === 'boolean') out[k] = v;
+      else if (typeof v === 'number') out[k] = isFinite(v) ? v : null;
+      else if (typeof v === 'string') out[k] = v.slice(0, 200);
+      else if (!depth && typeof v === 'object' && !Array.isArray(v)) out[k] = cleanSummary(v, 1);
+    });
+    return out;
+  }
+  function cleanFlight(r) {
+    return Object.assign({}, r, { id: str(r.id), date: str(r.date), label: str(r.label), notes: str(r.notes), archiveId: str(r.archiveId),
+      battIds: Array.isArray(r.battIds) ? r.battIds.filter(x => typeof x === 'string').slice(0, 20) : [],
+      logSummary: cleanSummary(r.logSummary), gcsSummary: cleanSummary(r.gcsSummary) });
+  }
+  function cleanMaint(r, issues) {
+    if (typeof r.taskId !== 'string' || !r.taskId || !/^\d{4}-\d{2}-\d{2}$/.test(str(r.doneDate))) {
+      issues.push(`Maintenance record ${short(r.taskId)} dropped: invalid task or date`); return null;
+    }
+    return Object.assign({}, r, { id: str(r.id), taskId: r.taskId, doneDate: str(r.doneDate), markedAt: str(r.markedAt), notes: str(r.notes) });
+  }
+  const PARAM_NAME = /^[A-Z][A-Z0-9_]{0,15}$/;
+  // store.paramFile → valid copy, or null. A bad name or a non-number makes the whole record invalid.
+  function cleanParamFile(pf) {
+    if (!pf || typeof pf !== 'object' || Array.isArray(pf) || typeof pf.name !== 'string' || !isFinite(Date.parse(pf.importedAt))) return null;
+    if (!pf.params || typeof pf.params !== 'object' || Array.isArray(pf.params)) return null;
+    const params = {};
+    for (const k of Object.keys(pf.params)) {
+      const v = pf.params[k];
+      if (!PARAM_NAME.test(k) || typeof v !== 'number' || !isFinite(v)) return null;
+      params[k] = v;
+    }
+    return { name: pf.name.slice(0, 200), importedAt: String(pf.importedAt), params };
+  }
+
+  const CLEAN = { packs: cleanPack, flights: cleanFlight, maintenance: cleanMaint, battLog: cleanBatt, archive: cleanArchive, weatherFavorites: cleanFavorite,
     clients: (r, issues, mode) => cleanProfile('clients', 'Client', r, issues, mode),
     links: (r, issues, mode) => cleanProfile('links', 'Link', r, issues, mode) };
 
@@ -304,6 +349,12 @@
         .filter(r => r && !(r.deleted && Date.parse(r.updatedAt || 0) < cutoff));
     });
     out.settings = cleanSettings(out.settings, d.settings, issues);
+    if (out.paramFile !== undefined && out.paramFile !== null) {
+      const pf = cleanParamFile(out.paramFile);
+      if (!pf) issues.push('Parameter file record was invalid — removed (import the .param file again)');
+      out.paramFile = pf;
+    }
+    if (out.paramFile === null) delete out.paramFile;
     return out;
   }
 
@@ -436,16 +487,21 @@
     inc.archive = arr('archive').map(legacyArchiveEntry);
     inc.weatherFavorites = arr('weatherFavorites').map(legacyFavorite);
     inc.battLog = arr('battLog').map(e => legacyBattEntry(e, ID.carrierPack));
-    ['packs', 'clients', 'links'].forEach(k => { inc[k] = arr(k); });
+    ['packs', 'clients', 'links', 'flights', 'maintenance'].forEach(k => { inc[k] = arr(k); });
     COLLECTIONS.forEach(c => { inc[c] = inc[c].map(r => cleanRecord(c, r, issues, 'import')).filter(Boolean); });
     inc.settings = obj.settings && typeof obj.settings === 'object' && !Array.isArray(obj.settings) ? obj.settings : null;
+    inc.paramFile = null;
+    if (obj.paramFile !== undefined && obj.paramFile !== null) {
+      inc.paramFile = cleanParamFile(obj.paramFile);
+      if (!inc.paramFile) issues.push('Parameter file record in the import was invalid — ignored');
+    }
     return inc;
   }
 
   function mergeStores(local, incomingObj) {
     const issues = [];
     const inc = coerceIncoming(incomingObj, issues);
-    const stats = { added: 0, updated: 0, deleted: 0, settings: false, issues };
+    const stats = { added: 0, updated: 0, deleted: 0, settings: false, issues };   // + paramFile: true when taken (WP11)
     COLLECTIONS.forEach(c => { local[c] = mergeLists(local[c], inc[c], stats); });
     // Settings are one record, stamped with settings.updatedAt only when a user edits them (never in defaults()).
     // Incoming settings replace local ones only when they carry a stamp newer than the local stamp: settings that
@@ -453,6 +509,11 @@
     if (inc.settings && typeof inc.settings.updatedAt === 'string' && inc.settings.updatedAt > ((local.settings && local.settings.updatedAt) || '')) {
       local.settings = cleanSettings(inc.settings, local.settings, issues);
       stats.settings = true;
+    }
+    // The param file is one record: the incoming one wins only when it was imported later (WP11 extension).
+    if (inc.paramFile && inc.paramFile.importedAt > ((local.paramFile && local.paramFile.importedAt) || '')) {
+      local.paramFile = inc.paramFile;
+      stats.paramFile = true;
     }
     return { store: normalize(local, Date.now(), issues), stats };
   }
