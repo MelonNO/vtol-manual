@@ -135,42 +135,64 @@ def _check_head(data: bytes, magic: bytes) -> None:
 
 # --------------------------------------------------------------------------- channels
 
-def us_to_crsf(us: float) -> int:
-    """Pulse width in microseconds -> CRSF channel value (contract C3).
+#: Endpoint-exact scaling (contract C3, PM decision in WP03 rework round 1): the
+#: 1639 CRSF counts between 172 and 1811 span the 1024 us between 988 and 2012,
+#: like ExpressLRS ``fmap(172..1811 -> 988..2012)`` (crsf_protocol.h ``CRSF_to_US``).
+US_MIN = 988
+US_MAX = 2012
+_CRSF_SPAN = CRSF_CHANNEL_MAX - CRSF_CHANNEL_MIN   # 1639
+_US_SPAN = US_MAX - US_MIN                         # 1024
 
-    ``crsf = round((us - 1500) * 1.6 + 992)`` clamped to 172..1811.  Rounding is
-    half-up; for integer microseconds the fraction is never exactly .5, so any
-    rounding rule gives the same result.  Note: 988 us maps to 173 with this
-    formula (EdgeTX uses the same 1.6 slope); the nominal 172 is reached at
-    987.5 us.
+
+def _round_half_up(x: float) -> int:
+    return math.floor(x + 0.5)
+
+
+def us_to_crsf(us: float) -> int:
+    """Pulse width in microseconds -> CRSF channel value (sending side, contract C3).
+
+    ``crsf = 172 + round((us - 988) * 1639 / 1024)``, clamped to 172..1811.
+    Anchors: 988 -> 172, 1000 -> 191, 1500 -> 992, 2000 -> 1792, 2012 -> 1811
+    (the ExpressLRS ``CRSF_CHANNEL_VALUE_*`` constants).  Rounding is half-up
+    (``floor(x + 0.5)``); the only exact tie for integer us is 1500 us (819.5),
+    which half-up maps to 992.  1639/1024 is exact in binary floating point.
     """
     if not math.isfinite(us):
         raise FieldError(f"pulse width must be finite, got {us!r}")
-    value = math.floor((us - 1500) * 1.6 + CRSF_CHANNEL_MID + 0.5)
+    value = CRSF_CHANNEL_MIN + _round_half_up((us - US_MIN) * _CRSF_SPAN / _US_SPAN)
     return max(CRSF_CHANNEL_MIN, min(CRSF_CHANNEL_MAX, value))
 
 
-def crsf_to_us(value: int) -> float:
-    """CRSF channel value -> pulse width in microseconds (inverse of :func:`us_to_crsf`)."""
-    return (value - CRSF_CHANNEL_MID) / 1.6 + 1500
+def crsf_to_us(value: int) -> int:
+    """CRSF channel value -> pulse width in microseconds (receiving side, contract C3).
+
+    ``us = 988 + round((crsf - 172) * 1024 / 1639)``.  Accepts any 11-bit value
+    0..2047 (no clamping: receivers report what was sent).  For integer inputs
+    there are no rounding ties.
+    """
+    return US_MIN + _round_half_up((value - CRSF_CHANNEL_MIN) * _US_SPAN / _CRSF_SPAN)
 
 
-def pack_channels(channels: Sequence[int]) -> bytes:
-    """Pack 16 channel values (172..1811) into 22 bytes, 11 bits each, LSB first.
+def pack_channels(channels: Sequence[int], strict: bool = True) -> bytes:
+    """Pack 16 channel values into 22 bytes, 11 bits each, LSB first.
 
     Same bit order as the CRSF RC_CHANNELS_PACKED payload (Betaflight
     src/main/rx/crsf.c ``crsfPayloadRcChannelsPacked_s`` / EdgeTX
     radio/src/pulses/crossfire.cpp ``createCrossfireChannelsFrame``).
+
+    ``strict=True`` (the GCS sending side) only allows 172..1811.  ``strict=False``
+    allows any 11-bit value 0..2047 — legal CRSF (ELRS extended limits use 0..1984)
+    — for receivers, simulators and tests that must pass values through unjudged.
     """
     if len(channels) != NUM_CHANNELS:
         raise FieldError(f"need {NUM_CHANNELS} channels, got {len(channels)}")
+    lo, hi = (CRSF_CHANNEL_MIN, CRSF_CHANNEL_MAX) if strict else (0, 0x7FF)
     acc = 0
     for i, ch in enumerate(channels):
         if not isinstance(ch, int) or isinstance(ch, bool):
             raise FieldError(f"channel {i + 1} is not an int: {ch!r}")
-        if not CRSF_CHANNEL_MIN <= ch <= CRSF_CHANNEL_MAX:
-            raise FieldError(
-                f"channel {i + 1} = {ch} outside {CRSF_CHANNEL_MIN}..{CRSF_CHANNEL_MAX}")
+        if not lo <= ch <= hi:
+            raise FieldError(f"channel {i + 1} = {ch} outside {lo}..{hi}")
         acc |= ch << (11 * i)
     return acc.to_bytes(PACKED_CHANNELS_SIZE, "little")
 
@@ -230,14 +252,16 @@ class RcUp:
     def flags(self) -> int:
         return (FLAG_CAM_ENABLE if self.cam_enable else 0) | self.reserved_flags
 
-    def pack(self) -> bytes:
+    def pack(self, strict: bool = True) -> bytes:
+        """Encode. ``strict=True`` (default, the GCS sender) limits channels to
+        172..1811; ``strict=False`` allows any 11-bit value (test tools only)."""
         _check_u("seq", self.seq, 32)
         _check_u("t_gcs_us", self.t_gcs_us, 32)
         _check_u("reserved_flags", self.reserved_flags, 8)
         if self.reserved_flags & FLAG_CAM_ENABLE:
             raise FieldError("reserved_flags must not contain bit 0 (use cam_enable)")
         head = _RC_UP_HEAD.pack(RC_UP_MAGIC, PROTOCOL_VERSION, self.flags, self.seq, self.t_gcs_us)
-        return _append_crc(head + pack_channels(self.channels))
+        return _append_crc(head + pack_channels(self.channels, strict))
 
     @classmethod
     def unpack(cls, data: bytes | bytearray | memoryview) -> "RcUp":

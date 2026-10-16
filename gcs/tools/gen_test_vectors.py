@@ -87,8 +87,13 @@ def gen() -> dict[str, Any]:
     ]
 
     # ---------------------------------------------------------------- channel scaling / packing
+    # Endpoint-exact scaling (contract C3): crsf = 172 + round((us - 988) * 1639 / 1024), clamped;
+    # anchors 988->172, 1000->191, 1500->992, 2000->1792, 2012->1811 = ELRS CRSF_CHANNEL_VALUE_*.
     v["us_to_crsf"] = [{"us": us, "crsf": protocol.us_to_crsf(us)}
-                       for us in (880, 987.5, 988, 1000, 1250, 1500, 1750, 2000, 2012, 2100)]
+                       for us in (880, 987, 988, 989, 1000, 1250, 1499, 1500, 1501, 1750, 2000, 2011, 2012,
+                                  2013, 2100)]
+    v["crsf_to_us"] = [{"crsf": c, "us": protocol.crsf_to_us(c)}
+                       for c in (0, 172, 173, 191, 500, 991, 992, 993, 1500, 1792, 1811, 1984, 2047)]
     lo, mid, hi = protocol.CRSF_CHANNEL_MIN, protocol.CRSF_CHANNEL_MID, protocol.CRSF_CHANNEL_MAX
     channel_sets = {
         "centred": [mid] * 16,
@@ -118,14 +123,21 @@ def gen() -> dict[str, Any]:
         ("seq_and_time_max", RcUp(0xFFFFFFFF, 0xFFFFFFFF, tuple(channel_sets["alternating_min_max"]))),
         ("reserved_flag_bits_set", RcUp(7, 7, tuple(channel_sets["centred"]), cam_enable=True,
                                         reserved_flags=0xFE)),
+        ("raw_channels_0_and_2047", RcUp(8, 8, tuple([0, 2047] * 8))),
+        ("raw_channels_elrs_extended_limits", RcUp(9, 9, tuple([0, 1984] + [992] * 14))),
     ]
     v["rc_up"] = []
     for name, pkt in rc_cases:
         f = asdict(pkt)
         f["channels"] = list(pkt.channels)
-        item = {"name": name, "fields": f, "hex": h(pkt.pack())}
+        item = {"name": name, "fields": f, "hex": h(pkt.pack(strict=not name.startswith("raw_channels")))}
         if name == "reserved_flag_bits_set":
             item["note"] = "senders must send reserved bits as 0; receivers ignore them (bridge still accepts)"
+        if name.startswith("raw_channels"):
+            item["hex"] = h(pkt.pack(strict=False))
+            item["strict_pack"] = False
+            item["note"] = ("valid on the wire: receivers (the bridge) must accept any 11-bit value and "
+                            "forward the 22 ch bytes unchanged; a strict GCS sender never produces it")
         v["rc_up"].append(item)
 
     # ---------------------------------------------------------------- status
@@ -238,6 +250,9 @@ def gen() -> dict[str, Any]:
     v["crsf_builders"] = [
         {"name": "rc_centred", "builder": "build_rc_channels_frame", "args": {"channels": channel_sets["centred"]},
          "hex": h(crsf.build_rc_channels_frame(channel_sets["centred"]))},
+        {"name": "rc_raw_0_2047", "builder": "build_rc_channels_frame_raw",
+         "args": {"packed": h(protocol.pack_channels([0, 2047] * 8, strict=False))},
+         "hex": h(crsf.build_rc_channels_frame_raw(protocol.pack_channels([0, 2047] * 8, strict=False)))},
         {"name": "rc_arm_high", "builder": "build_rc_channels_frame",
          "args": {"channels": channel_sets["aetr_arm_high"]},
          "hex": h(crsf.build_rc_channels_frame(channel_sets["aetr_arm_high"]))},
@@ -308,6 +323,8 @@ def gen() -> dict[str, Any]:
         {"name": "crsf_fwd_len_below_4", "message": "crsf_fwd", "hex": h(fwd_short), "error": "LengthError"},
         {"name": "crsf_pass_bad_crc", "message": "crsf_pass", "hex": h(bad(psp, 6)), "error": "CrcError"},
         {"name": "crsf_pass_ver_2", "message": "crsf_pass", "hex": h(_ver_patch(psp, 2)), "error": "VersionError"},
+        {"name": "crsf_pass_truncated", "message": "crsf_pass", "hex": h(psp[:-1]), "error": "LengthError"},
+        {"name": "crsf_pass_header_only", "message": "crsf_pass", "hex": h(psp[:3]), "error": "LengthError"},
         {"name": "status_magic_as_rc_up", "message": "rc_up", "hex": h(st), "error": "MagicError"},
     ]
 

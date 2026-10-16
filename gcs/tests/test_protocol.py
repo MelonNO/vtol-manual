@@ -42,10 +42,24 @@ def test_crc16_detects_every_single_bit_flip() -> None:
 
 # --------------------------------------------------------------------------- channel scaling
 
-@pytest.mark.parametrize("us,expected", [(988, 173), (1500, 992), (2012, 1811), (1000, 192), (2000, 1792),
-                                         (987.5, 172), (500, 172), (2500, 1811)])
+@pytest.mark.parametrize("us,expected", [(988, 172), (1000, 191), (1500, 992), (2012, 1811), (2000, 1792),
+                                         (987.5, 172), (500, 172), (2500, 1811), (1500.0, 992)])
 def test_us_to_crsf_anchor_points(us: float, expected: int) -> None:
+    """PM decision (rework round 1): endpoint-exact mapping, ELRS CRSF_CHANNEL_VALUE_* anchors."""
     assert P.us_to_crsf(us) == expected
+
+
+@pytest.mark.parametrize("value,expected", [(172, 988), (191, 1000), (992, 1500), (1811, 2012), (1792, 2000),
+                                            (1984, 2120), (0, 881), (2047, 2159)])
+def test_crsf_to_us_anchor_points(value: int, expected: int) -> None:
+    """1984 -> 2120 us matches ELRS US_CHANNEL_VALUE_EXT_MAX; 0 -> 881 us matches Betaflight's
+    ``0.62477 * v + 881`` (ELRS's E.Limits min is quoted as 880 us)."""
+    assert P.crsf_to_us(value) == expected
+
+
+@pytest.mark.parametrize("item", V["crsf_to_us"], ids=lambda i: str(i["crsf"]))
+def test_crsf_to_us_vectors(item: dict) -> None:
+    assert P.crsf_to_us(item["crsf"]) == item["us"]
 
 
 @pytest.mark.parametrize("item", V["us_to_crsf"], ids=lambda i: str(i["us"]))
@@ -53,10 +67,12 @@ def test_us_to_crsf_vectors(item: dict) -> None:
     assert P.us_to_crsf(item["us"]) == item["crsf"]
 
 
-def test_crsf_to_us_inverts_within_one_count() -> None:
-    assert P.crsf_to_us(992) == 1500
+def test_us_crsf_round_trips() -> None:
+    for us in range(988, 2013):                      # 1 us -> 1.6 counts: exact round trip
+        assert P.crsf_to_us(P.us_to_crsf(us)) == us
     for value in range(P.CRSF_CHANNEL_MIN, P.CRSF_CHANNEL_MAX + 1):
-        assert P.us_to_crsf(P.crsf_to_us(value)) == value
+        assert abs(P.us_to_crsf(P.crsf_to_us(value)) - value) <= 1
+    assert all(P.us_to_crsf(a) <= P.us_to_crsf(a + 1) for a in range(900, 2100))   # monotonic
 
 
 def test_us_to_crsf_rejects_nan() -> None:
@@ -108,6 +124,21 @@ def test_pack_channels_rejects(bad: list) -> None:
         P.pack_channels(bad)
 
 
+def test_pack_channels_non_strict_allows_any_11bit_value() -> None:
+    chans = [0, 2047, 1, 2046, 171, 1812, 1984, 992] * 2
+    assert list(P.unpack_channels(P.pack_channels(chans, strict=False))) == chans
+    for bad in ([-1] + [0] * 15, [2048] + [0] * 15):
+        with pytest.raises(P.FieldError):
+            P.pack_channels(bad, strict=False)
+
+
+def test_rc_up_strict_sender_and_lenient_receiver() -> None:
+    pkt = RcUp(1, 2, tuple([0, 2047] * 8))
+    with pytest.raises(P.FieldError):
+        pkt.pack()                                  # GCS sending side: strict
+    assert RcUp.unpack(pkt.pack(strict=False)) == pkt   # receiving side: any 11-bit value
+
+
 def test_unpack_channels_wrong_size() -> None:
     with pytest.raises(P.LengthError):
         P.unpack_channels(bytes(21))
@@ -133,7 +164,7 @@ def test_rc_up_vectors(item: dict) -> None:
     f = item["fields"]
     pkt = RcUp(seq=f["seq"], t_gcs_us=f["t_gcs_us"], channels=tuple(f["channels"]),
                cam_enable=f["cam_enable"], reserved_flags=f["reserved_flags"])
-    assert pkt.pack().hex().upper() == item["hex"]
+    assert pkt.pack(strict=item.get("strict_pack", True)).hex().upper() == item["hex"]
     assert RcUp.unpack(HEX(item["hex"])) == pkt
 
 
@@ -305,5 +336,6 @@ def test_readme_documents_proposal_and_check_values() -> None:
     assert "0x29B1" in text and "0xBC" in text and "0xD5" in text
     tail = RcUp(1, 0, tuple(P.centred_channels())).pack()[-2:]
     assert tail.hex(" ").upper() in text                       # "91 9B" example stays true
-    for word in ("T_hold", "WAIT_GCS", "FAILSAFE", "client-gated", "Changelog", "little-endian"):
+    for word in ("T_hold", "WAIT_GCS", "FAILSAFE", "client-gated", "Changelog", "little-endian",
+                 "1639 / 1024", "1024 / 1639", "rework round 1"):
         assert word in text

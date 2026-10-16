@@ -286,13 +286,27 @@ class CrsfParser:
 
 # --------------------------------------------------------------------------- outbound builders
 
-def build_rc_channels_frame(channels: Sequence[int], address: int = Addr.CRSF_TRANSMITTER) -> bytes:
+def build_rc_channels_frame(channels: Sequence[int], address: int = Addr.CRSF_TRANSMITTER,
+                            strict: bool = True) -> bytes:
     """RC frame from the relay design: ``EE 18 16 <22 B channels> CRC``.
 
     The 24-byte form (no ELRS status byte) makes ELRS take the arm state from
     CH5 ([ELRS-TXEP] RcPacketToChannelsData: "frame len 24 -> arming mode CH5").
+    ``strict`` as in :func:`vtolgcs.protocol.pack_channels` (False = any 11-bit value).
     """
-    return build_frame(FrameType.RC_CHANNELS_PACKED, pack_channels(channels), address)
+    return build_frame(FrameType.RC_CHANNELS_PACKED, pack_channels(channels, strict), address)
+
+
+def build_rc_channels_frame_raw(packed: bytes, address: int = Addr.CRSF_TRANSMITTER) -> bytes:
+    """RC frame from 22 already-packed channel bytes, copied unchanged.
+
+    This is what the G0 does with ``rc_up.ch`` (protocol README §2): no value is
+    judged, so every 11-bit value 0..2047 passes through.
+    """
+    packed = bytes(packed)
+    if len(packed) != 22:
+        raise CrsfError(f"packed channels must be 22 B, got {len(packed)}")
+    return build_frame(FrameType.RC_CHANNELS_PACKED, packed, address)
 
 
 def build_model_id_frame(model_id: int, address: int = Addr.CRSF_TRANSMITTER) -> bytes:
@@ -575,15 +589,15 @@ def interpret_flight_mode(raw: str) -> FlightModeStatus:
     [BF-TLM] crsfFrameFlightMode: base mode ``!FS!`` / ``RTH`` / ``ANGL`` / ...;
     *while disarmed and not in failsafe* one suffix is appended: ``*`` ready to
     arm, ``!`` arming disabled, ``?`` GPS Rescue configured but no fix/sats.
-    So: ``failsafe`` = string starts with ``!FS!``; ``armed`` = no suffix and
-    not failsafe.
+    So: ``failsafe`` = string *contains* ``!FS!`` (plan §14.2 wording; Betaflight
+    always sends it as the whole base mode); ``armed`` = no suffix and not failsafe.
     """
     text = raw.split("\0", 1)[0].strip()
     if not text:
         return FlightModeStatus(raw, "", None, False, None, False, False, False)
-    failsafe = text.startswith("!FS!")
+    failsafe = "!FS!" in text
     if failsafe:
-        mode, rest = "!FS!", text[4:]
+        mode, rest = "!FS!", text.replace("!FS!", "", 1)
         suffix = rest[-1] if rest and rest[-1] in "*!?" else None
     elif text[-1] in "*!?":
         mode, suffix = text[:-1], text[-1]

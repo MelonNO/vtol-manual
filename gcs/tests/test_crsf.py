@@ -253,6 +253,7 @@ def test_decode_rc_channels() -> None:
 
 _BUILD = {
     "build_rc_channels_frame": lambda a: C.build_rc_channels_frame(a["channels"]),
+    "build_rc_channels_frame_raw": lambda a: C.build_rc_channels_frame_raw(HEX(a["packed"])),
     "build_model_id_frame": lambda a: C.build_model_id_frame(a["model_id"]),
     "build_device_ping": lambda a: C.build_device_ping(),
     "build_param_read": lambda a: C.build_param_read(a["param"], a["chunk"]),
@@ -318,6 +319,25 @@ def test_flight_mode_vectors(item: dict) -> None:
 def test_flight_mode_rules(raw: str, failsafe: bool, armed: bool | None, rnr: bool, mode: str) -> None:
     s = C.interpret_flight_mode(raw)
     assert (s.failsafe, s.armed, s.rescue_not_ready, s.mode) == (failsafe, armed, rnr, mode)
+
+
+def test_flight_mode_failsafe_is_contains() -> None:
+    """plan §14.2: 'flight-mode string contains !FS!'."""
+    s = C.interpret_flight_mode("X!FS!")
+    assert s.failsafe and s.mode == "!FS!" and s.armed is False
+    assert C.interpret_flight_mode("!FS!*").suffix == "*"
+
+
+def test_rc_raw_builder_passes_any_value() -> None:
+    packed = P.pack_channels([0, 2047] * 8, strict=False)
+    raw = C.build_rc_channels_frame_raw(packed)
+    assert raw[:3] == HEX("EE1816") and raw[3:25] == packed
+    assert list(C.decode_rc_channels(C.parse_frame(raw))) == [0, 2047] * 8
+    assert C.build_rc_channels_frame([0, 2047] * 8, strict=False) == raw
+    with pytest.raises(P.FieldError):
+        C.build_rc_channels_frame([0, 2047] * 8)
+    with pytest.raises(C.CrsfError):
+        C.build_rc_channels_frame_raw(packed[:21])
 
 
 def test_flight_mode_frame_is_null_terminated() -> None:

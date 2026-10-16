@@ -55,24 +55,36 @@
    "crsf": 172
   },
   {
-   "us": 987.5,
+   "us": 987,
    "crsf": 172
   },
   {
    "us": 988,
-   "crsf": 173
+   "crsf": 172
+  },
+  {
+   "us": 989,
+   "crsf": 174
   },
   {
    "us": 1000,
-   "crsf": 192
+   "crsf": 191
   },
   {
    "us": 1250,
-   "crsf": 592
+   "crsf": 591
+  },
+  {
+   "us": 1499,
+   "crsf": 990
   },
   {
    "us": 1500,
    "crsf": 992
+  },
+  {
+   "us": 1501,
+   "crsf": 993
   },
   {
    "us": 1750,
@@ -83,12 +95,74 @@
    "crsf": 1792
   },
   {
+   "us": 2011,
+   "crsf": 1809
+  },
+  {
    "us": 2012,
+   "crsf": 1811
+  },
+  {
+   "us": 2013,
    "crsf": 1811
   },
   {
    "us": 2100,
    "crsf": 1811
+  }
+ ],
+ "crsf_to_us": [
+  {
+   "crsf": 0,
+   "us": 881
+  },
+  {
+   "crsf": 172,
+   "us": 988
+  },
+  {
+   "crsf": 173,
+   "us": 989
+  },
+  {
+   "crsf": 191,
+   "us": 1000
+  },
+  {
+   "crsf": 500,
+   "us": 1193
+  },
+  {
+   "crsf": 991,
+   "us": 1500
+  },
+  {
+   "crsf": 992,
+   "us": 1500
+  },
+  {
+   "crsf": 993,
+   "us": 1501
+  },
+  {
+   "crsf": 1500,
+   "us": 1818
+  },
+  {
+   "crsf": 1792,
+   "us": 2000
+  },
+  {
+   "crsf": 1811,
+   "us": 2012
+  },
+  {
+   "crsf": 1984,
+   "us": 2120
+  },
+  {
+   "crsf": 2047,
+   "us": 2159
   }
  ],
  "channels": [
@@ -468,6 +542,66 @@
    },
    "hex": "524301FF0700000007000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7CAD65",
    "note": "senders must send reserved bits as 0; receivers ignore them (bridge still accepts)"
+  },
+  {
+   "name": "raw_channels_0_and_2047",
+   "fields": {
+    "seq": 8,
+    "t_gcs_us": 8,
+    "channels": [
+     0,
+     2047,
+     0,
+     2047,
+     0,
+     2047,
+     0,
+     2047,
+     0,
+     2047,
+     0,
+     2047,
+     0,
+     2047,
+     0,
+     2047
+    ],
+    "cam_enable": false,
+    "reserved_flags": 0
+   },
+   "hex": "52430100080000000800000000F83F00FE0F80FF03E0FF00F83F00FE0F80FF03E0FFD7CD",
+   "strict_pack": false,
+   "note": "valid on the wire: receivers (the bridge) must accept any 11-bit value and forward the 22 ch bytes unchanged; a strict GCS sender never produces it"
+  },
+  {
+   "name": "raw_channels_elrs_extended_limits",
+   "fields": {
+    "seq": 9,
+    "t_gcs_us": 9,
+    "channels": [
+     0,
+     1984,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992
+    ],
+    "cam_enable": false,
+    "reserved_flags": 0
+   },
+   "hex": "52430100090000000900000000003EF8C0073EF0810F7CE0031FF8C0073EF0810F7CE9C4",
+   "strict_pack": false,
+   "note": "valid on the wire: receivers (the bridge) must accept any 11-bit value and forward the 22 ch bytes unchanged; a strict GCS sender never produces it"
   }
  ],
  "status": [
@@ -1315,6 +1449,14 @@
    "hex": "EE1816E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7CAD"
   },
   {
+   "name": "rc_raw_0_2047",
+   "builder": "build_rc_channels_frame_raw",
+   "args": {
+    "packed": "00F83F00FE0F80FF03E0FF00F83F00FE0F80FF03E0FF"
+   },
+   "hex": "EE181600F83F00FE0F80FF03E0FF00F83F00FE0F80FF03E0FF97"
+  },
+  {
    "name": "rc_arm_high",
    "builder": "build_rc_channels_frame",
    "args": {
@@ -1575,6 +1717,18 @@
    "message": "crsf_pass",
    "hex": "52500206EE042800EA54832E",
    "error": "VersionError"
+  },
+  {
+   "name": "crsf_pass_truncated",
+   "message": "crsf_pass",
+   "hex": "52500106EE042800EA54F6",
+   "error": "LengthError"
+  },
+  {
+   "name": "crsf_pass_header_only",
+   "message": "crsf_pass",
+   "hex": "525001",
+   "error": "LengthError"
   },
   {
    "name": "status_magic_as_rc_up",

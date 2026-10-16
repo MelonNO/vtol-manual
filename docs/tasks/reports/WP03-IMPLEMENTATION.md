@@ -137,3 +137,33 @@ I fetched the sources with `curl` from `raw.githubusercontent.com` at the commit
   | client-gated | WAIT_GCS, cam **True** | RUN, cam True | WAIT_GCS, cam False | yes |
 
 - **Citations** are in `crsf.py` lines 3–28 and in each decoder's docstring. The raw source files I read can be re-fetched from the pinned commit URLs.
+
+## 7. Rework round 1
+
+Response to `verify/WP03/VERIFY-round1.md` (REJECTED, F1 MAJOR) and the PM's channel-scaling decision. Every finding is fixed. Line references in sections 1–6 refer to round 0; current references are below.
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 (MAJOR)** — a CRC-valid `rc_up` with a channel outside 172..1811 crashed `bridge_sim` | The bridge path no longer re-packs. `BridgeCore` keeps the 22 raw `ch` bytes of the latest valid `rc_up` and builds the RC frame from them unchanged, as the G0 will. Strict range checking is now only on the sending side, opt-out with `strict=False`. The run loop also logs and survives any unexpected exception | `bridge_sim.py:200` (`last_ch_raw`), `:249` (`build_rc_channels_frame_raw`), `:731` (`log.exception`); `crsf.py:300` (`build_rc_channels_frame_raw`); `protocol.py:176` (`pack_channels(strict=True)`), `:255` (`RcUp.pack(strict=True)`); `unpack_channels` and the decoders were already lenient (0..2047) |
+| F1 tests | Fake-clock test with channels 0/2047, all 0 and all 2047 in RUN; UDP test with 0/2047 in RUN (process alive, status keeps flowing, frame carries the raw values, then normal values again); a test that injects an exception into the runner; vectors `rc_up/raw_channels_0_and_2047`, `raw_channels_elrs_extended_limits` and builder `rc_raw_0_2047` | `test_bridge_sim.py:105`, `:685`, `:701`; `test_protocol.py::test_pack_channels_non_strict_allows_any_11bit_value`, `::test_rc_up_strict_sender_and_lenient_receiver`; `test_crsf.py::test_rc_raw_builder_passes_any_value` |
+| F1 CLI re-probe | 299 CRC-valid `rc_up` with CH1 = 2047 and CH2 = 0 sent to `bridge_sim.py --port 5798 -v` | Process alive, reached START and RUN, no traceback |
+| **PM: channel scaling** | `us_to_crsf = 172 + round((us − 988) × 1639 / 1024)` clamped 172..1811 (round half-up); `crsf_to_us = 988 + round((crsf − 172) × 1024 / 1639)` (returns int, not clamped) | `protocol.py:151`, `:166`; README §4 (`:123`) and changelog (`:288`); vectors regenerated with new `us_to_crsf` and `crsf_to_us` sections |
+| Scaling tests | Anchors 988→172, 1000→191, 1500→992, 2012→1811, plus 2000→1792. Inverse: 172→988, 191→1000, 992→1500, 1811→2012, 1984→2120 (= ELRS `US_CHANNEL_VALUE_EXT_MAX`), 0→881. Integer µs 988..2012 round-trip exactly; the mapping is monotonic | `test_protocol.py::test_us_to_crsf_anchor_points`, `::test_crsf_to_us_anchor_points`, `::test_us_crsf_round_trips`, `::test_crsf_to_us_vectors` |
+| F2 — UDP waits without diagnostics | Every UDP wait now goes through `TestClient.expect()`. On timeout it fails with: elapsed time, packets sent, the status state sequence and last status, the flight-mode sequence, and the simulator's transitions with timestamps, counters, reply address, queued counts and whether its thread is alive. The default timeout went from 5 s to 8 s; the telemetry waits now allow 10 s | `test_bridge_sim.py:473` (`diagnostics`), `:498` (`expect`) |
+| F3 — `crsf_tx` did not count passthrough | Now counted (`bridge_sim.py:668`). README `crsf_tx` row updated | `test_udp_crsf_pass_parameter_read` asserts `crsf_tx == 2` |
+| F4 — `-v` had no effect | `-v` now means DEBUG and the dead code is removed. The default (INFO) shows state changes, ModelID and camera changes | `bridge_sim.py:816`; CLI probe: 1 DEBUG line for a rejected packet |
+| F5 — `_now_hint` coupling | Removed. `run_age(now)` and `timing_locked(now)` take the time explicitly | `bridge_sim.py:253`, `:257` |
+| F6 — `startswith("!FS!")` | Changed to "contains" (`"!FS!" in text`), as plan §14.2 words it | `crsf.py:598`; `test_crsf.py::test_flight_mode_failsafe_is_contains` |
+| F7 — non-ASCII console output | Banner uses `-`. `main()` reconfigures stdout/stderr with `errors="backslashreplace"`, so no character can crash a cp1252 console | `bridge_sim.py:843`; CLI probe read the output as strict cp1252 without error |
+| F8 — no truncated `crsf_pass` vector | Added `crsf_pass_truncated` and `crsf_pass_header_only` (both `LengthError`) | `protocol/test-vectors.json` `malformed` |
+
+**Contract.** C3 on `main` was updated by the PM to the endpoint-exact mapping. I did not edit `docs/tasks/02-CONTRACTS.md` in this worktree, because it is not my file; the code, README and vectors follow the updated contract. No byte layout changed.
+
+**Tests after rework:** `<venv>\Scripts\python.exe -m pytest gcs` gives **343 passed** (about 9.6 s). Repeat runs:
+- the full suite 5× in a row, all green;
+- `test_bridge_sim.py` 3× in parallel, twice over: 6/6 green, 41 passed each;
+- `gen_test_vectors.py --check` → `up to date`.
+
+The F2 burst did not reproduce. If it ever recurs, the failure message will now say which wait timed out and what the simulator was doing.
+
+**Verifier notes:** the CLI flag `-v` now gives DEBUG output (every rejected packet). Run without it to see only state changes, ModelID and camera changes.

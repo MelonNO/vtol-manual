@@ -88,7 +88,7 @@ struct __attribute__((packed)) rc_up {      /* all fields little-endian */
 | 16 | `u32` | `rx_ok` | valid `rc_up` accepted |
 | 20 | `u32` | `rx_bad_crc` | `rc_up` rejected by the format checks: length, magic, version **or** CRC (§6) |
 | 24 | `u32` | `rx_bad_seq` | `rc_up` rejected because `seq` did not increase |
-| 28 | `u32` | `crsf_tx` | CRSF frames sent to the TX module (RC + ModelID + passthrough) |
+| 28 | `u32` | `crsf_tx` | CRSF frames sent to the TX module: RC + ModelID + `crsf_pass` frames (the simulator counts all three) |
 | 32 | `i32` | `sync_period_x10us` | ELRS packet period in **0.1 µs** units (µs × 10), from the 0x3A timing frame; 0 = no timing frame yet |
 | 36 | `i32` | `sync_offset_x10us` | current timing offset in 0.1 µs, signed |
 | 40 | `u16` | `crc16` | over bytes 0…39 |
@@ -124,11 +124,17 @@ The layout is the same as `crsf_fwd`, with magic `'R','P'`. The bridge sends the
 
 - 16 channels, 11 bits each. Channel 1 sits in bits 0–10 of the little-endian 176-bit field, channel 2 in bits 11–21, and so on. This is the same as Betaflight `crsfPayloadRcChannelsPacked_s` and EdgeTX `createCrossfireChannelsFrame`.
 - Scaling (DESIGN, ELRS `crsf_protocol.h`): **172 = 988 µs, 992 = 1500 µs, 1811 = 2012 µs.**
-- Conversion from µs (contract C3): `crsf = round((us − 1500) × 1.6 + 992)`, clamped to 172 … 1811.
-  - The 1.6 slope is the one EdgeTX uses (`992 + pulses × 4/5`).
-  - With it, 988 µs gives **173**. The nominal 172 is reached at 987.5 µs. The 1-count difference (≈ 0.6 µs) is far below stick resolution.
-  - The GCS should send 172 / 1811 directly for "full low/high" switch positions.
-- `pack_channels` rejects values outside 172 … 1811. A receiver unpacks the raw 11-bit values 0 … 2047 without judging them.
+- **Conversion, endpoint-exact** (contract C3, PM decision in WP03 rework round 1). The 1639 counts between 172 and 1811 span the 1024 µs between 988 and 2012, like ExpressLRS `fmap(172..1811 → 988..2012)`:
+  - **µs → CRSF (sending side):** `crsf = 172 + round((us − 988) × 1639 / 1024)`, clamped to 172 … 1811.
+  - **CRSF → µs (receiving side):** `us = 988 + round((crsf − 172) × 1024 / 1639)`, not clamped.
+  - `round` is half-up (`floor(x + 0.5)`). The only tie with integer µs inputs is 1500 µs (819.5 → 992). CRSF → µs has no ties.
+  - Anchors: 988 → 172, **1000 → 191**, 1500 → 992, **2000 → 1792**, 2012 → 1811. These equal the ELRS `CRSF_CHANNEL_VALUE_1000/MID/2000/STD_MAX` constants.
+  - Integer µs 988 … 2012 round-trip exactly.
+  - Extended values decode consistently with the primary sources: CRSF 1984 → 2120 µs (ELRS `US_CHANNEL_VALUE_EXT_MAX`) and 0 → 881 µs (Betaflight `0.62477 × v + 881`).
+- **Sending side (the GCS):** `pack_channels` / `RcUp.pack` reject values outside 172 … 1811 by default (`strict=True`).
+- **Receiving side (the bridge, the GCS decoders, the simulator):** any 11-bit value 0 … 2047 is legal CRSF; ELRS extended limits use 0 … 1984.
+  - Receivers never reject or crash on it.
+  - The bridge copies the 22 `ch` bytes **unchanged** into the CRSF RC frame.
 - With the 24-byte RC frame (`EE 18 16 …`, no ELRS status byte) ExpressLRS takes the **arm state from CH5** (`TXModuleEndpoint.cpp`). The client's arm switch must therefore be on CH5.
 
 ## 5. Bridge state machine (DESIGN + PROPOSAL details)
@@ -279,4 +285,5 @@ Items marked `"external": true` come from third-party sources, not from the refe
 
 | Version | Date | Change |
 |---|---|---|
+| v1 PROPOSAL, rework round 1 | 2026-10-16 | Channel scaling changed to the endpoint-exact mapping (988 → 172, 1000 → 191, 1500 → 992, 2012 → 1811), PM decision. The receiving side must accept any 11-bit value and the bridge forwards the `ch` bytes unchanged (verifier F1). `crsf_tx` counts passthrough frames. Vectors regenerated (new `crsf_to_us`, raw 0/2047 `rc_up`, truncated `crsf_pass`). No byte layout changed. |
 | v1 PROPOSAL | 2026-10-16 | First issue (WP03). Fixes little-endian byte order, CRC-16/CCITT-FALSE, the `status` / `crsf_fwd` / `crsf_pass` layouts, the validation order and versioning rules, the seq re-baseline, the extra status per state change, the forwarding rule and both camera policies. Reference code, simulator and test vectors added. |

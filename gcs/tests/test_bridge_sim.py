@@ -28,8 +28,12 @@ CENTRED = tuple(P.centred_channels())
 ARMED = tuple([992, 992, 172, 992, 1811] + [172] * 11)
 
 
+RAW_EXTREMES = tuple([0, 2047] * 8)               # legal 11-bit CRSF, outside the strict sender range
+
+
 def rc(seq: int, cam: bool = False, chans: tuple[int, ...] = CENTRED, t: int | None = None) -> bytes:
-    return RcUp(seq & 0xFFFFFFFF, (seq * 4000) & 0xFFFFFFFF if t is None else t, chans, cam_enable=cam).pack()
+    return RcUp(seq & 0xFFFFFFFF, (seq * 4000) & 0xFFFFFFFF if t is None else t, chans,
+                cam_enable=cam).pack(strict=False)
 
 
 class Feeder:
@@ -94,6 +98,22 @@ def test_run_sends_rc_frames_of_latest_channels() -> None:
     assert f.core.last_rc_frame == C.build_rc_channels_frame(ARMED)
     # ~250 Hz slots for ~0.2 s, minus the WAIT_GCS part
     assert 30 < f.core.crsf_tx < 60
+
+
+@pytest.mark.parametrize("chans", [RAW_EXTREMES, tuple([0] * 16), tuple([2047] * 16)],
+                         ids=["0_2047", "all_0", "all_2047"])
+def test_run_forwards_any_11bit_channel_value_unchanged(chans: tuple[int, ...]) -> None:
+    """Verifier F1: CRC-valid rc_up with values outside 172..1811 must not crash; the 22 ch
+    bytes go into the CRSF frame unchanged, as the G0 does."""
+    f = Feeder()
+    f.boot()
+    f.stream(0.1, chans=chans)
+    assert f.core.state == BridgeState.RUN
+    packed = P.pack_channels(chans, strict=False)
+    assert f.core.last_rc_frame == C.build_rc_channels_frame_raw(packed)
+    assert list(C.decode_rc_channels(C.parse_frame(f.core.last_rc_frame))) == list(chans)
+    f.stream(0.1)                                     # back to normal values: still fine
+    assert f.core.last_rc_frame == C.build_rc_channels_frame(CENTRED)
 
 
 def test_failsafe_after_t_hold_not_before() -> None:
@@ -385,8 +405,10 @@ class TestClient:
 
     __test__ = False
 
-    def __init__(self, bridge: tuple[str, int]) -> None:
+    def __init__(self, bridge: tuple[str, int], sim: BS.BridgeSim | None = None) -> None:
         self.bridge = bridge
+        self.sim = sim
+        self.t0 = time.perf_counter()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         BS._disable_udp_connreset(self.sock)
         self.sock.bind(("127.0.0.1", 0))
@@ -421,7 +443,8 @@ class TestClient:
         for _ in range(n):
             self.seq += 1
             t_us = int(time.perf_counter() * 1e6) & 0xFFFFFFFF
-            self.sock.sendto(RcUp(self.seq, t_us, self.chans, cam_enable=self.cam).pack(), self.bridge)
+            self.sock.sendto(RcUp(self.seq, t_us, self.chans, cam_enable=self.cam).pack(strict=False),
+                             self.bridge)
             time.sleep(gap)
 
     def start_stream(self) -> None:
@@ -446,6 +469,37 @@ class TestClient:
                     return True
             time.sleep(0.01)
         return False
+
+    def diagnostics(self) -> str:
+        """Everything needed to understand a timed-out wait (verifier F2)."""
+        with self.lock:
+            seq = [s.state.name for _, s in self.statuses]
+            runs = [x for i, x in enumerate(seq) if i == 0 or seq[i - 1] != x]
+            last = self.statuses[-1] if self.statuses else None
+            modes = [o.text for o in (C.decode_frame(f) for f in self.frames) if isinstance(o, C.FlightMode)]
+            mode_runs = [x for i, x in enumerate(modes) if i == 0 or modes[i - 1] != x]
+            lines = [f"elapsed {time.perf_counter() - self.t0:.2f}s, sent {self.seq} rc_up, "
+                     f"streaming={self.streaming.is_set()}, cam={self.cam}",
+                     f"{len(seq)} status: state runs {runs}",
+                     f"last status (+{last[0] - self.t0:.2f}s): {last[1]}" if last else "no status received",
+                     f"{len(self.frames)} CRSF frames, flight-mode runs {mode_runs}"]
+        if self.sim is not None:
+            with self.sim.lock:
+                core = self.sim.core
+                thread = self.sim._thread
+                lines.append(f"sim: state {core.state.name}, transitions "
+                             f"{[(round(t - self.t0, 3), a.name, b.name) for t, a, b in core.transitions]}, "
+                             f"rx_ok {core.rx_ok} bad_crc {core.rx_bad_crc} bad_seq {core.rx_bad_seq} "
+                             f"bad_src {core.rx_bad_src}, reply {core.reply_addr}, "
+                             f"queued {dict(self.sim.sent_counts)}, "
+                             f"thread alive {thread.is_alive() if thread else None}")
+        return "\n  ".join(lines)
+
+    def expect(self, cond: Callable[[], bool], what: str = "", timeout: float = 8.0) -> None:
+        """Wait for ``cond``; on timeout fail with a full diagnostic dump."""
+        if not self.wait(cond, timeout):
+            raise AssertionError(f"timed out after {timeout}s waiting for {what or 'condition'}:\n  "
+                                 + self.diagnostics())
 
     def states(self) -> list[BridgeState]:
         return [s.state for _, s in self.statuses]
@@ -473,7 +527,7 @@ def udp():
     def make(**kw: object) -> tuple[BS.BridgeSim, TestClient]:
         sim = _sim(**kw).start()
         time.sleep(0.1)                               # past BOOT
-        cli = TestClient(sim.address)
+        cli = TestClient(sim.address, sim)
         created.append((sim, cli))
         return sim, cli
     yield make
@@ -485,12 +539,12 @@ def udp():
 def test_udp_wait_gcs_to_run_and_failsafe(udp) -> None:
     sim, cli = udp()
     cli.start_stream()
-    assert cli.wait(lambda: BridgeState.RUN in cli.states()), cli.states()
+    cli.expect(lambda: BridgeState.RUN in cli.states(), "RUN status")
     with sim.lock:
         assert sim.core.visited(BridgeState.START) and len(sim.core.model_id_frames) == 3
     cli.stop_stream()
-    assert cli.wait(lambda: BridgeState.FAILSAFE in cli.states()), cli.states()
-    assert cli.wait(lambda: cli.last().state == BridgeState.WAIT_GCS)
+    cli.expect(lambda: BridgeState.FAILSAFE in cli.states(), "FAILSAFE status")
+    cli.expect(lambda: cli.last().state == BridgeState.WAIT_GCS)
     i_run = cli.states().index(BridgeState.RUN)
     i_fs = cli.states().index(BridgeState.FAILSAFE)
     assert i_run < i_fs
@@ -503,7 +557,7 @@ def test_udp_wait_gcs_to_run_and_failsafe(udp) -> None:
 def test_udp_four_packets_do_not_start(udp) -> None:
     sim, cli = udp()
     cli.send(4)
-    assert cli.wait(lambda: len(cli.statuses) >= 2)   # status goes to the (valid) sender at 10 Hz
+    cli.expect(lambda: len(cli.statuses) >= 2)   # status goes to the (valid) sender at 10 Hz
     time.sleep(0.3)
     with cli.lock:
         assert set(cli.states()) == {BridgeState.WAIT_GCS} and cli.last().crsf_tx == 0
@@ -515,32 +569,32 @@ def test_udp_camera_design_policy(udp) -> None:
     sim, cli = udp(bridge=BS.BridgeConfig(boot_s=0.05, camera_policy="design", seed=1))
     cli.cam = True
     cli.start_stream()
-    assert cli.wait(lambda: cli.last().state == BridgeState.RUN and cli.last().camera_on_readback)
+    cli.expect(lambda: cli.last().state == BridgeState.RUN and cli.last().camera_on_readback)
     cli.cam = False
-    assert cli.wait(lambda: not cli.last().camera_on_readback)
+    cli.expect(lambda: not cli.last().camera_on_readback)
     cli.cam = True
-    assert cli.wait(lambda: cli.last().camera_on_readback)
+    cli.expect(lambda: cli.last().camera_on_readback)
     cli.stop_stream()
-    assert cli.wait(lambda: cli.last().state == BridgeState.WAIT_GCS)
+    cli.expect(lambda: cli.last().state == BridgeState.WAIT_GCS)
     assert not cli.last().camera_on_readback
 
 
 def test_udp_camera_client_gated_policy(udp) -> None:
     sim, cli = udp(bridge=BS.BridgeConfig(boot_s=0.05, camera_policy="client-gated", seed=1))
     cli.send(2)                                       # valid, but no stream established yet
-    assert cli.wait(lambda: len(cli.statuses) >= 1)
+    cli.expect(lambda: len(cli.statuses) >= 1)
     assert cli.last().state == BridgeState.WAIT_GCS and cli.last().camera_on_readback
     cli.start_stream()                                # cam = False
-    assert cli.wait(lambda: cli.last().state == BridgeState.RUN and not cli.last().camera_on_readback)
+    cli.expect(lambda: cli.last().state == BridgeState.RUN and not cli.last().camera_on_readback)
     cli.stop_stream()
-    assert cli.wait(lambda: cli.last().state == BridgeState.WAIT_GCS)
+    cli.expect(lambda: cli.last().state == BridgeState.WAIT_GCS)
     assert not cli.last().camera_on_readback          # lost after having run -> OFF
 
 
 def test_udp_status_rate_and_rtt_echo(udp) -> None:
     sim, cli = udp(latency_ms=100.0)
     cli.start_stream()
-    assert cli.wait(lambda: sum(s.state == BridgeState.RUN for _, s in cli.statuses) >= 10, timeout=8)
+    cli.expect(lambda: sum(s.state == BridgeState.RUN for _, s in cli.statuses) >= 10, "10 RUN status", 10)
     with cli.lock:
         run = [(t, s) for t, s in cli.statuses if s.state == BridgeState.RUN]
     rtts = [P.u32_diff(int(t * 1e6) & 0xFFFFFFFF, s.t_gcs_us_echo) / 1000 for t, s in run]
@@ -569,12 +623,12 @@ def test_udp_telemetry_flight_mode_after_failsafe(udp) -> None:
 
     def modes() -> list[str]:
         return [o.text for o in (C.decode_frame(f) for f in cli.frames) if isinstance(o, C.FlightMode)]
-    assert cli.wait(lambda: "ANGL*" in modes())
+    cli.expect(lambda: "ANGL*" in modes())
     cli.chans = ARMED
-    assert cli.wait(lambda: "ANGL" in modes())
+    cli.expect(lambda: "ANGL" in modes())
     cli.stop_stream()
-    assert cli.wait(lambda: "!FS!" in modes(), timeout=6)
-    assert cli.wait(lambda: "RTH" in modes(), timeout=6)
+    cli.expect(lambda: "!FS!" in modes(), timeout=10)
+    cli.expect(lambda: "RTH" in modes(), timeout=10)
     with cli.lock:
         m = modes()
     assert m.index("ANGL") < m.index("!FS!") < m.index("RTH")
@@ -588,13 +642,15 @@ def test_udp_crsf_pass_parameter_read(udp) -> None:
     sim, cli = udp(crsf_pass=True)
     cli.send(1)                                       # become the current GCS
     cli.sock.sendto(P.CrsfPass(C.build_device_ping()).pack(), sim.address)
-    assert cli.wait(lambda: any(f.type == C.FrameType.DEVICE_INFO for f in cli.frames))
+    cli.expect(lambda: any(f.type == C.FrameType.DEVICE_INFO for f in cli.frames))
     cli.sock.sendto(P.CrsfPass(C.build_param_read(4, 0)).pack(), sim.address)
-    assert cli.wait(lambda: any(f.type == C.FrameType.PARAMETER_SETTINGS_ENTRY for f in cli.frames))
+    cli.expect(lambda: any(f.type == C.FrameType.PARAMETER_SETTINGS_ENTRY for f in cli.frames))
     with cli.lock:
         chunk = [C.decode_frame(f) for f in cli.frames if f.type == C.FrameType.PARAMETER_SETTINGS_ENTRY][0]
     entry = C.ParameterAssembler().feed(chunk)
     assert entry is not None and entry.name == "Max Power" and entry.units == "mW"
+    with sim.lock:
+        assert sim.core.crsf_tx == 2                  # no RC stream: only the 2 passthrough frames
 
 
 def test_udp_crsf_pass_ignored_by_default(udp) -> None:
@@ -624,6 +680,38 @@ def test_udp_fake_video_stream() -> None:
     finally:
         sim.stop()
         rx.close()
+
+
+def test_udp_raw_extreme_channels_keep_bridge_alive(udp) -> None:
+    """Verifier F1 over UDP: CH values 0 and 2047 in RUN; the simulator keeps running and forwards them."""
+    sim, cli = udp()
+    cli.chans = RAW_EXTREMES
+    cli.start_stream()
+    cli.expect(lambda: cli.last().state == BridgeState.RUN, "RUN with raw 0/2047 channels")
+    n = len(cli.statuses)
+    cli.expect(lambda: len(cli.statuses) >= n + 5, "status keeps flowing")
+    with sim.lock:
+        frame = sim.core.last_rc_frame
+        assert sim._thread is not None and sim._thread.is_alive()
+    assert frame is not None and list(C.decode_rc_channels(C.parse_frame(frame))) == list(RAW_EXTREMES)
+    cli.chans = CENTRED
+    cli.expect(lambda: sim.core.last_rc_frame == C.build_rc_channels_frame(CENTRED), "normal channels again")
+
+
+def test_udp_runner_survives_unexpected_exception(udp, monkeypatch) -> None:
+    sim, cli = udp()
+    calls = {"n": 0}
+    real = sim.client.update
+
+    def flaky(*a, **kw):
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise RuntimeError("injected simulator bug")
+        return real(*a, **kw)
+    monkeypatch.setattr(sim.client, "update", flaky)
+    cli.start_stream()
+    cli.expect(lambda: cli.last().state == BridgeState.RUN and calls["n"] > 10, "RUN after injected error")
+    assert sim._thread is not None and sim._thread.is_alive()
 
 
 # =========================================================================== CLI

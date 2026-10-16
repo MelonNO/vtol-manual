@@ -120,6 +120,8 @@ class BridgeCore:
         self._model_id_sent = 0
         self.model_id_frames: list[tuple[float, bytes]] = []
         self.last_rc_frame: bytes | None = None
+        #: the 22 ``ch`` bytes of the latest valid rc_up, forwarded unchanged (any 11-bit value)
+        self.last_ch_raw: bytes | None = None
         # camera
         self.cam_command = self._camera_command()
         self.cam_register = self._apply_fault(self.cam_command)
@@ -195,6 +197,7 @@ class BridgeCore:
             return None
         self.rx_ok += 1
         self.last_seq, self.last_valid_time, self.last_rc = pkt.seq, now, pkt
+        self.last_ch_raw = bytes(data[12:34])
         self.reply_addr = (src[0], src[1])
         if self.state == BridgeState.WAIT_GCS:
             self.consecutive_valid += 1
@@ -241,18 +244,18 @@ class BridgeCore:
             self._set_state(BridgeState.FAILSAFE, t)
             self._set_state(BridgeState.WAIT_GCS, t)   # relay design: "Immediately -> WAIT_GCS"
             return
-        self.last_rc_frame = crsf.build_rc_channels_frame(self.last_rc.channels)
+        # Like the G0: copy rc_up.ch into the CRSF frame unchanged (no range judgement).
+        assert self.last_ch_raw is not None
+        self.last_rc_frame = crsf.build_rc_channels_frame_raw(self.last_ch_raw)
         self.crsf_tx += 1
 
     # ------------------------------------------------------------------ outputs
-    @property
-    def timing_locked(self) -> bool:
-        return self.state == BridgeState.RUN and self._run_age() >= self.cfg.timing_lock_s
+    def run_age(self, now: float) -> float:
+        """Seconds spent in RUN at ``now`` (0 outside RUN)."""
+        return max(0.0, now - self.state_since) if self.state == BridgeState.RUN else 0.0
 
-    def _run_age(self) -> float:
-        return self._now_hint - self.state_since if self.state == BridgeState.RUN else 0.0
-
-    _now_hint = 0.0
+    def timing_locked(self, now: float) -> bool:
+        return self.state == BridgeState.RUN and self.run_age(now) >= self.cfg.timing_lock_s
 
     def build_status(self, now: float, state: BridgeState | None = None) -> Status:
         """Status for ``now``; increments the status sequence number.
@@ -260,17 +263,16 @@ class BridgeCore:
         ``state`` overrides the reported state (used for the immediate status of a
         transient state such as FAILSAFE, which is left in the same instant).
         """
-        self._now_hint = now
         streaming = self.state in (BridgeState.START, BridgeState.RUN)
         period = round(1e7 / self.cfg.elrs_rate_hz) if streaming else 0
         offset = 0
         if self.state == BridgeState.RUN:
-            offset = round(self._offset0 * math.exp(-self._run_age() / 0.15)) + self._rng.randint(-3, 3)
+            offset = round(self._offset0 * math.exp(-self.run_age(now) / 0.15)) + self._rng.randint(-3, 3)
         self.status_seq = (self.status_seq + 1) & 0xFFFFFFFF
         return Status(
             state=self.state if state is None else state, seq=self.status_seq,
             t_gcs_us_echo=self.last_rc.t_gcs_us if self.last_rc else 0,
-            camera_on_readback=self.cam_register, timing_locked=self.timing_locked,
+            camera_on_readback=self.cam_register, timing_locked=self.timing_locked(now),
             p2_link_100fd=self.cfg.p2_link_100fd,
             decoder_lock=self.cfg.report_video is not None,
             std_ntsc=self.cfg.report_video == "NTSC",
@@ -663,6 +665,7 @@ class BridgeSim:
             log.debug("crsf_pass rejected: %s", exc)
             return
         log.info("crsf_pass -> module: %r", frame)
+        self.core.crsf_tx += 1               # the frame goes out to the module in a free slot
         for reply in self.module.handle(frame):
             self._queue(protocol.CrsfFwd(reply).pack(), self.core.reply_addr, "crsf_fwd", now)
 
@@ -722,7 +725,10 @@ class BridgeSim:
             while not self._stop.is_set():
                 now = self.clock()
                 select.select([self.sock], [], [], self._next_deadline(now))
-                self.step()
+                try:
+                    self.step()
+                except Exception:            # a simulator bug must not kill the bridge model
+                    log.exception("bridge_sim step failed; continuing")
         finally:
             _high_res_timer(False, winmm)
 
@@ -807,7 +813,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
     v.add_argument("--video-kbps", type=float, default=0.0, help="fake RTP stream bitrate (0=off)")
     v.add_argument("--video-dest", type=_hostport, default=("127.0.0.1", protocol.VIDEO_PORT))
     p.add_argument("--seed", type=int, default=None)
-    p.add_argument("-v", "--verbose", action="count", default=0)
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="debug logging (every rejected packet, crsf_pass detail); default shows "
+                        "state changes, ModelID and camera changes")
     return p
 
 
@@ -831,12 +839,13 @@ def config_from_args(args: argparse.Namespace) -> SimConfig:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
-    logging.basicConfig(level=logging.DEBUG if args.verbose > 1 else logging.INFO,
+    for stream in (sys.stdout, sys.stderr):   # never crash on a console that cannot show a character
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s.%(msecs)03d %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
-    if not args.verbose:
-        logging.getLogger().setLevel(logging.INFO)
     sim = BridgeSim(config_from_args(args))
-    log.info("bridge_sim listening on %s:%d (camera policy %s, T_hold %.0f ms) — PROTOCOL v1 PROPOSAL",
+    log.info("bridge_sim listening on %s:%d (camera policy %s, T_hold %.0f ms) - PROTOCOL v1 PROPOSAL",
              *sim.address, args.camera_policy, args.t_hold_ms)
     try:
         sim.run()
