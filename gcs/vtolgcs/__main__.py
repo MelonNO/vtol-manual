@@ -1,4 +1,10 @@
-"""``python -m vtolgcs --headless [--sim]`` — run the GCS runtime with a console status line.
+"""``python -m vtolgcs`` — the windowed UI; ``python -m vtolgcs --headless [--sim]`` — the RC sender.
+
+Process separation (WP08b brief R0): the **RC sender** (this module with ``--headless``) runs in its
+own process and serves the local control channel (:mod:`vtolgcs.control`).  Without ``--headless``
+the windowed UI (:mod:`vtolgcs.ui`) starts in this process and attaches to a running sender, or
+starts one in its own console window; the UI never runs inside the sender process.
+``--video-fanout`` (first argument, internal) runs the video fan-out helper process.
 
 ``--sim`` uses a fake controller (sticks centred, throttle low, arm switch
 safe) and the simulator on a **loopback** address (default ``127.0.0.1:5770``;
@@ -39,6 +45,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from . import __version__, config as config_mod, protocol
+from .control import ControlServer, default_control_file
 from .controller import FakeController, safe_channels
 from .runtime import Runtime
 from .sender import Mode, ModeResult
@@ -80,6 +87,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--sim-armed", action="store_true",
                    help="--sim only: the fake controller starts with the arm switch ARMED and throttle mid")
     p.add_argument("--camera", choices=("on", "off"), help="camera request at start")
+    p.add_argument("--control-file", type=Path,
+                   help="control channel file (default: control.json next to the config file)")
+    p.add_argument("--no-control", action="store_true",
+                   help="headless: do not serve the local control channel (no UI can attach)")
     p.add_argument("--run-seconds", type=float, help=argparse.SUPPRESS)        # tests: stop after N s
     p.add_argument("-v", "--verbose", action="store_true", help="debug logging")
     return p
@@ -335,6 +346,10 @@ _LOG_LISTENER: list[logging.handlers.QueueListener] = []
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    raw = list(sys.argv[1:] if argv is None else argv)
+    if raw[:1] == ["--video-fanout"]:                # helper process of the UI (brief R0/R2)
+        from .video import fanout_main
+        return fanout_main(raw[1:])
     try:
         return _main(argv)
     finally:
@@ -349,13 +364,16 @@ def _main(argv: Sequence[str] | None) -> int:
             stream.reconfigure(errors="backslashreplace")
     _LOG_LISTENER.append(setup_logging(args.verbose))
     if not args.headless:
-        print("The windowed UI is not part of this build yet (WP08b). Run with --headless.", file=sys.stderr)
-        return EXIT_USAGE
+        from .ui.app import main as ui_main          # the UI process; it starts the sender separately
+        return ui_main(args, list(argv) if argv is not None else sys.argv[1:])
+    notices: list[str] = []
     try:
-        cfg = config_mod.load_config(args.config)
+        cfg = config_mod.load_config(args.config, notices=notices)
     except config_mod.ConfigError as exc:
         print(f"CONFIG ERROR: {exc}", file=sys.stderr)
         return EXIT_CONFIG
+    for line in notices:
+        print(f"CONFIG MIGRATED: {line}", file=sys.stderr)
     problem = sim_usage_error(args)
     if problem:
         print(f"USAGE ERROR: {problem}", file=sys.stderr)
@@ -391,12 +409,22 @@ def _main(argv: Sequence[str] | None) -> int:
     except OSError as exc:                     # e.g. the configured local UDP port is taken
         print(f"NOT STARTED: {exc}", file=sys.stderr)
         return EXIT_START
+    stop_requested = threading.Event()
+    control: ControlServer | None = None
+    if not args.no_control:
+        try:
+            control = ControlServer(rt, args.control_file or default_control_file(args.config),
+                                    on_stop=stop_requested.set).start()
+        except Exception as exc:                # the RC path must still run without it
+            print(f"WARNING: control channel not started ({exc}); no UI can attach", file=sys.stderr)
+            control = None
     tty = sys.stdout.isatty()
     interactive = sys.stdin is not None and sys.stdin.isatty()
     console = Console(rt, fake, tty, interactive)
     console.print_line(f"vtol-gcs {__version__} headless - bridge {cfg.bridge.ip}:{cfg.bridge.port}"
                        + (f", API {rt.api.base_url}" if rt.api else ", API off")
                        + (f", log {rt.session.path}" if rt.session else "")
+                       + (", control channel on" if control else "")
                        + ("  [SIM]" if args.sim else ""))
     console.print_line("keys: f fpv | c carrier-only | i idle | r restart | R RESUME (client airborne) | k camera | q quit"
                        + (" | a sim arm | d sim disconnect" if args.sim else ""))
@@ -413,7 +441,7 @@ def _main(argv: Sequence[str] | None) -> int:
     end = time.monotonic() + args.run_seconds if args.run_seconds else None
     next_line = 0.0
     try:
-        while end is None or time.monotonic() < end:
+        while (end is None or time.monotonic() < end) and not stop_requested.is_set():
             ch = _read_key() if tty else None
             if ch is not None and not console.key(ch):
                 break
@@ -425,6 +453,10 @@ def _main(argv: Sequence[str] | None) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        if stop_requested.is_set():
+            console.print_line("stop requested through the control channel")
+        if control is not None:
+            control.stop()
         rt.stop()
         console.drain()
         console.print_line("stopped (RC stream off; the bridge goes to FAILSAFE after T_hold)")
