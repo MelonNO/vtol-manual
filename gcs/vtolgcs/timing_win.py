@@ -4,7 +4,8 @@ Waiting (absolute deadlines on ``time.perf_counter()``):
 
 1. **High-resolution waitable timer** — ``CreateWaitableTimerExW`` with
    ``CREATE_WAITABLE_TIMER_HIGH_RESOLUTION`` (Windows 10 1803+): sleep until
-   :data:`HR_SPIN_S` before the deadline, then spin.
+   :data:`HR_SPIN_S` before the deadline, then spin.  ``timeBeginPeriod(1)`` is
+   held as well (it also governs how fast CPython hands the GIL over).
 2. **Fallback** — ``timeBeginPeriod(1)`` plus ``time.sleep`` until
    :data:`FALLBACK_SPIN_S` (~0.5 ms, plan §7.3) before the deadline, then spin.
 3. Off Windows (tests on other systems): ``time.sleep`` plus the same spin.
@@ -89,6 +90,14 @@ class Waiter:
         except OSError as exc:  # pragma: no cover - kernel32 always exists on Windows
             log.warning("kernel32 unavailable: %s", exc)
             return
+        # timeBeginPeriod(1) in every mode: besides Sleep, it sets the granularity of the timed waits
+        # CPython uses to hand the GIL over.  Without it a GIL hand-over can take a whole 15.6 ms
+        # system tick, which showed up as 5-8 ms late packets under light API load (WP08a rework 1).
+        try:
+            self._winmm = ctypes.WinDLL("winmm")
+            self._winmm.timeBeginPeriod(1)
+        except (OSError, AttributeError) as exc:  # pragma: no cover
+            log.warning("timeBeginPeriod unavailable: %s", exc)
         if prefer_high_res:
             handle = self._k32.CreateWaitableTimerExW(None, None, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
                                                       TIMER_ALL_ACCESS)
@@ -98,12 +107,8 @@ class Waiter:
                 return
             log.info("high-resolution waitable timer unavailable (error %d); using timeBeginPeriod(1)",
                      ctypes.get_last_error())
-        try:
-            self._winmm = ctypes.WinDLL("winmm")
-            self._winmm.timeBeginPeriod(1)
+        if self._winmm is not None:
             self.kind = "timeBeginPeriod"
-        except (OSError, AttributeError) as exc:  # pragma: no cover
-            log.warning("timeBeginPeriod unavailable: %s", exc)
 
     def wait_until(self, deadline: float) -> None:
         """Return at (or just after) ``deadline``; returns at once if it has passed."""

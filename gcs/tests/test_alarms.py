@@ -17,8 +17,8 @@ README = Path(__file__).resolve().parents[1] / "README.md"
 
 #: A healthy FPV stream: no alarm condition true.
 OK = RuleInputs(
-    mode="fpv", streaming=True, suspended=False, controller_connected=True, status_silence_s=0.05,
-    bridge_state="RUN", rtt_ms=40.0, jitter_p99_ms=0.4, camera_requested=False, camera_reported=False,
+    mode="fpv", streaming=True, suspended=False, sender_dead=False, controller_connected=True,
+    status_silence_s=0.05, bridge_state="RUN", rtt_ms=40.0, late_max_ms=0.6, skipped_slots=0, camera_requested=False, camera_reported=False,
     telemetry_silence_s=0.1, telemetry_relevant=True, lq_pct=99, cell_v=3.9, sats=12, client_failsafe=False,
     client_rth=False, client_rescue_not_ready=False, rtt_rising=False, on_battery=False, battery_saver=False)
 
@@ -45,7 +45,9 @@ def test_healthy_inputs_raise_nothing() -> None:
     ({"cell_v": 3.49}, "client_batt_low"),
     ({"sats": 7}, "client_sats_low"),
     ({"client_rescue_not_ready": True}, "client_rescue_not_ready"),
-    ({"jitter_p99_ms": 2.01}, "send_jitter_high"),
+    ({"late_max_ms": 2.01}, "send_jitter_high"),
+    ({"skipped_slots": 1}, "send_jitter_high"),
+    ({"sender_dead": True}, "rc_sender_dead"),
     ({"camera_requested": True}, "camera_mismatch"),
     ({"rtt_rising": True}, "rtt_rising_camera"),
     ({"on_battery": True}, "gcs_on_battery"),
@@ -57,7 +59,7 @@ def test_each_rule(change: dict, alarm: str) -> None:
 
 def test_thresholds_are_strict() -> None:
     assert active(dataclasses.replace(OK, status_silence_s=0.300, lq_pct=70, cell_v=3.50, sats=8,
-                                      telemetry_silence_s=2.0, jitter_p99_ms=2.0)) == set()
+                                      telemetry_silence_s=2.0, late_max_ms=2.0)) == set()
 
 
 def test_rtt_rule_needs_a_configured_threshold() -> None:
@@ -68,14 +70,14 @@ def test_rtt_rule_needs_a_configured_threshold() -> None:
 
 def test_stream_rules_inactive_when_idle() -> None:
     idle = dataclasses.replace(OK, mode="idle", streaming=False, status_silence_s=None, bridge_state=None,
-                               jitter_p99_ms=9.0, camera_requested=True, telemetry_silence_s=None,
+                               late_max_ms=9.0, skipped_slots=3, camera_requested=True, telemetry_silence_s=None,
                                telemetry_relevant=False, lq_pct=10, client_failsafe=True)
     assert active(idle) == set()
 
 
 def test_unknown_values_raise_nothing() -> None:
     unknown = dataclasses.replace(OK, lq_pct=None, cell_v=None, sats=None, camera_reported=None, rtt_ms=None,
-                                  jitter_p99_ms=None, on_battery=None, battery_saver=None)
+                                  late_max_ms=None, on_battery=None, battery_saver=None)
     assert active(unknown) == set()
 
 

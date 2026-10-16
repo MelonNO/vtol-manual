@@ -34,6 +34,8 @@ log = logging.getLogger("vtolgcs.controller")
 US_CENTRE = 1500
 NUM_CHANNELS = protocol.NUM_CHANNELS
 CENTRED_US: tuple[int, ...] = (US_CENTRE,) * NUM_CHANNELS
+ALL_MAPPED: tuple[bool, ...] = (True,) * NUM_CHANNELS
+NONE_MAPPED: tuple[bool, ...] = (False,) * NUM_CHANNELS
 
 
 @dataclass(frozen=True)
@@ -46,10 +48,16 @@ class ControllerSnapshot:
     channels_us: tuple[int, ...]
     #: ``time.perf_counter()`` of the read (or the injected clock).
     t: float
+    #: Per channel: does it come from a real input of this device?  An unmapped channel,
+    #: or one whose axis/button the device lacks, is centred and must never count as "safe".
+    mapped: tuple[bool, ...] = ALL_MAPPED
 
     def channel_us(self, number: int) -> int:
         """Channel value by 1-based channel number."""
         return self.channels_us[number - 1]
+
+    def is_mapped(self, number: int) -> bool:
+        return self.mapped[number - 1]
 
 
 class Controller(Protocol):
@@ -78,16 +86,26 @@ def button_to_us(pressed: bool, src: ChannelSource) -> int:
     return protocol.US_MAX if on else protocol.US_MIN
 
 
+def map_inputs_with_mapping(axes: Sequence[float], buttons: Sequence[bool],
+                            channel_map: Sequence[ChannelSource]) -> tuple[tuple[int, ...], tuple[bool, ...]]:
+    """Map raw axes/buttons to 16 channel values (us) plus a per-channel "mapped" flag.
+
+    Missing inputs and unmapped channels are centred and flagged ``False``.
+    """
+    out = list(CENTRED_US)
+    mapped = [False] * NUM_CHANNELS
+    for i, src in enumerate(channel_map[:NUM_CHANNELS]):
+        if src.src == "axis" and src.index < len(axes):
+            out[i], mapped[i] = axis_to_us(axes[src.index], src), True
+        elif src.src == "button" and src.index < len(buttons):
+            out[i], mapped[i] = button_to_us(buttons[src.index], src), True
+    return tuple(out), tuple(mapped)
+
+
 def map_inputs(axes: Sequence[float], buttons: Sequence[bool],
                channel_map: Sequence[ChannelSource]) -> tuple[int, ...]:
     """Map raw axes/buttons to 16 channel values (us). Missing inputs and unmapped channels are centred."""
-    out = list(CENTRED_US)
-    for i, src in enumerate(channel_map[:NUM_CHANNELS]):
-        if src.src == "axis" and src.index < len(axes):
-            out[i] = axis_to_us(axes[src.index], src)
-        elif src.src == "button" and src.index < len(buttons):
-            out[i] = button_to_us(buttons[src.index], src)
-    return tuple(out)
+    return map_inputs_with_mapping(axes, buttons, channel_map)[0]
 
 
 def channels_to_crsf(channels_us: Sequence[int]) -> tuple[int, ...]:
@@ -129,6 +147,7 @@ class FakeController:
         self._connected = connected
         self._frozen_t: float | None = None
         self._channels = list(channels_us) if channels_us is not None else safe_channels()
+        self._mapped = list(ALL_MAPPED)
 
     def start(self) -> None:
         pass
@@ -143,6 +162,11 @@ class FakeController:
     def set_channels_us(self, channels_us: Sequence[int]) -> None:
         with self._lock:
             self._channels = list(channels_us)
+
+    def unmap(self, number: int) -> None:
+        """Simulate a channel that has no input on this device."""
+        with self._lock:
+            self._mapped[number - 1] = False
 
     def disconnect(self) -> None:
         with self._lock:
@@ -161,8 +185,8 @@ class FakeController:
         with self._lock:
             t = self._frozen_t if self._frozen_t is not None else self._clock()
             if not self._connected:
-                return ControllerSnapshot(False, None, CENTRED_US, t)
-            return ControllerSnapshot(True, self.name, tuple(self._channels), t)
+                return ControllerSnapshot(False, None, CENTRED_US, t, NONE_MAPPED)
+            return ControllerSnapshot(True, self.name, tuple(self._channels), t, tuple(self._mapped))
 
 
 def safe_channels(arm_channel: int = 5, arm_us: int = protocol.US_MIN,
@@ -190,7 +214,7 @@ class PygameController:
         self.cfg = cfg
         self._clock = clock
         self._pg = pygame_module
-        self._snap = ControllerSnapshot(False, None, CENTRED_US, clock())
+        self._snap = ControllerSnapshot(False, None, CENTRED_US, clock(), NONE_MAPPED)
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._joy: Any = None
@@ -249,7 +273,7 @@ class PygameController:
         if self._joy is not None:
             log.warning("controller disconnected (%s)", why)
         self._joy = None
-        self._snap = ControllerSnapshot(False, None, CENTRED_US, self._clock())
+        self._snap = ControllerSnapshot(False, None, CENTRED_US, self._clock(), NONE_MAPPED)
 
     def _scan(self) -> None:
         pg = self._pg
@@ -264,6 +288,10 @@ class PygameController:
             self._joy = joy
             log.info("controller: using %r (%d axes, %d buttons)", self.devices[idx],
                      joy.get_numaxes(), joy.get_numbuttons())
+            if not self.cfg.device_name and not any(w.lower() in self.devices[idx].lower()
+                                                    for w in self.cfg.prefer_names):
+                log.warning("controller %r is not a preferred device (%s): check the channel map",
+                            self.devices[idx], ", ".join(self.cfg.prefer_names))
 
     def poll_once(self) -> None:
         """One poll: handle hot-plug events, read the device, publish a snapshot."""
@@ -280,10 +308,10 @@ class PygameController:
                 self._next_scan = now + self.RESCAN_S
                 self._scan()
             if self._joy is None:
-                self._snap = ControllerSnapshot(False, None, CENTRED_US, now)
+                self._snap = ControllerSnapshot(False, None, CENTRED_US, now, NONE_MAPPED)
                 return
         joy = self._joy
         axes = [joy.get_axis(i) for i in range(joy.get_numaxes())]
         buttons = [bool(joy.get_button(i)) for i in range(joy.get_numbuttons())]
-        channels = map_inputs(axes, buttons, self.cfg.channel_map)
-        self._snap = ControllerSnapshot(True, joy.get_name(), channels, self._clock())
+        channels, mapped = map_inputs_with_mapping(axes, buttons, self.cfg.channel_map)
+        self._snap = ControllerSnapshot(True, joy.get_name(), channels, self._clock(), mapped)

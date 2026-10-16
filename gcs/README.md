@@ -39,16 +39,28 @@ For `--sim`, start the simulator first in a second console: `python gcs/tools/br
 With `--sim` the app starts in **FPV** mode (normal start), so the simulator goes WAIT_GCS → START → RUN.
 Kill the app (or press `q`) and the simulator reports `RUN -> FAILSAFE` after T_hold (250 ms).
 
-Without `--sim` the app always starts **idle** and never resumes by itself; the pilot picks a normal start
-or RESUME (see "Modes and interlocks").
+**`--sim` is confined to a simulator on a loopback address.** It sets the bridge to `127.0.0.1:5770`;
+`--bridge` may only change that to another loopback address. A non-loopback `--bridge` with `--sim` is a
+hard error (exit 4). The fake controller, its keyboard arm switch (`a`) and the automatic FPV start exist
+only with a loopback bridge, so they can never reach real hardware.
+
+Without `--sim` the app always starts **idle** and never starts or resumes by itself. Every start that can
+reach an airborne client with a non-pilot value needs a **typed confirmation on an interactive console**
+(piped or redirected input is refused):
+
+- `--resume` / key `R`: RESUME (client airborne) — `RESUME`, plus `THROTTLE` with the throttle at minimum;
+- `--mode carrier_only` / key `c`: carrier-only — `NOCLIENT`, plus `LANDED` after an FPV stream in this
+  session (see "Modes and interlocks").
 
 Options: `--config PATH`, `--bridge HOST:PORT`, `--api-port N`, `--no-api`, `--mavlink-port N`,
-`--log-dir DIR`, `--no-log`, `--mode idle|fpv|carrier_only` (normal start), `--resume` (RESUME, client
-airborne: shows the live arm/throttle values and waits for a typed `RESUME`, plus `THROTTLE` when the
-throttle is at minimum), `--camera on|off`, `-v`; `--sim-armed` (with `--sim`: the fake arm switch starts
-ARMED, throttle mid, to try `--resume`).
-Exit codes: 0 normal, 2 configuration error, 3 another instance is running, 4 usage, 5 start-up
-failure (e.g. the local UDP port is taken).
+`--log-dir DIR`, `--no-log`, `--mode idle|fpv|carrier_only`, `--resume`, `--camera on|off`, `-v`;
+`--sim-armed` (with `--sim` only: the fake arm switch starts ARMED, throttle mid, to try RESUME).
+Exit codes: 0 normal, 2 configuration error or bad argument, 3 another instance is running, 4 usage
+(including `--sim` with a non-loopback bridge), 5 start-up failure (e.g. the local UDP port is taken).
+
+The test suites run several runtimes at once and give each its own single-instance mutex through the
+environment variable `VTOLGCS_TEST_INSTANCE_NAME`. **Never set it operationally**: it lets two senders run
+at the same time.
 
 The console shows one status line (mode, bridge state, RTT, uplink loss, send-jitter p99, camera
 requested/reported, controller, client LQ, battery, flight mode, active alarm ids) and prints every alarm,
@@ -57,13 +69,13 @@ refusal and state change on its own line. Keys:
 | Key | Action |
 |---|---|
 | `f` | FPV mode, normal start (start interlock applies) |
-| `c` | carrier-only mode |
+| `c` | carrier-only: shows what it sends, then asks for the typed `NOCLIENT` (and `LANDED`) confirmation |
 | `i` | idle: stop streaming (the bridge goes to FAILSAFE after T_hold) |
 | `r` | normal restart of a stopped stream (start interlock applies) |
 | `R` | **RESUME (client airborne)**: prints the live arm/throttle values, then asks for a typed confirmation — see "Modes and interlocks" |
 | `k` | toggle the carrier camera request |
 | `q` | quit |
-| `a`, `d` | `--sim` only: toggle the fake arm switch; fake controller disconnect/reconnect |
+| `a`, `d` | `--sim` with a loopback bridge only: toggle the fake arm switch; fake controller disconnect/reconnect |
 
 ## Configuration
 
@@ -77,12 +89,12 @@ every problem and exits with code 2. Keys missing from the file take the default
 | `bridge.ip`, `bridge.port` | `192.168.144.21`, `5770` | IP is the plan §3.3 **proposal — open question Q3, confirm at bring-up**; port from the relay design |
 | `bridge.local_port` | `0` | local UDP port of the RC socket (0 = any). The bridge replies to it |
 | `sender.rate_hz` | `250` | 200–250 Hz allowed (relay design: every 4–5 ms) |
-| `sender.t_hold_ms` | `250` | the bridge's T_hold the app expects (relay design: start at 250 ms) |
-| `sender.start_packets` | `5` | packets the bridge needs to leave WAIT_GCS (relay design) |
+| `sender.t_hold_ms` | `250` | the bridge's T_hold the app expects (relay design: start at 250 ms). After every stop the observed stop → FAILSAFE time is printed and logged next to it (`failsafe_timing`; relay-design test 6) and a FAILSAFE earlier than T_hold is warned about |
+| `sender.start_packets` | `5` | packets the bridge needs to leave WAIT_GCS (relay design). At every start the packets sent before START was reported are printed and logged next to it (`start_timing`); fewer than expected is warned about |
 | `controller.prefer_names` | `RadioMaster`, `EdgeTX`, `Joystick` | device chosen by name, in this order; else the first device |
 | `controller.device_name` | `null` | exact device name to use instead |
 | `controller.poll_hz`, `controller.stale_ms` | `500`, `100` | input poll rate; data older than `stale_ms` (≤ 100 ms) = disconnected |
-| `controller.channel_map` | EdgeTX Classic | 16 entries `{src: axis\|button\|none, index, reverse, min, max}`; default axes 0–7 → CH1–8, buttons 0–7 → CH9–16 (plan §7.3) |
+| `controller.channel_map` | EdgeTX Classic | 16 entries `{src: axis\|button\|none, index, reverse, min, max}`; default axes 0–7 → CH1–8, buttons 0–7 → CH9–16 (plan §7.3). The arm and throttle channels **must** be mapped (config error otherwise); a device that lacks the mapped axis/button for them refuses every start |
 | `interlock.arm_channel` | `5` | ELRS takes the arm state from CH5 (protocol README §4) |
 | `interlock.arm_safe_min_us` … `max_us` | `988` … `1699` | reference client: ARM on AUX1 = CH5 at 1700–2100 µs (`aux 0 0 0 1700 2100`, `docs/FPV_betaflight_dump.txt`) |
 | `interlock.throttle_channel` | `3` | reference client `map AETR1234` |
@@ -109,14 +121,19 @@ To use the reference client's critical cell voltage instead of its warning level
 |---|---|
 | `idle` | nothing |
 | `fpv` | the controller's 16 channels, every 4 ms (250 Hz) |
-| `carrier_only` | arm channel at `arm_safe_min_us` (988 µs), throttle 988 µs, every other channel 1500 µs; no controller needed. Lets the carrier camera run without a client (plan §3.4-3 interim, until the "camera on until a client stream starts" firmware change) |
+| `carrier_only` | arm channel at `arm_safe_min_us` (988 µs) = **DISARM**, throttle 988 µs, every other channel 1500 µs; no controller needed. Lets the carrier camera run without a client (plan §3.4-3 interim). **Hazard:** it would disarm any client bound to the TX module, including one flying in failsafe or GPS Rescue — see rule 4 |
+
+> **Preferred long-term fix:** the bridge firmware policy "camera ON until a client stream starts"
+> (plan §3.4-3, owner decision Q12, protocol README §7.2 policy B) gives the carrier camera without any RC
+> stream, so carrier-only mode — and its DISARM hazard — is no longer needed. Carrier-only is an interim
+> measure until that firmware change.
 
 Rules (`vtolgcs/sender.py`):
 
-1. **Start interlock.** Entering `fpv` (and leaving `fpv` for `carrier_only`) needs: controller connected,
-   its data fresh, arm channel inside the safe range **and** throttle low. A refusal lists the reasons
-   and nothing is sent. `fpv → carrier_only` is also refused while client telemetry reports ARMED, because
-   carrier-only sends "disarmed".
+1. **Start interlock.** A normal `fpv` start needs: controller connected, its data fresh, the arm and
+   throttle channels coming from real inputs of the device (an unmapped channel reads 1500 µs and is
+   never treated as safe), arm channel inside the safe range **and** throttle low. A refusal lists the
+   reasons and nothing is sent. Changing from one streaming mode to another needs `idle` first.
 2. **Controller lost** (USB unplug event, or no fresh data for `controller.stale_ms` ≤ 100 ms) in `fpv`:
    the very next 4 ms slot sends **nothing**. The last values are **never** repeated. The stream stays
    stopped (`RC STREAM STOPPED`, mode still `fpv`, `app.streaming = false`) even when the controller comes
@@ -138,10 +155,23 @@ Rules (`vtolgcs/sender.py`):
 
    The start path of the current stream is in C2 as `app.start_path` (`normal` | `resume`; `null` when
    idle) and in the session log (`mode` record).
-4. Before a RESUME the controller must be connected; the values sent are then exactly the pilot's.
+   RESUME also refuses when the arm or throttle value moved by more than 50 µs (app default) between the
+   preview and the confirmation, and when the arm or throttle channel has no input on the device.
+4. **Carrier-only guard** (it sends DISARM). The only way in is "show what it does, then confirm"
+   (`c` / `--mode carrier_only`; `prepare_carrier_only` + `confirm_carrier_only`); every other route,
+   including `idle` then `c`, is refused:
+   1. it never starts automatically or from a launch flag alone;
+   2. the operator types `NOCLIENT` — no client is powered or bound (single use, valid 15 s);
+   3. it is refused while any client telemetry was heard in the last **30 s** (a client frame, or link
+      statistics with LQ > 0), checked at the preview and again at the confirmation;
+   4. after any FPV stream (normal or RESUME) in this app session a second confirmation, `LANDED` — the
+      client is landed and disarmed — is required;
+   5. it is possible only while nothing is being sent.
 5. `idle` is always allowed (the operator's deliberate stop).
 6. An unexpected error while building a packet stops the stream (`RC STREAM STOPPED`); silence is the
-   fail-safe output.
+   fail-safe output. If the sender thread itself dies (caught in the thread, plus a liveness check by the
+   monitor), C2 shows `streaming: false`, `RC SENDER THREAD DEAD` (crit) is raised and logged, and nothing
+   can start until the app is restarted.
 7. Camera: switching ON is refused while the client is or may be armed (telemetry says ARMED, the arm
    switch is outside the safe range in `fpv`, or the `fpv` stream is stopped), if
    `camera.refuse_on_while_armed`. Entering `fpv` (normal start or RESUME) with that option set switches
@@ -155,7 +185,14 @@ Other protections:
 - **Timing:** the sender thread runs at `THREAD_PRIORITY_HIGHEST` on absolute deadlines (`next += period`)
   with a high-resolution waitable timer (`CreateWaitableTimerExW`, `CREATE_WAITABLE_TIMER_HIGH_RESOLUTION`)
   and a 0.3 ms spin; fallback `timeBeginPeriod(1)` + sleep + 0.5 ms spin. After a stall it skips missed
-  slots instead of bursting. Per-packet lateness gives the p50/p99/max send jitter.
+  slots instead of bursting. Per-packet lateness gives the p50/p99/max send jitter; any packet more than
+  2 ms late, or any skipped slot, raises `SEND JITTER HIGH`.
+- **Timing limits (Python):** the RC thread shares the interpreter (GIL) with every other thread of the
+  process. The runtime keeps its own work small (switch interval 0.5 ms, status built at most every
+  100 ms for the API, at most 4 event-stream clients), but **CPU-bound Python work in the same process
+  delays packets** (verifier measurement: 2 busy threads → 200 Hz and 14 ms lateness). Anything heavy
+  (UI rendering, video, file parsing) belongs in another process or in code that releases the GIL; if
+  that is not enough, move the RC loop into a small native helper (plan §7.2). See the WP08a report.
 - **Sleep:** while streaming the sender thread holds `SetThreadExecutionState(ES_CONTINUOUS |
   ES_SYSTEM_REQUIRED)`. This does **not** cover closing the lid: set the laptop's lid action to "Do nothing"
   and use a mains power plan (plan S-02a).
@@ -172,7 +209,8 @@ for *raise after* to raise and be false for *clear after* to clear (app defaults
 
 | Id | Severity | Text | Condition | Raise / clear after |
 |---|---|---|---|---|
-| `rc_stream_stopped` | crit | RC STREAM STOPPED | the stream was stopped by a fault (controller lost, internal error) and not resumed | 0 / 0 s |
+| `rc_sender_dead` | crit | RC SENDER THREAD DEAD | the RC sender thread died; nothing is sent; restart the app | 0 / 0 s |
+| `rc_stream_stopped` | crit | RC STREAM STOPPED | the stream was stopped by a fault (controller lost or unusable, internal error, thread death) and not restarted | 0 / 0 s |
 | `controller_disconnected` | crit | CONTROLLER DISCONNECTED | controller not connected or its data older than `controller.stale_ms` (not in carrier-only) | 0 / 0.5 s |
 | `bridge_no_status` | crit | NO BRIDGE STATUS | streaming and no bridge status for > `alarms.status_timeout_ms` (300 ms, plan §7.5) | 0 / 1 s |
 | `bridge_not_run` | crit | BRIDGE NOT RUN | streaming and the bridge reports a state ≠ RUN (plan §7.5) | 0.5 / 1 s |
@@ -186,7 +224,7 @@ for *raise after* to raise and be false for *clear after* to clear (app defaults
 | `rtt_high` | warn | RC RTT HIGH | streaming and RTT > `alarms.rtt_max_ms` — **TBD: `null` (inactive) until the HM30 RTT is measured** (relay-design "UDP echo" test) | 1 / 2 s |
 | `rtt_rising_camera` | warn | RTT RISING - CAMERA ON | camera reported ON and the median RTT of the last `rtt_rise_window_s` (5 s) since then is above the 99th percentile of the 5 s before it (or above that median + `alarms.rtt_rise_ms` when set; **TBD after relay-design test 9**) | 0 / 2 s |
 | `camera_mismatch` | warn | CAMERA STATE MISMATCH | bridge in START/RUN and camera requested ≠ reported | `alarms.camera_mismatch_s` (1 s, plan §7.1) / 0.5 s |
-| `send_jitter_high` | warn | SEND JITTER HIGH | streaming and send-jitter p99 (last 1 s) > `alarms.jitter_p99_max_ms` (2 ms, plan §7.5) | 0 / 2 s |
+| `send_jitter_high` | warn | SEND JITTER HIGH | streaming and, in the last 1 s window, any packet sent more than `alarms.send_late_max_ms` (2 ms, plan §7.5) after its deadline, or any skipped slot | 0 / 2 s |
 | `gcs_on_battery` | warn | GCS LAPTOP ON BATTERY | `GetSystemPowerStatus`: AC offline | 0 / 5 s |
 | `gcs_battery_saver` | warn | GCS BATTERY SAVER ON | `GetSystemPowerStatus`: battery saver on | 0 / 5 s |
 
@@ -209,7 +247,9 @@ Notes:
 - `GET /api/v1/status` → the C2 Status object (exact keys; unknown values are `null`), plus the additive
   `app.start_path` (`"normal"` | `"resume"` | `null`), see the WP08a report
 - `GET /api/v1/events` → SSE: `event: status` every 200 ms; `event: alarm` with the C2 Alarm object plus
-  `"active": true|false` on every raise and clear (contract addition, see the WP08a report)
+  `"active": true|false` on every raise and clear (C2.1). At most **4** event-stream clients (503 after
+  that); the status object is rebuilt at most every 100 ms and shared by all API clients, so API load
+  stays small next to the RC thread.
 - CORS: `Origin` reflected for `https://melonno.github.io`, `http://localhost[:port]`,
   `http://127.0.0.1[:port]` and `null`; `OPTIONS` answers `Access-Control-Allow-Methods: GET`,
   `Access-Control-Allow-Headers: *`, `Access-Control-Allow-Private-Network: true`.
@@ -259,8 +299,11 @@ exists). One JSON object per line. Every record has:
 | `bridge_state` | `from`, `to` (state names), `fw_version`, `rx_ok`, `rx_bad_crc`, `rx_bad_seq` | the reported bridge state changed |
 | `mode` | `mode`, `from`, `resumed` (a stopped stream was restarted), `start_path` (`normal` \| `resume` \| `null` for idle), `arm_us`, `throttle_us` (live values at the start; absent when no controller is involved) | a mode change was accepted |
 | `resume_preview` | `ok`, `arm_us`, `throttle_us`, `throttle_at_min`, `problems` | RESUME step 1: the live values shown to the pilot |
+| `carrier_only_preview` | `ok`, `client_heard_s` (seconds since client telemetry, `null` = never), `fpv_this_session`, `problems` | carrier-only step 1 |
+| `failsafe_timing` | `expected_t_hold_ms`, `observed_ms`, `note` | the bridge reported FAILSAFE after a stop (stop → FAILSAFE status at the GCS) |
+| `start_timing` | `expected_start_packets`, `packets_sent` | the bridge reported START after a start |
 | `interlock_refused` | `requested` (`fpv` \| `carrier_only` \| `idle` \| `resume`), `from`, `reasons` (list of text) | a start or mode request was refused |
-| `suspended` | `reason` (`controller_disconnected` \| `internal_error`), `detail`, `mode` | the stream was stopped by a fault |
+| `suspended` | `reason` (`controller_disconnected` \| `internal_error` \| `sender_thread_died`), `detail`, `mode` | the stream was stopped by a fault |
 | `camera` | `requested` | the camera request changed |
 | `camera_reason` | `requested`, `reason` | why the request changed (operator, carrier-only, entering FPV) |
 | `camera_refused` | `requested`, `reasons` | camera ON was refused (client may be armed) |

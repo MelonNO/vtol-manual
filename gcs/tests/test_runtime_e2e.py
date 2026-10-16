@@ -20,6 +20,7 @@ import pytest
 import bridge_sim as BS
 from _c2 import assert_c2_status
 from vtolgcs import protocol
+from vtolgcs.__main__ import carrier_only_dialog, resume_dialog
 from vtolgcs.config import Config
 from vtolgcs.controller import FakeController
 from vtolgcs.protocol import BridgeState
@@ -149,6 +150,12 @@ def test_run_rtt_telemetry_camera_and_failsafe(harness) -> None:
     with h.sim.lock:
         t_fs = [t for t, _, new in h.sim.core.transitions if new == BridgeState.FAILSAFE][0]
     assert t_fs - t_stop >= 0.25 - 0.01                       # not before T_hold (250 ms)
+    # the observed stop -> FAILSAFE time is compared with the configured T_hold expectation
+    h.expect(lambda: any(k == "failsafe_timing" for k, _ in h.events), "failsafe_timing event")
+    ft = [d for k, d in h.events if k == "failsafe_timing"][0]
+    assert ft["expected_t_hold_ms"] == 250 and 240 <= ft["observed_ms"] < 2000
+    st = [d for k, d in h.events if k == "start_timing"][0]
+    assert st["expected_start_packets"] == 5 and st["packets_sent"] >= 5
 
 
 def test_controller_disconnect_stops_sending(harness) -> None:
@@ -211,6 +218,9 @@ def test_client_failsafe_alarm_and_camera_interlock(harness) -> None:
     res = h.rt.request_mode(Mode.CARRIER_ONLY)                 # would disarm a flying client
     assert not res.ok
     assert h.rt.request_mode(Mode.IDLE).ok                     # operator stops the stream
+    # verifier F1 bypass (fpv -> idle -> carrier-only): refused, the client was heard < 30 s ago
+    assert not h.rt.prepare_carrier_only().ok
+    assert not h.rt.request_mode(Mode.CARRIER_ONLY).ok
     h.expect(lambda: "client_failsafe" in h.alarm_ids(), "FPV FAILSAFE alarm from telemetry '!FS!'")
     h.expect(lambda: "client_rth" in h.alarm_ids(), "FPV RTH alarm")
     alarms = [d for k, d in h.events if k == "alarm" and d["active"]]
@@ -246,10 +256,19 @@ def test_resume_client_airborne_after_restart(harness) -> None:
     assert any(r["type"] == "interlock_refused" and r["requested"] == "fpv" for r in recs)
 
 
+def enter_carrier_only(h: Harness) -> None:
+    preview = h.rt.prepare_carrier_only()
+    assert preview.ok, preview.problems
+    assert h.rt.confirm_carrier_only(preview.token, no_client_confirmed=True).ok
+
+
 def test_carrier_only_streams_without_controller_and_enables_camera(harness) -> None:
     h = harness()
     h.fake.disconnect()
-    assert h.rt.request_mode(Mode.CARRIER_ONLY).ok
+    assert not h.rt.request_mode(Mode.CARRIER_ONLY).ok          # never without the NOCLIENT confirmation
+    time.sleep(0.2)
+    assert h.sim_rx_ok() == 0
+    enter_carrier_only(h)
     h.expect(lambda: h.status()["bridge"]["state"] == "RUN", "bridge RUN in carrier-only")
     h.expect(lambda: h.status()["bridge"]["camera"]["reported"] is True, "camera ON in carrier-only")
     with h.sim.lock:
@@ -263,7 +282,7 @@ def test_carrier_only_streams_without_controller_and_enables_camera(harness) -> 
 def test_camera_mismatch_alarm(harness) -> None:
     h = harness(bridge=BS.BridgeConfig(boot_s=0.05, seed=1, cam_fault="stuck-off"))
     h.fake.disconnect()
-    assert h.rt.request_mode(Mode.CARRIER_ONLY).ok              # requests camera ON
+    enter_carrier_only(h)                                       # requests camera ON
     h.expect(lambda: "camera_mismatch" in h.alarm_ids(), "camera mismatch alarm (> 1 s)")
 
 
@@ -289,3 +308,76 @@ def test_session_log_records(harness, tmp_path: Path) -> None:
     assert_c2_status(status[-1]["status"])
     sender = [r for r in recs if r["type"] == "sender"][0]
     assert {"sent", "rate_hz", "jitter_p50_ms", "jitter_p99_ms", "jitter_max_ms", "send_errors"} <= set(sender)
+
+
+# --------------------------------------------------------------------------- console dialogs (typed confirmations)
+
+class Typed:
+    def __init__(self, *lines: str) -> None:
+        self.lines = list(lines)
+        self.out: list[str] = []
+
+    def read(self) -> str:
+        return self.lines.pop(0) + "\n" if self.lines else ""
+
+
+def test_carrier_only_dialog_paths(harness) -> None:
+    h = harness()
+    t = Typed("NOCLIENT")
+    assert carrier_only_dialog(h.rt, t.out.append, t.read, interactive=False) is None   # piped: refused
+    assert any("interactive console" in x for x in t.out) and t.lines == ["NOCLIENT"]
+    t = Typed("noclient")
+    assert carrier_only_dialog(h.rt, t.out.append, t.read, interactive=True) is None    # wrong word
+    assert any("cancelled - nothing sent" in x for x in t.out)
+    time.sleep(0.2)
+    assert h.sim_rx_ok() == 0
+    t = Typed("NOCLIENT")
+    res = carrier_only_dialog(h.rt, t.out.append, t.read, interactive=True)
+    assert res is not None and res.ok and "DISARM" in t.out[0]
+    h.expect(lambda: h.status()["bridge"]["state"] == "RUN", "carrier-only RUN")
+
+
+def test_carrier_only_after_fpv_needs_landed_and_quiet_telemetry(harness) -> None:
+    h = harness(telemetry_hz=0.0)                                # no client telemetry at all
+    assert h.rt.request_mode(Mode.FPV).ok
+    h.expect(lambda: h.status()["bridge"]["state"] == "RUN", "bridge RUN")
+    assert h.rt.request_mode(Mode.IDLE).ok
+    t = Typed("NOCLIENT", "yes")
+    assert carrier_only_dialog(h.rt, t.out.append, t.read, interactive=True) is None
+    assert any("LANDED" in x for x in t.out)
+    assert h.status()["app"]["mode"] == "idle"
+    t = Typed("NOCLIENT", "LANDED")
+    res = carrier_only_dialog(h.rt, t.out.append, t.read, interactive=True)
+    assert res is not None and res.ok and h.status()["app"]["mode"] == "carrier_only"
+
+
+def test_resume_dialog_paths(harness) -> None:
+    h = harness()
+    h.fake.set_channel_us(5, 2000)
+    h.fake.set_channel_us(3, 1500)
+    t = Typed("RESUME")
+    assert resume_dialog(h.rt, t.out.append, t.read, interactive=False) is None
+    assert any("interactive console" in x for x in t.out)
+    t = Typed("yes")
+    assert resume_dialog(h.rt, t.out.append, t.read, interactive=True) is None
+    time.sleep(0.2)
+    assert h.sim_rx_ok() == 0
+    t = Typed("RESUME")
+    res = resume_dialog(h.rt, t.out.append, t.read, interactive=True)
+    assert res is not None and res.ok
+    assert "CH5 arm = 2000 us (ARMED), CH3 throttle = 1500 us" in t.out[0]   # live values before any packet
+    h.expect(lambda: h.status()["app"]["start_path"] == "resume", "resume start path")
+    h.fake.set_channel_us(3, 988)                                # throttle at minimum: second confirmation
+    assert h.rt.request_mode(Mode.IDLE).ok
+    t = Typed("RESUME", "no")
+    assert resume_dialog(h.rt, t.out.append, t.read, interactive=True) is None
+    assert any("THROTTLE AT MINIMUM" in x for x in t.out)
+    t = Typed("RESUME", "THROTTLE")
+    assert resume_dialog(h.rt, t.out.append, t.read, interactive=True).ok
+
+
+def test_api_status_is_cached_briefly(harness) -> None:
+    h = harness()
+    a = h.rt.status(0.5)
+    assert h.rt.status(0.5) is a                                 # reused within max_age
+    assert h.rt.status() is not a                                # fresh build by default

@@ -14,7 +14,7 @@ from vtolgcs import protocol
 from vtolgcs.config import Config
 from vtolgcs.controller import FakeController, safe_channels
 from vtolgcs.protocol import RcUp
-from vtolgcs.sender import (SUSPEND_CONTROLLER, SUSPEND_INTERNAL, JitterWindow, Mode, Sender,
+from vtolgcs.sender import (SUSPEND_CONTROLLER, SUSPEND_INTERNAL, SUSPEND_THREAD, JitterWindow, Mode, Sender,
                             carrier_only_channels, percentile)
 
 
@@ -37,18 +37,19 @@ def rig():
     sent: list[bytes] = []
     events: list[tuple[str, dict]] = []
     us = [1000]
+    heard: list[float | None] = [None]               # seconds since client telemetry (None = never)
 
     def us_clock() -> int:
         us[0] += 4000
         return us[0]
 
     sender = Sender(cfg, ctl, sent.append, clock=clock, us_clock=us_clock,
-                    on_event=lambda k, d: events.append((k, d)))
+                    on_event=lambda k, d: events.append((k, d)), client_heard_s=lambda: heard[0])
 
     class Rig:
         pass
     r = Rig()
-    r.clock, r.cfg, r.ctl, r.sent, r.events, r.sender = clock, cfg, ctl, sent, events, sender
+    r.clock, r.cfg, r.ctl, r.sent, r.events, r.sender, r.heard = clock, cfg, ctl, sent, events, sender, heard
 
     def slot(n: int = 1) -> list[RcUp | None]:
         out = []
@@ -230,7 +231,7 @@ def test_resume_refused_without_controller_or_while_streaming(rig) -> None:
     preview = rig.sender.prepare_resume()
     assert not preview.ok and preview.arm_us is None and "controller not connected" in preview.problems
     rig.ctl.connect()
-    rig.sender.request_mode(Mode.CARRIER_ONLY)
+    enter_carrier_only(rig)
     airborne(rig)
     preview = rig.sender.prepare_resume()
     assert not preview.ok and any("already streaming" in p for p in preview.problems)
@@ -273,12 +274,18 @@ def test_idle_always_allowed_and_clears_suspension(rig) -> None:
     assert st.mode is Mode.IDLE and st.suspended is None and st.start_path is None
 
 
-# --------------------------------------------------------------------------- carrier-only
+# --------------------------------------------------------------------------- carrier-only guard (F1)
+
+def enter_carrier_only(rig, landed: bool = False) -> None:
+    preview = rig.sender.prepare_carrier_only()
+    assert preview.ok, preview.problems
+    res = rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True, landed_confirmed=landed)
+    assert res.ok, res.reasons
+
 
 def test_carrier_only_forces_safe_channels(rig) -> None:
     rig.ctl.disconnect()                                  # no controller needed
-    res = rig.sender.request_mode(Mode.CARRIER_ONLY)
-    assert res.ok
+    enter_carrier_only(rig)
     pkt = rig.slot(1)[0]
     il = rig.cfg.interlock
     assert pkt.channels[il.arm_channel - 1] == protocol.us_to_crsf(il.arm_safe_min_us) == 172
@@ -286,39 +293,164 @@ def test_carrier_only_forces_safe_channels(rig) -> None:
     others = [c for i, c in enumerate(pkt.channels) if i not in (il.arm_channel - 1, il.throttle_channel - 1)]
     assert set(others) == {992}
     assert carrier_only_channels(il)[4] == 988
+    assert rig.sender.state().start_path == "normal"
 
 
 def test_carrier_only_ignores_the_controller(rig) -> None:
-    rig.sender.request_mode(Mode.CARRIER_ONLY)
+    enter_carrier_only(rig)
     rig.ctl.set_channel_us(5, 2000)
     rig.ctl.set_channel_us(3, 2000)
     pkt = rig.slot(1)[0]
     assert pkt.channels[4] == 172 and pkt.channels[2] == 172
 
 
-def test_fpv_to_carrier_only_needs_pilot_disarmed(rig) -> None:
+def test_request_mode_never_enters_carrier_only(rig) -> None:
+    res = rig.sender.request_mode(Mode.CARRIER_ONLY)       # from idle, no confirmation
+    assert not res.ok and "NOCLIENT" in res.reasons[0]
+    assert rig.slot(3) == [None] * 3 and rig.sent == []
+
+
+def test_carrier_only_needs_preview_and_confirmation(rig) -> None:
+    assert not rig.sender.confirm_carrier_only(1, no_client_confirmed=True).ok      # no preview
+    preview = rig.sender.prepare_carrier_only()
+    assert preview.ok and not preview.needs_landed_confirm and "DISARM" in preview.text()
+    assert rig.slot(3) == [None] * 3 and rig.sent == []                              # preview sends nothing
+    res = rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=False)
+    assert not res.ok and "NOCLIENT" in res.reasons[0]
+    res = rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True)   # single use: gone
+    assert not res.ok and "no valid carrier-only preview" in res.reasons[0]
+    preview = rig.sender.prepare_carrier_only()
+    rig.clock.advance(16.0)
+    res = rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True)
+    assert not res.ok and "expired" in res.reasons[0]
+    assert rig.sent == []
+
+
+def test_carrier_only_refused_while_client_heard(rig) -> None:
+    rig.heard[0] = 12.0
+    preview = rig.sender.prepare_carrier_only()
+    assert not preview.ok and "heard 12 s ago" in preview.problems[0]
+    rig.heard[0] = 31.0
+    preview = rig.sender.prepare_carrier_only()
+    assert preview.ok
+    rig.heard[0] = 0.5                                     # a client appeared between preview and confirm
+    res = rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True)
+    assert not res.ok and "client telemetry heard" in res.reasons[0] and rig.sent == []
+
+
+def test_idle_then_carrier_only_bypass_is_closed(rig) -> None:
+    """Verifier F1 sequence: fpv (client armed and flying) -> idle -> carrier_only."""
     rig.sender.request_mode(Mode.FPV)
     rig.ctl.set_channel_us(5, 2000)
-    res = rig.sender.request_mode(Mode.CARRIER_ONLY)
-    assert not res.ok and rig.sender.state().mode is Mode.FPV
-    rig.ctl.set_channel_us(5, 988)
-    res = rig.sender.request_mode(Mode.CARRIER_ONLY, client_armed=True)
-    assert not res.ok and "client telemetry reports ARMED" in res.reasons
-    assert rig.sender.request_mode(Mode.CARRIER_ONLY, client_armed=False).ok
+    rig.ctl.set_channel_us(3, 1400)
+    rig.slot(2)
+    assert rig.sender.request_mode(Mode.IDLE).ok
+    n = len(rig.sent)
+    assert not rig.sender.request_mode(Mode.CARRIER_ONLY).ok          # the old one-key route
+    preview = rig.sender.prepare_carrier_only()
+    assert preview.ok and preview.needs_landed_confirm
+    res = rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True)
+    assert not res.ok and "LANDED" in res.reasons[0]
+    assert rig.slot(5) == [None] * 5 and len(rig.sent) == n          # no DISARM packet went out
+    preview = rig.sender.prepare_carrier_only()
+    assert rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True, landed_confirmed=True).ok
+    assert rig.slot(1)[0].channels[4] == 172
 
 
-def test_carrier_only_to_fpv_needs_interlock(rig) -> None:
-    rig.sender.request_mode(Mode.CARRIER_ONLY)
-    rig.ctl.set_channel_us(3, 1500)
-    assert not rig.sender.request_mode(Mode.FPV).ok
+def test_suspended_fpv_to_carrier_only_needs_landed(rig) -> None:
+    rig.sender.request_mode(Mode.FPV)
+    rig.slot(1)
+    rig.ctl.disconnect()
+    rig.slot(1)
+    preview = rig.sender.prepare_carrier_only()
+    assert preview.ok and preview.needs_landed_confirm
+    assert not rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True).ok
+
+
+def test_carrier_only_refused_while_streaming(rig) -> None:
+    rig.sender.request_mode(Mode.FPV)
+    preview = rig.sender.prepare_carrier_only()
+    assert not preview.ok and any("idle" in p for p in preview.problems)
+    assert rig.sender.state().mode is Mode.FPV
+
+
+def test_carrier_only_to_fpv_needs_idle_first(rig) -> None:
+    enter_carrier_only(rig)
+    res = rig.sender.request_mode(Mode.FPV)
+    assert not res.ok and "idle" in res.reasons[0]
     assert rig.sender.state().mode is Mode.CARRIER_ONLY
     assert rig.slot(1)[0] is not None                     # carrier-only keeps streaming
+
+
+# --------------------------------------------------------------------------- unmapped arm/throttle (F7)
+
+def test_unmapped_arm_or_throttle_refuses_every_start(rig) -> None:
+    rig.ctl.unmap(5)                                      # arm channel has no input: reads centred
+    res = rig.sender.request_mode(Mode.FPV)
+    assert not res.ok and "arm channel CH5 has no input" in res.reasons[0]
+    preview = rig.sender.prepare_resume()                 # 1500 us would otherwise look "not safe" = armed
+    assert not preview.ok and any("CH5 has no input" in p for p in preview.problems)
+    ctl2 = FakeController(clock=rig.clock)
+    ctl2.unmap(3)                                         # throttle has no input
+    s2 = Sender(rig.cfg, ctl2, rig.sent.append, clock=rig.clock)
+    assert not s2.request_mode(Mode.FPV).ok
+    assert rig.sent == []
+
+
+def test_losing_the_arm_input_while_streaming_stops(rig) -> None:
+    rig.sender.request_mode(Mode.FPV)
+    assert rig.slot(1)[0] is not None
+    rig.ctl.unmap(5)
+    assert rig.slot(3) == [None] * 3
+    assert rig.sender.state().suspended == SUSPEND_CONTROLLER
+
+
+# --------------------------------------------------------------------------- RESUME value band (F9)
+
+def test_resume_refused_when_values_moved_since_preview(rig) -> None:
+    rig.ctl.set_channel_us(5, 2000)
+    rig.ctl.set_channel_us(3, 1500)
+    preview = rig.sender.prepare_resume()
+    rig.ctl.set_channel_us(3, 1100)
+    res = rig.sender.confirm_resume(preview.token)
+    assert not res.ok and "values changed since the preview" in res.reasons[0] and rig.sent == []
+    preview = rig.sender.prepare_resume()
+    rig.ctl.set_channel_us(3, 1140)                       # within the 50 us band
+    assert rig.sender.confirm_resume(preview.token).ok
+
+
+# --------------------------------------------------------------------------- dead sender thread (F5)
+
+def test_dead_sender_thread_is_detected() -> None:
+    class BrokenWaiter:
+        kind = "broken"
+
+        def wait_until(self, deadline: float) -> None:
+            raise RuntimeError("timer failed")
+
+        def close(self) -> None:
+            pass
+
+    events: list[tuple[str, dict]] = []
+    sender = Sender(Config(), FakeController(safe_channels()), lambda d: None, waiter_factory=BrokenWaiter,
+                    on_event=lambda k, d: events.append((k, d)))
+    assert sender.request_mode(Mode.FPV).ok
+    sender.start()
+    deadline = time.time() + 2
+    while not sender.state().thread_dead and time.time() < deadline:
+        time.sleep(0.01)
+    st = sender.state()
+    assert st.thread_dead and not st.streaming and st.suspended == SUSPEND_THREAD
+    assert any(k == "suspended" and d["reason"] == SUSPEND_THREAD for k, d in events)
+    assert not sender.request_mode(Mode.FPV).ok           # nothing can start any more
+    assert not sender.check_alive()
+    sender.stop()
 
 
 # --------------------------------------------------------------------------- camera flag, errors
 
 def test_camera_flag(rig) -> None:
-    rig.sender.request_mode(Mode.CARRIER_ONLY)
+    enter_carrier_only(rig)
     assert rig.slot(1)[0].cam_enable is False             # default off
     rig.sender.set_camera_requested(True)
     assert rig.slot(1)[0].cam_enable is True

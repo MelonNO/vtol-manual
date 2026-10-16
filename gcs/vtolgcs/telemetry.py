@@ -55,6 +55,8 @@ class ClientTelemetry:
         self.flight_mode: crsf.FlightModeStatus | None = None
         self.last_client_frame: float | None = None
         self.last_link_frame: float | None = None
+        #: last link statistics with uplink LQ > 0, i.e. the module hears a receiver
+        self.last_link_heard: float | None = None
         self.decode_errors = 0
         self.frames = 0
 
@@ -71,6 +73,8 @@ class ClientTelemetry:
             self.frames += 1
             if isinstance(obj, crsf.LinkStatistics):
                 self.link, self.last_link_frame = obj, now
+                if obj.lq_pct > 0:
+                    self.last_link_heard = now
             elif isinstance(obj, crsf.Gps):
                 self.gps = obj
             elif isinstance(obj, crsf.Battery):
@@ -87,6 +91,13 @@ class ClientTelemetry:
         now = self._clock() if now is None else now
         with self._lock:
             return None if self.last_client_frame is None else max(0.0, now - self.last_client_frame)
+
+    def heard_age_s(self, now: float | None = None) -> float | None:
+        """Seconds since any sign of a bound client: a client frame, or link statistics with LQ > 0."""
+        now = self._clock() if now is None else now
+        with self._lock:
+            times = [t for t in (self.last_client_frame, self.last_link_heard) if t is not None]
+        return max(0.0, now - max(times)) if times else None
 
     def cell_voltage(self) -> float | None:
         with self._lock:

@@ -3,11 +3,20 @@
 **Flight-safety path.** The rules (plan §7.3, brief R4/R5) are deliberately few:
 
 * Modes: ``idle`` (nothing sent), ``fpv`` (controller -> client), ``carrier_only``
-  (arm channel forced safe, throttle low, everything else centred; no controller
-  needed; lets the carrier camera run without a client, plan §3.4-3 interim).
-* **Start interlock** — entering ``fpv`` (from ``idle`` or ``carrier_only``) and
-  entering ``carrier_only`` from ``fpv`` need: controller connected, its data
-  fresh, the arm channel inside the safe range **and** throttle low.
+  (arm channel forced to DISARM, throttle low, everything else centred; no
+  controller needed; lets the carrier camera run without a client, plan §3.4-3
+  interim).
+* **Start interlock** — a *normal* ``fpv`` start needs: controller connected,
+  its data fresh, the arm and throttle channels mapped to real inputs, the arm
+  channel inside the safe range **and** throttle low.
+* **Carrier-only guard** — carrier-only sends DISARM, which would disarm any
+  client that is bound and flying.  Its *only* way in is
+  :meth:`Sender.prepare_carrier_only` + :meth:`Sender.confirm_carrier_only`
+  (``request_mode('carrier_only')`` always refuses): an explicit, single-use
+  "no client powered or bound" confirmation, valid :data:`CONFIRM_S`; refused
+  while client telemetry was heard in the last :data:`CARRIER_ONLY_QUIET_S`;
+  after any FPV stream in this session a second "client landed and disarmed"
+  confirmation is required; only while nothing is being sent.
 * **Controller lost** (disconnected, or no fresh data for ``controller.stale_ms``)
   while in ``fpv`` -> the very next tick sends **nothing**.  The last values are
   never repeated.  The sender stays *suspended* (mode still ``fpv``) and does
@@ -31,7 +40,8 @@
   stopped until the pilot picks *normal* or *resume*.
 * ``idle`` is always allowed and is the operator's explicit stop.
 * Any unexpected exception while building a packet suspends the stream
-  (``internal_error``): silence is the fail-safe output.
+  (``internal_error``): silence is the fail-safe output.  If the sender thread
+  itself dies, the state reports ``thread_dead`` and nothing can start.
 
 The thread is independent of any UI (window focus cannot pause it), runs at
 ``THREAD_PRIORITY_HIGHEST`` and holds ``ES_SYSTEM_REQUIRED`` while streaming.
@@ -63,12 +73,18 @@ class Mode(str, Enum):
 #: How the current stream was started.
 START_NORMAL = "normal"
 START_RESUME = "resume"
-#: A resume preview must be confirmed within this many seconds (app default).
-RESUME_CONFIRM_S = 15.0
+#: A RESUME or carrier-only preview must be confirmed within this many seconds (app default).
+CONFIRM_S = 15.0
+RESUME_CONFIRM_S = CONFIRM_S
+#: RESUME is refused if arm or throttle moved more than this since the preview (app default).
+RESUME_VALUE_BAND_US = 50
+#: Carrier-only is refused while client telemetry was heard within this window (PM, WP08a rework 1).
+CARRIER_ONLY_QUIET_S = 30.0
 
 #: Why a stream was suspended (mode kept, nothing sent).
 SUSPEND_CONTROLLER = "controller_disconnected"
 SUSPEND_INTERNAL = "internal_error"
+SUSPEND_THREAD = "sender_thread_died"
 
 
 @dataclass(frozen=True)
@@ -109,6 +125,31 @@ class ResumePreview:
 
 
 @dataclass(frozen=True)
+class CarrierOnlyPreview:
+    """What the operator must confirm before carrier-only (which sends DISARM) may start."""
+
+    token: int
+    created: float
+    client_heard_s: float | None        # seconds since client telemetry was last heard (None = never)
+    fpv_this_session: bool              # an FPV stream ran in this app session
+    problems: tuple[str, ...]
+
+    @property
+    def ok(self) -> bool:
+        return not self.problems
+
+    @property
+    def needs_landed_confirm(self) -> bool:
+        return self.fpv_this_session
+
+    def text(self) -> str:
+        heard = "never" if self.client_heard_s is None else f"{self.client_heard_s:.0f} s ago"
+        return (f"CARRIER-ONLY sends ARM = DISARM and throttle low to ANY bound client. "
+                f"Client telemetry last heard: {heard}. FPV streamed in this session: "
+                f"{'YES' if self.fpv_this_session else 'no'}")
+
+
+@dataclass(frozen=True)
 class Packet:
     seq: int
     t_gcs_us: int
@@ -146,6 +187,7 @@ class SenderState:
     send_errors: int
     stats: SenderStats | None
     waiter: str
+    thread_dead: bool = False       # the sender thread died: nothing is sent, nothing can start
 
 
 # --------------------------------------------------------------------------- interlock helpers
@@ -159,12 +201,25 @@ def controller_problems(snap: ControllerSnapshot, now: float, stale_s: float) ->
     return []
 
 
+def mapping_problems(snap: ControllerSnapshot, il: InterlockConfig) -> list[str]:
+    """Arm and throttle must come from real inputs: an unmapped channel is centred, never "safe"."""
+    return [f"{what} channel CH{ch} has no input on this controller: not safe"
+            for what, ch in (("arm", il.arm_channel), ("throttle", il.throttle_channel))
+            if not snap.is_mapped(ch)]
+
+
+def input_problems(snap: ControllerSnapshot, now: float, stale_s: float, il: InterlockConfig) -> list[str]:
+    """Everything that makes the controller unusable for sending."""
+    return controller_problems(snap, now, stale_s) or mapping_problems(snap, il)
+
+
 def arm_switch_safe(snap: ControllerSnapshot, il: InterlockConfig) -> bool:
-    return il.arm_safe_min_us <= snap.channel_us(il.arm_channel) <= il.arm_safe_max_us
+    return snap.is_mapped(il.arm_channel) and \
+        il.arm_safe_min_us <= snap.channel_us(il.arm_channel) <= il.arm_safe_max_us
 
 
 def throttle_low(snap: ControllerSnapshot, il: InterlockConfig) -> bool:
-    return snap.channel_us(il.throttle_channel) <= il.throttle_low_max_us
+    return snap.is_mapped(il.throttle_channel) and snap.channel_us(il.throttle_channel) <= il.throttle_low_max_us
 
 
 def interlock_problems(snap: ControllerSnapshot, il: InterlockConfig) -> list[str]:
@@ -180,7 +235,7 @@ def interlock_problems(snap: ControllerSnapshot, il: InterlockConfig) -> list[st
 
 
 def carrier_only_channels(il: InterlockConfig) -> tuple[int, ...]:
-    """Carrier-only output: arm channel at the bottom of the safe range, throttle at 988 us, rest centred."""
+    """Carrier-only output: arm channel at the bottom of the safe range (DISARM), throttle 988 us, rest centred."""
     ch = list(CENTRED_US)
     ch[il.throttle_channel - 1] = protocol.US_MIN
     ch[il.arm_channel - 1] = il.arm_safe_min_us
@@ -244,7 +299,8 @@ class Sender:
     ``transmit(data)`` sends one datagram (the runtime passes ``sock.sendto`` to the bridge).
     ``on_packet(packet)`` is called after each successful send (RTT bookkeeping);
     ``on_event(kind, data)`` for mode/suspend/refusal events; ``on_stats(stats)`` once a second.
-    Callbacks run outside the internal lock.
+    ``client_heard_s()`` returns seconds since client telemetry was last heard (None = never);
+    the carrier-only guard uses it.  Callbacks run outside the internal lock.
     """
 
     def __init__(self, cfg: Config, controller: Controller, transmit: Callable[[bytes], object],
@@ -253,7 +309,8 @@ class Sender:
                  waiter_factory: Callable[[], timing_win.Waiter] = timing_win.Waiter,
                  on_packet: Callable[[Packet], None] | None = None,
                  on_event: EventCallback | None = None,
-                 on_stats: Callable[[SenderStats], None] | None = None) -> None:
+                 on_stats: Callable[[SenderStats], None] | None = None,
+                 client_heard_s: Callable[[], float | None] = lambda: None) -> None:
         self.cfg = cfg
         self.il = cfg.interlock
         self.controller = controller
@@ -266,6 +323,7 @@ class Sender:
         self._on_packet = on_packet
         self._on_event = on_event
         self._on_stats = on_stats
+        self._client_heard_s = client_heard_s
         self._carrier_only_us = carrier_only_channels(self.il)
 
         self._lock = threading.Lock()
@@ -274,6 +332,10 @@ class Sender:
         self._start_path: str | None = None
         self._resume_token = 0
         self._resume_preview: ResumePreview | None = None
+        self._co_token = 0
+        self._co_preview: CarrierOnlyPreview | None = None
+        self._fpv_this_session = False
+        self._thread_dead = False
         self._camera = cfg.camera.default_on
         self._seq = 0
         self._sent = 0
@@ -285,16 +347,15 @@ class Sender:
         self._thread: threading.Thread | None = None
 
     # ------------------------------------------------------------------ commands (any thread)
-    def request_mode(self, mode: Mode | str, *, client_armed: bool | None = None) -> ModeResult:
-        """Normal start / mode change, enforcing the start interlock. Returns why a request was refused.
+    def request_mode(self, mode: Mode | str) -> ModeResult:
+        """Normal FPV start, or stop (``idle``). Returns why a request was refused.
 
-        ``client_armed``: what fresh client telemetry says (None = unknown); used
-        to refuse ``fpv -> carrier_only`` while the client reports ARMED.
+        ``carrier_only`` is refused here: it has its own guard (:meth:`prepare_carrier_only`).
         """
         mode = Mode(mode)
         events: list[tuple[str, dict]] = []
         with self._lock:
-            result = self._request_locked(mode, client_armed, events)
+            result = self._request_locked(mode, events)
         self._emit(events)
         return result
 
@@ -308,7 +369,9 @@ class Sender:
                 snap: ControllerSnapshot | None = None) -> ModeResult:
         cur, was_suspended = self._mode, self._suspended
         self._mode, self._suspended, self._start_path = mode, None, path
-        self._resume_preview = None
+        self._resume_preview = self._co_preview = None
+        if mode is Mode.FPV:
+            self._fpv_this_session = True
         data: dict = {"mode": mode.value, "from": cur.value, "resumed": was_suspended is not None,
                       "start_path": path}
         if snap is not None:
@@ -318,27 +381,30 @@ class Sender:
         log.info("mode %s -> %s (%s start)", cur.value, mode.value, path or "-")
         return ModeResult(True, mode)
 
-    def _request_locked(self, mode: Mode, client_armed: bool | None,
-                        events: list[tuple[str, dict]]) -> ModeResult:
+    def _streaming_locked(self) -> bool:
+        return self._mode is not Mode.IDLE and self._suspended is None and not self._thread_dead
+
+    def _request_locked(self, mode: Mode, events: list[tuple[str, dict]]) -> ModeResult:
         cur, suspended = self._mode, self._suspended
         if mode is Mode.IDLE:
             return self._accept(mode, None, events) if (cur is not Mode.IDLE or suspended) \
                 else ModeResult(True, mode)
+        if self._thread_dead:
+            return self._refuse(mode.value, ["RC sender thread is not running: restart the app"], events)
         if mode is cur and suspended is None:
             return ModeResult(True, mode)                       # already running
-        if mode is Mode.CARRIER_ONLY and cur is not Mode.FPV:
-            return self._accept(mode, START_NORMAL, events)     # no controller needed, no client flying
-
-        # From here: needs the controller (starting fpv, or fpv -> carrier_only).
+        if mode is Mode.CARRIER_ONLY:
+            return self._refuse(mode.value, ["carrier-only sends DISARM: it needs the NOCLIENT confirmation"],
+                                events)
+        if self._streaming_locked():
+            return self._refuse(mode.value, ["stop the current stream (idle) first"], events)
         snap = self.controller.snapshot()
-        problems = controller_problems(snap, self._clock(), self.stale_s)
+        problems = input_problems(snap, self._clock(), self.stale_s, self.il)
         if problems:
             return self._refuse(mode.value, problems, events)
         problems = interlock_problems(snap, self.il)
-        if mode is Mode.CARRIER_ONLY and client_armed:
-            problems.append("client telemetry reports ARMED")
         if problems:
-            if mode is Mode.FPV and not arm_switch_safe(snap, self.il):
+            if not arm_switch_safe(snap, self.il):
                 problems.append("if the client is airborne use RESUME (client airborne)")
             return self._refuse(mode.value, problems, events)
         return self._accept(mode, START_NORMAL, events, snap)
@@ -350,9 +416,11 @@ class Sender:
         with self._lock:
             now = self._clock()
             snap = self.controller.snapshot()
-            problems = controller_problems(snap, now, self.stale_s)
+            problems = input_problems(snap, now, self.stale_s, self.il)
             connected = not problems
-            if self._mode is not Mode.IDLE and self._suspended is None:
+            if self._thread_dead:
+                problems.append("RC sender thread is not running: restart the app")
+            if self._streaming_locked():
                 problems.append("already streaming: RESUME only starts a stopped stream")
             armed = not arm_switch_safe(snap, self.il) if connected else None
             at_min = throttle_low(snap, self.il) if connected else None
@@ -395,22 +463,85 @@ class Sender:
             return self._refuse("resume", ["no valid RESUME preview: show the live values first"], events)
         if now - preview.created > RESUME_CONFIRM_S:
             self._resume_preview = None
-            return self._refuse("resume", [f"RESUME preview expired (> {RESUME_CONFIRM_S:.0f} s): show it again"],
+            return self._refuse("resume", [f"RESUME preview expired (> {CONFIRM_S:.0f} s): show it again"],
                                 events)
-        if self._mode is not Mode.IDLE and self._suspended is None:
-            return self._refuse("resume", ["already streaming"], events)
+        if self._thread_dead or self._streaming_locked():
+            return self._refuse("resume", ["already streaming, or the RC sender thread is not running"], events)
         snap = self.controller.snapshot()
-        problems = controller_problems(snap, now, self.stale_s)
+        problems = input_problems(snap, now, self.stale_s, self.il)
         if problems:
             return self._refuse("resume", problems, events)
         if arm_switch_safe(snap, self.il):
             return self._refuse("resume", ["arm switch moved to SAFE: RESUME would disarm the client"], events)
+        moved = [f"CH{ch} {was} -> {snap.channel_us(ch)} us"
+                 for ch, was in ((self.il.arm_channel, preview.arm_us), (self.il.throttle_channel, preview.throttle_us))
+                 if was is None or abs(snap.channel_us(ch) - was) > RESUME_VALUE_BAND_US]
+        if moved:
+            self._resume_preview = None
+            return self._refuse("resume", ["values changed since the preview (" + ", ".join(moved)
+                                           + "): show it again"], events)
         if throttle_low(snap, self.il) and not throttle_min_confirmed:
             return self._refuse("resume", [f"throttle at minimum (CH{self.il.throttle_channel} = "
                                            f"{snap.channel_us(self.il.throttle_channel)} us): confirm again"],
                                 events)
         self._resume_preview = None                               # single use
         return self._accept(Mode.FPV, START_RESUME, events, snap)
+
+    # ------------------------------------------------------------------ carrier-only guard
+    def _carrier_only_problems_locked(self) -> tuple[float | None, list[str]]:
+        heard = self._client_heard_s()
+        problems = []
+        if self._thread_dead:
+            problems.append("RC sender thread is not running: restart the app")
+        if self._streaming_locked():
+            problems.append("stop the current stream (idle) first")
+        if heard is not None and heard < CARRIER_ONLY_QUIET_S:
+            problems.append(f"client telemetry heard {heard:.0f} s ago (< {CARRIER_ONLY_QUIET_S:.0f} s): "
+                            "a client is bound - carrier-only would DISARM it")
+        return heard, problems
+
+    def prepare_carrier_only(self) -> CarrierOnlyPreview:
+        """Step 1 of the only way into carrier-only. Nothing is sent; show :meth:`CarrierOnlyPreview.text`."""
+        events: list[tuple[str, dict]] = []
+        with self._lock:
+            heard, problems = self._carrier_only_problems_locked()
+            self._co_token += 1
+            preview = CarrierOnlyPreview(self._co_token, self._clock(), heard, self._fpv_this_session,
+                                         tuple(problems))
+            self._co_preview = preview if preview.ok else None
+            events.append(("carrier_only_preview", {"ok": preview.ok, "client_heard_s": heard,
+                                                    "fpv_this_session": preview.fpv_this_session,
+                                                    "problems": problems}))
+        self._emit(events)
+        return preview
+
+    def confirm_carrier_only(self, token: int, *, no_client_confirmed: bool,
+                             landed_confirmed: bool = False) -> ModeResult:
+        """Step 2: the operator stated that no client is powered or bound (``no_client_confirmed``) and,
+        after an FPV stream in this session, that the client is landed and disarmed (``landed_confirmed``)."""
+        events: list[tuple[str, dict]] = []
+        with self._lock:
+            result = self._confirm_co_locked(token, no_client_confirmed, landed_confirmed, events)
+        self._emit(events)
+        return result
+
+    def _confirm_co_locked(self, token: int, no_client: bool, landed: bool,
+                           events: list[tuple[str, dict]]) -> ModeResult:
+        preview, now = self._co_preview, self._clock()
+        if preview is None or preview.token != token:
+            return self._refuse("carrier_only", ["no valid carrier-only preview: show it first"], events)
+        self._co_preview = None                                  # single use, whatever the outcome
+        if now - preview.created > CONFIRM_S:
+            return self._refuse("carrier_only", [f"confirmation expired (> {CONFIRM_S:.0f} s)"], events)
+        if not no_client:
+            return self._refuse("carrier_only", ["no-client confirmation missing (NOCLIENT)"], events)
+        if self._fpv_this_session and not landed:
+            return self._refuse("carrier_only", ["FPV streamed in this session: confirm the client is "
+                                                 "landed and disarmed (LANDED)"], events)
+        _, problems = self._carrier_only_problems_locked()        # re-check at the confirmation
+        if problems:
+            return self._refuse("carrier_only", problems, events)
+        return self._accept(Mode.CARRIER_ONLY, START_NORMAL, events)
 
     def set_camera_requested(self, on: bool) -> None:
         """Set ``CAM_ENABLE`` for the following packets (the runtime applies the camera interlock)."""
@@ -422,11 +553,11 @@ class Sender:
 
     def state(self) -> SenderState:
         with self._lock:
-            return SenderState(mode=self._mode, streaming=self._mode is not Mode.IDLE and self._suspended is None,
+            return SenderState(mode=self._mode, streaming=self._streaming_locked(),
                                suspended=self._suspended, start_path=self._start_path,
                                camera_requested=self._camera, seq=self._seq,
                                packets_sent=self._sent, send_errors=self._errors, stats=self._stats,
-                               waiter=self._waiter_kind)
+                               waiter=self._waiter_kind, thread_dead=self._thread_dead)
 
     # ------------------------------------------------------------------ per-packet decision
     def tick(self, now: float, deadline: float | None = None) -> Packet | None:
@@ -438,11 +569,11 @@ class Sender:
         return pkt
 
     def _tick_locked(self, now: float, deadline: float, events: list[tuple[str, dict]]) -> Packet | None:
-        if self._mode is Mode.IDLE or self._suspended is not None:
+        if self._mode is Mode.IDLE or self._suspended is not None or self._thread_dead:
             return None
         if self._mode is Mode.FPV:
             snap = self.controller.snapshot()
-            problems = controller_problems(snap, now, self.stale_s)
+            problems = input_problems(snap, now, self.stale_s, self.il)
             if problems:
                 self._suspend_locked(SUSPEND_CONTROLLER, problems[0], events)
                 return None
@@ -466,6 +597,23 @@ class Sender:
         with self._lock:
             if self._mode is not Mode.IDLE and self._suspended is None:
                 self._suspend_locked(SUSPEND_INTERNAL, detail, events)
+        self._emit(events)
+
+    def check_alive(self) -> bool:
+        """Liveness check (the runtime's monitor calls it): a started thread that is gone is dead."""
+        if self._thread is not None and not self._thread.is_alive() and not self._stop.is_set():
+            self._mark_dead("sender thread exited")
+        return not self._thread_dead
+
+    def _mark_dead(self, detail: str) -> None:
+        events: list[tuple[str, dict]] = []
+        with self._lock:
+            if self._thread_dead:
+                return
+            self._thread_dead = True
+            if self._mode is not Mode.IDLE and self._suspended is None:
+                self._suspend_locked(SUSPEND_THREAD, detail, events)
+        log.critical("RC sender thread died (%s): nothing is sent; restart the app", detail)
         self._emit(events)
 
     def _emit(self, events: list[tuple[str, dict]]) -> None:
@@ -560,14 +708,17 @@ class Sender:
                     skip = int(behind / self.period)
                     deadline += skip * self.period
                     self._window.skipped(skip)
+        except Exception as exc:              # the loop must not end silently
+            log.exception("RC sender loop failed")
+            self._mark_dead(f"{type(exc).__name__}: {exc}")
         finally:
             if awake:
                 timing_win.keep_awake(False)
             waiter.close()
 
 
-__all__ = ["Mode", "ModeResult", "Packet", "ResumePreview", "RESUME_CONFIRM_S", "START_NORMAL", "START_RESUME",
-           "Sender", "SenderState", "SenderStats", "arm_switch_safe",
-           "carrier_only_channels", "throttle_low",
-           "controller_problems", "gcs_time_us", "interlock_problems", "percentile",
-           "SUSPEND_CONTROLLER", "SUSPEND_INTERNAL"]
+__all__ = ["CARRIER_ONLY_QUIET_S", "CONFIRM_S", "CarrierOnlyPreview", "Mode", "ModeResult", "Packet",
+           "RESUME_CONFIRM_S", "RESUME_VALUE_BAND_US", "ResumePreview", "START_NORMAL", "START_RESUME",
+           "SUSPEND_CONTROLLER", "SUSPEND_INTERNAL", "SUSPEND_THREAD", "Sender", "SenderState", "SenderStats",
+           "arm_switch_safe", "carrier_only_channels", "controller_problems", "gcs_time_us", "input_problems",
+           "interlock_problems", "mapping_problems", "percentile", "throttle_low"]

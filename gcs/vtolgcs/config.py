@@ -63,9 +63,11 @@ class BridgeConfig:
 @dataclass
 class SenderConfig:
     rate_hz: float = 250.0
-    #: Bridge T_hold the app expects (relay design: start at 250 ms). Used for checks and display.
+    #: Bridge T_hold the app expects (relay design: start at 250 ms). Compared with the observed
+    #: stop -> FAILSAFE time (``failsafe_timing`` log record, console line).
     t_hold_ms: float = 250.0
-    #: Consecutive valid packets the bridge needs to leave WAIT_GCS (relay design: 5).
+    #: Consecutive valid packets the bridge needs to leave WAIT_GCS (relay design: 5). Compared
+    #: with the packets sent before START was reported (``start_timing`` log record).
     start_packets: int = 5
 
 
@@ -126,7 +128,9 @@ class AlarmConfig:
     cell_min_v: float = 3.50               # reference client vbat_warning_cell_voltage = 350
     min_sats: int = 8                      # reference client gps_rescue_min_sats = 8
     telemetry_stale_s: float = 2.0         # plan §14.2
-    jitter_p99_max_ms: float = 2.0         # plan §7.5: send jitter > 2 ms
+    #: plan §7.5 "send jitter > 2 ms": any packet sent more than this after its deadline,
+    #: or any skipped slot, raises SEND JITTER HIGH
+    send_late_max_ms: float = 2.0
     camera_mismatch_s: float = 1.0         # plan §7.1: requested != reported for > 1 s
     #: RTT rise after camera ON: null = "median after ON exceeds the p99 before ON";
     #: a number = "median after ON exceeds the median before ON by this many ms". TBD after test 9.
@@ -353,6 +357,12 @@ def validate(cfg: Config) -> list[str]:
     if _num(il.arm_safe_min_us) and _num(il.arm_safe_max_us) and il.arm_safe_min_us > il.arm_safe_max_us:
         e.append("interlock: arm_safe_min_us must not exceed arm_safe_max_us")
     rng("interlock.throttle_low_max_us", il.throttle_low_max_us, protocol.US_MIN, protocol.US_MAX)
+    if isinstance(c.channel_map, list):          # an unmapped arm/throttle channel is centred: never "safe"
+        for name, ch in (("arm_channel", il.arm_channel), ("throttle_channel", il.throttle_channel)):
+            if isinstance(ch, int) and 1 <= ch <= protocol.NUM_CHANNELS and (
+                    ch > len(c.channel_map) or getattr(c.channel_map[ch - 1], "src", "none") == "none"):
+                e.append(f"interlock.{name}: CH{ch} is not mapped in controller.channel_map "
+                         "(an unmapped channel can never be checked as safe)")
 
     a = cfg.alarms
     positive("alarms.status_timeout_ms", a.status_timeout_ms)
@@ -362,7 +372,7 @@ def validate(cfg: Config) -> list[str]:
     rng("alarms.cell_min_v", a.cell_min_v, 0, 5)
     rng("alarms.min_sats", a.min_sats, 0, 64)
     positive("alarms.telemetry_stale_s", a.telemetry_stale_s)
-    positive("alarms.jitter_p99_max_ms", a.jitter_p99_max_ms)
+    positive("alarms.send_late_max_ms", a.send_late_max_ms)
     positive("alarms.camera_mismatch_s", a.camera_mismatch_s)
     if a.rtt_rise_ms is not None:
         positive("alarms.rtt_rise_ms", a.rtt_rise_ms)

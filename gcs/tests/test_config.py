@@ -21,7 +21,7 @@ def test_defaults_match_the_sources() -> None:
     assert (il.throttle_channel, il.throttle_low_max_us) == (3, 1050)                  # AETR, min_check 1050
     assert cfg.camera.default_on is False
     a = cfg.alarms
-    assert (a.status_timeout_ms, a.lq_min_pct, a.telemetry_stale_s, a.jitter_p99_max_ms, a.camera_mismatch_s) \
+    assert (a.status_timeout_ms, a.lq_min_pct, a.telemetry_stale_s, a.send_late_max_ms, a.camera_mismatch_s) \
         == (300, 70, 2.0, 2.0, 1.0)
     assert a.cell_min_v == 3.50 and a.min_sats == 8
     assert a.rtt_max_ms is None          # TBD: HM30 RTT unmeasured
@@ -67,6 +67,11 @@ def test_partial_file_keeps_defaults(tmp_path: Path) -> None:
     ({"interlock": {"arm_safe_min_us": 1800, "arm_safe_max_us": 1200}}, "arm_safe_min_us must not exceed"),
     ({"controller": {"stale_ms": 500}}, "controller.stale_ms: must be between 5 and 100"),
     ({"controller": {"channel_map": [{"src": "slider"}]}}, "channel_map[0].src"),
+    ({"controller": {"channel_map": [{"src": "axis", "index": i} for i in range(4)]}},
+     "interlock.arm_channel: CH5 is not mapped"),
+    ({"controller": {"channel_map": [{"src": "axis", "index": 0}, {"src": "axis", "index": 1},
+                                     {"src": "none"}, {"src": "axis", "index": 3}, {"src": "axis", "index": 4}]}},
+     "interlock.throttle_channel: CH3 is not mapped"),
     ({"controller": {"channel_map": "axes"}}, "controller.channel_map: must be a list"),
     ({"controller": {"channel_map": [{"src": "axis", "min": 1, "max": -1}]}}, "min must be below max"),
     ({"alarms": {"lq_min_pct": 170}}, "alarms.lq_min_pct"),

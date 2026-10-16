@@ -32,7 +32,7 @@ log = logging.getLogger("vtolgcs.api")
 API_HOST = "127.0.0.1"
 API_PORT = 47800
 SSE_STATUS_PERIOD_S = 0.2           # C2: status events at ~5 Hz
-SSE_MAX_CLIENTS = 16
+SSE_MAX_CLIENTS = 4                 # every client costs a status build per 200 ms on the GIL
 
 ALLOWED_ORIGIN = re.compile(r"^(https://melonno\.github\.io|http://localhost(:\d{1,5})?"
                             r"|http://127\.0\.0\.1(:\d{1,5})?|null)$")
@@ -169,7 +169,10 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _method_not_allowed(self) -> None:
-        length = int(self.headers.get("Content-Length") or 0)
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = 0
         if 0 < length <= 65536:
             self.rfile.read(length)           # drain, so the client sees the 405 cleanly
         self._error(405, "read-only API: only GET and OPTIONS", {"Allow": "GET, OPTIONS"})

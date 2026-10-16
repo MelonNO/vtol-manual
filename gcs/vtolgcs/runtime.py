@@ -12,8 +12,14 @@ mavlink-ro :class:`vtolgcs.mavlink_ro.MavlinkReadOnly` (never sends)
 api        :class:`vtolgcs.api.ApiServer` (read-only)
 ========== ===================================================================
 
-UIs (WP08b) call :meth:`Runtime.request_mode`, :meth:`Runtime.set_camera` and
-:meth:`Runtime.status`, and may register :meth:`Runtime.add_listener` for events.
+UIs (WP08b) call :meth:`Runtime.request_mode` (normal FPV start / idle),
+:meth:`Runtime.prepare_resume` + :meth:`Runtime.confirm_resume` (RESUME, client airborne),
+:meth:`Runtime.prepare_carrier_only` + :meth:`Runtime.confirm_carrier_only` (carrier-only),
+:meth:`Runtime.set_camera` and :meth:`Runtime.status`, and may register
+:meth:`Runtime.add_listener` for events.  A UI must show the preview text and get an explicit
+operator confirmation before calling a ``confirm_*`` method; it must never call one by itself.
+UIs must not do heavy work on runtime threads or in listeners (they run on the RC sender's
+interpreter; see ``gcs/README.md`` "Timing limits").
 """
 
 from __future__ import annotations
@@ -36,7 +42,7 @@ from .controller import Controller, PygameController
 from .mavlink_ro import CarrierPosition, MavlinkReadOnly
 from .protocol import BridgeState, Status, fw_ver_str
 from .receiver import BridgeLink, Receiver
-from .sender import Mode, ModeResult, ResumePreview, Sender, SenderStats, arm_switch_safe, gcs_time_us, throttle_low
+from .sender import CarrierOnlyPreview, Mode, ModeResult, ResumePreview, Sender, SenderStats, arm_switch_safe, gcs_time_us, throttle_low
 from .session_log import SCHEMA, SessionLog
 from .telemetry import ClientTelemetry, describe
 
@@ -48,6 +54,8 @@ POWER_PERIOD_S = 5.0
 #: The RC thread must get the GIL back quickly when its timer fires; CPython's default
 #: switch interval (5 ms) would let any busy thread delay a packet by a whole period.
 GIL_SWITCH_INTERVAL_S = 0.0005
+#: API and SSE reuse a status object up to this old, so many clients cost one build.
+STATUS_CACHE_S = 0.1
 
 
 @dataclass(frozen=True)
@@ -113,6 +121,10 @@ class Runtime:
         self._power = timing_win.PowerStatus(None, None, None)
         self._last_rtt_t: float | None = None
         self._last_cam_reported: bool | None = None
+        self._stream_stop_t: float | None = None        # stream stopped: time the bridge's FAILSAFE
+        self._stream_start_seq: int | None = None       # stream started: count packets until START
+        self._status_cache: tuple[float, dict] | None = None
+        self._status_lock = threading.Lock()
         self._stop = threading.Event()
         self._monitor: threading.Thread | None = None
         self._started = False
@@ -149,7 +161,7 @@ class Runtime:
         sys.setswitchinterval(min(sys.getswitchinterval(), GIL_SWITCH_INTERVAL_S))
         self.sender = Sender(cfg, self.controller, transmit, clock=self._clock, us_clock=self._us_clock,
                              on_packet=self.link.note_sent, on_event=self._on_sender_event,
-                             on_stats=self._on_stats)
+                             on_stats=self._on_stats, client_heard_s=self.telemetry.heard_age_s)
         self.receiver = Receiver(cfg, sock, self.link, self.telemetry, clock=self._clock,
                                  on_state_change=self._on_bridge_state, on_telemetry=self._on_telemetry)
         self.controller.start()
@@ -159,7 +171,8 @@ class Runtime:
             self.mavlink = MavlinkReadOnly(cfg.mavlink, self.carrier, self._mav_factory).start()
         if cfg.api.enabled:
             try:
-                self.api = ApiServer(self.status, self.hub, __version__, port=cfg.api.port).start()
+                self.api = ApiServer(lambda: self.status(STATUS_CACHE_S), self.hub, __version__,
+                                     port=cfg.api.port).start()
             except OSError as exc:            # the API is optional; the RC path must still run
                 self.api_error = f"local API not started on 127.0.0.1:{cfg.api.port}: {exc}"
                 log.error("%s", self.api_error)
@@ -229,14 +242,22 @@ class Runtime:
             self.session.write(rtype, **fields)
 
     def _on_sender_event(self, kind: str, data: dict) -> None:
+        now = self._clock()
         if kind == "mode":
-            now = self._clock()
             mode = Mode(data["mode"])
             self._stream_started_t = now if mode is not Mode.IDLE else None
             if mode is Mode.FPV and not data.get("resumed"):
                 self._fpv_started_t = now
             elif mode is not Mode.FPV:
                 self._fpv_started_t = None
+            if mode is Mode.IDLE:
+                self._stream_stop_t = now if data["from"] != "idle" else self._stream_stop_t
+                self._stream_start_seq = None
+            else:
+                self._stream_stop_t = None
+                self._stream_start_seq = self.sender.state().seq if self.sender else None
+        elif kind == "suspended":
+            self._stream_stop_t, self._stream_start_seq = now, None
         self._log(kind, **data)
         self._emit(kind, data)
 
@@ -252,6 +273,26 @@ class Runtime:
                 "rx_ok": st.rx_ok, "rx_bad_crc": st.rx_bad_crc, "rx_bad_seq": st.rx_bad_seq}
         self._log("bridge_state", **data)
         self._emit("bridge_state", data)
+        sc = self.cfg.sender
+        if new is BridgeState.FAILSAFE and self._stream_stop_t is not None:
+            observed = (self._clock() - self._stream_stop_t) * 1000
+            self._stream_stop_t = None
+            timing = {"expected_t_hold_ms": sc.t_hold_ms, "observed_ms": round(observed, 1),
+                      "note": "stop -> FAILSAFE status received at the GCS (includes the status path)"}
+            if observed < sc.t_hold_ms:
+                log.warning("bridge FAILSAFE %.0f ms after the stop, earlier than T_hold %.0f ms",
+                            observed, sc.t_hold_ms)
+            self._log("failsafe_timing", **timing)
+            self._emit("failsafe_timing", timing)
+        elif new is BridgeState.START and self._stream_start_seq is not None and self.sender is not None:
+            sent = (self.sender.state().seq - self._stream_start_seq) & 0xFFFFFFFF
+            self._stream_start_seq = None
+            timing = {"expected_start_packets": sc.start_packets, "packets_sent": sent}
+            if sent < sc.start_packets:
+                log.warning("bridge reported START after %d packets, fewer than the expected %d",
+                            sent, sc.start_packets)
+            self._log("start_timing", **timing)
+            self._emit("start_timing", timing)
 
     def _on_telemetry(self, obj: Any) -> None:
         rec = describe(obj)
@@ -270,17 +311,32 @@ class Runtime:
         return tv.armed if fresh else None
 
     def request_mode(self, mode: Mode | str) -> ModeResult:
-        """Normal start / mode change (start interlock in :class:`vtolgcs.sender.Sender`)."""
+        """Normal FPV start, or idle (start interlock in :class:`vtolgcs.sender.Sender`).
+
+        Carrier-only is refused here; use :meth:`prepare_carrier_only` / :meth:`confirm_carrier_only`.
+        """
         assert self.sender is not None, "runtime not started"
         mode = Mode(mode)
         before = self.sender.state()
-        result = self.sender.request_mode(mode, client_armed=self._client_armed_from_telemetry(self._clock()))
-        if result.ok and mode is not before.mode:
-            cam = self.cfg.camera
-            if mode is Mode.CARRIER_ONLY and cam.on_in_carrier_only:
-                self._apply_camera(True, "carrier-only mode")
-            elif mode is Mode.FPV and cam.refuse_on_while_armed and before.camera_requested:
-                self._apply_camera(False, "entering FPV: camera off while the client may arm (plan Q13)")
+        result = self.sender.request_mode(mode)
+        if result.ok and mode is Mode.FPV and before.mode is not Mode.FPV \
+                and self.cfg.camera.refuse_on_while_armed and before.camera_requested:
+            self._apply_camera(False, "entering FPV: camera off while the client may arm (plan Q13)")
+        return result
+
+    def prepare_carrier_only(self) -> CarrierOnlyPreview:
+        """Carrier-only, step 1: what the operator must confirm (carrier-only sends DISARM). Sends nothing."""
+        assert self.sender is not None, "runtime not started"
+        return self.sender.prepare_carrier_only()
+
+    def confirm_carrier_only(self, token: int, *, no_client_confirmed: bool,
+                             landed_confirmed: bool = False) -> ModeResult:
+        """Carrier-only, step 2: the operator confirmed NOCLIENT (and LANDED after an FPV stream)."""
+        assert self.sender is not None, "runtime not started"
+        result = self.sender.confirm_carrier_only(token, no_client_confirmed=no_client_confirmed,
+                                                  landed_confirmed=landed_confirmed)
+        if result.ok and self.cfg.camera.on_in_carrier_only:
+            self._apply_camera(True, "carrier-only mode")
         return result
 
     def prepare_resume(self) -> ResumePreview:
@@ -341,6 +397,8 @@ class Runtime:
         while not self._stop.is_set():
             now = self._clock()
             try:
+                if self.sender is not None:
+                    self.sender.check_alive()
                 if now >= next_power:
                     next_power = now + POWER_PERIOD_S
                     self._power = self._power_fn()
@@ -389,8 +447,10 @@ class Runtime:
         stats = st.stats
         return RuleInputs(
             mode=st.mode.value, streaming=st.streaming, suspended=st.suspended is not None,
+            sender_dead=st.thread_dead,
             controller_connected=connected, status_silence_s=silence, bridge_state=bridge_state,
-            rtt_ms=bv.rtt_ms, jitter_p99_ms=stats.p99_ms if stats and st.streaming else None,
+            rtt_ms=bv.rtt_ms, late_max_ms=stats.max_ms if stats and st.streaming else None,
+            skipped_slots=stats.skipped_slots if stats and st.streaming else 0,
             camera_requested=st.camera_requested, camera_reported=cam_reported,
             telemetry_silence_s=tl_silence, telemetry_relevant=relevant,
             lq_pct=tv.lq_pct, cell_v=tv.cell_v, sats=tv.sats, client_failsafe=tv.failsafe,
@@ -398,11 +458,26 @@ class Runtime:
             on_battery=self._power.on_battery, battery_saver=self._power.battery_saver)
 
     # ------------------------------------------------------------------ C2 status
-    def status(self) -> dict[str, Any]:
-        """The C2 Status object (``GET /api/v1/status``). Keys exactly as in contract C2."""
+    def status(self, max_age_s: float = 0.0) -> dict[str, Any]:
+        """The C2 Status object (``GET /api/v1/status``). Keys exactly as in contract C2 (+ C2.1).
+
+        ``max_age_s`` > 0 returns a cached object up to that old (API / SSE, so that many
+        clients cost one build on the GIL instead of one each).
+        """
         assert self.sender is not None, "runtime not started"
-        cfg = self.cfg
         now = self._clock()
+        if max_age_s > 0:
+            with self._status_lock:
+                if self._status_cache is not None and now - self._status_cache[0] <= max_age_s:
+                    return self._status_cache[1]
+        status = self._build_status(now)
+        with self._status_lock:
+            self._status_cache = (now, status)
+        return status
+
+    def _build_status(self, now: float) -> dict[str, Any]:
+        assert self.sender is not None
+        cfg = self.cfg
         st = self.sender.state()
         snap = self.controller.snapshot()
         connected = snap.connected and now - snap.t <= cfg.controller.stale_ms / 1000

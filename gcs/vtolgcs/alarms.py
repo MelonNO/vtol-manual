@@ -39,6 +39,7 @@ class AlarmDef:
 
 #: Every alarm the runtime can raise. The order is the display order for equal severity.
 ALARM_DEFS: tuple[AlarmDef, ...] = (
+    AlarmDef("rc_sender_dead", CRIT, "RC SENDER THREAD DEAD", 0.0, 0.0),
     AlarmDef("rc_stream_stopped", CRIT, "RC STREAM STOPPED", 0.0, 0.0),
     AlarmDef("controller_disconnected", CRIT, "CONTROLLER DISCONNECTED", 0.0, 0.5),
     AlarmDef("bridge_no_status", CRIT, "NO BRIDGE STATUS", 0.0, 1.0),
@@ -148,12 +149,14 @@ class RuleInputs:
     mode: str                                  # 'idle' | 'fpv' | 'carrier_only'
     streaming: bool                            # packets are going out
     suspended: bool                            # mode kept but the stream was stopped by a fault
+    sender_dead: bool                          # the RC sender thread died
     controller_connected: bool
     #: seconds since max(last status, stream start); None when not streaming
     status_silence_s: float | None
     bridge_state: str | None                   # state of the latest status, None if none / stale
     rtt_ms: float | None
-    jitter_p99_ms: float | None
+    late_max_ms: float | None                  # worst packet lateness in the last 1 s window
+    skipped_slots: int                         # slots skipped in the last 1 s window
     camera_requested: bool
     camera_reported: bool | None
     #: seconds since max(last client telemetry, fpv start); None outside fpv
@@ -177,6 +180,7 @@ def evaluate_rules(inp: RuleInputs, cfg: AlarmConfig) -> dict[str, bool]:
     status_ok = streaming and inp.bridge_state is not None
     tl = inp.telemetry_relevant
     return {
+        "rc_sender_dead": inp.sender_dead,
         "rc_stream_stopped": inp.suspended,
         "controller_disconnected": not inp.controller_connected and inp.mode != "carrier_only",
         "bridge_no_status": streaming and inp.status_silence_s is not None
@@ -195,8 +199,8 @@ def evaluate_rules(inp: RuleInputs, cfg: AlarmConfig) -> dict[str, bool]:
         "rtt_rising_camera": streaming and inp.rtt_rising,
         "camera_mismatch": status_ok and inp.bridge_state in ("START", "RUN") and inp.camera_reported is not None
                            and inp.camera_reported != inp.camera_requested,
-        "send_jitter_high": streaming and inp.jitter_p99_ms is not None
-                            and inp.jitter_p99_ms > cfg.jitter_p99_max_ms,
+        "send_jitter_high": streaming and (inp.skipped_slots > 0 or (
+            inp.late_max_ms is not None and inp.late_max_ms > cfg.send_late_max_ms)),
         "gcs_on_battery": bool(inp.on_battery),
         "gcs_battery_saver": bool(inp.battery_saver),
     }

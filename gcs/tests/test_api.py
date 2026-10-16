@@ -168,3 +168,33 @@ def test_server_on_its_own_and_port_in_use() -> None:
             ApiServer(lambda: {}, hub, "9.9.9", port=port)               # 47800 can't be shared
     finally:
         srv.stop()
+
+
+def test_sse_client_cap(runtime) -> None:
+    host, port = runtime.api.address
+    import time
+    end = time.time() + 3
+    while runtime.hub.subscribers and time.time() < end:     # streams of earlier tests close lazily
+        time.sleep(0.05)
+    conns = []
+    try:
+        for _ in range(4):
+            c = http.client.HTTPConnection(host, port, timeout=5)
+            c.request("GET", "/api/v1/events")
+            r = c.getresponse()
+            assert r.status == 200
+            r.fp.readline()                                   # stream is open
+            conns.append(c)
+        code, _, body = request(runtime, "GET", "/api/v1/events")
+        assert code == 503 and b"too many" in body
+    finally:
+        for c in conns:
+            c.close()
+
+
+def test_malformed_content_length_still_405(runtime) -> None:
+    import socket as _socket
+    host, port = runtime.api.address
+    with _socket.create_connection((host, port), timeout=5) as s:
+        s.sendall(b"POST /api/v1/status HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: abc\r\n\r\n")
+        assert s.recv(200).startswith(b"HTTP/1.0 405")
