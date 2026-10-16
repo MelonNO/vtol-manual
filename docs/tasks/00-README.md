@@ -50,10 +50,10 @@ The PM updates this table.
 | WP02 | done (1 rework) | APPROVED (round 2) | yes |
 | WP03 | done (1 rework) | APPROVED (round 2) | yes |
 | WP04 | done | APPROVED (round 1) | yes |
-| WP05 | in progress | | |
+| WP05 | done | in verification | |
 | WP06 | | | |
 | WP07 | | | |
-| WP08a | in progress | | |
+| WP08a | done | in verification | |
 | WP08b | | | |
 | WP09 | | | |
 | WP10 | | | |

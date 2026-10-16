@@ -146,6 +146,14 @@ Consumers must treat `null` as **unknown**: show "TBD" and do not compute with i
 }
 ```
 
+### C2.1 Extensions (PM, during WP08a — normative)
+
+- **`app.start_path`:** `"normal"` | `"resume"` | `null` (idle).
+  - `"resume"` = the explicit, confirmed **RESUME (client airborne)** start. It allows streaming with the arm switch ARMED, so an app restart never disarms an airborne client.
+  - The app **never** auto-resumes.
+  - Pages and the manual must describe this path for "GCS app failure" recovery.
+- **SSE `event: alarm` payload:** adds `"active": true|false` (raised vs cleared). The `alarms[]` array in `/status` keeps exactly the four C2 keys.
+
 ---
 
 ## C3. Relay UDP protocol v1 (PROPOSAL) — owner WP03 (spec + Python reference + test vectors); consumer WP08
