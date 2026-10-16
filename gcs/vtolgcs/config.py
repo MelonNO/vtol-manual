@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import ipaddress
 import json
+import logging
 import os
 import types
 import typing
@@ -131,6 +132,9 @@ class AlarmConfig:
     #: plan §7.5 "send jitter > 2 ms": any packet sent more than this after its deadline,
     #: or any skipped slot, raises SEND JITTER HIGH
     send_late_max_ms: float = 2.0
+    #: ... but only when at least this many packets of one 1 s window were that late (app default,
+    #: WP08a verification m2: one late packet only adds latency).  Skipped slots always raise it.
+    send_late_count: int = 3
     camera_mismatch_s: float = 1.0         # plan §7.1: requested != reported for > 1 s
     #: RTT rise after camera ON: null = "median after ON exceeds the p99 before ON";
     #: a number = "median after ON exceeds the median before ON by this many ms". TBD after test 9.
@@ -179,6 +183,59 @@ class VideoConfig:
     #: Status bits 3/4 (decoder lock, NTSC) are trusted only from this ``fw_ver`` on.
     #: null = TBD (future firmware request, protocol README §3.2): treat as unknown.
     status_bits_min_fw_ver: int | None = None
+    #: Client video RTP from the N6 (C3) and the local fan-out targets (C3: viewer 5601, MP HUD 5602).
+    listen_port: int = protocol.VIDEO_PORT
+    fanout_ports: list[int] = field(default_factory=lambda: [5601, 5602])
+    #: ``gst-launch-1.0`` executable; null = search PATH and the usual GStreamer install folders.
+    gst_launch_path: str | None = None
+    #: H.264 decoder in the generated pipelines (plan §7.4: compare ``avdec_h264`` with ``d3d11h264dec``).
+    decoder: str = "avdec_h264"
+
+
+@dataclass
+class MpOutputConfig:
+    """Client telemetry -> MAVLink for a second Mission Planner link (plan §14.4, S-02b)."""
+
+    enabled: bool = True
+    #: Loopback only: the stream is for Mission Planner on this laptop, never for the HM30 network.
+    host: str = "127.0.0.1"
+    port: int = 14560
+    #: Never 1 (the carrier) or 255 (Mission Planner, the primary GCS) - plan S-02b.
+    sysid: int = 2
+    compid: int = 1
+    #: 'vehicle' (HEARTBEAT, GLOBAL_POSITION_INT, ...) or 'adsb' (ADSB_VEHICLE traffic icon, brief R4).
+    mode: str = "vehicle"
+    #: ADSB_VEHICLE ICAO address; null = the sysid.  Display only.
+    adsb_icao: int | None = None
+    #: Callsign shown in Mission Planner (ADSB); null = "FPV<sysid>".
+    callsign: str | None = None
+
+
+@dataclass
+class CrsfMenuConfig:
+    """ELRS parameter menu through ``crsf_pass`` (plan §7.7, future firmware feature Q7a)."""
+
+    #: Reply timeout per request and the number of retries (app defaults).
+    timeout_ms: float = 500.0
+    retries: int = 3
+    #: Parameter writes are refused while the client is or may be armed (app default: a bind or a
+    #: packet-rate change drops the link).  Set true only if you accept that risk.
+    allow_write_while_armed: bool = False
+    #: VRX follow: offer to revert a VTX change when there is no decoder lock within this time (app default).
+    vrx_lock_timeout_s: float = 10.0
+
+
+@dataclass
+class UiConfig:
+    """Windowed UI (a separate process, brief R0/R1)."""
+
+    #: Profiles JSON exported from the Tools page (remembered).
+    profiles_file: str | None = None
+    camera_hotkey: str = "F9"
+    #: Register the camera hotkey system-wide, so it works while the video viewer has the focus.
+    global_hotkey: bool = True
+    status_bar: bool = True
+    sound: bool = True
 
 
 @dataclass
@@ -195,6 +252,9 @@ class Config:
     api: ApiConfig = field(default_factory=ApiConfig)
     log: LogConfig = field(default_factory=LogConfig)
     video: VideoConfig = field(default_factory=VideoConfig)
+    mp_output: MpOutputConfig = field(default_factory=MpOutputConfig)
+    crsf_menu: CrsfMenuConfig = field(default_factory=CrsfMenuConfig)
+    ui: UiConfig = field(default_factory=UiConfig)
 
 
 _COMMENTS = {
@@ -373,6 +433,7 @@ def validate(cfg: Config) -> list[str]:
     rng("alarms.min_sats", a.min_sats, 0, 64)
     positive("alarms.telemetry_stale_s", a.telemetry_stale_s)
     positive("alarms.send_late_max_ms", a.send_late_max_ms)
+    rng("alarms.send_late_count", a.send_late_count, 1, 250)
     positive("alarms.camera_mismatch_s", a.camera_mismatch_s)
     if a.rtt_rise_ms is not None:
         positive("alarms.rtt_rise_ms", a.rtt_rise_ms)
@@ -391,9 +452,91 @@ def validate(cfg: Config) -> list[str]:
     positive("mavlink.stale_s", m.stale_s)
 
     rng("api.port", cfg.api.port, 0, 65535)
-    if cfg.video.status_bits_min_fw_ver is not None:
-        rng("video.status_bits_min_fw_ver", cfg.video.status_bits_min_fw_ver, 0, 0xFFFF)
+    v = cfg.video
+    if v.status_bits_min_fw_ver is not None:
+        rng("video.status_bits_min_fw_ver", v.status_bits_min_fw_ver, 0, 0xFFFF)
+    rng("video.listen_port", v.listen_port, 1, 65535)
+    if isinstance(v.fanout_ports, list):
+        if not 1 <= len(v.fanout_ports) <= 4:
+            e.append("video.fanout_ports: needs 1..4 ports")
+        for i, port in enumerate(v.fanout_ports):
+            rng(f"video.fanout_ports[{i}]", port, 1, 65535)
+            if port == v.listen_port:
+                e.append(f"video.fanout_ports[{i}]: must differ from video.listen_port (it would loop)")
+    if v.decoder not in VIDEO_DECODERS:
+        e.append(f"video.decoder: must be one of {', '.join(VIDEO_DECODERS)} (got {v.decoder!r})")
+
+    mp = cfg.mp_output
+    e.extend(mp_sysid_problems(mp.sysid, "mp_output.sysid"))
+    if m.carrier_sysid is not None and mp.sysid == m.carrier_sysid:
+        e.append("mp_output.sysid: must differ from mavlink.carrier_sysid")
+    rng("mp_output.compid", mp.compid, 1, 255)
+    try:
+        if not ipaddress.IPv4Address(mp.host).is_loopback:
+            e.append(f"mp_output.host: must be a loopback address (got {mp.host!r}); the client stream is for "
+                     "Mission Planner on this laptop only (S-02b)")
+    except (ipaddress.AddressValueError, ValueError):
+        e.append(f"mp_output.host: not an IPv4 address ({mp.host!r})")
+    rng("mp_output.port", mp.port, 1, 65535)
+    if mp.port in (m.listen_port, cfg.api.port):
+        e.append("mp_output.port: must differ from mavlink.listen_port and api.port")
+    if mp.mode not in MP_MODES:
+        e.append(f"mp_output.mode: must be one of {', '.join(MP_MODES)} (got {mp.mode!r})")
+    if mp.adsb_icao is not None:
+        rng("mp_output.adsb_icao", mp.adsb_icao, 1, 0xFFFFFF)
+    if mp.callsign is not None and not 1 <= len(mp.callsign) <= 8:
+        e.append("mp_output.callsign: 1..8 characters")
+
+    cm = cfg.crsf_menu
+    rng("crsf_menu.timeout_ms", cm.timeout_ms, 50, 5000)
+    rng("crsf_menu.retries", cm.retries, 0, 10)
+    rng("crsf_menu.vrx_lock_timeout_s", cm.vrx_lock_timeout_s, 1, 120)
+    if not cfg.ui.camera_hotkey:
+        e.append("ui.camera_hotkey: must be a key name such as F9")
     return e
+
+
+#: Decoders the generated GStreamer pipelines may use (plan §7.4).
+VIDEO_DECODERS = ("avdec_h264", "d3d11h264dec")
+MP_MODES = ("vehicle", "adsb")
+#: MAVLink system ids the app must never send as (plan S-02b): 1 = the carrier, 255 = Mission Planner.
+FORBIDDEN_SYSIDS = (1, 255)
+
+
+def mp_sysid_problems(sysid: Any, path: str = "sysid") -> list[str]:
+    """The S-02b sysid guard: 2..254 only; never 1 (carrier) or 255 (Mission Planner, the primary GCS)."""
+    if not isinstance(sysid, int) or isinstance(sysid, bool):
+        return [f"{path}: must be an integer"]
+    if sysid in FORBIDDEN_SYSIDS:
+        return [f"{path}: {sysid} is forbidden (1 = carrier, 255 = Mission Planner; plan S-02b)"]
+    if not 2 <= sysid <= 254:
+        return [f"{path}: must be between 2 and 254 (got {sysid})"]
+    return []
+
+
+# --------------------------------------------------------------------------- migration (WP08a verification m4)
+
+#: Renamed keys: (section, old name, new name, why).
+RENAMED_KEYS = (
+    ("alarms", "jitter_p99_max_ms", "send_late_max_ms",
+     "WP08a rework 1: the SEND JITTER HIGH limit applies to single packets now; see gcs/README.md 'Alarms'"),
+)
+
+
+def migrate(data: dict[str, Any]) -> list[str]:
+    """Rename old keys in a raw config dict, in place. Returns one notice per change."""
+    notices: list[str] = []
+    for section, old, new, why in RENAMED_KEYS:
+        sec = data.get(section)
+        if not isinstance(sec, dict) or old not in sec:
+            continue
+        value = sec.pop(old)
+        if new in sec:
+            notices.append(f"{section}.{old} removed: {section}.{new} is already set ({why})")
+        else:
+            sec[new] = value
+            notices.append(f"{section}.{old} renamed to {section}.{new}, value {value!r} kept ({why})")
+    return notices
 
 
 def from_dict(data: Any, path: Path | None = None) -> Config:
@@ -418,11 +561,17 @@ def save_config(cfg: Config, path: Path | None = None) -> Path:
     return path
 
 
-def load_config(path: Path | str | None = None, create: bool = True) -> Config:
+def load_config(path: Path | str | None = None, create: bool = True,
+                notices: list[str] | None = None) -> Config:
     """Load ``path`` (default ``%APPDATA%\\vtol-gcs\\config.json``).
 
     A missing file is created with the defaults when ``create`` is true.
     Raises :class:`ConfigError` for invalid JSON or invalid values.
+
+    Old key names are migrated (:func:`migrate`): a copy of the old file is kept as
+    ``<name>.pre-migration.json`` and the file is rewritten with the new names.  One line per change
+    goes to ``notices`` (the caller shows them; they are also logged).  A file that is still invalid
+    after the migration is not rewritten, and the error lists the migration too.
     """
     path = Path(path) if path else default_config_path()
     if not path.exists():
@@ -436,12 +585,32 @@ def load_config(path: Path | str | None = None, create: bool = True) -> Config:
         raise ConfigError([f"not valid JSON: {exc}"], path) from exc
     except OSError as exc:
         raise ConfigError([f"cannot read: {exc}"], path) from exc
-    return from_dict(data, path)
+    changes = migrate(data) if isinstance(data, dict) else []
+    try:
+        cfg = from_dict(data, path)
+    except ConfigError as exc:
+        if changes:
+            raise ConfigError([f"(migrated: {c})" for c in changes] + exc.errors, path) from exc
+        raise
+    if changes:
+        backup = path.with_name(path.stem + ".pre-migration.json")
+        try:
+            backup.write_bytes(path.read_bytes())
+            save_config(cfg, path)
+            changes.append(f"config file migrated and saved; the old file is kept as {backup.name}")
+        except OSError as exc:
+            changes.append(f"config migrated in memory only (could not rewrite {path}: {exc})")
+        for line in changes:
+            logging.getLogger("vtolgcs.config").warning("config migration: %s", line)
+        if notices is not None:
+            notices.extend(changes)
+    return cfg
 
 
 __all__ = [
     "ApiConfig", "AlarmConfig", "BridgeConfig", "CameraConfig", "ChannelSource", "ClientConfig",
     "Config", "ConfigError", "ControllerConfig", "InterlockConfig", "LogConfig", "MavlinkConfig",
-    "SenderConfig", "VideoConfig", "app_dir", "default_config", "default_config_path",
+    "SenderConfig", "VideoConfig", "MpOutputConfig", "CrsfMenuConfig", "UiConfig", "FORBIDDEN_SYSIDS",
+    "migrate", "mp_sysid_problems", "app_dir", "default_config", "default_config_path",
     "edgetx_classic_map", "from_dict", "load_config", "log_dir", "save_config", "to_dict", "validate",
 ]

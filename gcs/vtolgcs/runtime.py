@@ -266,7 +266,8 @@ class Runtime:
         if st is not None and (st.streaming or stats.sent):
             self._log("sender", sent=stats.sent, rate_hz=round(stats.rate_hz, 2), send_errors=stats.send_errors,
                       skipped_slots=stats.skipped_slots, jitter_p50_ms=_r4(stats.p50_ms),
-                      jitter_p99_ms=_r4(stats.p99_ms), jitter_max_ms=_r4(stats.max_ms), waiter=st.waiter)
+                      jitter_p99_ms=_r4(stats.p99_ms), jitter_max_ms=_r4(stats.max_ms),
+                      late_count=stats.late_count, waiter=st.waiter)
 
     def _on_bridge_state(self, old: BridgeState | None, new: BridgeState, st: Status) -> None:
         data = {"from": old.name if old is not None else None, "to": new.name, "fw_version": fw_ver_str(st.fw_ver),
@@ -451,6 +452,7 @@ class Runtime:
             controller_connected=connected, status_silence_s=silence, bridge_state=bridge_state,
             rtt_ms=bv.rtt_ms, late_max_ms=stats.max_ms if stats and st.streaming else None,
             skipped_slots=stats.skipped_slots if stats and st.streaming else 0,
+            late_count=stats.late_count if stats and st.streaming else 0,
             camera_requested=st.camera_requested, camera_reported=cam_reported,
             telemetry_silence_s=tl_silence, telemetry_relevant=relevant,
             lq_pct=tv.lq_pct, cell_v=tv.cell_v, sats=tv.sats, client_failsafe=tv.failsafe,
