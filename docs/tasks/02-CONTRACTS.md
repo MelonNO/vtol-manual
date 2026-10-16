@@ -90,6 +90,12 @@ LinkProfile   = { id, name, kind: 'video'|'rc'|'gcs', freqMHz, txPowerDbm, txGai
 
 Consumers must treat `null` as **unknown**: show "TBD" and do not compute with it.
 
+### C1.4 Extensions accepted at the WP01 merge (normative from now on)
+
+- **`settings` extra keys:** `windGoMaxMs` (5), `windCautionMaxMs` (8), `gustMaxMs` (10), and `updatedAt` (set when the user edits a setting). Imported settings replace local ones **only** when they carry their own `settings.updatedAt` and it is newer.
+- **Extra `VtolStore` helpers:** `live`, `find`, `upsert`, `remove`, `mergeStores`, `IDS` (the default profile ids — **consumers must use these ids; WP02's fallback must match them**), `importJSON.lastStats`, `takeIssues`, and `_setStorage` (tests only). `save()` returns true/false.
+- **Validation:** every record and setting is validated and coerced on load and import. Invalid incoming records must **not** overwrite a valid local record. WP05 must fix the remaining case where an invalid incoming default-pack record resets local fields, and must add validation for client and link profiles when it builds their UI.
+
 ---
 
 ## C2. GCS companion app local API — owner WP08; consumers WP02 (map live layer), WP05 (Tools "Link" tab)
@@ -162,7 +168,12 @@ The relay design defines `rc_up` and the content of the status packet but not th
 
 \* bit3/bit4 would need the N6 to report through the bridge. This is a future firmware request; consumers treat them as unknown unless `fw_ver` says otherwise.
 
-**Channel scaling:** 172 = 988 µs, 992 = 1500 µs, 1811 = 2012 µs (from the relay design). Mapping from µs: `crsf = round((us - 1500) * 1.6 + 992)`, clamped 172…1811.
+**Channel scaling:** 172 = 988 µs, 992 = 1500 µs, 1811 = 2012 µs (from the relay design).
+
+- **Mapping (PM decision, round 2 of WP03):** use the endpoint-exact linear form. It reproduces all three relay-design anchors and ELRS's 1000 µs → 191.
+  - `crsf = 172 + round((us - 988) * 1639 / 1024)`, clamped 172…1811 on the **sending** side.
+  - Inverse: `us = 988 + round((crsf - 172) * 1024 / 1639)`.
+- Receivers (bridge, simulator, decoders) must accept **any** 11-bit value 0…2047 without error. Only the GCS sender clamps.
 
 `protocol/test-vectors.json` (owner WP03) holds byte-exact examples for every message, used by the Python tests **and** future firmware tests.
 
