@@ -1,10 +1,8 @@
 'use strict';
 // Shared helpers for the manual tests: the page source and its pure navigation module (script#manual-core).
-const fs = require('node:fs');
-const path = require('node:path');
+const { ROOT, readText } = require('../repo-files.js');
 
-const ROOT = path.join(__dirname, '..', '..');
-const HTML = fs.readFileSync(path.join(ROOT, 'manual.html'), 'utf8');
+const HTML = readText('manual.html');   // LF, whatever the checkout's line endings
 
 // ManualCore is an inline UMD block in manual.html, so it can be tested without a browser.
 function loadManualCore() {

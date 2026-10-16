@@ -1,11 +1,11 @@
 // Mission parsing and playback (WP02 R6: MAP-01 / MAP-14).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const path = require('node:path');
 const M = require('../../relay/rfmodel.js');
+const { readText } = require('../repo-files.js');
 
-const fx = name => fs.readFileSync(path.join(__dirname, '..', 'fixtures', name), 'utf8');
+const fx = name => readText(path.join(__dirname, '..', 'fixtures', name));   // LF; CRLF is tested explicitly
 const near = (a, b, tol, msg) => assert.ok(Math.abs(a - b) <= tol, `${msg || ''} ${a} ≉ ${b} (±${tol})`);
 
 test("manual's 7-WP template parses to 7 items", () => {
