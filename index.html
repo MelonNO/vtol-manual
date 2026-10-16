@@ -218,6 +218,45 @@ tr:last-child td{border-bottom:none;}
 .prof-form .bl-input{min-height:44px;}
 .prof-check{display:flex;gap:8px;align-items:center;min-height:44px;color:var(--text);font-size:13px;}
 .prof-errors{color:var(--red);font-size:12px;margin:6px 0;}
+/* accessibility (plan §10.8): visible focus, status never by colour alone */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.ci-left:focus-visible,.ci-right:focus-visible,.ci-note.copy-val:focus-visible{outline-offset:-2px;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.lk-row.warn .lk-v::before{content:'⚠ ';}
+.lk-row.crit .lk-v::before{content:'✖ ';}
+.lk-panel.crit .lk-title::before{content:'✖ ';color:var(--red);}
+.lvl-txt{font-size:10px;letter-spacing:1px;margin-left:4px;}
+.st{display:inline-block;font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:1px 7px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap;}
+.st.ok{color:var(--green);border-color:var(--green);}
+.st.warn{color:var(--amber);border-color:var(--amber);}
+.st.crit{color:var(--red);border-color:var(--red);}
+.wp-btn{min-height:44px;}
+.mini-btn{background:none;border:1px solid var(--border2);color:var(--muted);font-size:12px;padding:4px 10px;cursor:pointer;min-height:36px;min-width:36px;}
+.tbl-wrap{overflow-x:auto;margin-bottom:16px;}
+.tbl-wrap table{min-width:520px;}
+.tl-bar{height:30px;display:flex;border:1px solid var(--border2);overflow:hidden;margin-bottom:6px;}
+.tl-seg{border-right:1px solid var(--border2);font-size:9px;color:var(--text);overflow:hidden;white-space:nowrap;padding:8px 2px 0;text-align:center;}
+.tl-seg.st-RUN{background:var(--surface2);border-top:3px solid var(--green);}
+.tl-seg.st-FAILSAFE,.tl-seg.st-UNREACHABLE{background:var(--surface2);border-top:3px solid var(--red);}
+.tl-seg.st-other{background:var(--surface);border-top:3px solid var(--amber);}
+.chart-lbl{font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px;}
+.chart-box{border:1px solid var(--border2);margin-bottom:18px;}
+/* challenge–response mode */
+#cr-modal{display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;overflow-y:auto;}
+#cr-modal.open{display:block;}
+.cr-wrap{max-width:860px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;min-height:100%;}
+.cr-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid var(--accent);padding-bottom:10px;margin-bottom:18px;}
+.cr-title{font-family:var(--head);font-size:16px;font-weight:700;letter-spacing:3px;color:var(--accent);flex:1;}
+.cr-sec{font-family:var(--head);font-size:14px;letter-spacing:3px;color:var(--muted);margin-bottom:8px;}
+.cr-item{font-family:var(--head);font-size:40px;font-weight:700;line-height:1.15;color:var(--text);margin-bottom:14px;word-break:break-word;}
+.cr-detail{font-size:17px;color:var(--muted);line-height:1.5;margin-bottom:14px;}
+.cr-state{font-size:15px;margin-bottom:18px;min-height:22px;}
+.cr-btns{display:grid;grid-template-columns:1fr 2fr 1fr;gap:12px;margin-top:auto;}
+.cr-btns button{min-height:72px;font-family:var(--head);font-size:22px;font-weight:700;letter-spacing:3px;cursor:pointer;border:2px solid var(--border2);background:var(--surface);color:var(--text);}
+.cr-btns .cr-check{border-color:var(--green);color:var(--green);}
+.cr-btns .cr-skip{border-color:var(--amber);color:var(--amber);}
+.cr-btns button:disabled{opacity:.35;cursor:default;}
+@media(max-width:600px){ .cr-item{font-size:30px;} .cr-btns button{font-size:18px;min-height:64px;} }
 footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:40px;}
 @media(max-width:600px){
   .hdr-badge{writing-mode:horizontal-tb;padding:6px 12px;font-size:10px;}
@@ -253,16 +292,19 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
     <span><strong>RTL ALT</strong> 120m REL (above home)</span>
     <span><strong>CRUISE</strong> 13 m/s</span>
     <span><strong>VERSION</strong> <span class="ver-app"></span> · CONTENT <span class="ver-content"></span></span>
+    <span><strong>PARAMS</strong> <span id="hdr-params">not verified against a param file</span></span>
   </div>
 </header>
 
-<nav id="nav">
+<nav id="nav" aria-label="Tools sections">
   <button onclick="switchTab('preflight',this)">Pre-Flight</button>
   <button onclick="switchTab('turnaround',this)">Turnaround</button>
   <button onclick="switchTab('postflight',this)">Post-Flight</button>
   <button onclick="switchTab('link',this)">Link</button>
   <button onclick="switchTab('battlog',this)">Battery Log</button>
   <button onclick="switchTab('tlog',this)">Telemetry</button>
+  <button onclick="switchTab('flights',this)">Flights</button>
+  <button onclick="switchTab('params',this)">Params</button>
   <button onclick="switchTab('weather',this)">Weather</button>
   <button onclick="switchTab('profiles',this)">Profiles</button>
   <a class="nav-manual-btn" href="manual.html">MANUAL ▶</a>
@@ -271,7 +313,25 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 
 <button id="emerg-fab" onclick="openEmerg()">⚠ EMERGENCY</button>
 
-<div id="emerg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999;overflow-y:auto">
+<!-- CHALLENGE–RESPONSE MODE (plan §10.8): one item at a time, same checklist state engine -->
+<div id="cr-modal" role="dialog" aria-modal="true" aria-labelledby="cr-title">
+  <div class="cr-wrap">
+    <div class="cr-top">
+      <div class="cr-title" id="cr-title">CHALLENGE–RESPONSE</div>
+      <span id="cr-progress" class="st" aria-live="polite"></span>
+      <label style="display:flex;gap:8px;align-items:center;min-height:44px;color:var(--text);font-size:13px;cursor:pointer"><input type="checkbox" id="cr-speech" onchange="crSpeechToggle(this)" style="width:20px;height:20px"> READ ALOUD</label>
+      <button type="button" class="cl-reset wp-btn" onclick="crClose()">CLOSE ✕</button>
+    </div>
+    <div id="cr-body" aria-live="polite"></div>
+    <div class="cr-btns" id="cr-btns">
+      <button type="button" class="cr-back" onclick="crBack()">◀ BACK</button>
+      <button type="button" class="cr-check" onclick="crCheck()">✓ CHECK</button>
+      <button type="button" class="cr-skip" onclick="crSkip()">SKIP ▶</button>
+    </div>
+  </div>
+</div>
+
+<div id="emerg-modal" role="dialog" aria-modal="true" aria-label="Emergency procedures" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999;overflow-y:auto">
   <div style="max-width:860px;margin:0 auto;padding:24px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-bottom:2px solid var(--red);padding-bottom:12px">
       <span style="font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:3px;color:var(--red)">⚠ EMERGENCY PROCEDURES</span>
@@ -299,7 +359,8 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <button class="cl-reset" id="pf-start-btn" onclick="pfTimerToggle()" style="border-color:var(--accent);color:var(--accent)">START</button>
       <button class="cl-reset" onclick="pfTimerReset()" title="Reset timer">↺</button>
     </div>
-    <button class="cl-reset" id="expand-btn" onclick="toggleExpandAll('preflight')">EXPAND ALL</button>
+    <button class="cl-reset" id="expand-btn" aria-expanded="false" onclick="toggleExpandAll('preflight')">EXPAND ALL</button>
+    <button class="cl-reset" onclick="crOpen('preflight')" title="One item at a time, full screen (two-person check)">CHALLENGE–RESPONSE</button>
     <button class="cl-reset" onclick="resetCL('preflight')">RESET</button>
   </div>
   <div id="cl-notice" class="alert alert-warn cl-notice" role="status" style="display:none"></div>
@@ -328,7 +389,8 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <div class="cl-progress"><div class="cl-progress-bar" id="pb2"></div></div>
       <div class="cl-progress-label" id="pl2">0 / 0 ITEMS COMPLETE</div>
     </div>
-    <button class="cl-reset" id="expand-btn2" onclick="toggleExpandAll('turnaround')">EXPAND ALL</button>
+    <button class="cl-reset" id="expand-btn2" aria-expanded="false" onclick="toggleExpandAll('turnaround')">EXPAND ALL</button>
+    <button class="cl-reset" onclick="crOpen('turnaround')" title="One item at a time, full screen (two-person check)">CHALLENGE–RESPONSE</button>
     <button class="cl-reset" onclick="resetCL('turnaround')">RESET</button>
   </div>
   <div id="cl-notice2" class="alert alert-warn cl-notice" role="status" style="display:none"></div>
@@ -346,7 +408,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <div class="section-title" style="margin-top:0">Auto-Read from .tlog</div>
   <p>Upload an ArduPilot <strong>.tlog</strong> file from Mission Planner to automatically extract battery voltages and flight time.</p>
   <div class="card" style="margin-bottom:20px">
-    <label class="bl-label" style="margin-bottom:8px;display:block">SELECT .TLOG FILE</label>
+    <label class="bl-label" for="tlog-file" style="margin-bottom:8px;display:block">SELECT .TLOG FILE</label>
     <input type="file" id="tlog-file" accept=".tlog,.log" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
     <div id="tlog-status" style="font-size:13px;color:var(--muted);margin-bottom:10px"></div>
     <button class="bl-btn" onclick="parseTlog()">READ TLOG</button>
@@ -356,14 +418,14 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <p>Fields auto-filled from .tlog above, or enter manually.</p>
   <div class="card accent" style="margin-bottom:20px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-      <div><label class="bl-label">DATE</label><input type="date" id="bl-date" class="bl-input"></div>
-      <div><label class="bl-label">FLIGHT / SORTIE</label><input type="text" id="bl-flight" class="bl-input" placeholder="e.g. sortie 3"></div>
-      <div><label class="bl-label">VOLTAGE AT POWER-ON (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-start" class="bl-input" step="0.1" placeholder="e.g. 25.1" style="flex:1"><button onclick="fetchVoltage('bl-start')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
-      <div><label class="bl-label">LOWEST VOLTAGE DURING LANDING (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-min" class="bl-input" step="0.1" placeholder="e.g. 22.8" style="flex:1"><button onclick="fetchVoltage('bl-min')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
-      <div><label class="bl-label">RESTING VOLTAGE AFTER LANDING (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-rest" class="bl-input" step="0.1" placeholder="e.g. 23.2" style="flex:1"><button onclick="fetchVoltage('bl-rest')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner">MP</button></div></div>
-      <div><label class="bl-label">FLIGHT TIME (min)</label><input type="number" id="bl-time" class="bl-input" step="1" placeholder="e.g. 18"></div>
+      <div><label class="bl-label" for="bl-date">DATE</label><input type="date" id="bl-date" class="bl-input"></div>
+      <div><label class="bl-label" for="bl-flight">FLIGHT / SORTIE</label><input type="text" id="bl-flight" class="bl-input" placeholder="e.g. sortie 3"></div>
+      <div><label class="bl-label" for="bl-start">VOLTAGE AT POWER-ON (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-start" class="bl-input" step="0.1" placeholder="e.g. 25.1" style="flex:1"><button onclick="fetchVoltage('bl-start')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner" aria-label="Fetch voltage from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label" for="bl-min">LOWEST VOLTAGE DURING LANDING (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-min" class="bl-input" step="0.1" placeholder="e.g. 22.8" style="flex:1"><button onclick="fetchVoltage('bl-min')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner" aria-label="Fetch voltage from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label" for="bl-rest">RESTING VOLTAGE AFTER LANDING (V)</label><div style="display:flex;gap:6px"><input type="number" id="bl-rest" class="bl-input" step="0.1" placeholder="e.g. 23.2" style="flex:1"><button onclick="fetchVoltage('bl-rest')" class="bl-btn" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border2);font-size:12px;padding:0 10px;white-space:nowrap" title="Fetch from Mission Planner" aria-label="Fetch voltage from Mission Planner">MP</button></div></div>
+      <div><label class="bl-label" for="bl-time">FLIGHT TIME (min)</label><input type="number" id="bl-time" class="bl-input" step="1" placeholder="e.g. 18"></div>
     </div>
-    <div style="margin-bottom:12px"><label class="bl-label">NOTES</label><input type="text" id="bl-notes" class="bl-input" placeholder="Wind, conditions, anomalies..."></div>
+    <div style="margin-bottom:12px"><label class="bl-label" for="bl-notes">NOTES</label><input type="text" id="bl-notes" class="bl-input" placeholder="Wind, conditions, anomalies..."></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
       <button class="bl-btn" onclick="logBattery()">SAVE ENTRY</button>
       <span style="font-size:12px;color:var(--muted)">MP buttons fetch live voltage from Mission Planner (laptop only — requires MP running with REST API on port 20199). <span class="warn-val">The MP endpoint is unverified</span> — check the value against the MP HUD.</span>
@@ -405,12 +467,59 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <div class="section-title" style="margin-top:0">DataFlash Log Analysis</div>
   <p>Upload an ArduPilot <strong>.bin</strong> DataFlash log from the flight controller SD card. Richer and more complete than .tlog — extracts battery, altitude, airspeed, GPS, flight modes, and status messages.</p>
   <div class="card accent" style="margin-bottom:20px">
-    <label class="bl-label" style="margin-bottom:8px;display:block">SELECT .BIN FILE</label>
+    <label class="bl-label" for="bin-file" style="margin-bottom:8px;display:block">SELECT .BIN FILE</label>
     <input type="file" id="bin-file" accept=".bin,.BIN" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
     <button class="bl-btn" onclick="parseBinFull()">ANALYSE</button>
     <div id="bin-status" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
   </div>
   <div id="bin-result"></div>
+
+  <div class="section-title">GCS Session Log</div>
+  <p>Load a <strong>session-*.jsonl</strong> file written by the GCS companion app (<code>%APPDATA%\vtol-gcs\logs</code>): RC round-trip time, uplink loss, client link quality, client battery, bridge-state timeline and alarms.</p>
+  <div class="card accent" style="margin-bottom:20px">
+    <label class="bl-label" for="gcs-file" style="margin-bottom:8px;display:block">SELECT SESSION LOG (.JSONL)</label>
+    <input type="file" id="gcs-file" accept=".jsonl,.json,.log,.txt" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
+    <button class="bl-btn wp-btn" onclick="gcsLoad()">LOAD SESSION</button>
+    <div id="gcs-status" role="status" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
+  </div>
+  <div id="gcs-result"></div>
+
+  <div class="section-title">Latency Test Clock</div>
+  <div class="card">
+    <p style="margin-bottom:8px">Relay-design <strong>test 2</strong> (glass-to-glass video): film this clock and the GCS screen together at 240 fps, 20 samples, record the mean and worst case.</p>
+    <a class="bl-btn wp-btn" href="tools/latency-clock.html" style="display:inline-flex;align-items:center;text-decoration:none">OPEN LATENCY CLOCK ▶</a>
+  </div>
+</div>
+
+<!-- FLIGHTS: flight records + maintenance (plan §10.3) -->
+<div id="tab-flights" class="tab-panel">
+  <div class="section-title" style="margin-top:0">Maintenance</div>
+  <p>Intervals from the manual's Maintenance chapter: carrier every 5, 10 and 25 flights or monthly; client drone every 5 flights. A flight is one battery-log entry (carrier packs for the carrier, the client's pack for a client). <strong>DUE</strong> = do it before the next flight; <strong>OVERDUE</strong> = flown past the interval.</p>
+  <div id="mt-view"></div>
+  <div class="section-title">Pack Cycles</div>
+  <div id="mt-packs"></div>
+  <div class="section-title">Flight Records</div>
+  <p>One record links the preflight archive session, battery entries, the .bin summary and the GCS session summary. Attach summaries from the Telemetry tab.</p>
+  <button type="button" class="bl-btn wp-btn" onclick="flNew()" style="margin-bottom:12px">+ NEW FLIGHT RECORD</button>
+  <div id="fl-form"></div>
+  <div id="fl-list"></div>
+</div>
+
+<!-- PARAMS: param-file import and comparison (plan §10.1 A-3) -->
+<div id="tab-params" class="tab-panel">
+  <div class="section-title" style="margin-top:0">Parameter File Check</div>
+  <p>Import the carrier's ArduPlane <strong>.param</strong> file (Mission Planner → Config → Full Parameter List → Save to file). It is compared with the values the manual and the checklists rely on. The file stays in this browser's data store and travels with EXPORT / LINK FILE.</p>
+  <div class="card accent" style="margin-bottom:16px">
+    <label class="bl-label" for="pf-file" style="margin-bottom:8px;display:block">SELECT .PARAM FILE</label>
+    <input type="file" id="pf-file" accept=".param,.params,.parm,.txt" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="bl-btn wp-btn" onclick="paramImport()">IMPORT</button>
+      <button class="cl-reset wp-btn" onclick="paramClear()">CLEAR PARAM FILE</button>
+      <label style="display:flex;gap:8px;align-items:center;min-height:44px;color:var(--text);font-size:13px;cursor:pointer"><input type="checkbox" id="pf-only-diff" onchange="renderParams()" style="width:20px;height:20px"> SHOW ONLY DIFFERENCES / MISSING</label>
+    </div>
+    <div id="pf-status" role="status" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
+  </div>
+  <div id="pf-view"></div>
 </div>
 
 <!-- WEATHER -->
@@ -436,13 +545,13 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <div class="card accent" style="margin-bottom:20px">
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px">
       <div style="flex:1;min-width:220px">
-        <label class="bl-label">PASTE COORDINATES (Google Maps format or lat, lon)</label>
+        <label class="bl-label" for="wx-paste">PASTE COORDINATES (Google Maps format or lat, lon)</label>
         <input type="text" id="wx-paste" class="bl-input" placeholder="e.g. 59.9139, 10.7522  or  59.9139 10.7522" oninput="wxParsePaste(this.value)">
       </div>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-      <div style="flex:1;min-width:120px"><label class="bl-label">LATITUDE</label><input type="number" id="wx-lat" class="bl-input" step="0.0001" placeholder="59.9139"></div>
-      <div style="flex:1;min-width:120px"><label class="bl-label">LONGITUDE</label><input type="number" id="wx-lon" class="bl-input" step="0.0001" placeholder="10.7522"></div>
+      <div style="flex:1;min-width:120px"><label class="bl-label" for="wx-lat">LATITUDE</label><input type="number" id="wx-lat" class="bl-input" step="0.0001" placeholder="59.9139"></div>
+      <div style="flex:1;min-width:120px"><label class="bl-label" for="wx-lon">LONGITUDE</label><input type="number" id="wx-lon" class="bl-input" step="0.0001" placeholder="10.7522"></div>
       <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <button class="bl-btn" onclick="getLocation()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border2)">USE GPS</button>
         <button class="bl-btn" onclick="fetchWeather()">FETCH</button>
@@ -451,6 +560,12 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
     </div>
   </div>
   <div id="wx-result"></div>
+  <div class="section-title">Airspace &amp; NOTAM — Norway</div>
+  <div class="card amber">
+    <p style="margin-bottom:8px">Check airspace, drone zones and NOTAMs in the official sources before every flight (links open the live services; they need internet).</p>
+    <div id="wx-airspace"></div>
+    <div style="font-size:13px;margin-top:10px">Operational authorisation reference: <span class="warn-val">TBD — confirm that remote piloting through the relay is covered by the operational authorisation (Luftfartstilsynet); open question in the relay design</span></div>
+  </div>
 </div>
 
 <!-- LINK (GCS companion app, contract C2) -->
@@ -516,20 +631,28 @@ document.querySelectorAll('.ver-content').forEach(el => { el.textContent = VTOL_
 
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
   document.getElementById('tab-' + name).classList.add('active');
-  if (btn) btn.classList.add('active');
+  if (btn) { btn.classList.add('active'); btn.setAttribute('aria-current', 'page'); }
   localStorage.setItem('vtol_active_tab', name);
 }
 function openEmerg() { document.getElementById('emerg-modal').style.display='block'; document.body.style.overflow='hidden'; }
 function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow=''; }
 function emergIsOpen() { return document.getElementById('emerg-modal').style.display !== 'none'; }
-document.addEventListener('keydown', e => { if(e.key==='Escape') closeEmerg(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape') { if (cr) crClose(); else closeEmerg(); } });
+// Keyboard for non-button clickable elements (checklist rows, detail toggles, copy blocks): Enter / Space = click.
+document.addEventListener('keydown', e => {
+  const el = e.target;
+  if ((e.key === 'Enter' || e.key === ' ') && el && el.getAttribute && el.getAttribute('role') === 'button' && el.tagName !== 'BUTTON') {
+    e.preventDefault(); el.click();
+  }
+});
 
 // ── SHARED STORE (js/store.js) ──
 let store = VtolStore.load();
 function storeUpdate(fn) { store = VtolStore.update(fn); return store; }
 const LEVEL_CLR = { ok:'var(--green)', warn:'var(--amber)', crit:'var(--red)' };
+const LEVEL_TXT = { ok:'✓ OK', warn:'⚠ LOW', crit:'✖ CRIT' };   // status never by colour alone (§10.8)
 const STATUS_STYLE = {
   go:      { c:'var(--green)', bg:'#0a1f0e' },
   caution: { c:'var(--amber)', bg:'#1f1a08' },
@@ -621,6 +744,7 @@ function buildChecklist(name) {
   const cfg = CHECKLISTS[name], st = clState[name];
   const c = document.getElementById(cfg.container);
   c.innerHTML = VtolRender.checklist(cfg.list, st, contentCtx, { colors: SEC_COLORS, prefix: cfg.prefix });
+  clA11y(c);
   c.querySelectorAll('.ci').forEach(row => clShowTs(row, st.items[row.dataset.id]));
   cfg.list.sections.forEach(sec => updateSecProg(name, sec.id));
   updateOverall(name);
@@ -643,23 +767,52 @@ function renderContent() {
   linkRender();
 }
 
+// Accessibility (plan §10.8): the rows are divs from VtolRender — expose them as buttons with keyboard support
+// (Enter / Space via the document keydown handler), pressed / expanded state and names.
+function clA11y(c) {
+  c.querySelectorAll('.ci').forEach(row => {
+    const left = row.querySelector('.ci-left'), right = row.querySelector('.ci-right'), short = row.querySelector('.ci-short');
+    const name = short ? short.textContent.trim() : row.dataset.id;
+    if (left) { left.setAttribute('role', 'button'); left.tabIndex = 0; left.setAttribute('aria-pressed', row.classList.contains('done') ? 'true' : 'false'); left.setAttribute('aria-label', 'Check: ' + name); }
+    if (right && !right.classList.contains('no-detail')) {
+      right.setAttribute('role', 'button'); right.tabIndex = 0; right.setAttribute('aria-expanded', 'false');
+      right.setAttribute('aria-controls', 'det-' + row.dataset.id); right.setAttribute('aria-label', 'Details: ' + name);
+    }
+  });
+  c.querySelectorAll('.ci-note.copy-val').forEach(el => { el.setAttribute('role', 'button'); el.tabIndex = 0; el.title = el.title || 'Copy to clipboard'; });
+}
+// Tick / untick through the WP01 state engine (also used by the challenge–response mode).
+function clSetItem(name, id, checked) {
+  const st = clState[name], wasEmpty = !ToolsCore.clCheckedCount(st);
+  ToolsCore.clToggle(st, id, checked, Date.now(), VtolStore.uid());
+  if (checked && wasEmpty) clShowNotice(name, '');   // first tick starts a new session
+  clSave(name);
+}
+// Bring one rendered row in line with the state (after a tick from the challenge–response mode).
+function clRowSync(name, id) {
+  const cfg = CHECKLISTS[name], row = [...document.querySelectorAll('#' + cfg.container + ' .ci')].find(r => r.dataset.id === id);
+  if (!row) return;
+  const saved = clState[name].items[id];
+  row.classList.toggle('done', !!saved);
+  const left = row.querySelector('.ci-left'); if (left) left.setAttribute('aria-pressed', saved ? 'true' : 'false');
+  clShowTs(row, saved); updateSecProg(name, row.dataset.sec); updateOverall(name);
+}
+
 function toggleCI(el, e) {
   if (e) e.stopPropagation();
-  const name = el.dataset.list, st = clState[name];
-  const wasEmpty = !ToolsCore.clCheckedCount(st);
+  const name = el.dataset.list;
   const done = el.classList.toggle('done');
+  const left = el.querySelector('.ci-left'); if (left) left.setAttribute('aria-pressed', done ? 'true' : 'false');
   if (done) {
     const det = document.getElementById('det-' + el.dataset.id);
     if (det && det.classList.contains('visible')) {
       det.classList.remove('visible');
       const right = el.querySelector('.ci-right');
-      if (right) { right.classList.remove('open'); const h = right.querySelector('.expand-hint'); if (h) h.textContent = 'DETAILS'; }
+      if (right) { right.classList.remove('open'); right.setAttribute('aria-expanded', 'false'); const h = right.querySelector('.expand-hint'); if (h) h.textContent = 'DETAILS'; }
     }
   }
-  ToolsCore.clToggle(st, el.dataset.id, done, Date.now(), VtolStore.uid());
-  if (done && wasEmpty) clShowNotice(name, '');   // first tick starts a new session
-  clSave(name);
-  clShowTs(el, st.items[el.dataset.id]);
+  clSetItem(name, el.dataset.id, done);
+  clShowTs(el, clState[name].items[el.dataset.id]);
   updateSecProg(name, el.dataset.sec);
   updateOverall(name);
 }
@@ -679,6 +832,7 @@ function toggleDetail(key, r, e) {
   if (!det) return;
   const open = det.classList.toggle('visible');
   r.classList.toggle('open', open);
+  r.setAttribute('aria-expanded', open ? 'true' : 'false');
   const h = r.querySelector('.expand-hint');
   if (h) h.textContent = open ? 'CLOSE' : 'DETAILS';
 }
@@ -716,9 +870,88 @@ function toggleExpandAll(name) {
   const btn = document.getElementById(cfg.expandBtn);
   const expanded = btn.textContent === 'COLLAPSE';
   document.querySelectorAll('#' + cfg.container + ' .ci-detail').forEach(d => d.classList.toggle('visible', !expanded));
-  document.querySelectorAll('#' + cfg.container + ' .ci-right').forEach(r => { r.classList.toggle('open', !expanded); const h = r.querySelector('.expand-hint'); if (h) h.textContent = !expanded ? 'CLOSE' : 'DETAILS'; });
+  document.querySelectorAll('#' + cfg.container + ' .ci-right').forEach(r => { r.classList.toggle('open', !expanded); if (r.hasAttribute('aria-expanded')) r.setAttribute('aria-expanded', !expanded ? 'true' : 'false'); const h = r.querySelector('.expand-hint'); if (h) h.textContent = !expanded ? 'CLOSE' : 'DETAILS'; });
   btn.textContent = expanded ? 'EXPAND ALL' : 'COLLAPSE';
+  btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
 }
+
+// ══════════════════════════════════════
+// CHALLENGE–RESPONSE MODE — one item at a time, full screen (plan §10.8). Same state engine (clSetItem).
+// Speech (speechSynthesis) is off by default and per session.
+// ══════════════════════════════════════
+let cr = null, crSpeechOn = false;   // cr: { name, items, idx, skipped:Set, opener }
+function crOpen(name) {
+  const items = ToolsCore.crItems(CHECKLISTS[name].list), first = ToolsCore.crNextOpen(items, clState[name], 0);
+  cr = { name, items, idx: first < 0 ? items.length : first, skipped: new Set(), opener: document.activeElement };
+  document.getElementById('cr-title').textContent = 'CHALLENGE–RESPONSE · ' + (CHECKLISTS[name].list.title || name).toUpperCase();
+  document.getElementById('cr-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  crRender();
+  const b = document.querySelector('#cr-btns .cr-check'); if (b && b.focus) b.focus();
+}
+function crClose() {
+  if (!cr) return;
+  try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+  document.getElementById('cr-modal').classList.remove('open');
+  document.body.style.overflow = '';
+  const opener = cr.opener; cr = null;
+  if (opener && opener.focus) opener.focus();
+}
+function crSpeechToggle(cb) {
+  if (cb.checked && !('speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function')) {
+    cb.checked = false; alert('Speech is not available in this browser.'); return;
+  }
+  crSpeechOn = cb.checked;
+  if (!crSpeechOn) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+  else crRender();
+}
+function crSay(text) {
+  if (!crSpeechOn) return;
+  try { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(text)); } catch (e) { /* speech unavailable */ }
+}
+function crRender() {
+  if (!cr) return;
+  const st = clState[cr.name], n = cr.items.length, body = document.getElementById('cr-body');
+  const checked = cr.items.filter(it => st.items[it.id]).length;
+  document.getElementById('cr-progress').textContent = checked + ' / ' + n + ' CHECKED' + (cr.skipped.size ? ' · ' + cr.skipped.size + ' SKIPPED' : '');
+  const [bBack, bCheck, bSkip] = ['.cr-back', '.cr-check', '.cr-skip'].map(s => document.querySelector('#cr-btns ' + s));
+  bBack.disabled = cr.idx === 0;
+  if (cr.idx >= n) {
+    const open = cr.items.filter(it => !st.items[it.id]);
+    bCheck.disabled = true; bSkip.disabled = true;
+    body.innerHTML = open.length
+      ? '<div class="cr-item" style="color:var(--amber)">⚠ ' + open.length + ' ITEM' + (open.length > 1 ? 'S' : '') + ' NOT CHECKED — NO-GO</div>'
+        + '<div class="cr-detail">' + open.map(it => escH(it.secId) + ' · ' + VtolRender.fmt(it.s, contentCtx)).join('<br>') + '</div>'
+        + '<button type="button" class="bl-btn wp-btn" onclick="crReview()">REVIEW UNCHECKED ITEMS</button>'
+      : '<div class="cr-item" style="color:var(--green)">✓ ALL ' + n + ' ITEMS CHECKED</div><div class="cr-detail">' + escH(CHECKLISTS[cr.name].list.goText || '') + '</div>';
+    crSay(open.length ? open.length + ' items not checked. No go.' : 'All items checked.');
+    return;
+  }
+  bCheck.disabled = false; bSkip.disabled = false;
+  const it = cr.items[cr.idx], saved = st.items[it.id];
+  const state = saved ? '<span class="st ok">✓ CHECKED ' + escH(fmtTime(saved.ts)) + '</span>'
+    : cr.skipped.has(it.id) ? '<span class="st warn">⚠ SKIPPED — NOT CHECKED</span>' : '<span class="st">○ NOT CHECKED</span>';
+  body.innerHTML = '<div class="cr-sec">' + escH(it.secId) + ' · ' + VtolRender.fmt(it.secName, contentCtx) + ' · ITEM ' + (cr.idx + 1) + ' OF ' + n + '</div>'
+    + '<div class="cr-item">' + (it.w ? '<span style="color:var(--amber)">⚠ </span>' : '') + VtolRender.fmt(it.s, contentCtx) + '</div>'
+    + (it.t ? '<div class="cr-detail">' + VtolRender.fmt(it.t, contentCtx) + '</div>' : '')
+    + '<div class="cr-state">' + state + '</div>';
+  crSay(ToolsCore.speechText(VtolRender.plain(it.s, contentCtx)));
+}
+function crNext(from) { const i = ToolsCore.crNextOpen(cr.items, clState[cr.name], from); cr.idx = i < 0 ? cr.items.length : i; crRender(); }
+function crCheck() {
+  if (!cr || cr.idx >= cr.items.length) return;
+  const id = cr.items[cr.idx].id;
+  if (!clState[cr.name].items[id]) { clSetItem(cr.name, id, true); clRowSync(cr.name, id); }
+  cr.skipped.delete(id);
+  crNext(cr.idx + 1);
+}
+function crSkip() {
+  if (!cr || cr.idx >= cr.items.length) return;
+  if (!clState[cr.name].items[cr.items[cr.idx].id]) cr.skipped.add(cr.items[cr.idx].id);
+  crNext(cr.idx + 1);
+}
+function crBack() { if (!cr || cr.idx === 0) return; cr.idx--; crRender(); }
+function crReview() { if (!cr) return; crNext(0); }
 function resetCL(name, skipConfirm) {
   if (!skipConfirm && !confirm('Reset ' + name + ' checklist?')) return;
   clState[name] = ToolsCore.clNew(Date.now(), VtolStore.uid());
@@ -739,7 +972,8 @@ function battTrendSVG(entries, pack) {
   const pts = recent.map((e, i) => (pad + i * stepX).toFixed(1) + ',' + yv(e.min).toFixed(1)).join(' ');
   const dots = recent.map((e, i) => {
     const x = (pad + i * stepX).toFixed(1), y = yv(e.min).toFixed(1);
-    return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + LEVEL_CLR[ToolsCore.minVoltLevel(e.min, pack, store.settings)] + '"/>';
+    const lv = ToolsCore.minVoltLevel(e.min, pack, store.settings);
+    return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + LEVEL_CLR[lv] + '"><title>' + escH(e.date) + ' min ' + escH(e.min) + ' V — ' + LEVEL_TXT[lv] + '</title></circle>';
   }).join('');
   const lines = th.carrier
     ? [{ v: th.rtlV, c: 'var(--accent)', l: th.rtlV.toFixed(1) + 'V MANUAL RTL' }, { v: th.crtV, c: 'var(--red)', l: th.crtV.toFixed(1) + 'V BATT_CRT' }]
@@ -814,13 +1048,13 @@ function logBattery() {
   const pack = blActivePack(), source = blFormSource;
   storeUpdate(s => { VtolStore.upsert(s, 'battLog', { id: VtolStore.uid(), packId: pack.id, date, flight, start, min, rest, time, notes, sag: +(start-min).toFixed(2), source }); });
   blFormSource = 'manual';
-  renderBattLog();
+  renderBattLog(); renderMaint();
   ['bl-flight','bl-start','bl-min','bl-rest','bl-time','bl-notes'].forEach(id=>document.getElementById(id).value='');
 }
 function deleteBattEntry(id) {
   if (!confirm('Delete this entry?')) return;
   storeUpdate(s => VtolStore.remove(s, 'battLog', id));
-  renderBattLog();
+  renderBattLog(); renderMaint(); renderFlights();
 }
 
 function renderBattLog() {
@@ -839,7 +1073,7 @@ function renderBattLog() {
       const lvl = ToolsCore.minVoltLevel(e.min, pack, settings);
       const sagC = LEVEL_CLR[ToolsCore.sagLevel(e.sag, cells)];
       const spark = battSparkline(e.start, e.min, e.rest, pack);
-      return `<tr style="${rowBgs[lvl]}"><td>${escH(e.date)}</td><td>${escH(e.flight||'—')}</td><td>${escH(e.start)}V</td><td style="${minStyle[lvl]}">${escH(e.min)}V</td><td style="${minStyle[lvl]}">${(e.min/cells).toFixed(2)}V</td><td>${escH(e.rest)}V</td><td style="color:${sagC}">${escH(e.sag)}V</td><td style="padding:5px 12px">${spark}</td><td>${escH(e.time||'—')}</td><td style="color:var(--muted);font-size:11px">${escH(e.notes||'—')}</td><td><button data-id="${escH(e.id)}" onclick="deleteBattEntry(this.dataset.id)" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td></tr>`;
+      return `<tr style="${rowBgs[lvl]}"><td>${escH(e.date)}</td><td>${escH(e.flight||'—')}</td><td>${escH(e.start)}V</td><td style="${minStyle[lvl]}">${escH(e.min)}V${lvl !== 'ok' ? '<span class="lvl-txt">' + LEVEL_TXT[lvl] + '</span>' : ''}</td><td style="${minStyle[lvl]}">${(e.min/cells).toFixed(2)}V</td><td>${escH(e.rest)}V</td><td style="color:${sagC}">${escH(e.sag)}V</td><td style="padding:5px 12px">${spark}</td><td>${escH(e.time||'—')}</td><td style="color:var(--muted);font-size:11px">${escH(e.notes||'—')}</td><td><button data-id="${escH(e.id)}" onclick="deleteBattEntry(this.dataset.id)" aria-label="Delete battery entry" class="mini-btn" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td></tr>`;
     }).join('');
 
   const st = ToolsCore.battStats(entries);
@@ -1269,6 +1503,7 @@ function vtolRefreshAll() {
   pfRenderArchive(); wxRenderFavorites(); renderBattLog();
   if (profEdit && !VtolStore.find(store, profEdit.coll, profEdit.id) && !profEdit.isNew) profEdit = null;   // edited record deleted elsewhere
   renderContent(); renderProfiles();
+  renderParams(); renderParamHeader(); renderMaint(); renderFlights(); renderAirspace();
 }
 function vtolUpdateFileStatus() {
   document.querySelectorAll('.vtol-file-status').forEach(function(el){
@@ -1426,7 +1661,7 @@ function pfRenderArchive() {
         <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--mono)">${escH(e.duration)}</td>
         <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:${sc};font-weight:bold;font-family:var(--head)">${escH(e.status)}</td>
         <td style="padding:9px 12px;border-bottom:1px solid var(--border);color:var(--muted);font-size:13px">${escH(e.notes||'—')}</td>
-        <td style="padding:9px 12px;border-bottom:1px solid var(--border)"><button data-id="${escH(e.id)}" onclick="pfDeleteArchive(this.dataset.id)" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td>
+        <td style="padding:9px 12px;border-bottom:1px solid var(--border)"><button data-id="${escH(e.id)}" onclick="pfDeleteArchive(this.dataset.id)" aria-label="Delete archive entry" class="mini-btn" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td>
       </tr>`;
     }).join('')}
   </table></div>`;
@@ -1492,8 +1727,8 @@ function wxRenderFavorites() {
     return '<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border)">' +
       '<button data-id="'+id+'" onclick="wxLoadFavorite(this.dataset.id)" style="flex:1;text-align:left;background:none;border:none;color:var(--text);cursor:pointer;font-family:var(--mono);font-size:14px;padding:0;min-height:44px">'+escH(f.name)+'</button>' +
       '<span style="font-size:11px;color:var(--muted);white-space:nowrap">'+(+f.lat).toFixed(3)+', '+(+f.lon).toFixed(3)+'</span>' +
-      '<button data-id="'+id+'" onclick="wxRenameFavorite(this.dataset.id)" title="Rename" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:12px;padding:3px 8px;cursor:pointer;flex-shrink:0">&#x270E;</button>' +
-      '<button data-id="'+id+'" onclick="wxDeleteFavorite(this.dataset.id)" title="Remove" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0">&#x2715;</button>' +
+      '<button data-id="'+id+'" onclick="wxRenameFavorite(this.dataset.id)" title="Rename" aria-label="Rename location" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:12px;padding:3px 8px;cursor:pointer;flex-shrink:0">&#x270E;</button>' +
+      '<button data-id="'+id+'" onclick="wxDeleteFavorite(this.dataset.id)" title="Remove" aria-label="Remove location" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;flex-shrink:0">&#x2715;</button>' +
     '</div>';
   }).join('');
 }
@@ -1571,7 +1806,7 @@ function parseTlog() {
 // ══════════════════════════════════════
 // BIN (ArduPilot DataFlash) ANALYSIS (parser: ToolsCore.parseBin)
 // ══════════════════════════════════════
-const QPLANE_MODES = {0:'MANUAL',1:'CIRCLE',2:'STABILIZE',3:'TRAINING',4:'ACRO',5:'FBWA',6:'FBWB',7:'CRUISE',8:'AUTOTUNE',10:'AUTO',11:'RTL',12:'LOITER',13:'TAKEOFF',15:'GUIDED',17:'QSTABILIZE',18:'QHOVER',19:'QLOITER',20:'QLAND',21:'QRTL',22:'QAUTOTUNE',23:'QACRO',24:'THERMAL',25:'LOITER_QLAND'};
+const QPLANE_MODES = ToolsCore.PLANE_MODES;   // ArduPlane mode numbers (one table, in js/tools-core.js)
 const MODE_CLR = {MANUAL:'#6b7280',FBWA:'#93c5fd',FBWB:'#60a5fa',CRUISE:'#3b82f6',AUTO:'#f97316',RTL:'#ef4444',LOITER:'#a78bfa',GUIDED:'#f59e0b',TAKEOFF:'#facc15',QSTABILIZE:'#4ade80',QHOVER:'#22c55e',QLOITER:'#16a34a',QLAND:'#ef4444',QRTL:'#dc2626',LOITER_QLAND:'#f97316',CIRCLE:'#e879f9',THERMAL:'#fb923c'};
 
 function binChart(values, times, color, height) {
@@ -1755,9 +1990,366 @@ function renderBinResult(d, filename) {
         const warn=m.text.match(/error|fail|warn|critical|unsafe|bad\s|low\s|unable|disarm|no\s|lost|denied/i);
         return '<div style="display:flex;gap:12px;padding:7px 12px;border-bottom:1px solid var(--border);align-items:baseline">'
           +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;min-width:44px">'+ts+'</span>'
-          +'<span style="font-size:13px;color:'+(warn?'var(--amber)':'var(--text)')+'">'+escH(m.text)+'</span></div>';
+          +'<span style="font-size:13px;color:'+(warn?'var(--amber)':'var(--text)')+'">'+(warn?'⚠ ':'')+escH(m.text)+'</span></div>';
       }).join('')+'</div>'
     :'<div style="color:var(--green);font-size:13px;margin-bottom:16px">No status messages in log.</div>');
+  binLast={d,filename};
+  out.insertAdjacentHTML('beforeend',binExtrasHTML());
+  binBattPreview();
+}
+
+// ══════════════════════════════════════
+// .BIN FLIGHT ANALYSIS (plan §10.4): transitions, events, current per phase, battery entry, flight record
+// ══════════════════════════════════════
+let binLast = null;   // { d: parseBin result, filename }
+const fmtS = s => s == null ? '—' : Math.floor(s / 60) + ':' + String(Math.round(s) % 60).padStart(2, '0');
+function packOptions(selId, role) {
+  const packs = VtolStore.live(store.packs);
+  return packs.map(p => '<option value="' + escH(p.id) + '"' + (p.id === selId ? ' selected' : '') + '>' + escH(p.label) + ' — ' + escH(p.cells) + 'S · ' + escH(p.role) + '</option>').join('');
+}
+function flightOptions() {
+  return '<option value="new">NEW FLIGHT RECORD</option>' + VtolStore.live(store.flights).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)))
+    .map(f => '<option value="' + escH(f.id) + '">' + escH(f.date) + ' · ' + escH(f.label || 'flight') + '</option>').join('');
+}
+function binExtrasHTML() {
+  const d = binLast.d, pv = ToolsCore.paramValue(store.paramFile, 'AIRSPEED_MIN');
+  const an = ToolsCore.binAnalyze(d, { airspeedMin: pv ? pv.value : null });
+  binLast.an = an;
+  const aSrc = pv ? (pv.source === 'file' ? 'from the imported param file' : 'documented value — no param file imported') : 'unknown';
+  const trRows = an.transitions.map(t => {
+    let tt;
+    if (t.dir !== 'forward') tt = '—';
+    else if (t.timeToMinS !== null) tt = t.timeToMinS.toFixed(1) + ' s';
+    else if (t.reached === false) tt = '<span class="st warn">⚠ NOT REACHED IN THIS MODE</span>';
+    else tt = '<span style="color:var(--muted)">no airspeed data' + (t.endBy === 'msg' ? ' ("Transition done" at ' + fmtS((t.endT - d.firstT) / 1e6) + ')' : '') + '</span>';
+    return '<tr><td>' + fmtS(t.tSec) + '</td><td>' + (t.dir === 'forward' ? 'FORWARD (VTOL → FW)' : 'BACK (FW → VTOL)') + '</td><td>' + escH(t.from) + ' → ' + escH(t.to) + '</td><td>' + escH(t.reason || '—') + '</td><td>' + tt + '</td></tr>';
+  }).join('');
+  const KIND = { assist: 'ASSIST', transition: 'TRANSITION', failsafe: '⚠ FAILSAFE', battery: '⚠ BATTERY' };
+  const evRows = an.events.map(e => '<tr><td>' + fmtS(e.tSec) + '</td><td>' + e.kinds.map(k => '<span class="st' + (k === 'failsafe' || k === 'battery' ? ' warn' : '') + '">' + KIND[k] + '</span>').join(' ') + '</td><td>' + e.source + '</td><td>' + escH(e.text) + '</td></tr>').join('');
+  const ph = an.phases, cur = p => p.maxA === null ? '<span style="color:var(--muted)">—</span>' : p.maxA.toFixed(1) + ' A';
+  const carrier = blActivePack();
+  return '<div class="section-title">Flight Phases &amp; Events</div>'
+    + '<p style="font-size:12px">Phases from the flight mode: Q-modes = VTOL, other modes = FW (AUTO / RTL / GUIDED may fly VTOL segments — not detected). Forward transition = from the mode change until airspeed reaches AIRSPEED_MIN '
+    + (pv ? '<strong>' + escH(pv.value) + ' m/s</strong> (' + aSrc + ')' : '<span class="warn-val">TBD</span>') + ', or until "Transition done" when there is no airspeed data.</p>'
+    + '<div class="tbl-wrap"><table><tr><th>T+</th><th>Transition</th><th>Modes</th><th>Reason</th><th>Time to AIRSPEED_MIN</th></tr>'
+    + (trRows || '<tr><td colspan="5" style="color:var(--muted)">No VTOL ↔ FW mode changes in this log.</td></tr>') + '</table></div>'
+    + '<div class="tbl-wrap"><table><tr><th>Phase</th><th>Max current</th><th>Samples</th></tr>'
+    + '<tr><td>VTOL</td><td>' + cur(ph.vtol) + '</td><td>' + ph.vtol.n + '</td></tr>'
+    + '<tr><td>Transition</td><td>' + cur(ph.transition) + '</td><td>' + ph.transition.n + '</td></tr>'
+    + '<tr><td>FW</td><td>' + cur(ph.fw) + '</td><td>' + ph.fw.n + '</td></tr></table>'
+    + (an.transitionUnknown ? '<div class="alert alert-warn">' + an.transitionUnknown + ' forward transition(s) without airspeed data or "Transition done" message: their current counts as FW.</div>' : '') + '</div>'
+    + '<div class="chart-lbl">VTOL ASSIST · TRANSITION · FAILSAFE · BATTERY EVENTS (' + an.events.length + ')</div>'
+    + '<div class="tbl-wrap"><table><tr><th>T+</th><th>Kind</th><th>Source</th><th>Text</th></tr>'
+    + (evRows || '<tr><td colspan="4" style="color:var(--muted)">No assist, transition, failsafe or battery events found.</td></tr>') + '</table></div>'
+    + '<div class="card accent"><div class="card-title">Create battery-log entry from this .bin</div>'
+    + '<div class="cfg-row"><div style="flex:2;min-width:200px"><label class="bl-label" for="bin-batt-pack">PACK</label><select id="bin-batt-pack" class="bl-input cfg-input" onchange="binBattPreview()">' + packOptions(carrier.id) + '</select></div>'
+    + '<div><label class="bl-label" for="bin-batt-flight">FLIGHT / SORTIE</label><input type="text" id="bin-batt-flight" class="bl-input cfg-input" placeholder="e.g. sortie 3"></div></div>'
+    + '<div id="bin-batt-preview" style="font-size:13px;margin:10px 0"></div>'
+    + '<button type="button" class="bl-btn wp-btn" onclick="binCreateEntry()">CREATE ENTRY</button> <span id="bin-batt-status" role="status" style="font-size:13px"></span></div>'
+    + '<div class="card"><div class="card-title">Attach summary to a flight record</div><div class="cfg-row"><div style="flex:2;min-width:200px"><label class="bl-label" for="bin-flight">FLIGHT RECORD</label><select id="bin-flight" class="bl-input cfg-input">' + flightOptions() + '</select></div></div>'
+    + '<button type="button" class="bl-btn wp-btn" style="margin-top:10px" onclick="binAttach()">ATTACH .BIN SUMMARY</button> <span id="bin-attach-status" role="status" style="font-size:13px"></span></div>';
+}
+function binSelPack(id) { return VtolStore.find(store, 'packs', (document.getElementById(id) || {}).value) || blActivePack(); }
+function binBattPreview() {
+  const el = document.getElementById('bin-batt-preview'); if (!el || !binLast) return;
+  const e = ToolsCore.binBattEntry(binLast.d, binSelPack('bin-batt-pack'));
+  el.innerHTML = e ? 'Start <strong>' + e.start + ' V</strong> · min <strong>' + e.min + ' V</strong> · end <strong>' + e.rest + ' V</strong> (saved as resting V — end-of-log value) · ' + e.time + ' min · ' + escH(e.date || 'date unknown — today is used')
+    : '<span class="warn-val">⚠ No battery data in the plausible voltage window of this pack.</span>';
+}
+function binCreateEntry() {
+  if (!binLast) return;
+  const pack = binSelPack('bin-batt-pack'), e = ToolsCore.binBattEntry(binLast.d, pack), st = document.getElementById('bin-batt-status');
+  if (!e) { st.innerHTML = '<span class="warn-val">⚠ No battery data for ' + escH(pack.label) + '</span>'; return; }
+  const id = VtolStore.uid();
+  storeUpdate(s => { VtolStore.upsert(s, 'battLog', { id, packId: pack.id, date: e.date || ToolsCore.localDateStr(Date.now()), flight: document.getElementById('bin-batt-flight').value,
+    start: e.start, min: e.min, rest: e.rest, time: e.time, notes: 'from .bin ' + binLast.filename + ' (rest = end-of-log voltage)', sag: e.sag, source: 'bin' }); });
+  st.innerHTML = '<span style="color:var(--green)">✓ Entry saved for ' + escH(pack.label) + '</span>';
+  renderBattLog(); renderMaint(); renderFlights();
+}
+function binAttach() {
+  if (!binLast) return;
+  const sum = ToolsCore.binSummary(binLast.d, binLast.an, binLast.filename, binSelPack('bin-batt-pack'));
+  const id = flAttach('logSummary', sum, document.getElementById('bin-flight').value, sum.start);
+  document.getElementById('bin-attach-status').innerHTML = '<span style="color:var(--green)">✓ Attached to flight record (Flights tab)</span>';
+  document.getElementById('bin-flight').innerHTML = flightOptions(); document.getElementById('bin-flight').value = id;
+}
+
+// ══════════════════════════════════════
+// GCS SESSION LOG VIEWER (schema vtol-gcs-session/1, gcs/README.md)
+// ══════════════════════════════════════
+let gcsLast = null;   // { s: parseSessionLog result, file }
+function gcsLoad() {
+  const file = document.getElementById('gcs-file').files[0], status = document.getElementById('gcs-status');
+  if (!file) { status.textContent = 'Select a session-*.jsonl file first.'; return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const s = ToolsCore.parseSessionLog(String(ev.target.result || ''));
+    if (!s.lines || s.lines === s.bad) { status.innerHTML = '<span class="warn-val">⚠ No session-log records found. Is this a GCS app session-*.jsonl file?</span>'; document.getElementById('gcs-result').innerHTML = ''; return; }
+    gcsLast = { s, file: file.name };
+    status.innerHTML = '<span style="color:var(--green)">✓ ' + s.lines + ' lines read</span>' + (s.bad ? ' · <span class="warn-val">⚠ ' + s.bad + ' unreadable line(s) skipped</span>' : '');
+    renderGcs();
+  };
+  reader.readAsText(file);
+}
+function renderGcs() {
+  const out = document.getElementById('gcs-result'); if (!gcsLast) { out.innerHTML = ''; return; }
+  const s = gcsLast.s, us = ser => ser.t.map(m => m * 1e6);
+  const chart = (label, ser, color) => ser.v.length >= 2 ? '<div class="chart-lbl">' + label + '</div><div class="chart-box">' + binChart(ser.v, us(ser), color, 70) + '</div>'
+    : '<div class="chart-lbl">' + label + '</div><p style="font-size:12px">No data in this log.</p>';
+  const span = Math.max(1e-9, s.durationS), t0 = s.firstMono;
+  const tl = s.bridgeTimeline.map(x => {
+    const pct = Math.max(0.5, (x.end - x.m) / span * 100).toFixed(2), cls = x.state === 'RUN' ? 'RUN' : (x.state === 'FAILSAFE' || x.state === 'UNREACHABLE') ? x.state : 'other';
+    return '<div class="tl-seg st-' + cls + '" style="flex:0 0 ' + pct + '%" title="' + escH(x.state) + ' ' + fmtS(x.m - t0) + '–' + fmtS(x.end - t0) + '">' + escH(x.state) + '</div>';
+  }).join('');
+  const alarmRows = s.alarms.map(a => '<tr><td>' + escH(a.t ? fmtTime(a.t) : '') + ' <span style="color:var(--muted)">T+' + fmtS(a.m - t0) + '</span></td>'
+    + '<td><span class="st ' + (a.severity === 'crit' ? 'crit">✖ CRIT' : a.severity === 'warn' ? 'warn">⚠ WARN' : '">' + escH(a.severity || '?')) + '</span></td>'
+    + '<td>' + (a.active ? 'RAISED' : 'CLEARED') + '</td><td>' + escH(a.id) + '</td><td>' + escH(a.text) + '</td></tr>').join('');
+  const active = VtolStore.find(store, 'clients', store.settings.activeClientId);
+  const defPack = (active && active.packId) || (VtolStore.live(store.packs).find(p => p.role === 'client') || blActivePack()).id;
+  out.innerHTML = '<div style="margin-bottom:14px"><div style="font-size:10px;color:var(--muted);letter-spacing:2px">GCS SESSION</div>'
+    + '<div style="font-family:var(--head);font-size:20px;font-weight:700;color:var(--text);word-break:break-all">' + escH(gcsLast.file) + '</div>'
+    + '<div style="font-size:12px;color:var(--muted)">' + escH(s.startIso ? fmtTime(s.startIso, { date: true }) : 'start unknown') + ' · duration ' + fmtS(s.durationS) + ' · app ' + escH(s.version || '?')
+    + (s.schema && s.schema !== 'vtol-gcs-session/1' ? ' · <span class="warn-val">⚠ unknown schema ' + escH(s.schema) + ' — shown as far as understood</span>' : '') + (s.ended ? '' : ' · <span class="warn-val">⚠ no session_end (app stopped abnormally?)</span>') + '</div></div>'
+    + chart('RC ROUND-TRIP TIME (ms)', s.rtt, 'var(--accent)')
+    + chart('UPLINK LOSS (%)', s.loss, 'var(--red)')
+    + chart('CLIENT LINK QUALITY LQ (%)', s.lq, 'var(--green)')
+    + chart('CLIENT BATTERY (V)', s.battV, 'var(--amber)')
+    + '<div class="chart-lbl">BRIDGE STATE TIMELINE</div>'
+    + (tl ? '<div class="tl-bar" role="img" aria-label="Bridge states: ' + escH(s.bridgeTimeline.map(x => x.state).join(', ')) + '">' + tl + '</div>'
+      + '<div style="font-size:12px;color:var(--muted);margin-bottom:18px">' + s.bridgeTimeline.map(x => escH(x.state) + ' ' + fmtS(x.m - t0) + '–' + fmtS(x.end - t0)).join(' · ') + '</div>'
+      : '<p style="font-size:12px">No bridge state in this log.</p>')
+    + '<div class="chart-lbl">ALARMS (' + s.alarms.length + ' records)</div>'
+    + '<div class="tbl-wrap"><table><tr><th>Time</th><th>Severity</th><th>Event</th><th>Id</th><th>Text</th></tr>' + (alarmRows || '<tr><td colspan="5" style="color:var(--muted)">No alarms.</td></tr>') + '</table></div>'
+    + '<div class="card accent"><div class="card-title">Create client battery entry from telemetry</div>'
+    + '<div class="cfg-row"><div style="flex:2;min-width:200px"><label class="bl-label" for="gcs-batt-pack">CLIENT PACK</label><select id="gcs-batt-pack" class="bl-input cfg-input" onchange="gcsBattPreview()">' + packOptions(defPack) + '</select></div>'
+    + '<div><label class="bl-label" for="gcs-batt-flight">FLIGHT / SORTIE</label><input type="text" id="gcs-batt-flight" class="bl-input cfg-input" placeholder="e.g. sortie 3"></div></div>'
+    + '<div id="gcs-batt-preview" style="font-size:13px;margin:10px 0"></div>'
+    + '<button type="button" class="bl-btn wp-btn" onclick="gcsCreateEntry()">CREATE ENTRY</button> <span id="gcs-batt-status" role="status" style="font-size:13px"></span></div>'
+    + '<div class="card"><div class="card-title">Attach summary to a flight record</div><div class="cfg-row"><div style="flex:2;min-width:200px"><label class="bl-label" for="gcs-flight">FLIGHT RECORD</label><select id="gcs-flight" class="bl-input cfg-input">' + flightOptions() + '</select></div></div>'
+    + '<button type="button" class="bl-btn wp-btn" style="margin-top:10px" onclick="gcsAttach()">ATTACH GCS SUMMARY</button> <span id="gcs-attach-status" role="status" style="font-size:13px"></span></div>';
+  gcsBattPreview();
+}
+function gcsBattPreview() {
+  const el = document.getElementById('gcs-batt-preview'); if (!el || !gcsLast) return;
+  const e = ToolsCore.sessionBattEntry(gcsLast.s, binSelPack('gcs-batt-pack'));
+  el.innerHTML = e ? 'Start <strong>' + e.start + ' V</strong> · min <strong>' + e.min + ' V</strong> · end <strong>' + e.rest + ' V</strong> (saved as resting V) · '
+    + (e.usedMah !== null ? '<strong>' + e.usedMah + ' mAh</strong> used · ' : 'mAh unknown · ') + e.time + ' min (' + escH(e.durationSource) + ')'
+    : '<span class="warn-val">⚠ No client battery telemetry in the plausible voltage window of this pack.</span>';
+}
+function gcsCreateEntry() {
+  if (!gcsLast) return;
+  const pack = binSelPack('gcs-batt-pack'), e = ToolsCore.sessionBattEntry(gcsLast.s, pack), st = document.getElementById('gcs-batt-status');
+  if (!e) { st.innerHTML = '<span class="warn-val">⚠ No battery telemetry for ' + escH(pack.label) + '</span>'; return; }
+  storeUpdate(s => { VtolStore.upsert(s, 'battLog', { id: VtolStore.uid(), packId: pack.id, date: e.date || ToolsCore.localDateStr(Date.now()), flight: document.getElementById('gcs-batt-flight').value,
+    start: e.start, min: e.min, rest: e.rest, time: e.time, sag: e.sag, usedMah: e.usedMah, source: 'gcs',
+    notes: 'from GCS session ' + gcsLast.file + (e.usedMah !== null ? ' · ' + e.usedMah + ' mAh used' : '') + ' (rest = last telemetry value)' }); });
+  st.innerHTML = '<span style="color:var(--green)">✓ Entry saved for ' + escH(pack.label) + '</span>';
+  renderBattLog(); renderMaint(); renderFlights();
+}
+function gcsAttach() {
+  if (!gcsLast) return;
+  const sum = ToolsCore.sessionSummary(gcsLast.s, gcsLast.file);
+  const id = flAttach('gcsSummary', sum, document.getElementById('gcs-flight').value, sum.start);
+  document.getElementById('gcs-attach-status').innerHTML = '<span style="color:var(--green)">✓ Attached to flight record (Flights tab)</span>';
+  document.getElementById('gcs-flight').innerHTML = flightOptions(); document.getElementById('gcs-flight').value = id;
+}
+
+// ══════════════════════════════════════
+// FLIGHT RECORDS (store.flights, plan §10.3): preflight archive + battery entries + .bin/.tlog summary + GCS summary
+// ══════════════════════════════════════
+let flEdit = null;   // { id, isNew, draft }
+// Attach a summary (field 'logSummary' | 'gcsSummary') to a record, or to a new one. Returns the record id.
+function flAttach(field, sum, flightId, startIso) {
+  let id = flightId;
+  storeUpdate(s => {
+    const cur = flightId !== 'new' && VtolStore.find(s, 'flights', flightId);
+    const ms = Date.parse(startIso);
+    const rec = cur ? Object.assign({}, cur) : { id: VtolStore.uid(), date: isFinite(ms) ? ToolsCore.localDateStr(ms) : ToolsCore.localDateStr(Date.now()), label: sum.file, archiveId: '', battIds: [], notes: '' };
+    rec[field] = sum;
+    id = VtolStore.upsert(s, 'flights', rec).id;
+  });
+  renderFlights();
+  return id;
+}
+function flSummaryText(x) {
+  if (!x) return '';
+  const n = (v, u, dp) => v === null || v === undefined ? '—' : (dp != null ? Number(v).toFixed(dp) : v) + (u || '');
+  if (x.kind === 'gcs') return 'GCS ' + (x.file || '') + ' · ' + fmtS(x.durationS) + ' · RTT max ' + n(x.rttMaxMs, ' ms', 1) + ' · loss max ' + n(x.lossMaxPct, ' %', 1)
+    + ' · LQ min ' + n(x.lqMinPct, ' %') + ' · alarms ' + n(x.alarms) + ' (crit ' + n(x.critAlarms) + ')' + (x.failsafe ? ' · ⚠ bridge FAILSAFE seen' : '');
+  const a = x.maxA || {};
+  return (x.kind === 'tlog' ? '.tlog ' : '.bin ') + (x.file || '') + ' · ' + fmtS(x.durationS) + ' · ' + n(x.startV, ' V') + ' / ' + n(x.minV, ' V') + ' / ' + n(x.endV, ' V')
+    + ' · ' + n(x.transitions) + ' transitions · ' + n(x.events) + ' events · max A VTOL ' + n(a.vtol, '', 1) + ' / TRANS ' + n(a.transition, '', 1) + ' / FW ' + n(a.fw, '', 1);
+}
+function flBattText(id) {
+  const e = VtolStore.find(store, 'battLog', id);
+  if (!e) return '<span class="warn-val">entry deleted</span>';
+  const p = VtolStore.find(store, 'packs', e.packId);
+  return escH((p ? p.label : 'pack?') + ' · ' + e.date + ' · ' + e.start + ' / ' + e.min + ' / ' + e.rest + ' V' + (e.usedMah != null ? ' · ' + e.usedMah + ' mAh' : '') + ' (' + e.source + ')');
+}
+function flArchiveText(id) {
+  if (!id) return '<span style="color:var(--muted)">—</span>';
+  const a = VtolStore.find(store, 'archive', id);
+  return a ? escH(fmtTime(a.date, { date: true }) + ' · ' + a.status + ' · ' + a.duration) : '<span class="warn-val">session deleted</span>';
+}
+function renderFlights() {
+  const list = document.getElementById('fl-list'); if (!list) return;
+  const fl = VtolStore.live(store.flights).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+  list.innerHTML = fl.length ? fl.map(f => '<div class="card" data-id="' + escH(f.id) + '">'
+    + '<div class="card-title">' + escH(f.date) + ' · ' + escH(f.label || 'flight') + ' <span style="color:var(--muted);font-size:10px;letter-spacing:1px">ID ' + escH(f.id) + '</span></div>'
+    + '<table><tr><td>Preflight</td><td>' + flArchiveText(f.archiveId) + '</td></tr>'
+    + '<tr><td>Battery</td><td>' + (f.battIds.length ? f.battIds.map(flBattText).join('<br>') : '<span style="color:var(--muted)">—</span>') + '</td></tr>'
+    + '<tr><td>Log</td><td>' + (f.logSummary ? escH(flSummaryText(f.logSummary)) : '<span style="color:var(--muted)">—</span>') + '</td></tr>'
+    + '<tr><td>GCS</td><td>' + (f.gcsSummary ? escH(flSummaryText(f.gcsSummary)) : '<span style="color:var(--muted)">—</span>') + '</td></tr>'
+    + (f.notes ? '<tr><td>Notes</td><td>' + escH(f.notes) + '</td></tr>' : '') + '</table>'
+    + '<div class="prof-btns"><button type="button" class="cl-reset wp-btn" onclick="flEditStart(this.closest(\'.card\').dataset.id)">EDIT</button>'
+    + '<button type="button" class="cl-reset wp-btn" onclick="flDelete(this.closest(\'.card\').dataset.id)">DELETE</button></div></div>').join('')
+    : '<p>No flight records yet.</p>';
+  renderFlightForm();
+}
+function flNew() { flEdit = { isNew: true, draft: { id: VtolStore.uid(), date: ToolsCore.localDateStr(Date.now()), label: '', archiveId: '', battIds: [], notes: '', logSummary: null, gcsSummary: null } }; renderFlightForm(); }
+function flEditStart(id) { const f = VtolStore.find(store, 'flights', id); if (!f) return; flEdit = { isNew: false, draft: JSON.parse(JSON.stringify(f)) }; renderFlightForm(); }
+function flCancel() { flEdit = null; renderFlightForm(); }
+function renderFlightForm() {
+  const el = document.getElementById('fl-form'); if (!el) return;
+  if (!flEdit) { el.innerHTML = ''; return; }
+  const d = flEdit.draft, opt = (v, l, sel) => '<option value="' + escH(v) + '"' + (sel ? ' selected' : '') + '>' + escH(l) + '</option>';
+  const arch = VtolStore.live(store.archive).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const entries = VtolStore.live(store.battLog).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const battSel = (n, role) => {
+    const cur = d.battIds.find(id => { const e = VtolStore.find(store, 'battLog', id), p = e && VtolStore.find(store, 'packs', e.packId); return p ? p.role === role : (role === 'carrier' && n === 0); }) || '';
+    return '<select id="fl-batt-' + role + '" class="bl-input cfg-input">' + opt('', '— none —', !cur) + entries.filter(e => { const p = VtolStore.find(store, 'packs', e.packId); return !p || p.role === role; })
+      .map(e => { const p = VtolStore.find(store, 'packs', e.packId); return opt(e.id, e.date + ' · ' + (p ? p.label : '?') + ' · ' + e.start + '/' + e.min + '/' + e.rest + ' V' + (e.flight ? ' · ' + e.flight : ''), e.id === cur); }).join('') + '</select>';
+  };
+  el.innerHTML = '<div class="card accent"><div class="card-title">' + (flEdit.isNew ? 'NEW' : 'EDIT') + ' FLIGHT RECORD</div><div class="prof-form">'
+    + '<div><label class="bl-label" for="fl-date">DATE</label><input type="date" id="fl-date" class="bl-input" value="' + escH(d.date) + '"></div>'
+    + '<div><label class="bl-label" for="fl-label">LABEL</label><input type="text" id="fl-label" class="bl-input" value="' + escH(d.label) + '" placeholder="e.g. sortie 3"></div>'
+    + '<div class="wide"><label class="bl-label" for="fl-archive">PREFLIGHT ARCHIVE SESSION</label><select id="fl-archive" class="bl-input">' + opt('', '— none —', !d.archiveId)
+    + arch.map(a => opt(a.id, fmtTime(a.date, { date: true }) + ' · ' + a.status + ' · ' + a.duration, a.id === d.archiveId)).join('') + '</select></div>'
+    + '<div class="wide"><label class="bl-label" for="fl-batt-carrier">CARRIER BATTERY ENTRY</label>' + battSel(0, 'carrier') + '</div>'
+    + '<div class="wide"><label class="bl-label" for="fl-batt-client">CLIENT BATTERY ENTRY</label>' + battSel(1, 'client') + '</div>'
+    + (d.logSummary ? '<label class="prof-check wide"><input type="checkbox" id="fl-keep-log" checked style="width:20px;height:20px"> KEEP LOG SUMMARY: ' + escH(flSummaryText(d.logSummary)) + '</label>' : '')
+    + (d.gcsSummary ? '<label class="prof-check wide"><input type="checkbox" id="fl-keep-gcs" checked style="width:20px;height:20px"> KEEP GCS SUMMARY: ' + escH(flSummaryText(d.gcsSummary)) + '</label>' : '')
+    + '<div class="wide"><label class="bl-label" for="fl-notes">NOTES</label><input type="text" id="fl-notes" class="bl-input" value="' + escH(d.notes) + '"></div></div>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" class="bl-btn wp-btn" onclick="flSave()">SAVE</button><button type="button" class="cl-reset wp-btn" onclick="flCancel()">CANCEL</button></div></div>';
+}
+function flSave() {
+  if (!flEdit) return;
+  const v = id => document.getElementById(id).value, d = flEdit.draft;
+  const date = v('fl-date');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('Enter a date.'); return; }
+  const keep = id => { const el = document.getElementById(id); return el ? el.checked : false; };
+  const rec = Object.assign({}, d, { date, label: v('fl-label'), archiveId: v('fl-archive'), notes: v('fl-notes'),
+    battIds: [v('fl-batt-carrier'), v('fl-batt-client')].filter(Boolean),
+    logSummary: keep('fl-keep-log') ? d.logSummary : null, gcsSummary: keep('fl-keep-gcs') ? d.gcsSummary : null });
+  storeUpdate(s => { VtolStore.upsert(s, 'flights', rec); });
+  flEdit = null; renderFlights();
+}
+function flDelete(id) {
+  const f = VtolStore.find(store, 'flights', id); if (!f) return;
+  if (!confirm('Delete flight record "' + f.date + ' · ' + (f.label || 'flight') + '"? Linked battery entries and archive sessions are kept.')) return;
+  storeUpdate(s => VtolStore.remove(s, 'flights', id));
+  if (flEdit && flEdit.draft.id === id) flEdit = null;
+  renderFlights();
+}
+
+// ══════════════════════════════════════
+// MAINTENANCE (plan §10.3) — flight counts from the battery log, mark-done records in store.maintenance
+// ══════════════════════════════════════
+const MT_LABEL = { ok: ['ok', '✓ OK'], soon: ['warn', '◔ 1 FLIGHT LEFT'], due: ['warn', '⚠ DUE'], overdue: ['crit', '✖ OVERDUE'] };
+function mtRows() {
+  const packs = VtolStore.live(store.packs), entries = VtolStore.live(store.battLog);
+  const roleOf = id => { const p = packs.find(x => x.id === id); return p ? p.role : null; };
+  const carrierEntries = entries.filter(e => roleOf(e.packId) === 'carrier');
+  const rows = ToolsCore.MAINT_TASKS.filter(t => t.target === 'carrier').map(t => ({ task: t, taskId: t.id, who: 'Carrier', entries: carrierEntries }));
+  const ct = ToolsCore.MAINT_TASKS.find(t => t.target === 'client');
+  VtolStore.live(store.clients).forEach(c => rows.push({ task: ct, taskId: ct.id + ':' + c.id, who: c.name, entries: c.packId ? entries.filter(e => e.packId === c.packId) : null }));
+  return rows;
+}
+function renderMaint() {
+  const el = document.getElementById('mt-view'); if (!el) return;
+  const today = ToolsCore.localDateStr(Date.now());
+  el.innerHTML = '<div class="tbl-wrap"><table><tr><th>Item</th><th>Status</th><th>Flights since</th><th>Last done</th><th>Mark done</th></tr>' + mtRows().map((r, i) => {
+    const last = ToolsCore.maintLast(store.maintenance, r.taskId);
+    const title = escH(r.task.title.replace(/^(Carrier|Client drone)/, r.who));
+    if (!r.entries) return '<tr><td>' + title + '</td><td><span class="warn-val">TBD — no pack set in this client profile, flights cannot be counted</span></td><td>—</td><td>' + escH(last ? last.doneDate : '—') + '</td><td></td></tr>';
+    const m = ToolsCore.maintStatus(r.task, r.entries, last, today), [cls, txt] = MT_LABEL[m.status];
+    return '<tr data-task="' + escH(r.taskId) + '"><td>' + title + '</td><td><span class="st ' + cls + '">' + txt + '</span>'
+      + (m.calendarUnknown ? '<div style="font-size:11px;color:var(--amber)">⚠ monthly date unknown — no mark-done yet</div>' : m.dueDate ? '<div style="font-size:11px;color:var(--muted)">monthly due ' + escH(m.dueDate) + '</div>' : '') + '</td>'
+      + '<td>' + m.since + ' / ' + r.task.flights + '</td>'
+      + '<td>' + (last ? escH(last.doneDate) + ' <button type="button" class="mini-btn" aria-label="Undo the last mark-done" title="Undo the last mark-done" onclick="mtUndo(this.closest(\'tr\').dataset.task)">UNDO</button>' : '<span style="color:var(--muted)">never recorded</span>') + '</td>'
+      + '<td style="white-space:nowrap"><label class="sr-only" for="mt-date-' + i + '">Date done</label><input type="date" id="mt-date-' + i + '" class="bl-input" style="width:auto;min-height:44px" value="' + today + '"> '
+      + '<button type="button" class="cl-reset wp-btn" data-input="mt-date-' + i + '" onclick="mtDone(this.closest(\'tr\').dataset.task, this.dataset.input)">DONE</button></td></tr>';
+  }).join('') + '</table></div>';
+  const packs = VtolStore.live(store.packs), entries = VtolStore.live(store.battLog);
+  document.getElementById('mt-packs').innerHTML = '<div class="tbl-wrap"><table><tr><th>Pack</th><th>Role</th><th>Flights in battery log</th><th>Profile cycles (entered)</th><th>Last flight</th></tr>'
+    + packs.map(p => { const es = entries.filter(e => e.packId === p.id), lastD = es.map(e => String(e.date)).sort().pop();
+      return '<tr><td>' + escH(p.label) + '</td><td>' + escH(p.role) + '</td><td>' + es.length + '</td><td>' + escH(p.cycles || 0) + '</td><td>' + escH(lastD || '—') + '</td></tr>'; }).join('')
+    + '</table></div><p style="font-size:12px">Profile cycles are edited in Profiles; the battery-log count is every logged flight of the pack.</p>';
+}
+function mtDone(taskId, inputId) {
+  const date = document.getElementById(inputId).value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { alert('Enter the date the maintenance was done.'); return; }
+  storeUpdate(s => { VtolStore.upsert(s, 'maintenance', { id: VtolStore.uid(), taskId, doneDate: date, markedAt: new Date().toISOString(), notes: '' }); });
+  renderMaint();
+}
+function mtUndo(taskId) {
+  const last = ToolsCore.maintLast(store.maintenance, taskId); if (!last) return;
+  if (!confirm('Remove the mark-done of ' + last.doneDate + '?')) return;
+  storeUpdate(s => VtolStore.remove(s, 'maintenance', last.id));
+  renderMaint();
+}
+
+// ══════════════════════════════════════
+// PARAMS — param-file import and check (plan §10.1 A-3); store.paramFile = {name, importedAt, params}
+// ══════════════════════════════════════
+const PF_ST = { match: ['ok', '✓ MATCH'], differs: ['crit', '✖ DIFFERS'], missing: ['warn', '? MISSING'], undocumented: ['', 'i NO DOCUMENTED VALUE'] };
+function renderParamHeader() {
+  const l = ToolsCore.paramFileLabel(store.paramFile);
+  document.getElementById('hdr-params').textContent = l || 'not verified against a param file';
+}
+function paramImport() {
+  const file = document.getElementById('pf-file').files[0], st = document.getElementById('pf-status');
+  if (!file) { st.textContent = 'Select a .param file first.'; return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const p = ToolsCore.parseParamFile(String(ev.target.result || ''));
+    if (!p.count) { st.innerHTML = '<span class="warn-val">⚠ No parameters found. Is this an ArduPilot .param file?</span>'; return; }
+    storeUpdate(s => { s.paramFile = ToolsCore.paramFileRecord(file.name, p, Date.now()); });
+    st.innerHTML = '<span style="color:var(--green)">✓ ' + p.count + ' parameters imported from ' + escH(file.name) + '</span>'
+      + (p.errors.length ? ' · <span class="warn-val">⚠ ' + p.errors.length + ' unreadable line(s) skipped (first: line ' + p.errors[0].line + ')</span>' : '')
+      + (p.duplicates.length ? ' · <span class="warn-val">⚠ duplicates (last value used): ' + escH(p.duplicates.slice(0, 5).join(', ')) + '</span>' : '');
+    renderParams(); renderParamHeader();
+  };
+  reader.readAsText(file);
+}
+function paramClear() {
+  if (!store.paramFile || !confirm('Remove the imported param file "' + store.paramFile.name + '" from this browser?')) return;
+  storeUpdate(s => { delete s.paramFile; });
+  document.getElementById('pf-status').textContent = 'Param file removed.';
+  renderParams(); renderParamHeader();
+}
+function renderParams() {
+  const el = document.getElementById('pf-view'); if (!el) return;
+  const pf = store.paramFile, only = document.getElementById('pf-only-diff').checked;
+  const res = ToolsCore.compareParams(pf ? pf.params : {});
+  const val = (v, name) => v === null ? '<span class="warn-val">TBD</span>' : escH(v) + (/^FLTMODE\d$/.test(name) && ToolsCore.PLANE_MODES[v] ? ' <span style="color:var(--muted)">(' + escH(ToolsCore.PLANE_MODES[v]) + ')</span>' : '');
+  const rows = res.rows.filter(r => !only || r.status === 'differs' || r.status === 'missing').map(r => {
+    const [cls, txt] = PF_ST[r.status];
+    return '<tr><td><code>' + escH(r.name) + '</code></td><td>' + val(r.expected, r.name) + (r.unit ? ' ' + escH(r.unit) : '') + '</td>'
+      + '<td>' + (pf ? (r.actual === null ? '—' : val(r.actual, r.name)) : '<span style="color:var(--muted)">no file</span>') + '</td>'
+      + '<td>' + (pf ? '<span class="st ' + cls + '">' + txt + '</span>' : '—') + '</td>'
+      + '<td style="font-size:12px">' + (r.meaning.startsWith('TBD') ? '<span class="warn-val">' + escH(r.meaning) + '</span>' : escH(r.meaning)) + '<div style="color:var(--muted);font-size:11px">source: ' + escH(r.source) + '</div></td></tr>';
+  }).join('');
+  const s = res.summary;
+  el.innerHTML = (pf
+    ? '<div class="card ' + (s.differs ? 'danger' : s.missing ? 'amber' : 'accent') + '"><div class="card-title">' + escH(ToolsCore.paramFileLabel(pf)) + '</div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="st ok">✓ ' + s.match + ' MATCH</span><span class="st crit">✖ ' + s.differs + ' DIFFER</span><span class="st warn">? ' + s.missing + ' MISSING</span><span class="st">i ' + s.undocumented + ' NO DOCUMENTED VALUE</span>'
+      + '<span class="st">' + Object.keys(pf.params).length + ' PARAMS IN FILE</span></div>'
+      + (s.differs ? '<p style="margin:8px 0 0">A parameter that differs from the documented value means the manual or the aircraft is wrong — resolve it before flight.</p>' : '') + '</div>'
+    : '<div class="card amber"><div class="card-title">⚠ No param file imported</div><p style="margin:0">The table shows the documented values only. Import the carrier\'s .param file to check them.</p></div>')
+    + '<div class="tbl-wrap"><table><tr><th>Parameter</th><th>Documented</th><th>In file</th><th>Status</th><th>Meaning · source</th></tr>'
+    + (rows || '<tr><td colspan="5" style="color:var(--green)">✓ No differences or missing parameters.</td></tr>') + '</table></div>'
+    + '<p style="font-size:12px">Expected values come from the plan (§13.1, §6.1.5) and the manual. TODO: the table moves into the shared content file (data/content.js).</p>';
 }
 
 // ── WIND COMPASS SVG ──
@@ -1815,6 +2407,7 @@ async function fetchWeather() {
   const wxUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
     '&current=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation,rain,snowfall' +
     '&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,weather_code,' +
+    'cloud_cover,cloud_cover_low,visibility,' +
     'wind_speed_80m,wind_speed_120m,wind_speed_180m,wind_direction_80m,wind_direction_120m,wind_direction_180m,' +
     'temperature_1000hPa,temperature_950hPa,temperature_900hPa,temperature_850hPa,' +
     'relative_humidity_1000hPa,relative_humidity_950hPa,relative_humidity_900hPa,relative_humidity_850hPa' +
@@ -1968,10 +2561,11 @@ function wxRender(data, geoData, lat, lon) {
     const ft = h.temperature_2m[fi], fd = h.wind_direction_10m[fi];
     const fp = h.precipitation[fi] || 0, fc = h.weather_code[fi];
     const fws = ToolsCore.windStatus(fw, fg, lim), fps = ToolsCore.precipStatus(fc, fp);
-    const rowC = (fws.s === 'NO-GO' || fps.s === 'NO-GO') ? 'var(--red)' : (fws.s === 'CAUTION' || fps.s === 'CAUTION') ? 'var(--amber)' : 'var(--green)';
+    const rowS = (fws.s === 'NO-GO' || fps.s === 'NO-GO') ? 'NO-GO' : (fws.s === 'CAUTION' || fps.s === 'CAUTION') ? 'CAUTION' : 'GO';
+    const rowC = { 'NO-GO': 'var(--red)', CAUTION: 'var(--amber)', GO: 'var(--green)' }[rowS];
     const timeStr = h.time[fi].slice(11, 16);
     fcastRows += '<div style="display:grid;grid-template-columns:65px 1fr 50px 70px 1fr;padding:11px 14px;border-bottom:1px solid var(--border);font-size:14px;align-items:center">' +
-      '<span style="color:' + rowC + ';font-family:var(--head);font-weight:700">' + timeStr + '</span>' +
+      '<span style="color:' + rowC + ';font-family:var(--head);font-weight:700;line-height:1.2">' + timeStr + '<br><span style="font-size:10px;letter-spacing:1px">' + rowS + '</span></span>' +
       '<span style="color:var(--text)">' + fw.toFixed(1) + ' m/s G' + fg.toFixed(1) + '</span>' +
       '<span style="color:var(--muted)">' + compass(fd) + '</span>' +
       '<span style="color:var(--text)">' + ft.toFixed(1) + '°C</span>' +
@@ -2018,6 +2612,8 @@ function wxRender(data, geoData, lat, lon) {
         '<span>HEIGHT</span><span>WIND</span><span>DIR</span><span>LIMITS</span>' +
       '</div>' + windAloftRows +
     '</div></div>' +
+    // Cloud and visibility (§10.5): information only — the manual sets no cloud or visibility limits
+    wxCloudVisHTML(ToolsCore.cloudVis(h, hIdx), String(h.time[hIdx] || '').slice(11, 16)) +
     // Icing table
     '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">ICING BY ALTITUDE</div>' +
     '<div style="overflow-x:auto;margin-bottom:18px"><div style="min-width:420px;background:var(--surface);border:1px solid var(--border2)">' +
@@ -2036,9 +2632,28 @@ function wxRender(data, geoData, lat, lon) {
   );
 }
 
+function wxCloudVisHTML(cv, hour) {
+  const na = '<span style="color:var(--muted)">not available from the model</span>';
+  const row = (label, val) => '<div style="display:grid;grid-template-columns:1.4fr 2fr;padding:11px 14px;border-bottom:1px solid var(--border);font-size:14px">'
+    + '<span style="color:var(--text);font-family:var(--head);font-weight:700;letter-spacing:1px">' + label + '</span><span style="color:var(--text)">' + val + '</span></div>';
+  const vis = cv.visibilityM === null ? na : (cv.visibilityM >= 1000 ? (cv.visibilityM / 1000).toFixed(1) + ' km' : Math.round(cv.visibilityM) + ' m');
+  return '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">CLOUD &amp; VISIBILITY · MODEL, HOUR ' + escH(hour) + ' · INFORMATION ONLY (NO LIMITS IN THE MANUAL)</div>'
+    + '<div style="background:var(--surface);border:1px solid var(--border2);margin-bottom:18px">'
+    + row('TOTAL CLOUD', cv.cloudTotalPct === null ? na : Math.round(cv.cloudTotalPct) + ' %')
+    + row('LOW CLOUD / FOG (≤ 3 km)', cv.cloudLowPct === null ? na : Math.round(cv.cloudLowPct) + ' %')
+    + row('VISIBILITY', vis) + '</div>';
+}
+// Official Norwegian airspace / NOTAM sources (verified URLs and citations: ToolsCore.AIRSPACE_LINKS in js/tools-core.js).
+function renderAirspace() {
+  const el = document.getElementById('wx-airspace'); if (!el) return;
+  el.innerHTML = ToolsCore.AIRSPACE_LINKS.map(l => '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
+    + '<a href="' + escH(l.url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-size:14px;display:inline-block;min-height:28px">' + escH(l.label) + ' ↗</a>'
+    + '<div style="font-size:12px;color:var(--muted)">' + escH(l.note) + '</div></div>').join('');
+}
+
 // ── SWIPE TAB NAVIGATION ── (not while the emergency modal is open, nor from inside horizontally scrollable content)
 (function() {
-  const TABS = ['preflight','turnaround','postflight','link','battlog','tlog','weather','profiles'];   // = nav order
+  const TABS = ['preflight','turnaround','postflight','link','battlog','tlog','flights','params','weather','profiles'];   // = nav order
   let x0 = 0, y0 = 0, ignore = false;
   function inHScroll(el) {
     for (; el && el.nodeType === 1 && el !== document.body; el = el.parentElement) {
