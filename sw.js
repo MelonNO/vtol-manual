@@ -1,4 +1,4 @@
-const CACHE = 'vtol-manual-v11';
+const CACHE = 'vtol-manual-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,9 @@ const ASSETS = [
   './js/common.js',
   './js/store.js',
   './js/tools-core.js',
+  './js/gcs-client.js',
+  './js/render-content.js',
+  './data/content.js',
 ];
 
 self.addEventListener('install', e => {

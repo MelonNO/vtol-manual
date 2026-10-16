@@ -230,7 +230,7 @@ test('regression: importing from a device that never edited its settings keeps e
 });
 
 test('validation: imported records with bad types are rejected, local valid copies survive', () => {
-  fresh();
+  fresh({ vtol_batt_type: JSON.stringify({ cells: 4, chem: 'liion' }) });   // local carrier pack: 4S Li-Ion (≠ default)
   const xss = '6<img src=x onerror=alert(1)>';
   VtolStore.importJSON(JSON.stringify({
     packs: [
@@ -245,7 +245,9 @@ test('validation: imported records with bad types are rejected, local valid copi
   const ids = VtolStore.live(s.packs).map(p => p.id);
   assert.ok(!ids.includes('evil'));
   const carrier = VtolStore.find(s, 'packs', VtolStore.IDS.carrierPack);
-  assert.equal(carrier.cells, 6, 'a default profile falls back to the default value');
+  // WP05 R11(a): an invalid incoming record is dropped — even for a default id it never resets the local record.
+  assert.deepEqual([carrier.cells, carrier.chem], [4, 'liion'], 'invalid incoming default-pack record dropped, local pack kept');
+  assert.ok(VtolStore.importJSON.lastStats.issues.some(t => /Carrier 6S 7000.*dropped/.test(t)));
   const p4 = VtolStore.find(s, 'packs', 'ok4s');
   assert.deepEqual([p4.cells, p4.capacityMah], [4, null]);
   assert.deepEqual(VtolStore.live(s.battLog).map(e => [e.id, e.start]), [['b-ok', 25]]);
