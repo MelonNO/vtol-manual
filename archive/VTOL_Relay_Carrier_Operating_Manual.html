@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
 <title>HEEWING T2 — RELAY CARRIER OPS MANUAL</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
@@ -625,9 +626,15 @@ footer {
   text-align: center;
   margin-top: 40px;
 }
+/* ── OBSOLETE BANNER (archive) ── */
+.obsolete-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: var(--red); color: #fff; font-family: var(--head); font-size: 15px; font-weight: 700; letter-spacing: 1px; line-height: 1.4; text-align: center; padding: 12px 16px; border-bottom: 3px solid #fff; }
+.obsolete-banner a { color: #fff; text-decoration: underline; display: inline-block; min-height: 24px; }
+.obsolete-spacer { position: static; visibility: hidden; }
 </style>
 </head>
 <body>
+<div class="obsolete-banner" role="alert">OBSOLETE — superseded by the current manual. Contains outdated and incorrect safety information. Do not use for operations. <a href="../manual.html">Open the current manual</a></div>
+<div class="obsolete-banner obsolete-spacer" aria-hidden="true">OBSOLETE — superseded by the current manual. Contains outdated and incorrect safety information. Do not use for operations. <a tabindex="-1">Open the current manual</a></div>
 
 <header>
   <div class="hdr-top">
