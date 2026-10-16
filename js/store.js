@@ -123,8 +123,14 @@
     if (Number.isInteger(cells) && cells >= 1 && cells <= 24) out.cells = cells; else bad.push('cells');
     if (ENUM.chem.includes(r.chem)) out.chem = r.chem; else bad.push('chem');
     if (ENUM.role.includes(r.role)) out.role = r.role; else bad.push('role');
-    const cap = num(r.capacityMah); out.capacityMah = isFinite(cap) && cap > 0 ? cap : null;
-    const cyc = num(r.cycles); out.cycles = Number.isInteger(cyc) && cyc >= 0 ? cyc : 0;
+    const given = v => !(v === null || v === undefined || v === '');
+    const cap = num(r.capacityMah), capOk = isFinite(cap) && cap > 0;
+    const cyc = num(r.cycles), cycOk = Number.isInteger(cyc) && cyc >= 0;
+    out.capacityMah = capOk ? cap : null;       // empty = unknown (TBD)
+    out.cycles = cycOk ? cyc : 0;
+    // On load a bad optional value is coerced (as before); on import / in a form it is an error like any other.
+    if (mode === 'import' && given(r.capacityMah) && !capOk) bad.push('capacityMah');
+    if (mode === 'import' && given(r.cycles) && !cycOk) bad.push('cycles');
     out.purchased = str(r.purchased); out.notes = str(r.notes);
     if (!bad.length) return out;
     if (!def) { issues.push(`Pack "${short(out.label)}" dropped: invalid ${bad.join(', ')}`); return null; }

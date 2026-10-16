@@ -478,16 +478,6 @@
     return { session: Object.assign({}, raw.session), items };
   }
 
-  // Old format {"A-3": true} keyed by section id + item index → stable item ids. Tick times are unknown (ts null).
-  function clMigrateLegacy(legacy, sections, nowMs, id) {
-    const st = clNew(nowMs, id);
-    st.session.migrated = true;
-    sections.forEach(sec => sec.items.forEach((item, i) => {
-      if (legacy && legacy[sec.id + '-' + i] === true) st.items[item.id] = { checked: true, ts: null };
-    }));
-    return st;
-  }
-
   function clCheckedCount(state) { return Object.keys(state.items).length; }
 
   // Expired = has ticks and the session started more than `hours` ago (or has no valid start time).
@@ -517,6 +507,6 @@
     GPS_UTC_LEAP_SECONDS, gpsToUnixMs, binRecord, parseBin, binStartUnixMs, binBatterySeries, chartXFractions,
     hourlyIndex, skyDesc, compass, windStatus, precipStatus, icingStatus, RELAY_WIND_HEIGHTS_M, relayWindRows, distanceKm,
     sunTimes,
-    clNew, clNormalize, clMigrateLegacy, clCheckedCount, clIsExpired, clToggle
+    clNew, clNormalize, clCheckedCount, clIsExpired, clToggle
   };
 });

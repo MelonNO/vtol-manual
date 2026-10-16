@@ -129,3 +129,47 @@ export PATH="/c/Program Files/nodejs:$PATH"; node --test test/
   - `.fs-table` / `.fs-primary`, `.net-table`, `.co-table`, `.design-intent`
   - the globals `toggleCleanup(btn)` and `emergJump(id)`
   - Manual usage: `VtolRender.emergencies(VtolContent.emergencies, VtolContent.emergencyNotes, VtolRender.ctxFrom(VtolStore.load()))` (full cards with summaries), plus `failsafeTable`, `clientFailsafeChain`, `networkTable`, `callouts`, `designIntent`.
+
+## Rework round 1
+
+This round answers verifier report `S\verify\WP05\VERIFY-round1.md` (REJECTED, one MAJOR finding) and the PM's message, which raised F8 to MUST and pointed to contract C2.1 (`app.start_path`, RESUME). Sections 2–6 above describe round 0; where they conflict, this section wins:
+- §2 R8: the camera rule is now `camera-sortie`.
+- §5.4: `clMigrateLegacy` is now removed.
+- §5.7: the app-card, video-card and transition items are superseded by F1, F2 and F8 below.
+
+| Finding | Sev | Fix | Evidence |
+|---|---|---|---|
+| **F1** App/controller card allowed an airborne restart through the DISARMED start | MAJOR | **Card rewritten.** IMMEDIATE: "CLIENT AIRBORNE: NEVER NORMAL START" · "TAKE OVER ONLY BY RESUME — ARM SWITCH ARMED". CLEAN-UP: (1) **airborne:** never the normal start (its first packet would disarm the client); only **RESUME (client airborne)** — arm switch ARMED, check the live arm/throttle preview, type `RESUME`, plus `THROTTLE` at minimum throttle (WP08a `gcs/README.md` rule 3, C2.1); (2) use RESUME only if taking over is safer than letting the client's failsafe finish, otherwise leave the app stopped until landing; (3) **on the ground:** normal start (arm switch DISARMED, throttle low). The summary says the app never resumes by itself. **C2.1:** the Link view shows `START NORMAL` / `START RESUME (CLIENT AIRBORNE)` (amber badge) / `—`, escaped. | `data/content.js:247-265`; `js/render-content.js:361-364`. Tests: `content.test.js` "WP05 rework F1" (IMMEDIATE wording; every "airborne" string points to RESUME/NEVER; DISARMED appears next to airborne only as a prohibition, checked across **all** content strings; the RESUME line names ARMED, `RESUME`, `THROTTLE`; the ground line names the normal start), `render.test.js` "Link view shows app.start_path"; smoke checks. |
+| **F8** `Q_TRANS_FAIL_ACT` → QHOVER is wrong for current ArduPlane | MINOR → MUST | **Failsafe table `fs-trans`:** `Q_TRANS_FAIL_ACT` = 0 → **QLAND at current position** (ArduPlane source: -1 warn only, 0 QLand, 1 QRTL; `[[VERIFY — against the firmware version in use]]`). Pilot column: switch to QHOVER and climb (card); if QLand has started, clear the area below. **Transition card:** the summary and the first clean-up step state the automatic QLand (not QHOVER) with the visible VERIFY marker — the clean-up step is there because the Tools modal shows compact cards without the summary. The pilot's IMMEDIATE QHOVER + climb is kept: switching first ends the transition attempt, which is still sensible. Added immediate step "NO ACTION BY 4 s → AUTO QLAND HERE". | `data/content.js:281-297`, `:339`. Test: `content.test.js` "WP05 rework F8" (row says QLand + VERIFY and no QHOVER; card summary and immediate; no "Q_TRANS_FAIL_ACT → QHOVER" anywhere). Smoke: the modal card shows QLand with an amber marker. |
+| F2 Video card: 10 s vs N s TBD | MINOR | The clean-up now says the decision time is the 10 s wait above (current procedure value). The video-board restart/recovery time is `[[TBD — measure, then review the 10 s]]`. One rule for the pilot. | `emerg-video` clean-up step 3; test "rework F2/F3/F7" |
+| F3 Relay PCB card over-confident | MINOR | "…does not pass through the relay PCB (plan §3.1). If MP telemetry also drops → SIYI / GCS LOSS card." | `emerg-relay-pcb` clean-up step 4; test |
+| F4 Camera hint ignored the sortie plan | MINOR | Rule renamed `camera-sortie`: requested ≠ reported → ✗; OFF/OFF → ✓; ON/ON in `app.mode = carrier_only` → ✓; ON/ON otherwise → `?` ("OK only if the sortie plan needs it (FPV: only after relay-design test 9)"). It is never a red ✗ for a planned camera-ON. | `js/render-content.js:249-262`; items `carrier-camera-sortie`, `ta-camera`; `render.test.js` (5 cases); smoke (carrier-only → ✓, FPV → ?) |
+| F5 Pack form silently stored null capacity / 0 cycles | MINOR | `cleanPack` in import/form mode: a given but invalid `capacityMah` (≤ 0, non-numeric) or `cycles` (negative, non-integer) is an error → record dropped / form error naming the field. Empty capacity = TBD (null). Load mode still coerces, as before. The WP01 import test now uses an empty capacity for `ok4s` and checks that `capacityMah:'x'` is dropped. | `js/store.js:126-133`; `profiles.test.js` (4 bad cases + empty = TBD); `store.test.js:239-254`; smoke (−5 → "not saved — check: CAPACITY (mAh)") |
+| F6 Delete of active client silently picked a replacement | MINOR | The confirmation now ends with "The active client becomes: "<name>"" (or "none (TBD in checklists)"). Same for the active carrier pack. The replacement chosen is exactly the one named. | `index.html:1173-1195`; smoke |
+| F7 S-02b not mentioned | MINOR | SIYI card clean-up: "S-02b: no other program may send GCS heartbeats as MAVLink sysid 255 (the Mission Planner default). It would keep the carrier "happy" while MP is dead and mask this failsafe. The GCS companion app never uses sysid 255." Also a note on pre-flight `gs-mp-connect`. | `data/content.js:191`, `:84`; test |
+| F9 Dead `clMigrateLegacy` | MINOR | Removed from `js/tools-core.js` (function and export) with its test in `test/tools/checklist.test.js`. The other F9 housekeeping items (static header CRIT VOLT, 2 s vs 3 s carried over from the manual, existing dark tints) are unchanged and remain disclosed. | `git grep clMigrateLegacy` → none |
+| F10 Contracts | — | For the PM: record in `02-CONTRACTS.md` the C5 additive keys, the content markup, the renderer CSS class list (§6), `VtolStore.validateRecord` / `FIELDS`, and `elrs.telemetryRatio` = N of 1:N (0 = off). New in this round: the `[[VERIFY — …]]` marker (amber, same markup as TBD), and that the rule id is `camera-sortie`. | — |
+
+**Files touched in this round:** `data/content.js`, `js/render-content.js`, `js/store.js`, `index.html`, `js/tools-core.js` (removal requested by the PM; WP01 file), `test/content/*.test.js`, `test/tools/store.test.js`, `test/tools/checklist.test.js`, and this report.
+
+**WP06 note:** the manual's old "`Q_TRANS_FAIL_ACT` 0 = QHOVER" claim must follow the new `fs-trans` row and transition card. The manual should use the full cards, which also show the summary with the VERIFY marker.
+
+### Tests (rework round 1)
+
+```
+export PATH="/c/Program Files/nodejs:$PATH"; node --test test/
+ℹ tests 136  ℹ pass 136  ℹ fail 0
+```
+
+The count moved from 133 to 136:
+- added: F1, F8, F2/F3/F7 (content), the `start_path` view (render)
+- removed: the `clMigrateLegacy` test
+- extended: the F4 and F5 cases
+
+jsdom smoke `S\wp05smoke\smoke.js`: **92 pass, 0 fail**, no script errors. The 7 new checks cover:
+- F6: the replacement client is named in the confirmation
+- F5: a pack capacity of −5 is rejected with a field error
+- C2.1: RESUME start path shown in the Link view
+- F1: the RESUME path in the modal card
+- F4: camera ON → ✓ for a carrier-only sortie and `?` for FPV
+- F8: QLand plus a VERIFY marker in the modal card

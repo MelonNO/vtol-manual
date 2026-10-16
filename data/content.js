@@ -81,7 +81,7 @@
         { id: 'gs-subnet', s: 'Laptop IP verified', t: 'Ethernet network adapter: static IP on the HM30 subnet.', n: 'IP `192.168.144.X`, mask `255.255.255.0`. X must not clash with any relay address (suggested `.100`; final address [[TBD — decide at bring-up]]).' },
         { id: 'gs-laptop-sleep', s: 'Laptop will not sleep', t: 'Power plan: never sleep or hibernate, on battery or mains. Lid-close action "do nothing". Laptop on mains where possible.', n: 'Mission Planner is the carrier\'s GCS heartbeat: closing MP, sleep/hibernate or a pulled cable = carrier RTL after 5 s (FS_GCS_ENABL = 2).', w: true },
         { id: 'gs-app', s: 'GCS app started', t: 'GCS companion app running. Controller detected, arm switch DISARMED, throttle low, bridge reachable (RTT shown).', n: 'The FPV pilot\'s EdgeTX radio is a USB joystick only: internal and external RF modules OFF in the GCS-RELAY model. A radio transmitting ELRS could fight the relay for the client.', w: true, auto: 'app-controller-safe' },
-        { id: 'gs-mp-connect', s: 'Mission Planner connected', t: 'Mission Planner open — second screen via USB-C. Select **UDPCI** in MP connection dropdown. Never close MP in flight.', extras: [{ label: 'IP', val: '192.168.144.12' }, { label: 'Port', val: '19856' }] },
+        { id: 'gs-mp-connect', s: 'Mission Planner connected', t: 'Mission Planner open — second screen via USB-C. Select **UDPCI** in MP connection dropdown. Never close MP in flight.', n: 'No other program may send MAVLink as GCS sysid 255 on this network (S-02b) — it would mask the SIYI failsafe.', extras: [{ label: 'IP', val: '192.168.144.12' }, { label: 'Port', val: '19856' }] },
         { id: 'gs-client-video', s: 'Client video viewer', t: 'Client video arrives as RTP/UDP. The GCS app receives UDP 5600 and re-sends it to `127.0.0.1:5601` (standalone viewer) and `127.0.0.1:5602` (MP HUD: right-click avionics screen → Video → Set GStreamer Source). Use the variant for the client\'s video standard: **{client.videoStandard}**.', n: 'Windows GStreamer pipelines from plan §7.4 — verify on the target laptop. No rtpjitterbuffer. mpv with the .sdp file: verify its latency matches GStreamer before relying on it.', w: true, extras: [
           { label: 'VIEWER · PAL (UDP 5601)', val: PIPE.viewerPal },
           { label: 'VIEWER · NTSC (UDP 5601)', val: PIPE.viewerNtsc },
@@ -102,7 +102,7 @@
         { id: 'carrier-pitot-cal', s: 'Pitot calibrated, cover removed', t: 'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated" in Messages. Confirm airspeed stable and below 2 m/s. Remove pitot cover.', w: true },
         { id: 'carrier-auto-wp', s: 'Correct AUTO waypoint selected', t: 'Verify correct starting waypoint for AUTO mode. If launching without co-pilot, WP 1 must NOT be the active waypoint.', w: true },
         { id: 'carrier-bridge-run', s: 'Bridge in RUN', t: 'GCS app shows bridge state RUN, ModelID accepted, timing-frame lock (sync offset ≈ 0).', w: true, auto: 'bridge-run' },
-        { id: 'carrier-camera-sortie', s: 'Camera state set for sortie', t: 'Carrier camera normally OFF before the client launches (FPV mode), unless relay-design test 9 has passed. The app must report the same state as requested.', w: true, auto: 'camera-off' }
+        { id: 'carrier-camera-sortie', s: 'Camera state set for sortie', t: 'Carrier camera normally OFF before the client launches (FPV mode), unless relay-design test 9 has passed. The app must report the same state as requested.', w: true, auto: 'camera-sortie' }
       ] },
       { id: 'E', name: 'CLIENT', items: [
         { id: 'client-profile', s: 'Client profile selected', t: 'Active client profile: **{client.name}** ({client.fc}, {client.firmware}). It drives the VTX, ELRS, failsafe and battery values below — change it on the PROFILES tab.' },
@@ -135,7 +135,7 @@
         { id: 'ta-mode-cycle', s: 'Mode cycle verified', t: 'Cycle all 3 mode-switch positions on the 915 backup radio. Confirm QHOVER / FBWB / AUTO in Mission Planner. Verify tilt servos rotate on FBWB.' },
         { id: 'ta-bridge-run', s: 'Bridge back in RUN', t: 'After the carrier power cycle the bridge restarts (BOOT → WAIT_GCS → START → RUN). Confirm RUN in the GCS app.', w: true, auto: 'bridge-run' },
         { id: 'ta-viewer-restart', s: 'Viewer restarted if needed', t: 'The video board restarts the stream after a carrier power cycle. Restart the viewer (GStreamer / MP HUD source) if the client picture does not return.' },
-        { id: 'ta-camera', s: 'Camera re-enabled if needed', t: 'A carrier power cycle resets the camera to OFF. Re-enable it in the GCS app only if the sortie plan needs it.', auto: 'camera-off' }
+        { id: 'ta-camera', s: 'Camera re-enabled if needed', t: 'A carrier power cycle resets the camera to OFF. Re-enable it in the GCS app only if the sortie plan needs it.', auto: 'camera-sortie' }
       ] },
       { id: 'T3', name: 'CLIENT', items: [
         { id: 'ta-fpv-battery', s: 'Client battery swapped', t: 'Remove used client battery, place on charger. Install fresh pack. Verify voltage nominal.' },
@@ -188,6 +188,7 @@
         'Restart the MP UDPCI connection: IP `192.168.144.12` / Port `19856`. Do not re-enter AUTO until GCS telemetry is stable for 30+ seconds.',
         'The client fails safe at the same time: the bridge goes silent after T_hold and the client\'s own failsafe ({client.failsafe.type}) runs. Do not rely on the carrier camera to watch the client return — it is forced OFF when the GCS stream is lost and stays off until the stream is back and the pilot re-enables it.',
         'Use the 915 backup radio only within close range. Beyond close range its loss is expected and harmless.',
+        'S-02b: no other program may send GCS heartbeats as MAVLink sysid 255 (the Mission Planner default). It would keep the carrier "happy" while MP is dead and mask this failsafe. The GCS companion app never uses sysid 255.',
         'Whether the HM30 also reports RADIO_STATUS remrssi (S-02c): [[TBD — check with the MP MAVLink Inspector]]. The heartbeat timeout applies either way.'
       ] },
     { id: 'emerg-client-rc', pill: 'CLIENT RC LOSS',
@@ -221,7 +222,7 @@
       cleanup: [
         '(a) Analog RF — snow: client VTX on {client.vtx.band}{client.vtx.channel} / {client.vtx.freqMHz} MHz? VRX patches facing inward toward the operating area? Reduce range or move the orbit.',
         '(b) Digital chain — frozen or black: check the video board (N6) decoder-lock LED, then the encoder/video board, then the HM30 link (RTT in the GCS app). The Link tab shows decoder lock if the bridge reports it.',
-        'A video-board reset does not affect RC. Continue on video only if it returns within [[TBD — N s, from measured video-board restart time]]; otherwise send the client home.',
+        'A video-board reset does not affect RC. Decision time: the 10 s wait above (current procedure value). Video-board restart / recovery time: [[TBD — measure, then review the 10 s]].',
         'Viewer restart: stop and restart the GStreamer viewer (UDP 5601) or the MP HUD source (UDP 5602). Pipelines: Pre-Flight → C → Client video viewer.',
         'Verify video in the viewer before the client re-arms.'
       ] },
@@ -239,23 +240,26 @@
         'Bridge states: BOOT → WAIT_GCS → START (ModelID ×3) → RUN. No valid packet for T_hold (start value 250 ms) → FAILSAFE (silent) → WAIT_GCS.',
         'Bridge and video-board LED patterns: [[TBD — to be defined by the relay firmware (plan §6.1.4)]].',
         'The RC path never touches the video board: RC keeps running while video reboots or is reflashed. VLAN isolation keeps camera and spare-port traffic away from the RC bridge.',
-        'Carrier control (Mission Planner over the HM30 to the FC) does not pass through the relay PCB (plan §3.1) — the carrier flies on normally.',
+        'Carrier control (Mission Planner over the HM30 to the FC) does not pass through the relay PCB (plan §3.1). If MP telemetry also drops → SIYI / GCS LOSS card.',
         'Recall the client if the bridge does not return to RUN, FAILSAFE repeats, or video does not return.',
         'After landing: relay PCB temperature/smell, connectors, firmware versions (bridge status packet), save the app session log.'
       ] },
     { id: 'emerg-app', pill: 'APP / CONTROLLER',
       title: 'GCS App / Controller Failure',
-      summary: 'Controller unplugged or app crash → the app stops sending → the bridge goes silent → client failsafe.',
+      summary: 'Controller unplugged or app crash → the app stops sending → the bridge goes silent → client failsafe. The app never resumes by itself. Two start paths: normal start (client on the ground) and RESUME (client airborne).',
       immediate: [
         'CLIENT FAILSAFE FIRES — BRIDGE SILENT',
         'FPV PILOT: HANDS OFF',
         'CARRIER: HOLD ORBIT',
-        'DO NOT RESTART APP MID-RECOVERY',
+        'CLIENT AIRBORNE: NEVER NORMAL START',
+        'TAKE OVER ONLY BY RESUME — ARM SWITCH ARMED',
         'WATCH VIDEO / OSD'
       ],
       cleanup: [
         'Chain: app stops → bridge FAILSAFE after T_hold → ELRS TX module silent → client RX failsafe → client FC failsafe ({client.failsafe.type}).',
-        'Restart the app only once the client is on the ground, or if it is still controllable. The app\'s start interlock needs the arm switch DISARMED — sending DISARMED to an airborne client would disarm it.',
+        'Client AIRBORNE: **never use the normal start**. The normal start needs the arm switch DISARMED, so its first packet would disarm the client in mid-air. The only way back is **RESUME (client airborne)**: hold the arm switch ARMED, check the live arm/throttle preview, type `RESUME` — and `THROTTLE` as well if the throttle is at minimum. The client then gets exactly the controller values.',
+        'Use RESUME only if taking over is safer than letting the client\'s own failsafe ({client.failsafe.type}) finish. Otherwise leave the app stopped until the client is on the ground.',
+        'Client on the GROUND (disarmed): normal start — arm switch DISARMED, throttle low (app start interlock).',
         'Mission Planner is separate: if only the app crashed, the carrier is unaffected. If the laptop froze or slept, the MP heartbeat is lost too → SIYI / GCS LOSS card.',
         'After landing: save the app session log, check the controller USB cable and the EdgeTX GCS-RELAY model (RF modules OFF).'
       ] },
@@ -276,13 +280,15 @@
       ] },
     { id: 'emerg-trans', pill: 'TRANSITION',
       title: 'Transition Failure — VTOL → FW',
-      summary: 'Automatic: Q_TRANS_FAIL (4 s) → Q_TRANS_FAIL_ACT → QHOVER (plan §6.1.5; confirm against the param file).',
+      summary: 'Automatic action: Q_TRANS_FAIL elapsed (4 s) → Q_TRANS_FAIL_ACT = 0 → **QLAND at the current position**, not QHOVER (ArduPlane source: -1 warn only, 0 QLand, 1 QRTL). [[VERIFY — against the firmware version and param file in use]]. Switching to QHOVER first ends the transition attempt.',
       immediate: [
         '[[QHOVER]] — switch now',
         'GAIN ALTITUDE — full VTOL power',
+        'NO ACTION BY 4 s → AUTO [[QLAND]] HERE',
         'HOLD — assess before any retry'
       ],
       cleanup: [
+        'Automatic action: Q_TRANS_FAIL (4 s) → Q_TRANS_FAIL_ACT = 0 → **QLAND at the current position** — not QHOVER ([[VERIFY — against the firmware version in use]]). If it has started, clear the area below; switch to QHOVER only if that spot is unsafe.',
         'Check pitot — airspeed reading in MP? Zero = blocked/disconnected. Do not retry without airspeed data.',
         'Check tilt servos — switch to FBWB and observe in MP. Do the M1/M2 tilt motors rotate forward?',
         'Check battery — sufficient for another transition attempt plus VTOL recovery?',
@@ -330,7 +336,7 @@
       { id: 'fs-915', event: '915 MHz backup link lost', detection: 'ELRS RX failsafe', action: '**None** — RC ignored (`THR_FAILSAFE` = 2)', pilot: 'None beyond close range; during manual phases, take over in MP (S-01a)' },
       { id: 'fs-batt-crit', event: 'Battery critical {settings.battCrtVolt} V', detection: '`BATT_CRT_VOLT`', action: 'Loiter → QLand at current position', pilot: 'Clear the area below' },
       { id: 'fs-batt-low', event: 'Battery low', detection: '`BATT_LOW_VOLT` = 0 (not set)', action: 'None', pilot: 'Manual RTL at {settings.manualRtlVolt} V' },
-      { id: 'fs-trans', event: 'Transition fail', detection: '`Q_TRANS_FAIL` 4 s', action: '`Q_TRANS_FAIL_ACT` → [[QHOVER]]', pilot: 'Per emergency card' }
+      { id: 'fs-trans', event: 'Transition fail', detection: '`Q_TRANS_FAIL` 4 s', action: '`Q_TRANS_FAIL_ACT` = 0 → **[[QLAND]] at current position** (ArduPlane source: -1 warn only, 0 QLand, 1 QRTL; [[VERIFY — against the firmware version in use]])', pilot: 'Switch to [[QHOVER]] and climb (emergency card); if QLand has started, clear the area below' }
     ]
   };
 

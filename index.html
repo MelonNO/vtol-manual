@@ -1174,19 +1174,19 @@ function profDelete(coll, id) {
   const r = VtolStore.find(store, coll, id);
   if (!r) return;
   const uses = profUses(coll, id);
-  const msg = 'Delete ' + PROF[coll].noun + ' "' + r[PROF[coll].nameKey] + '"?' + (uses.length ? '\n\nIN USE:\n• ' + uses.join('\n• ') : '');
+  // The replacement for an active client / carrier pack is named in the confirmation (it drives checklists and header).
+  const nextClient = VtolStore.live(store.clients).find(c => c.id !== id);
+  const nextPack = VtolStore.live(store.packs).find(p => p.role === 'carrier' && p.id !== id);
+  let after = '';
+  if (coll === 'clients' && store.settings.activeClientId === id) after = '\n\nThe active client becomes: ' + (nextClient ? '"' + nextClient.name + '"' : 'none (TBD in checklists)') + '.';
+  if (coll === 'packs' && store.settings.activeCarrierPackId === id) after = '\n\nThe active carrier pack becomes: ' + (nextPack ? '"' + nextPack.label + '"' : 'none') + '.';
+  const msg = 'Delete ' + PROF[coll].noun + ' "' + r[PROF[coll].nameKey] + '"?' + (uses.length ? '\n\nIN USE:\n• ' + uses.join('\n• ') : '') + after;
   if (!confirm(msg)) return;
   storeUpdate(s => {
     VtolStore.remove(s, coll, id);
     const now = new Date().toISOString();
-    if (coll === 'clients' && s.settings.activeClientId === id) {
-      const next = VtolStore.live(s.clients)[0];
-      s.settings.activeClientId = next ? next.id : ''; s.settings.updatedAt = now;
-    }
-    if (coll === 'packs' && s.settings.activeCarrierPackId === id) {
-      const next = VtolStore.live(s.packs).find(p => p.role === 'carrier');
-      s.settings.activeCarrierPackId = next ? next.id : ''; s.settings.updatedAt = now;
-    }
+    if (coll === 'clients' && s.settings.activeClientId === id) { s.settings.activeClientId = nextClient ? nextClient.id : ''; s.settings.updatedAt = now; }
+    if (coll === 'packs' && s.settings.activeCarrierPackId === id) { s.settings.activeCarrierPackId = nextPack ? nextPack.id : ''; s.settings.updatedAt = now; }
   });
   if (profEdit && profEdit.coll === coll && profEdit.id === id) { profEdit = null; profErrors = []; }
   profAfterChange();

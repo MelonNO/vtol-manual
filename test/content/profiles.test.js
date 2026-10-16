@@ -44,6 +44,13 @@ test('validateRecord rejects bad types, enums, ranges and a missing name', () =>
   }
   assert.ok(VtolStore.validateRecord('links', d.links[2]).record, 'all-TBD link is valid');
   assert.equal(VtolStore.validateRecord('packs', Object.assign({}, d.packs[0], { cells: null })).record, null);
+  // WP05 rework F5: the pack form rejects a bad capacity / cycle count instead of storing null / 0.
+  for (const bad of [{ capacityMah: -5 }, { capacityMah: 'x' }, { cycles: 1.5 }, { cycles: -1 }]) {
+    const r = VtolStore.validateRecord('packs', Object.assign({}, d.packs[0], bad));
+    assert.equal(r.record, null, JSON.stringify(bad));
+    assert.match(r.issues.join(), /dropped: invalid (capacityMah|cycles)/);
+  }
+  assert.equal(VtolStore.validateRecord('packs', Object.assign({}, d.packs[0], { capacityMah: '' })).record.capacityMah, null, 'empty = TBD');
 });
 
 test('import: invalid client/link records are dropped and never overwrite valid local ones (incl. default ids)', () => {

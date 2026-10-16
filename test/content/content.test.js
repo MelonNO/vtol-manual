@@ -99,6 +99,54 @@ test('failsafe intent: 915 loss is a note, not an emergency; close-in case kept'
   assert.match(note.closeIn.note, /\[\[TBD — S-01a/);
 });
 
+test('WP05 rework F1: app/controller card — airborne client only via RESUME (arm switch ARMED), never DISARMED / normal start', () => {
+  const card = C.emergencies.find(e => e.id === 'emerg-app');
+  const all = [card.title, card.summary].concat(card.immediate, card.cleanup);
+  const imm = card.immediate.join(' | ');
+  assert.match(imm, /AIRBORNE: NEVER NORMAL START/);
+  assert.match(imm, /RESUME — ARM SWITCH ARMED/);
+  const airborne = all.filter(s => /airborne/i.test(s));
+  assert.ok(airborne.length >= 2);
+  for (const s of airborne) {
+    assert.match(s, /RESUME|NEVER/i, 'airborne case must point to RESUME: ' + s);
+    if (/DISARMED/.test(s)) assert.match(s, /never/i, 'airborne + DISARMED only as a prohibition: ' + s);
+  }
+  const resume = card.cleanup.find(s => /\*\*RESUME \(client airborne\)\*\*/.test(s));
+  assert.ok(resume, 'clean-up names the RESUME (client airborne) start path');
+  assert.match(resume, /arm switch ARMED/);
+  assert.match(resume, /`RESUME`/);
+  assert.match(resume, /`THROTTLE`/);
+  const ground = card.cleanup.find(s => /Client on the GROUND/.test(s));
+  assert.match(ground, /normal start — arm switch DISARMED/);
+  assert.doesNotMatch(ground, /airborne/i);
+  // Nowhere in the content: a restart instruction that pairs an airborne client with the DISARMED start.
+  for (const [p, s] of strings(C, 'VtolContent')) {
+    if (/airborne/i.test(s) && /DISARMED/.test(s)) assert.match(s, /never/i, p);
+  }
+});
+
+test('WP05 rework F8: transition failure — automatic action is QLand (Q_TRANS_FAIL_ACT = 0), with a visible verify marker', () => {
+  const row = C.failsafeTable.rows.find(r => r.id === 'fs-trans');
+  assert.match(row.action, /`Q_TRANS_FAIL_ACT` = 0 → \*\*\[\[QLAND\]\] at current position\*\*/);
+  assert.match(row.action, /\[\[VERIFY — /);
+  assert.doesNotMatch(row.action, /QHOVER/);
+  const card = C.emergencies.find(e => e.id === 'emerg-trans');
+  assert.match(card.summary, /QLAND at the current position/);
+  assert.match(card.summary, /\[\[VERIFY — /);
+  assert.match(card.immediate.join(' '), /AUTO \[\[QLAND\]\] HERE/);
+  assert.doesNotMatch(JSON.stringify(C), /Q_TRANS_FAIL_ACT[^"]{0,20}(→|->)\s*\[\[QHOVER\]\]/);
+});
+
+test('WP05 rework F2/F3/F7: video decision time, relay PCB → SIYI card, S-02b', () => {
+  const v = C.emergencies.find(e => e.id === 'emerg-video');
+  assert.ok(v.immediate.includes('WAIT 10 SECONDS'));
+  assert.match(v.cleanup.join(' '), /10 s wait above \(current procedure value\)/);
+  assert.match(v.cleanup.join(' '), /\[\[TBD — measure, then review the 10 s\]\]/);
+  const pcb = C.emergencies.find(e => e.id === 'emerg-relay-pcb');
+  assert.match(pcb.cleanup.join(' '), /If MP telemetry also drops → SIYI \/ GCS LOSS card/);
+  assert.match(C.emergencies[0].cleanup.join(' '), /S-02b: .*sysid 255/);
+});
+
 test('failsafe table (§6.1.5): SIYI → RTL all modes; 915 → none (THR_FAILSAFE = 2)', () => {
   const rows = C.failsafeTable.rows;
   assert.equal(rows.length, 5);

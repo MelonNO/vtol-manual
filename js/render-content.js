@@ -246,13 +246,17 @@
         return sats >= min ? ['ok', sats + ' sats ≥ ' + min] : ['fail', sats + ' sats < ' + min];
       }
     },
-    'camera-off': {
-      label: 'Carrier camera OFF (FPV mode) and reported = requested',
+    // Sortie plan: FPV sortie → camera OFF (unless relay-design test 9 passed); carrier-only sortie → camera may be ON.
+    // The app mode tells which one is flown; a camera ON in FPV mode can be planned (test 9), so it is "?" not "✗".
+    'camera-sortie': {
+      label: 'Carrier camera state matches the sortie (reported = requested; OFF for FPV)',
       run(s) {
-        const rq = get(s, 'bridge.camera.requested'), rp = get(s, 'bridge.camera.reported');
+        const rq = get(s, 'bridge.camera.requested'), rp = get(s, 'bridge.camera.reported'), mode = get(s, 'app.mode');
         if (typeof rq !== 'boolean' || typeof rp !== 'boolean') return ['unknown', 'camera state unknown'];
         if (rq !== rp) return ['fail', 'camera requested ' + (rq ? 'ON' : 'OFF') + ' ≠ reported ' + (rp ? 'ON' : 'OFF')];
-        return rp ? ['fail', 'camera ON — FPV mode needs OFF unless test 9 passed'] : ['ok', 'camera OFF'];
+        if (!rp) return ['ok', 'camera OFF'];
+        if (mode === 'carrier_only') return ['ok', 'camera ON — carrier-only sortie'];
+        return ['unknown', 'camera ON — OK only if the sortie plan needs it (FPV: only after relay-design test 9)'];
       }
     },
     'video-lock': {
@@ -354,7 +358,10 @@
       : '<div class="lk-row"><span class="lk-k">No active alarms</span></div>';
 
     const app = get(s, 'app') || {};
-    const head = '<div class="lk-meta">APP ' + n(app.version) + ' · MODE ' + n(app.mode) + ' · STREAMING ' + yn(app.streaming) + ' · ' + n(s.time_utc)
+    // app.start_path (C2.1): "resume" = the confirmed RESUME (client airborne) start, with the arm switch ARMED.
+    const sp = app.start_path;
+    const startPath = sp === 'resume' ? '<span class="lk-badge warn">RESUME (CLIENT AIRBORNE)</span>' : sp === 'normal' ? 'NORMAL' : (sp === null || sp === undefined ? DASH : escH(sp));
+    const head = '<div class="lk-meta">APP ' + n(app.version) + ' · MODE ' + n(app.mode) + ' · START ' + startPath + ' · STREAMING ' + yn(app.streaming) + ' · ' + n(s.time_utc)
       + ' · CLIENT PROFILE ' + (get(ctx, 'client.name') ? escH(get(ctx, 'client.name')) : TBD_HTML)
       + (get(s, 'client.profile_id') && get(ctx, 'client.id') && get(s, 'client.profile_id') !== get(ctx, 'client.id') ? ' <span class="warn-val">(app uses profile ' + escH(get(s, 'client.profile_id')) + ')</span>' : '') + '</div>';
 

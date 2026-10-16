@@ -131,8 +131,13 @@ test('auto hints (R8): ok / fail / unknown per rule', () => {
   assert.equal(R.autoHint('bridge-run', {}, c).state, 'unknown');
   assert.equal(R.autoHint('client-sats', { client: { gps: { sats: 6 } } }, c).state, 'fail');
   assert.equal(R.autoHint('client-rescue-ready', { client: { flight_mode: { rescue_not_ready: true } } }, c).state, 'fail');
-  assert.equal(R.autoHint('camera-off', { bridge: { camera: { requested: true, reported: false } } }, c).state, 'fail');
-  assert.equal(R.autoHint('camera-off', { bridge: { camera: { requested: true, reported: true } } }, c).state, 'fail');
+  // WP05 rework F4: the camera hint follows the sortie (app mode), mismatch is always ✗.
+  const cam = (rq, rp, mode) => R.autoHint('camera-sortie', { app: { mode }, bridge: { camera: { requested: rq, reported: rp } } }, c).state;
+  assert.equal(cam(true, false, 'fpv'), 'fail', 'requested ≠ reported');
+  assert.equal(cam(false, true, 'carrier_only'), 'fail', 'requested ≠ reported');
+  assert.equal(cam(false, false, 'fpv'), 'ok');
+  assert.equal(cam(true, true, 'carrier_only'), 'ok', 'camera ON is the plan for a carrier-only sortie');
+  assert.equal(cam(true, true, 'fpv'), 'unknown', 'camera ON in FPV mode may be planned (test 9): not a red ✗');
   assert.equal(R.autoHint('app-controller-safe', { controller: { connected: true, arm_switch_safe: false, throttle_low: true } }, c).state, 'fail');
   assert.equal(R.autoHint('client-link', { client: { link: { lq_pct: 50 } } }, c).state, 'fail');
   const pal = ctx(); pal.client.videoStandard = 'NTSC';
@@ -160,4 +165,16 @@ test('Link view (R7) renders every C2 group; mismatches and failsafe highlighted
   assert.match(empty, /No active alarms/);
   assert.match(empty, /lk-na">—</);
   assert.doesNotThrow(() => R.linkStatus(null, null));
+});
+
+test('Link view shows app.start_path (C2.1): NORMAL, RESUME (client airborne), none', () => {
+  const c = ctx(), s = sample();
+  s.app.start_path = 'normal';
+  assert.match(R.linkStatus(s, c), /START NORMAL/);
+  s.app.start_path = 'resume';
+  assert.match(R.linkStatus(s, c), /START <span class="lk-badge warn">RESUME \(CLIENT AIRBORNE\)<\/span>/);
+  s.app.start_path = null;
+  assert.match(R.linkStatus(s, c), /START <span class="lk-na">—<\/span>/);
+  s.app.start_path = '<b>x</b>';
+  assert.doesNotMatch(R.linkStatus(s, c), /<b>x/);
 });
