@@ -17,36 +17,36 @@ const R2D = 180 / Math.PI, D2R = Math.PI / 180;
 const isNum = v => typeof v === 'number' && isFinite(v);
 
 // ─── Default profiles ─────────────────────────────────────────────────────────
-// These MIRROR the C1 defaults of VtolStore.defaults() (docs/tasks/02-CONTRACTS.md §C1.3).
-// They are only used when js/store.js is not loaded. Keep them identical to C1.
+// These MIRROR VtolStore.defaults() / VtolStore.IDS in js/store.js (contract C1.3 / C1.4) and are
+// only used when js/store.js is not loaded. Keep them identical: test/map/defaults.test.js checks it.
 const DEFAULT_PROFILES = {
   packs: [
     { id: 'pack-carrier-6s-7000', label: 'Carrier 6S 7000', role: 'carrier', cells: 6, chem: 'lipo',
       capacityMah: 7000, cycles: 0, purchased: '', notes: '' },
     { id: 'pack-mast-6s-3000', label: 'Mast 6S 3000', role: 'mast', cells: 6, chem: 'lipo',
       capacityMah: 3000, cycles: 0, purchased: '', notes: '' },
-    { id: 'pack-ref-client-6s-1300', label: 'Ref client 6S 1300', role: 'client', cells: 6, chem: 'lipo',
+    { id: 'pack-client-ref-6s-1300', label: 'Ref client 6S 1300', role: 'client', cells: 6, chem: 'lipo',
       capacityMah: 1300, cycles: 0, purchased: '', notes: '' },
   ],
   clients: [
-    { id: 'client-ref-1', name: 'Reference client #1', sizeIn: null,
+    { id: 'client-ref-1', name: 'Reference client #1', sizeIn: 7,
       fc: 'Matek F405 STD (clone)', firmware: 'Betaflight 4.5.2',
       vtx: { band: 'R', channel: 5, freqMHz: 5806, powerMw: 25 },
       videoStandard: null,
       elrs: { band: '2.4', packetRateHz: null, modelId: null, telemetryRatio: null, geminiRx: false },
       failsafe: { type: 'gps_rescue', minSats: 8, delayS: 2.5 },
-      packId: 'pack-ref-client-6s-1300', notes: '' },
+      packId: 'pack-client-ref-6s-1300', notes: '' },
   ],
   links: [
-    { id: 'link-video-5800', name: 'Client video 5.8 GHz', kind: 'video', freqMHz: 5800,
+    { id: 'link-client-video-58', name: 'Client video 5.8 GHz', kind: 'video', freqMHz: 5800,
       txPowerDbm: 14.0, txGainDbi: 2.0, rxGainDbi: 10.0, rxSensDbm: -85, marginDb: 6,
       antenna: 'dual_patch', notes: '' },
-    { id: 'link-rc-elrs', name: 'ELRS RC (set me)', kind: 'rc', freqMHz: 2440,
+    { id: 'link-elrs-rc', name: 'ELRS RC (set me)', kind: 'rc', freqMHz: 2440,
       txPowerDbm: null, txGainDbi: null, rxGainDbi: null, rxSensDbm: null, marginDb: 6,
       antenna: 'dipole', notes: '' },
-    { id: 'link-gcs-hm30', name: 'SIYI HM30 (set me)', kind: 'gcs', freqMHz: null,
+    { id: 'link-siyi-hm30', name: 'SIYI HM30 (set me)', kind: 'gcs', freqMHz: null,
       txPowerDbm: null, txGainDbi: null, rxGainDbi: null, rxSensDbm: null, marginDb: 6,
-      antenna: null, notes: '' },
+      antenna: null, notes: null },
   ],
 };
 
@@ -245,11 +245,19 @@ function traceRay(o) {
   const shadows = [];
   for (let i = 0, dist = 0; dist < o.maxR; i++) {
     // Adaptive spacing: `step` (≤ DEM pixel) where terrain is known; 8 × step across samples
-    // without terrain data — there is no DEM pixel to miss there, only the RF check.
-    dist = Math.min(o.maxR, dist + (i && !known[i - 1] ? 8 * o.step : o.step));
+    // without terrain data — there is no DEM pixel to miss there, only the RF check. The long
+    // step is taken only if its far end is still without data, so the ray never jumps into a
+    // loaded tile (tiles are 256 px; only a < 8 px corner clip can be passed over).
+    let next = Math.min(o.maxR, dist + o.step), la, lo, e, coarse = false;
+    if (i && !known[i - 1]) {
+      const far = Math.min(o.maxR, dist + 8 * o.step);
+      [la, lo] = dest(o.lat, o.lon, o.brg, far);
+      e = o.elev(la, lo);
+      if (!isNum(e)) { next = far; coarse = true; }
+    }
+    if (!coarse) { [la, lo] = dest(o.lat, o.lon, o.brg, next); e = o.elev(la, lo); }
+    dist = next;
     d[i] = dist;
-    const [la, lo] = dest(o.lat, o.lon, o.brg, dist);
-    const e = o.elev(la, lo);
     known[i] = isNum(e);
     const g = known[i] ? e : (o.groundFallback || 0);
     const c = o.canopy ? (o.canopy(la, lo) || 0) : 0;
@@ -543,7 +551,14 @@ function missionStep(ms, dt, opt) {
     if (!ms.orbit) {
       if (it.cmd !== 31) ms.altAmsl = rateTo(ms.altAmsl, it.altAmsl, dt);
       if (dist > R + step) { ms.phase = 'to loiter'; flyToward(); return ms; }
-      ms.orbit = { ang: (dist > 1 ? bearingTo(it.lat, it.lon, ms.lat, ms.lon) : 0) * D2R, swept: 0, t: 0 };
+      if (dist < R - step) {                             // inside the circle: fly out to it
+        ms.phase = 'to loiter';
+        if (dist > 1) ms.hdg = bearingTo(it.lat, it.lon, ms.lat, ms.lon);
+        [ms.lat, ms.lon] = dest(ms.lat, ms.lon, ms.hdg, step);
+        return ms;
+      }
+      // within one step of the circle: join it (moves at most one step radially)
+      ms.orbit = { ang: bearingTo(it.lat, it.lon, ms.lat, ms.lon) * D2R, swept: 0, t: 0 };
     }
     const o = ms.orbit, w = v / R * dt;
     o.ang += dir * w; o.swept += w; o.t += dt;

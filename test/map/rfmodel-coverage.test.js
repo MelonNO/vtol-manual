@@ -234,3 +234,15 @@ test('traceRay samples 8x coarser where there is no terrain data', () => {
   assert.equal(r.limit, 'nodata'); assert.equal(r.range, 10000);
   assert.ok(calls < 40 + 9000 / 200 + 2, 'samples: ' + calls);
 });
+
+test('coarse steps never jump into a loaded tile (rework F5)', () => {
+  // no data 1000–1100 m, then a 200 m ridge at 1100–1160 m: must be found despite the 8x step
+  const elev = (lat, lon) => {
+    const d = M.distM(60, 10, lat, lon);
+    if (d >= 1000 && d < 1100) return null;
+    return d >= 1100 && d < 1160 ? 200 : 0;
+  };
+  const r = M.traceRay({ lat: 60, lon: 10, hAsl: 100, brg: 0, maxR: 3000, step: 25, fHz: 5.8e9, elev, targetAgl: 3 });
+  assert.equal(r.limit, 'terrain');
+  assert.ok(r.range < 1200, 'edge at the ridge: ' + r.range);
+});

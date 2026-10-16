@@ -40,6 +40,8 @@ test('altitude frames resolve to AMSL', () => {
   assert.equal(m.items[2].altAmsl, 110, 'terrain 70 + 40');
 });
 
+const orbitStart = (trace, phase) => trace.findIndex(s => s.phase === phase) - 1;   // last sample before the first orbit step
+
 function run(mission, start, opt, maxS = 2000, dt = 0.5) {
   const ms = M.missionStart(mission, start);
   const trace = [];
@@ -74,20 +76,32 @@ test('LOITER_TO_ALT orbits until the altitude is reached at 5 m/s', () => {
   const m = { items: [{ cmd: 31, name: 'LOITER_TO_ALT', lat: 60, lon: 10, altAmsl: 400, p1: 1, p2: 150, p3: 0 }] };
   const { ms, trace } = run(m, { lat: 60, lon: 10, altAmsl: 100 }, { speed: 15, loiterR: 200 });
   assert.equal(ms.done, true);
-  near(trace[trace.length - 1].t, 300 / 5, 1.5, 'climb time');
-  // all in orbit at r = 150
-  const r = M.distM(60, 10, trace[10].lat, trace[10].lon);
-  near(r, 150, 1);
+  const t0 = orbitStart(trace, 'loiter_to_alt');
+  near(trace[t0].alt, 100, 1e-9, 'altitude held while flying out to the circle');
+  near(trace[trace.length - 1].t - trace[t0].t, 300 / 5, 1.5, 'climb time in the orbit');
+  near(M.distM(60, 10, trace[t0 + 10].lat, trace[t0 + 10].lon), 150, 1, 'orbit at r = 150');
+});
+
+test('starting inside a loiter circle flies out to it without jumping', () => {
+  const m = { items: [{ cmd: 19, name: 'LOITER_TIME', lat: 60, lon: 10, altAmsl: 100, p1: 20, p2: 0, p3: 300 }] };
+  const { trace } = run(m, { lat: 60, lon: 10, altAmsl: 100, hdg: 45 }, { speed: 15, loiterR: 200 });
+  const step = 15 * 0.5;
+  for (let i = 1; i < trace.length; i++)
+    assert.ok(M.distM(trace[i - 1].lat, trace[i - 1].lon, trace[i].lat, trace[i].lon) <= 2 * step + 0.01, 'step ' + i);
+  // first move is outward along the start heading
+  near(M.bearingTo(60, 10, trace[0].lat, trace[0].lon), 45, 0.01);
 });
 
 test('LOITER_TURNS does N turns, LOITER_TIME holds N s, LOITER_UNLIM never ends', () => {
   const turns = { items: [{ cmd: 18, name: 'LOITER_TURNS', lat: 60, lon: 10, altAmsl: 100, p1: 2, p2: 0, p3: 100 }] };
   const a = run(turns, { lat: 60, lon: 10, altAmsl: 100 }, { speed: 10, loiterR: 200 });
-  near(a.trace[a.trace.length - 1].t, 2 * 2 * Math.PI * 100 / 10, 1, 'two turns at r=100');
+  const ta = a.trace[orbitStart(a.trace, 'loiter_turns')].t;
+  near(a.trace[a.trace.length - 1].t - ta, 2 * 2 * Math.PI * 100 / 10, 1, 'two turns at r=100');
   const time = { items: [{ cmd: 19, name: 'LOITER_TIME', lat: 60, lon: 10, altAmsl: 100, p1: 30, p2: 0, p3: 0 }] };
   const b = run(time, { lat: 60, lon: 10, altAmsl: 100 }, { speed: 15, loiterR: 200 });
-  near(b.trace[b.trace.length - 1].t, 30, 0.6);
-  near(M.distM(60, 10, b.trace[5].lat, b.trace[5].lon), 200, 1, 'default radius used');
+  const tb = orbitStart(b.trace, 'loiter_time');
+  near(b.trace[b.trace.length - 1].t - b.trace[tb].t, 30, 0.6);
+  near(M.distM(60, 10, b.trace[tb + 5].lat, b.trace[tb + 5].lon), 200, 1, 'default radius used');
   const unlim = { items: [{ cmd: 17, name: 'LOITER_UNLIM', lat: 60, lon: 10, altAmsl: 100, p1: 0, p2: 0, p3: 0 }] };
   const c = run(unlim, { lat: 60, lon: 10, altAmsl: 100 }, { speed: 15, loiterR: 200 }, 600);
   assert.equal(c.ms.done, false);

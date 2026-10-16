@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HEEWING T2 — RELAY COVERAGE MAP</title>
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css"/>
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="../js/store.js"></script>
 <script src="../js/gcs-client.js"></script>
@@ -173,6 +173,12 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
 .lr{display:flex;align-items:center;gap:9px;margin-bottom:5px;color:var(--muted);font-size:12px}
 .ls{width:22px;height:4px;border-radius:1px;flex-shrink:0}
 .ls.dot{height:8px;width:8px;border-radius:50%}
+.c-blue{background:var(--blue)}.c-teal{background:var(--teal)}.c-accent{background:var(--accent)}
+.c-green{background:var(--green)}.c-red{background:var(--red)}.c-amber{background:var(--amber)}
+.c-purple{background:var(--purple)}.c-rose{background:var(--rose)}
+.c-op{background:var(--green);height:8px;opacity:.6}.c-worst{background:var(--green);height:8px;opacity:.7}
+.c-best{background:var(--amber);height:8px;opacity:.5}.c-null{background:var(--red);opacity:.5}
+.c-nodata{background:var(--grey);border:1px dashed var(--muted)}.c-shadow{border-top:2px dotted var(--muted);height:0}
 .lg-note{font-size:11px;color:var(--amber);margin:2px 0 6px;font-family:var(--head);letter-spacing:.5px}
 .lg-note:empty{display:none}
 
@@ -260,7 +266,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
       <div class="vtx-row">
         <label>Speed</label>
         <input type="range" id="sim-speed" min="11" max="35" step="0.5" value="13"
-               oninput="document.getElementById('sim-spd-lbl').textContent=this.value+'m/s'"/>
+               oninput="document.getElementById('sim-spd-lbl').textContent=this.value+'m/s'">
         <span id="sim-spd-lbl">13m/s</span>
       </div>
       <div class="info-txt">Min 11 m/s = AIRSPEED_MIN · default 13 m/s = AIRSPEED_CRUISE</div>
@@ -272,15 +278,15 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     </div>
     <div class="sim-sub" id="sp-straight" style="display:none">
       <div class="fld"><label>Travel Heading (°)</label>
-        <input id="sim-hdg" type="number" value="0" min="0" max="359" step="1"/></div>
+        <input id="sim-hdg" type="number" value="0" min="0" max="359" step="1"></div>
     </div>
     <div class="sim-sub" id="sp-orbit" style="display:none">
       <div class="fld"><label>Orbit Radius (m) — also the default loiter radius</label>
-        <input id="sim-orb-r" type="number" value="200" min="50" max="5000" step="10"/></div>
+        <input id="sim-orb-r" type="number" value="200" min="50" max="5000" step="10"></div>
       <div class="center-lbl" id="orb-center-lbl">No orbit center set</div>
       <button type="button" class="btn" id="btn-pick-center" onclick="startOrbitCenterPick()">⊕ Click Map to Set Center</button>
-      <label class="chk"><input type="checkbox" id="sw-worst" checked onchange="drawSweep()"/>Worst case (inside all orbit positions)</label>
-      <label class="chk"><input type="checkbox" id="sw-best" checked onchange="drawSweep()"/>Best case (inside any orbit position)</label>
+      <label class="chk"><input type="checkbox" id="sw-worst" checked onchange="drawSweep()">Worst case (inside all orbit positions)</label>
+      <label class="chk"><input type="checkbox" id="sw-best" checked onchange="drawSweep()">Best case (inside any orbit position)</label>
       <div class="info-txt" id="sw-st">Orbit sweep: start an orbit to accumulate</div>
     </div>
     <div class="sim-sub" id="sp-mission" style="display:none">
@@ -288,7 +294,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
         <label>Mission Planner .waypoints file</label>
         <input type="file" id="mis-file" accept=".waypoints,.txt,.mission,.wp"
                onchange="loadMission(this)"
-               style="color:var(--muted);padding:2px 0;cursor:pointer"/>
+               style="color:var(--muted);padding:2px 0;cursor:pointer">
       </div>
       <div id="mis-status" class="info-txt" style="margin-bottom:4px">No mission loaded</div>
       <div class="info-txt">NAV commands played: WAYPOINT 16, LOITER_UNLIM 17, LOITER_TURNS 18, LOITER_TIME 19, LAND 21, TAKEOFF 22, LOITER_TO_ALT 31, SPLINE_WAYPOINT 82, VTOL_TAKEOFF 84, VTOL_LAND 85. Climb/sink 5 m/s (TECS_CLMB_MAX / TECS_SINK_MAX).</div>
@@ -303,9 +309,9 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
   <div class="pnl">
     <h2>Manual Placement</h2>
     <div class="fld"><label>Latitude</label>
-      <input id="m-lat" type="number" step="0.00001" placeholder="click map or enter"/></div>
+      <input id="m-lat" type="number" step="0.00001" placeholder="click map or enter"></div>
     <div class="fld"><label>Longitude</label>
-      <input id="m-lon" type="number" step="0.00001" placeholder="click map or enter"/></div>
+      <input id="m-lon" type="number" step="0.00001" placeholder="click map or enter"></div>
     <div class="row2">
       <div class="fld">
         <label>Alt (m <span id="alt-mode-lbl">REL</span>) <span style="display:inline-flex;gap:2px;vertical-align:middle">
@@ -316,34 +322,34 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
           <button type="button" id="amode-amsl" class="amode-btn" onclick="setAltMode('amsl')"
                   title="Above mean sea level">AMSL</button>
         </span></label>
-        <input id="m-alt" type="number" value="120" min="-500" max="9000"/></div>
+        <input id="m-alt" type="number" value="120" min="-500" max="9000"></div>
       <div class="fld"><label>Heading (°)</label>
         <input id="m-hdg" type="number" value="0" min="0" max="359"
-               oninput="syncHdgSlider(this.value); applyManual(true)"/></div>
+               oninput="syncHdgSlider(this.value); applyManual(true)"></div>
     </div>
     <div class="fld">
       <div class="vtx-row" style="gap:4px">
         <label style="white-space:nowrap">Hdg</label>
         <input type="range" id="m-hdg-sl" min="0" max="359" step="1" value="0"
-               oninput="document.getElementById('m-hdg').value=this.value; applyManual(true)"/>
+               oninput="document.getElementById('m-hdg').value=this.value; applyManual(true)">
         <span id="hdg-sl-lbl" style="width:32px;text-align:right">N</span>
       </div>
     </div>
     <div class="row2">
       <div class="fld"><label>Roll (°)</label>
-        <input id="m-roll" type="number" value="0" min="-90" max="90"/></div>
+        <input id="m-roll" type="number" value="0" min="-90" max="90"></div>
       <div class="fld"><label>Pitch (°)</label>
-        <input id="m-pitch" type="number" value="0" min="-30" max="30"/></div>
+        <input id="m-pitch" type="number" value="0" min="-30" max="30"></div>
     </div>
     <div class="fld"><label>Client VTX Power (default from client profile)</label>
       <div class="vtx-row">
         <input type="range" id="m-vtx" min="0" max="33" step="0.1" value="14"
-               oninput="setVtx(+this.value)"/>
+               oninput="setVtx(+this.value)">
         <span id="vtx-lbl" style="width:auto;min-width:52px">—</span>
       </div>
     </div>
     <div class="fld"><label>Client height AGL (m)</label>
-      <input id="m-cagl" type="number" value="3" min="0" max="500" step="1" onchange="setClientAgl(+this.value)"/>
+      <input id="m-cagl" type="number" value="3" min="0" max="500" step="1" onchange="setClientAgl(+this.value)">
       <div class="btn-row">
         <button type="button" class="btn" onclick="setClientAgl(3)">Ground 3</button>
         <button type="button" class="btn" onclick="setClientAgl(30)">Hover 30</button>
@@ -375,18 +381,18 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     <div class="info-txt" id="pf-dir" style="margin:0 0 6px"></div>
     <div class="fld"><label>Active profile</label>
       <select id="pf-sel" onchange="pickLink(this.value)"></select></div>
-    <div class="fld"><label>Name</label><input id="pf-name" type="text"/></div>
+    <div class="fld"><label>Name</label><input id="pf-name" type="text"></div>
     <div class="row2">
-      <div class="fld"><label>Freq (MHz)</label><input id="pf-freq" type="number" step="1"/></div>
-      <div class="fld"><label>TX power (dBm)</label><input id="pf-txp" type="number" step="0.1"/></div>
+      <div class="fld"><label>Freq (MHz)</label><input id="pf-freq" type="number" step="1"></div>
+      <div class="fld"><label>TX power (dBm)</label><input id="pf-txp" type="number" step="0.1"></div>
     </div>
     <div class="row2">
-      <div class="fld"><label>TX gain (dBi)</label><input id="pf-txg" type="number" step="0.1"/></div>
-      <div class="fld"><label>RX gain (dBi)</label><input id="pf-rxg" type="number" step="0.1"/></div>
+      <div class="fld"><label>TX gain (dBi)</label><input id="pf-txg" type="number" step="0.1"></div>
+      <div class="fld"><label>RX gain (dBi)</label><input id="pf-rxg" type="number" step="0.1"></div>
     </div>
     <div class="row2">
-      <div class="fld"><label>RX sens (dBm)</label><input id="pf-sens" type="number" step="0.5"/></div>
-      <div class="fld"><label>Fade margin (dB)</label><input id="pf-mrg" type="number" step="0.5"/></div>
+      <div class="fld"><label>RX sens (dBm)</label><input id="pf-sens" type="number" step="0.5"></div>
+      <div class="fld"><label>Fade margin (dB)</label><input id="pf-mrg" type="number" step="0.5"></div>
     </div>
     <div class="fld"><label>Carrier antenna</label>
       <select id="pf-ant">
@@ -395,7 +401,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
         <option value="dipole">Dipole (vertical)</option>
         <option value="omni">Omni</option>
       </select></div>
-    <div class="fld"><label>Notes</label><input id="pf-notes" type="text"/></div>
+    <div class="fld"><label>Notes</label><input id="pf-notes" type="text"></div>
     <div class="btn-row">
       <button type="button" class="btn" onclick="saveProfileForm()">✓ Save profile</button>
       <button type="button" class="btn" onclick="copyProfile()" style="flex:0 0 auto;padding:6px 10px">+ Copy</button>
@@ -408,12 +414,12 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     <h2>Terrain Model</h2>
     <div class="row2">
       <div class="fld"><label>Fresnel k (× F1)</label>
-        <input id="md-k" type="number" value="0.6" min="0" max="1.5" step="0.1" onchange="setModel()"/></div>
+        <input id="md-k" type="number" value="0.6" min="0" max="1.5" step="0.1" onchange="setModel()"></div>
       <div class="fld"><label>Extra margin (m)</label>
-        <input id="md-mrg" type="number" value="0" min="0" max="100" step="1" onchange="setModel()"/></div>
+        <input id="md-mrg" type="number" value="0" min="0" max="100" step="1" onchange="setModel()"></div>
     </div>
     <div class="fld"><label>Forest canopy height (m)</label>
-      <input id="md-tree" type="number" value="15" min="0" max="40" step="1" onchange="setModel()"/></div>
+      <input id="md-tree" type="number" value="15" min="0" max="40" step="1" onchange="setModel()"></div>
     <div class="info-txt" id="md-info">Clearance = k × F1 + margin. Samples at the DEM pixel size (z11 terrain tiles).</div>
     <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">Forest is detected from Norgeskart forest colour (Norway only). Elsewhere, or if wrong, draw zones manually:</div>
     <div style="display:flex;gap:4px;margin-top:4px">
@@ -426,14 +432,14 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
   <div class="pnl">
     <h2>GCS Coverage (HM30)</h2>
     <div class="fld"><label>GCS Latitude</label>
-      <input id="g-lat" type="number" step="0.00001" placeholder="click map or enter"/></div>
+      <input id="g-lat" type="number" step="0.00001" placeholder="click map or enter"></div>
     <div class="fld"><label>GCS Longitude</label>
-      <input id="g-lon" type="number" step="0.00001" placeholder="click map or enter"/></div>
+      <input id="g-lon" type="number" step="0.00001" placeholder="click map or enter"></div>
     <div class="row2">
       <div class="fld"><label>Ant. Height (m)</label>
-        <input id="g-anth" type="number" value="2" min="0.5" max="30" step="0.5"/></div>
+        <input id="g-anth" type="number" value="2" min="0.5" max="30" step="0.5"></div>
       <div class="fld"><label>Max Range (km)</label>
-        <input id="g-range" type="number" value="15" min="1" max="50"/></div>
+        <input id="g-range" type="number" value="15" min="1" max="50"></div>
     </div>
     <button type="button" class="btn" id="g-pick-btn" onclick="startGcsPick()">⊕ Click Map for GCS</button>
     <div class="center-lbl" id="g-pos-lbl">No GCS position set</div>
@@ -447,11 +453,11 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
 
   <div class="pnl">
     <h2>Live (GCS App)</h2>
-    <label class="chk"><input type="checkbox" id="lv-on" onchange="setLiveEnabled(this.checked)"/>Connect to GCS app (127.0.0.1:47800)</label>
-    <label class="chk"><input type="checkbox" id="lv-follow" onchange="setLiveFollow(this.checked)"/>Coverage follows live carrier</label>
+    <label class="chk"><input type="checkbox" id="lv-on" onchange="setLiveEnabled(this.checked)">Connect to GCS app (127.0.0.1:47800)</label>
+    <label class="chk"><input type="checkbox" id="lv-follow" onchange="setLiveFollow(this.checked)">Coverage follows live carrier</label>
     <div class="info-txt" id="lv-st">GCS APP: NOT RUNNING</div>
     <div class="divider"></div>
-    <label class="chk"><input type="checkbox" id="lv-heat" onchange="toggleHeatmap(this.checked)"/>Measured LQ heatmap (logged samples)</label>
+    <label class="chk"><input type="checkbox" id="lv-heat" onchange="toggleHeatmap(this.checked)">Measured LQ heatmap (logged samples)</label>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div class="info-txt" id="lv-log" style="margin:0">Log: —</div>
       <button type="button" class="btn stop" onclick="clearLiveLog()"
@@ -475,30 +481,30 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
 
   <div class="pnl">
     <h2>Legend</h2>
-    <div class="lr"><div class="ls" style="background:var(--blue)"></div><span id="lg-video">Video limit (RF)</span></div>
+    <div class="lr"><div class="ls c-blue"></div><span id="lg-video">Video limit (RF)</span></div>
     <div class="lg-note" id="lg-video-note"></div>
-    <div class="lr"><div class="ls" style="background:var(--teal)"></div><span id="lg-rc">RC limit (RF)</span></div>
+    <div class="lr"><div class="ls c-teal"></div><span id="lg-rc">RC limit (RF)</span></div>
     <div class="lg-note" id="lg-rc-note"></div>
-    <div class="lr"><div class="ls" style="background:var(--green);height:8px;opacity:.6"></div>OPERATING AREA = video ∩ RC</div>
-    <div class="lr"><div class="ls" style="background:var(--accent)"></div>Terrain / Fresnel blocked</div>
-    <div class="lr"><div class="ls" style="background:var(--grey);border:1px dashed var(--muted)"></div>No terrain data (RF only)</div>
-    <div class="lr"><div class="ls" style="background:var(--red);opacity:.5"></div>No signal (antenna null / behind patches)</div>
-    <div class="lr"><div class="ls" style="border-top:2px dotted var(--muted);height:0"></div>Shadow re-acquired (not coverage)</div>
-    <div class="lr"><div class="ls dot" style="background:var(--green)"></div>Relay aircraft</div>
+    <div class="lr"><div class="ls c-op"></div>OPERATING AREA = video ∩ RC</div>
+    <div class="lr"><div class="ls c-accent"></div>Terrain / Fresnel blocked</div>
+    <div class="lr"><div class="ls c-nodata"></div>No terrain data (RF only)</div>
+    <div class="lr"><div class="ls c-null"></div>No signal (antenna null / behind patches)</div>
+    <div class="lr"><div class="ls c-shadow"></div>Shadow re-acquired (not coverage)</div>
+    <div class="lr"><div class="ls dot c-green"></div>Relay aircraft</div>
     <div class="lr" style="color:var(--muted);font-size:10px;margin-top:2px">→ Orange arrow = patches face <span id="lg-face">right</span></div>
     <div class="divider"></div>
-    <div class="lr"><div class="ls" style="background:var(--green);height:8px;opacity:.7"></div>Orbit worst case (always covered)</div>
-    <div class="lr"><div class="ls" style="background:var(--amber);height:8px;opacity:.5"></div>Orbit best case (covered at some point)</div>
+    <div class="lr"><div class="ls c-worst"></div>Orbit worst case (always covered)</div>
+    <div class="lr"><div class="ls c-best"></div>Orbit best case (covered at some point)</div>
     <div class="divider"></div>
-    <div class="lr"><div class="ls" style="background:var(--purple)"></div>GCS: LOS clear to carrier</div>
-    <div class="lr"><div class="ls" style="background:var(--rose)"></div>GCS: terrain / trees blocked</div>
-    <div class="lr"><div class="ls dot" style="background:var(--purple)"></div>GCS position</div>
-    <div class="lr"><div class="ls dot" style="background:var(--amber)"></div>Home (REL altitude reference)</div>
+    <div class="lr"><div class="ls c-purple"></div>GCS: LOS clear to carrier</div>
+    <div class="lr"><div class="ls c-rose"></div>GCS: terrain / trees blocked</div>
+    <div class="lr"><div class="ls dot c-purple"></div>GCS position</div>
+    <div class="lr"><div class="ls dot c-amber"></div>Home (REL altitude reference)</div>
     <div class="lg-note" id="lg-gcs-note"></div>
     <div class="divider"></div>
-    <div class="lr"><div class="ls dot" style="background:var(--accent)"></div>Live carrier</div>
-    <div class="lr"><div class="ls" style="background:var(--green)"></div>Live client · LQ ≥ 70 %</div>
-    <div class="lr"><div class="ls" style="background:var(--red)"></div>Live client · LQ &lt; 70 % (FPV LINK WEAK)</div>
+    <div class="lr"><div class="ls dot c-accent"></div>Live carrier</div>
+    <div class="lr"><div class="ls c-green"></div>Live client · LQ ≥ 70 %</div>
+    <div class="lr"><div class="ls c-red"></div>Live client · LQ &lt; 70 % (FPV LINK WEAK)</div>
   </div>
 
   <div class="pnl">
@@ -514,7 +520,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
       <label>Map tiles — max zoom</label>
       <div class="vtx-row" style="margin-bottom:0">
         <input type="range" id="off-maxz" min="10" max="16" value="14" step="1"
-               oninput="document.getElementById('off-maxz-lbl').textContent=this.value; updateOfflineStats()"/>
+               oninput="document.getElementById('off-maxz-lbl').textContent=this.value; updateOfflineStats()">
         <span id="off-maxz-lbl">14</span>
       </div>
     </div>
@@ -620,23 +626,30 @@ function newId() {
   if (hasStore() && typeof VtolStore.uid === 'function') { try { return VtolStore.uid(); } catch {} }
   return 'link-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
+// Saves a link profile; returns a message for the user. If the shared store cannot be written
+// (storage full or blocked: VtolStore.save() → false), the edit stays in memory for this session only.
 function persistLink(p) {
   p.updatedAt = new Date().toISOString();
+  const keep = () => {
+    const i = profiles.links.findIndex(l => l.id === p.id);
+    if (i >= 0) profiles.links[i] = p; else profiles.links.push(p);
+  };
   if (hasStore()) {
+    let ok = false;
     try {
-      VtolStore.update(s => {
-        s.links = Array.isArray(s.links) ? s.links : [];
-        const i = s.links.findIndex(l => l.id === p.id);
-        if (i >= 0) s.links[i] = p; else s.links.push(p);
-      });
-      loadProfiles();
-      return 'shared store (vtol_store)';
+      const s = VtolStore.load();
+      s.links = Array.isArray(s.links) ? s.links : [];
+      const i = s.links.findIndex(l => l.id === p.id);
+      if (i >= 0) s.links[i] = p; else s.links.push(p);
+      ok = VtolStore.save(s) !== false;
     } catch {}
+    if (ok) { loadProfiles(); return 'Profile saved to the shared store (vtol_store)'; }
+    keep();
+    return '⚠ Profile NOT saved — browser storage full or blocked (kept for this session only)';
   }
-  const i = profiles.links.findIndex(l => l.id === p.id);
-  if (i >= 0) profiles.links[i] = p; else profiles.links.push(p);
+  keep();
   mapState.links = profiles.links; saveMapState();
-  return 'map state (vtol_map_state)';
+  return 'Profile saved to map state (vtol_map_state)';
 }
 
 // ─── Altitude reference ───────────────────────────────────────────────────────
@@ -1897,17 +1910,19 @@ function saveProfileForm() {
   for (const [id, f] of PF_FIELDS) p[f] = readNum(id);
   p.antenna = $('pf-ant').value || null;
   p.notes = $('pf-notes').value;
-  const where = persistLink(p);
-  mapState.active[pfKind] = p.id; saveMapState();
-  renderProfileUi(); profilesChanged();
-  toast('Profile saved to ' + where);
+  saveNotice(persistLink(p), p.id);
 }
 function copyProfile() {
   const cur = activeLink(pfKind);
   const p = Object.assign({}, cur || { kind: pfKind }, { id: newId(), name: (cur ? cur.name : pfKind) + ' (copy)' });
-  persistLink(p);
-  mapState.active[pfKind] = p.id; saveMapState();
+  saveNotice(persistLink(p), p.id);
+}
+function saveNotice(msg, id) {
+  mapState.active[pfKind] = id; saveMapState();
   renderProfileUi(); profilesChanged();
+  const failed = msg.startsWith('⚠');
+  toast(msg, failed ? 6000 : 2200);
+  if (failed) { $('pf-status').textContent = msg; $('pf-status').className = 'info-txt bad'; }
 }
 function profilesChanged() {
   if (marker) marker.setIcon(acIcon(state.heading || 0, '--green'));
@@ -1919,7 +1934,7 @@ window.addEventListener('storage', e => {
 });
 
 // ─── Live layer: GCS companion app (contract C2, plan §8.3) ──────────────────
-const live = { status: null, trail: [], lastTrail: 0, lastLog: 0, carrier: null, client: null };
+const live = { trail: [], lastTrail: 0, lastLog: 0, carrier: null, client: null };
 const TRAIL_MS = 5 * 60 * 1000;
 const lqColour = lq => cssVar({ok: '--green', weak: '--red', unknown: '--muted'}[RM.lqClass(lq)]);
 
@@ -1947,7 +1962,6 @@ function onLiveAlarm(a) {
 }
 function onLiveStatus(s) {
   if (!s || typeof s !== 'object') return;
-  live.status = s;
   const now = Date.now();
   const c = s.carrier || {}, cl = s.client || {}, gps = cl.gps || {}, link = cl.link || {};
   // carrier

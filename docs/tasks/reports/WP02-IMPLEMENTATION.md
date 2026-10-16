@@ -27,7 +27,7 @@ Line numbers refer to HEAD `320bb35`.
 
 | ID | Status | Evidence | Explanation |
 |---|---|---|---|
-| R1 MAP-06 | DONE | `relay/map.html:7-8`; `relay/vendor/leaflet/{leaflet.js,leaflet.css,images/*.png,LICENSE}` | Vendored from unpkg 1.9.4. SRI: js `sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=`, css `sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=` (identical to leafletjs.com). `grep unpkg relay/map.html` → nothing. |
+| R1 MAP-06 | DONE | `relay/map.html:7-8`; `relay/vendor/leaflet/{leaflet.js,leaflet.css,images/*.png,LICENSE}` | Vendored from unpkg 1.9.4. SRI: js `sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=`, css `sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=` (identical to leafletjs.com; byte-exact since rework round 1). `grep unpkg relay/map.html` → nothing. |
 | R2 | DONE | `relay/rfmodel.js` throughout: geodesy :54-77, tiles :80-101, FSPL/budget/range :104-128, patch/`antennaFactor` :184, `nedToBody` :165, terrain LOS `traceRay` :221, Fresnel :130, foliage :143, mission parse :453, sim stepping :514 | The page keeps only DOM, Leaflet and fetching code. Each function family is tested in `test/map/*.test.js`. |
 | R3 MAP-03 | DONE | `rfmodel.js:165-172` | `x2 = x1·cθ − z1·sθ`, `z2 = x1·sθ + z1·cθ`. Tests cover θ = +10° (level target ahead → body z = sin 10° > 0), nose-down, target below, yaw and roll vectors (`rfmodel-coverage.test.js`). |
 | R4 MAP-04 | DONE | `rfmodel.js:311` (`dep = hAsl − targetAsl`, with `targetAsl = terrain(d) + clientAgl` at each evaluated point) | Depression is evaluated per bearing and per sample distance. A test checks that coverage depends only on the height above local terrain: 620 m ASL over 500 m terrain equals 120 m over 0 m. |
@@ -147,7 +147,7 @@ There are no new rule categories. The extra errors are new controls written in t
 ## 5. Deviations / contract issues
 
 1. **`node --test test/` does not work on Node 24 with a directory argument.** Node resolves it as a module path and fails with "Cannot find module …\test". I added `test/index.js`, which loads every `*.test.js` below `test/`. This file is not in my "Files you own" list. WP01 may hit the same problem and add a similar file, so the PM should keep one copy at merge (the content is generic). Alternative: change the documented command to `node --test "test/**/*.test.js"`.
-2. **C1 default profile ids are not specified.** `RfModel.DEFAULT_PROFILES` (`rfmodel.js:22`) mirrors every C1 value, but has to choose ids: `link-video-5800`, `link-rc-elrs`, `link-gcs-hm30`, `client-ref-1`, `pack-*`. It also fills unspecified fields: pack `cycles: 0, purchased: '', notes: ''`; client `sizeIn: null, notes: ''`; HM30 `antenna: null`. For a truly byte-for-byte mirror, C1 should fix these ids and fields, and WP01's `defaults()` should match them. The map only uses the fallback when `js/store.js` is absent.
+2. **C1 default profile ids** *(superseded in rework round 1)*: round 1 chose its own ids and fields. Since contract C1.4, `RfModel.DEFAULT_PROFILES` copies `VtolStore.IDS` / `defaults()` exactly, and `test/map/defaults.test.js` asserts deep equality against `js/store.js`. See §7.
 3. **The brief's "z11 ≈ 76 m at 60°N" is the equator value.** At 60°N a z11 pixel is ≈ 38 m. The code samples at the true pixel size (`demStep`), which satisfies "≤ DEM pixel" with margin.
 4. **C2 client details:**
    - `start()` reports `onConnection(false)` immediately, so pages can show "NOT RUNNING" from the start.
@@ -162,7 +162,7 @@ There are no new rule categories. The extra errors are new controls written in t
 6. **Automatic prefetch radius is capped at 20 km.** A filled ELRS profile can give ~100 km of free-space range, which would mean hundreds of terrain tiles. RC rays beyond 20 km are shown as "no terrain data (RF only)". GCS coverage still fetches its whole range, on demand. Vegetation tiles are prefetched only within the video range, which bounds the operating area.
 7. **Forest zones, home, GCS position, layer, model, active profile ids and live toggles** are also persisted in `vtol_map_state`, beyond the "last view and positions" the brief asked for.
 8. **R13 scope:** the heatmap is by absolute client position, and the §14.5 "observed edge" markers are not done (R13 is a SHOULD).
-9. **Leaflet text files** are committed with LF; `core.autocrlf=true` warns about the working copy only. The blobs match the official SRI.
+9. **Leaflet text files** *(corrected in rework round 1)*: in round 1, git normalised the CRLF in `leaflet.css` and `LICENSE`, so only `leaflet.js` matched its SRI. Now `.gitattributes` (`relay/vendor/** -text`) keeps the vendored files byte-exact, and the committed `leaflet.css` hashes to the official `sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=`.
 
 ## 6. Notes for the verifier
 
@@ -181,3 +181,30 @@ To see each feature in a browser (serve the repo root, e.g. `python -m http.serv
 7. **GCS:** pick a position → nothing is computed until ▶ Compute; then the purple polygon and the TBD note appear.
 8. **Map layer:** OSM/Topo/ESRI/Dark → "↓ Cache Map Tiles" is disabled with a policy note; Norgeskart → enabled.
 9. **Live layer:** without the WP08 app, call `onLiveConnection(true); onLiveStatus({...C2 status...})` in the console. You get a carrier marker, a client marker coloured by LQ, a trail and logged samples; then "Measured LQ heatmap" and "✕ Clear log".
+
+
+## 7. Rework round 1
+
+Input: `Serify\WP02\VERIFY-round1.md` (REJECTED, F1 MAJOR, F2–F7 MINOR). The PM merged `main` into `wp/02` first, which brought in `js/store.js` and C1.4. Every finding is fixed.
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 (MAJOR)** fallback defaults ≠ `js/store.js` | `RfModel.DEFAULT_PROFILES` now copies `VtolStore.IDS` / `defaults()` exactly: ids `pack-client-ref-6s-1300`, `link-client-video-58`, `link-elrs-rc`, `link-siyi-hm30`; client `sizeIn: 7`; HM30 `notes: null`. New drift guard `test/map/defaults.test.js` `require`s `js/store.js` and asserts `deepStrictEqual` for packs, clients and links, plus the id mapping to `VtolStore.IDS`. `map.html` hard-codes no profile ids (grep for the old ids finds nothing). | `relay/rfmodel.js:20-51`, `test/map/defaults.test.js` |
+| F2 `leaflet.css` bytes / report claim | Added `.gitattributes` with `relay/vendor/** -text` and re-committed `leaflet.css` and `LICENSE` byte-exact from the upstream download (both had CRLF). Blob hashes: `leaflet.css` `sha256-p4NxAoJB…BMY=`, `leaflet.js` `sha256-20nQCchB…BZo=` (official SRI). The report's §1 and §5.9 wording is corrected. | `.gitattributes`, `relay/vendor/leaflet/` |
+| F3 store save result ignored | `persistLink` now does `VtolStore.load()` → edit → `VtolStore.save()` and checks the result (`false` = storage full or blocked). On failure the edit is kept in memory for the session only, and the user gets a 6 s toast plus a red notice in the editor: "⚠ Profile NOT saved — browser storage full or blocked (kept for this session only)". | `relay/map.html` `persistLink`, `saveNotice` |
+| F4 dead `live.status` | Removed. | `relay/map.html` `live` object, `onLiveStatus` |
+| F5 8× step could skip known terrain | The long step is taken only if its far end is still without data; otherwise the ray steps at full resolution. Tiles are 256 px, so only a < 8 px corner clip can still be passed over. New test: a ridge just after a data gap is found. The pre-fix code returned `nodata` to 3 km; it now returns `terrain` at 1150 m. | `relay/rfmodel.js` `traceRay` (adaptive spacing block), test "coarse steps never jump into a loaded tile" |
+| F6 jump onto loiter circle | When the aircraft is more than one step inside the circle, it flies outward along the radial (start heading if at the centre). It joins the orbit only within one step of the circle, so the largest per-step move is ≤ 2 steps. LOITER_TO_ALT holds altitude while flying out. Tests now time loiters from orbit entry, and a new test checks there are no jumps. | `relay/rfmodel.js` `missionStep` loiter branch; `test/map/mission.test.js` |
+| F7 html-validate | All self-closing void tags (`<input/>`, `<meta/>`, `<link/>`) are now plain void tags, and the 17 legend swatch styles moved into `.c-*` classes. **wp/02: 40 errors** (39 `no-inline-style`, 1 `multiple-labeled-controls`) vs **main: 85**. Every category is now at or below main. The remaining inline styles are layout tweaks on the existing panels; the label error is the existing altitude-mode label that wraps three buttons. | `relay/map.html` head/CSS |
+
+Tests after the rework:
+
+```
+export PATH="/c/Program Files/nodejs:$PATH"; node --test test/
+ℹ tests 103   ℹ pass 103   ℹ fail 0      (WP01 + WP04 + WP02 tests)
+```
+
+The jsdom smoke test (`S\smoke\map-smoke.js`) now runs twice: once with `js/store.js` not served, once with the real `js/store.js`. **47 ok, 0 fail, no uncaught errors.** New checks:
+- the store ids are used
+- a GCS profile edit lands in place in `vtol_store`
+- with `localStorage.setItem` throwing, the "NOT saved" notice appears
