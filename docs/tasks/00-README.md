@@ -48,12 +48,12 @@ The PM updates this table.
 |---|---|---|---|
 | WP01 | done (1 rework) | APPROVED (round 2) | yes |
 | WP02 | done | in verification | |
-| WP03 | done | REJECTED round 1 → rework | |
+| WP03 | done (1 rework) | APPROVED (round 2) | yes |
 | WP04 | done | APPROVED (round 1) | yes |
 | WP05 | | | |
 | WP06 | | | |
 | WP07 | | | |
-| WP08a | | | |
+| WP08a | in progress | | |
 | WP08b | | | |
 | WP09 | | | |
 | WP10 | | | |
