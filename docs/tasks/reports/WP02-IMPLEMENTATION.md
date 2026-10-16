@@ -185,7 +185,7 @@ To see each feature in a browser (serve the repo root, e.g. `python -m http.serv
 
 ## 7. Rework round 1
 
-Input: `Serify\WP02\VERIFY-round1.md` (REJECTED, F1 MAJOR, F2–F7 MINOR). The PM merged `main` into `wp/02` first, which brought in `js/store.js` and C1.4. Every finding is fixed.
+Input: `S\verify\WP02\VERIFY-round1.md` (REJECTED, F1 MAJOR, F2–F7 MINOR). The PM merged `main` into `wp/02` first, which brought in `js/store.js` and C1.4. Every finding is fixed.
 
 | Finding | Fix | Evidence |
 |---|---|---|
