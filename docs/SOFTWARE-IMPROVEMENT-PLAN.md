@@ -5,8 +5,9 @@
 | **Document** | SOFTWARE-IMPROVEMENT-PLAN · Rev A · 2026-10-16 |
 | **Scope** | `index.html`, `manual.html`, `relay/map.html`, `relay/app.py` + template, `sw.js`, `scripts/`, `img/`, project docs |
 | **Baseline** | commit `7376503` on `main` |
-| **Input** | *Analog Video to IP Relay with Drone TX Control — Technical Solution* (dated 2026-10-14, **updated revision received 2026-10-16**: KSZ8795 5-port switch, camera port, CAM_ENABLE), called "the relay design" below |
+| **Input** | *Analog Video to IP Relay with Drone TX Control — Technical Solution* (dated 2026-10-14, **latest revision received 2026-10-16**: KSZ8795 5-port switch, camera port P3, CAM_ENABLE, 6–26 V supply, any-band ELRS/VRX), called "the relay design" below |
 | **Status** | Review and proposal only. **No software has been changed.** |
+| **Rev B** (2026-10-16) | Owner answers incorporated: the carrier failsafe philosophy (§4), TX modules, controllers, PAL+NTSC, repo layout, camera gating. Relay-design fixes confirmed (§3.4). New research section on client telemetry (§14). |
 
 ---
 
@@ -25,6 +26,7 @@
 11. [Roadmap](#11-roadmap)
 12. [Open questions](#12-open-questions)
 13. [Appendices](#13-appendices)
+14. [Research: new possibilities from the relay](#14-research-new-possibilities-from-the-relay)
 
 ---
 
@@ -43,9 +45,15 @@ These came from the project owner during the review:
 | Carrier camera | An **IP (Ethernet) camera**, routed **through the relay PCB**. The updated relay design does this: switch port **P3**, a spare port **P4**, and camera on/off from the GCS (`CAM_ENABLE`). See §3.4. |
 | Ground station | **Windows only.** Mission Planner stays. The Linux GStreamer receiver and RC sender in the relay design have to be ported to Windows. |
 | Carrier backup link | The **915 MHz Radiomaster Nomad → ELRS RX → ArduPlane** backup link **stays**. |
+| **Carrier failsafe philosophy** | The SIYI HM30 is the primary link and stands in for "any IP radio". The direct 915 MHz RC link is **backup control at close range only**, and losing it out of range is expected and harmless. **The carrier must failsafe only when the SIYI link is lost.** So `THR_FAILSAFE = 2` (no RC failsafe action) is **intentional**, and `FS_GCS_ENABL = 2` (active in all modes) matches the intent. The *documentation* is what's wrong (§4). |
 | Airframes | The carrier is the **Heewing T2 Cruza** VTOL. The client is **any analog FPV drone**. The Betaflight/Matek quad becomes one example "client profile", not *the* sub-drone. |
+| ELRS TX module on the relay | **RadioMaster Nomad** (dual LR1121, 2.4 GHz + 868/900 MHz, Gemini) **or** a **RadioMaster DBR4 flashed as a TX** (see §14.6 for the caveats). |
+| FPV pilot's controller | **RadioMaster EdgeTX radios** (TX16S, TX15, Boxer, …) connected to the GCS laptop over USB (§7.3). |
 | Flask app | **Retire `relay/app.py`** and replace it with a Windows GCS companion app (§7). |
-| Video standard | **Unknown** (PAL or NTSC). Everything has to support both. |
+| GCS app location | **This repo**, in `gcs/`, with the shared packet definitions in `protocol/` (§7, decision record in §12). |
+| Video standard | **Both PAL and NTSC** must be supported, at runtime, per client. |
+| Operational authorisation | Remote piloting through the relay **is covered** by the operator's authorisation (Luftfartstilsynet). Radio-spectrum rules (Nkom) are a separate question (§6.1.3). |
+| Camera gating | Switching the carrier camera off is **only needed while a client drone is connected**. Carrier-only flights should have the camera available without the client RC stream (§3.4, firmware request). |
 | This document | Lives in `docs/` and is committed to `main`. |
 
 ### 1.2 Labels
@@ -63,8 +71,8 @@ These came from the project owner during the review:
 
 **Top findings**
 
-1. **The documented carrier RC failsafe does not exist (CRIT).** The manual, the emergency procedures and the failsafe timeline graphic all say that losing the 915 MHz link triggers FBWA after 1.5 s and RTL after 5 s. But `THR_FAILSAFE = 2` means *"the RC inputs won't be used… but it won't trigger an RC failsafe action"* (ArduPlane parameter docs). Losing the backup link causes **no mode change**.
-2. **The documented GCS failsafe scope is wrong (CRIT).** `FS_GCS_ENABL = 2` is documented as "AUTO only". In ArduPlane, 2 = *HeartbeatAndREMRSSI*, which is **active in every mode** (AUTO-only is value 3). The emergency card "AUTO: GCS failsafe → RTL / OTHER MODES: use Nomad" is therefore wrong.
+1. **The documentation describes the opposite of the intended failsafe design (CRIT, documentation only).** The intent is that the carrier fails safe **only on SIYI (GCS) link loss**, and the 915 MHz link is close-range backup whose loss is harmless. The parameters already do that (`THR_FAILSAFE = 2` → no RC failsafe action; `FS_GCS_ENABL = 2` → GCS failsafe in all modes). But the manual, both emergency cards and the failsafe timeline graphic teach pilots that 915 MHz loss triggers FBWA → RTL, and that the GCS failsafe works only in AUTO. A pilot trained on the current text will expect the wrong behaviour in both directions.
+2. **A few things the intended design depends on are undocumented (HIGH).** Mission Planner must stay running and sending heartbeats for the whole flight; closing it or letting the laptop sleep triggers RTL after 5 s. No other program may impersonate the primary GCS. QHOVER behaviour when the 915 link drops during a close-in manual takeoff or landing is untested. See S-01/S-02.
 3. **The whole relay description is obsolete.** Chain diagrams, frequency table, network table, checklists, emergency cards, crew training, maintenance and the orbit diagram all describe the removed Nomad/DBR4/HDMI chain (§6).
 4. **The aircraft is described as 4-motor and "T2 Ranger" in several places.** It is a 3-motor T2 Cruza (§5.2, MAN-05/11).
 5. **The battery "margin" shown in the Tools page is wrong by roughly 3.6 V (HIGH).** It is measured from the chemistry floor (18.6 V), not from `BATT_CRT_VOLT` (22.2 V) (IDX-01).
@@ -72,8 +80,14 @@ These came from the project owner during the review:
 7. **Cloud sync can silently delete data (HIGH).** It overwrites local data with the remote copy instead of merging, and the battery log is not exported or synced at all (IDX-03/04).
 8. **The coverage map can't play back the project's own mission template (HIGH).** It ignores `VTOL_TAKEOFF`, `LOITER_TO_ALT` and `VTOL_LAND`. It also can't model the client's real 25 mW VTX: the slider starts at 100 mW (MAP-01/02).
 9. **The offline promise is only partly true.** Leaflet, fonts and the map page are never cached by the service worker (SW-01, MAP-06).
-10. **The new relay brings a big capability jump the software should use.** The bridge forwards CRSF telemetry from the client (link quality, battery, GPS, flight mode). For the first time the GCS can show live client status, and the map can show the client's position. This closes the documented gap that the "Carrier Pilot has no telemetry visibility of the FPV".
-11. **The carrier camera is now switched from the GCS RC stream (`CAM_ENABLE`).** It is off at power-up and is forced off whenever the GCS stream is lost. Procedures, checklists, the emergency cards and the GCS app must all reflect this. In particular: **the camera only works while the GCS app is streaming**, and it goes dark in exactly the situations where the carrier pilot might want it (§6.1.8).
+10. **The new relay brings a big capability jump the software should use (researched in §14).** The bridge forwards CRSF telemetry from the client. For a Betaflight client that is uplink/downlink RSSI, LQ and SNR, GPS position, speed, altitude and satellites, battery voltage, current and mAh, attitude, and the flight-mode string including `!FS!` for failsafe. The GCS can then:
+    - show live client status, and put the client on the map and in Mission Planner
+    - raise automatic "relay edge" and "client failsafe" alarms
+    - change the client's VTX channel *and* the relay VRX channel together, via ELRS VTX Admin and the backpack
+    - build measured coverage maps
+
+    This closes the documented gap that the "Carrier Pilot has no telemetry visibility of the FPV".
+11. **The carrier camera is now switched from the GCS RC stream (`CAM_ENABLE`).** In the relay design it is off at power-up and forced off whenever the GCS stream is lost. Procedures, checklists, the emergency cards and the GCS app must all reflect this. Since gating is only needed while a client is connected, §3.4 proposes a small firmware change so the camera is available on carrier-only flights.
 
 **Recommended order:** fix the safety content (§4) → fix the code bugs (§5) → rewrite the content for the new relay (§6) → build the GCS companion (§7) → upgrade the map (§8) → graphics and the rest (§9–10).
 
@@ -165,26 +179,52 @@ These are outside the software, but the manual has to describe them correctly:
    - procedures and checklists need camera-state steps (§6.1.6, §6.2.1)
    - the emergency cards change (§6.1.8)
    - the manual needs a bandwidth-budget section (§6.1.4)
-2. **Supply range versus a 6S pack (still open).** The relay design states 6–25 V. A fully charged 6S LiPo is **25.2 V** (HV packs 26.1 V). The parts chosen (TPS54360 60 V, SMBJ30A) appear to tolerate this, but the spec line and the manual's power table should say 6–26 V, or whatever was verified.
-3. **Remaining inconsistencies inside the updated relay design** (worth fixing there, because the manual will copy from it):
-   - The pin-map table still says the N6 RMII goes "to switch **P3**", and the bring-up checklist says "N6 sends and receives through **P3**". Both should say **P5** now; P3 is the camera.
-   - The MCU-core section says NRST uses an ESDALC6V1-1U2, while the BOM says it was replaced by ESDZL5-1F4.
-   - The text still fixes the RC module at **868 MHz** and the VRX at **5.8 GHz**. Per the project decisions (§1.1), both are configurable. Rephrase as "ELRS TX module (any band)" and "VRX (band per client)".
-   - The KSZ8795 **RMII clock direction** on P5 is marked unverified. If an external 50 MHz oscillator is needed, the N6 firmware clock setup note ("external 50 MHz clock") still holds, but the manual's block diagram should show the oscillator.
-   - The port-enable and rate-limit register names come from the older KS8995 family and must be confirmed in the KSZ8795 register map. The GCS app's camera status display depends on these behaving as described.
-4. The bridge MCU is now consistently the **STM32G030** (the earlier G030/G071 mismatch is fixed). The manual's flashing instructions should name it.
+2. **Relay-design fixes confirmed in the latest revision.** Every inconsistency raised in Rev A of this plan is fixed:
+   - supply now **6–26 V** (2S–6S, full 6S = 25.2 V)
+   - the pin map and bring-up checklist use **P5** for the N6
+   - NRST ESD part consistently **ESDZL5-1F4**
+   - ELRS module "**any band**", VRX "**band per client**"
+   - optional **50 MHz oscillator** footprint added for the unverified KSZ8795 RMII-clock case
+   - bridge MCU consistently **STM32G030**
+   - the G0 **reads back** the switch registers and reports the *actual* camera state
+
+   What is still open: the KSZ8795 register names (taken from the KS8995 family) and the RMII clock direction. Both need confirming in the datasheet; they affect the GCS camera status display and diagram D2.
+3. **Firmware request — camera gating only while a client is connected** (owner decision, Q12). In the current relay design the camera is off at power-up and stays off until a GCS RC stream sets `CAM_ENABLE`, so a **carrier-only** flight has no camera unless the GCS app runs. Proposed G0 behaviour:
+
+   | Bridge situation | Camera (P3) |
+   |---|---|
+   | No valid GCS RC stream since boot (carrier-only, client not connected) | **ON** (at its P3 ingress cap) |
+   | RC stream running | follows `CAM_ENABLE` (app default: off while the client is armed) |
+   | RC stream lost after having run (client in failsafe) | **OFF** — protect the client's video during its RTH, as in the relay design |
+   | New stream after loss | follows `CAM_ENABLE` again |
+
+   Alternative without firmware change: an app "Carrier-only mode" that streams RC with the arm channel forced to disarmed and `CAM_ENABLE = 1`. This works, but needs the app running and an ELRS TX module that transmits to nobody. **Recommendation: the firmware change.**
+4. **ELRS TX module power (VBAT_TX).** Retail specifications for the **RadioMaster Nomad** list:
+   - 2 × LR1121, up to 1 W per band
+   - XT30 input **6–16.8 V**, with outputs above 250 mW requiring the XT30 supply (2S–4S)
+   - an ESP32 main MCU plus an ESP32-C3 (the TX backpack)
+
+   The relay design's VBAT_TX buck must therefore output a voltage **inside 6–16.8 V**, with peak current sized for dual-band 1 W operation (from the RadioMaster datasheet or a measurement). A DBR4 used as a TX has different supply needs and much lower output power (§14.6). The manual's power table must list the module actually fitted.
 
 ---
 
 ## 4. Safety-critical findings (fix first)
 
-All of these are **content** fixes in `manual.html` and `index.html`. They are P0 regardless of the relay change.
+All of these are **content** fixes in `manual.html` and `index.html`. They are P0 regardless of the relay change. **No parameter change is needed for S-01/S-02**: the aircraft is configured as intended, and only the documentation and procedures are wrong.
+
+**Design intent (to state at the top of the manual's Flight Modes chapter):**
+
+> The SIYI HM30 link (Mission Planner) is the **primary control link** and the **only link whose loss triggers a carrier failsafe**. The 915 MHz Nomad link is **close-range backup control** (takeoff, landing, or HM30 trouble near the field). Losing it beyond close range is **expected and requires no action**; the aircraft ignores RC while it is absent.
 
 | ID | Finding | Evidence | Where it appears | Fix |
 |---|---|---|---|---|
-| **S-01** | Losing the 915 MHz link causes **no failsafe action**. | `THR_FAILSAFE=2`: *"A value of 2 means that the RC inputs won't be used when RC failsafe is detected… but it won't trigger an RC failsafe action."* | manual Flight Modes failsafe table and SVG timeline (`manual.html:386-455`); Emergency "RC Link Loss" in both files (`manual.html:757-776`, `index.html:223-242`); checklist D "Failsafe params" note (`index.html:584`); glossary FBWA entry (`manual.html:964`) | Rewrite as: *"915 MHz loss → RC ignored, aircraft continues in current mode; GCS is primary."* Delete the 1.5 s/5 s timeline or redraw it for the GCS failsafe. Or, if an RC failsafe action **is** wanted, change `THR_FAILSAFE` to 1 and re-test. That is the owner's decision. |
-| **S-02** | The GCS failsafe is active in **all modes**, not just AUTO. | `FS_GCS_ENABL`: *0 Disabled, 1 Heartbeat, 2 HeartbeatAndREMRSSI, 3 HeartbeatAndAUTO*. It triggers after `FS_LONG_TIMEOUT` (5 s) and runs `FS_LONG_ACTN` (1 = RTL). | Flight Modes table row "GCS (SIYI) loss — AUTO only"; Emergency "GCS Link Loss" steps 3–4; checklist copy block `FS_GCS_ENABL = 2 (GCS failsafe in AUTO only)` | Correct the meaning. Add: *"Also triggers if HM30 RADIO_STATUS reports remrssi = 0"*. Check whether the HM30 sends RADIO_STATUS. Document what RTL/QRTL does when the trigger happens in a Q-mode (check `Q_RTL_MODE` / `Q_OPTIONS` in the param file). |
-| **S-03** | `FS_SHORT_ACTN=0` is documented as FBWA. | Value 0 = *"CIRCLE / no change (if already in AUTO, GUIDED, LOITER)"*; FBWA is 2. | Same places as S-01 | Correct the text (moot while S-01 stands, but wrong). |
+| **S-01** | The docs say losing the 915 MHz link triggers FBWA (1.5 s) → RTL (5 s). By design, it triggers **nothing**. | `THR_FAILSAFE=2`: *"…the RC inputs won't be used when RC failsafe is detected… but it won't trigger an RC failsafe action."* This is the intended behaviour. | Manual Flight Modes failsafe table and SVG timeline (`manual.html:386-455`); Emergency "RC Link Loss" in both files (`manual.html:757-776`, `index.html:223-242`); checklist D "Failsafe params" note (`index.html:584`); glossary FBWA entry (`manual.html:964`); header meta of both pages | (1) Rewrite the failsafe table from the design intent above. (2) Replace the 915 MHz "RC Link Loss" **emergency** card with a short **"Backup link lost"** note: *beyond close range: expected, no action; during a close-in manual phase: switch to Mission Planner control.* (3) Redraw the timeline for the **SIYI failsafe** (S-02). (4) Fix the checklist copy-block comments. |
+| **S-01a** | Unverified behaviour: what the aircraft does if the 915 link drops **while the pilot is flying it with the Nomad** (QHOVER takeoff/landing). With `THR_FAILSAFE=2` the RC input is ignored; whether QHOVER then holds altitude and position or drifts has not been tested. | ArduPlane ignores RC on RC failsafe with value 2; the resulting Q-mode behaviour is not documented in the manual. | Procedures (takeoff/landing), Emergency | **Bench test, props off:** QHOVER, armed (or in the simulator, SITL), switch the Nomad off and record what MP shows (mode, throttle and attitude targets). Document the result and the pilot action ("take over in MP: QLOITER/QLAND"). |
+| **S-02** | The GCS (SIYI) failsafe is active in **all modes**, not just AUTO as documented. This is what the intent needs. | `FS_GCS_ENABL`: *0 Disabled, 1 Heartbeat, 2 HeartbeatAndREMRSSI, 3 HeartbeatAndAUTO*. It triggers after `FS_LONG_TIMEOUT` (5 s) and runs `FS_LONG_ACTN` (1 = RTL). | Flight Modes table row "GCS (SIYI) loss — AUTO only"; Emergency "GCS Link Loss" steps 3–4; checklist copy block `FS_GCS_ENABL = 2 (GCS failsafe in AUTO only)` | Correct the meaning everywhere. Rewrite the GCS-loss card: *"SIYI lost > 5 s → RTL in any mode. Use the Nomad only if within close range."* Document what RTL does when triggered **in a Q-mode** (check `Q_RTL_MODE` / `Q_OPTIONS` in the param file, then test in SITL). |
+| **S-02a** | Mission Planner **is** the heartbeat. If MP is closed or crashes, or the laptop sleeps or hibernates, or the Ethernet cable is pulled, the carrier sees "GCS lost" and RTLs after 5 s. That is correct behaviour, but it is not in any procedure. | `FS_GCS_ENABL` tracks heartbeats from the primary GCS (`MAV_GCS_SYSID`). | Procedures, checklist C, Emergency | Add: *"Never close MP in flight. Laptop on mains or a sleep-proof power plan."* Add a checklist item "Laptop sleep/hibernate disabled". |
+| **S-02b** | No other program may send GCS heartbeats as the **primary GCS sysid**. Doing so would keep the carrier "happy" even when MP (the real control path) is dead. Today's `relay/app.py` sends from `source_system=255`, the same id MP uses by default. | `app.py:539-540`; ArduPlane heartbeat tracking of `MAV_GCS_SYSID`. | Flask app (retiring), future GCS app | The GCS companion app must **never** send carrier-bound MAVLink as sysid 255. Ideally it sends no carrier MAVLink at all, or uses a distinct sysid and is read-only (§7, §14.4). |
+| **S-02c** | `FS_GCS_ENABL = 2` also fails safe when an HM30 `RADIO_STATUS` reports `remrssi = 0`. Whether the HM30 sends `RADIO_STATUS` at all is unknown (Q2). If it does not, value 2 behaves like 1 (heartbeat only). Either is consistent with the intent. | Parameter description. | Manual Flight Modes | Check with the MAVLink Inspector in MP (Ctrl-F → MAVLink Inspector) and document the result. |
+| **S-03** | `FS_SHORT_ACTN=0` is documented as FBWA. | Value 0 = *"CIRCLE / no change (if already in AUTO, GUIDED, LOITER)"*; FBWA is 2. Only reachable via an RC failsafe, which is disabled by design. | Same places as S-01 | Remove the FS_SHORT/FS_LONG "RC timeline" from the docs. Keep `FS_LONG_ACTN=1` and `FS_LONG_TIMEOUT=5` **as the GCS-failsafe action and delay**, which is what they control here. |
 | **S-04** | Altitudes are called "AGL" when they are relative to **home**. | `RTL_ALTITUDE`: *"Target altitude above home"*. Mission altitudes are relative to home unless the terrain frame is used. | Header meta "RTL ALT 120m AGL" (both pages), Overview stat boxes, Flight Modes, emergency steps, Mission Planning "All altitudes relative to home (AGL)" | Use "REL (above home)" consistently. Add a note: over rising terrain, REL ≠ AGL. Consider terrain-frame waypoints for relay orbits. |
 | **S-05** | The battery-margin text understates the risk. | `index.html:854` computes margin to `chem.critical × cells` (18.6 V for 6S). The text says *"… extra above the emergency threshold"*. | Battery Log → Recommended BATT_LOW_VOLT card | Measure the margin to `BATT_CRT_VOLT` (22.2 V; make it configurable). |
 | **S-06** | Checklist ticks persist forever. | `vtol_cl2`/`vtol_cl3` are stored with no timestamp. | Pre-Flight, Turnaround | See IDX-02. |
@@ -223,8 +263,8 @@ All of these are **content** fixes in `manual.html` and `index.html`. They are P
 
 | ID | Sev | Location | Problem | Fix |
 |---|---|---|---|---|
-| MAN-01 | CRIT | see S-01 | RC failsafe cascade documented but disabled | S-01 |
-| MAN-02 | CRIT | see S-02 | GCS failsafe scope wrong | S-02 |
+| MAN-01 | CRIT | see S-01 | Documents an RC failsafe cascade that is disabled by design | S-01 (docs only) |
+| MAN-02 | CRIT | see S-02 | GCS failsafe documented as AUTO-only; it is all-mode (as intended) | S-02 (docs only) |
 | MAN-03 | HIGH | `:389` | `FS_SHORT_ACTN=0` ≠ FBWA | S-03 |
 | MAN-04 | HIGH | many | AGL vs REL | S-04 |
 | MAN-05 | HIGH | `:466`, `:696`, `:719`, `:727`, `:1229-1230`, `:1255`, `:473` | "two rear motors", "cruise motor", "all 4". `Q_FRAME_CLASS=7` is shown only as "Frame class" — it means **Tri**. | Correct; label `7 = Tri`. |
@@ -269,7 +309,7 @@ Listed so that nothing is lost when the code is ported (§7). The same model err
 | APP-01 | MED | `:112-119` | `boresight_range(vtx_dbm)` ignores its argument (it is overwritten from `_state`). |
 | APP-02 | MED | `:173` | `combined_range_factor()` uses the constant `QUAD_ALT`, not the `quad_alt` parameter. |
 | APP-03 | MED | `:568-570` | `HEARTBEAT` from *any* component (e.g. a SIYI gimbal/camera) overwrites `flight_mode`. Filter on the autopilot sysid/compid and `MAV_TYPE`. `MODES` lacks GUIDED, CIRCLE, LOITER_QLAND, … |
-| APP-04 | MED | `:539-540` | `udpout` to the same HM30 endpoint Mission Planner uses; it may compete or duplicate the GCS heartbeat (relevant to the GCS failsafe, S-02). |
+| APP-04 | **HIGH** | `:539-540` | `udpout` to the same HM30 endpoint Mission Planner uses, **as `source_system=255`** — the same sysid as MP. If it were running while MP died, its heartbeats could mask the SIYI/GCS failsafe that the whole design relies on (S-02b). **Do not run `app.py` alongside a flight**; retire it. |
 | APP-05 | LOW | `:313-314` | `relative_alt` (above home) is added to the terrain under the aircraft (treated as AGL). |
 | APP-06 | LOW | `:813` | Flask on `0.0.0.0` with no auth; anyone on the network can move the "aircraft". |
 | APP-07 | LOW | `:214-229` | Public OpenTopoData API: 1 req/s plus a daily cap (check the current limits). Not usable for real field work. |
@@ -323,10 +363,17 @@ Listed so that nothing is lost when the code is ported (§7). The same model err
 3. **Video downlink chain:** `client VTX (<band>, analog) → VRX → CVBS → TVP5150/TW9900 → N6 H.264 (per field, slice-handshake) → RTP/UDP 5600 → HM30 → GCS viewer`.
 4. **Carrier camera chain:** `IP camera → relay switch P3 (VLAN to P1 only, rate-limited, gated by CAM_ENABLE) → HM30 → GCS (RTSP .26)`.
 5. **Carrier backup link (915 MHz)** — unchanged, but with corrected failsafe text (S-01).
-6. **Frequency table** built from the **active link profile**. Example rows: carrier backup 915; client RC `<868|915|2.4>`; client video `<band/channel>`; HM30 `<HM30 band>`. Add a **co-site warning**: HM30, ELRS module and VRX share one airframe. The relay design's test 7 (co-site RF) result and the cleanest analog channel go here. Also note that the switch/W5500 25 MHz harmonics land near 5800 MHz and GPS L1 (from the relay design).
-7. **Network table** (§3.3), including the UDP 5600 single-listener note.
-8. **Bandwidth budget** (new, §6.1.4).
-9. **Latency budget** (new) from the relay design: video ≈ 20 ms in the relay + HM30 (est. 150–180 ms, unmeasured) + GCS decode 10–50 ms; RC ≤ one CRSF period in the relay + HM30 uplink (unknown) + one ELRS interval. Put **measured** values here once the relay design's tests 1, 2 and 6 are done.
+6. **Frequency table** built from the **active link profile**. Example rows: carrier backup 915; client RC `<868|915|2.4|Gemini>`; client video `<band/channel>`; HM30 `<HM30 band>`. Add a **co-site warning**: HM30, ELRS module and VRX share one airframe. The relay design's test 7 (co-site RF) result and the cleanest analog channel go here. Also note that the switch/W5500 25 MHz harmonics land near 5800 MHz and GPS L1 (from the relay design).
+7. **Radio-spectrum compliance (Nkom), separate from the aviation authorisation.** Add a column "permitted in Norway (band / max power / duty cycle)" and **verify each row with Nkom's current regulations** before publishing:
+   - the 915 MHz backup link (the Nomad retail spec lists FCC 903–927 MHz; Europe normally uses 868 MHz SRD rules)
+   - the ELRS TX module power (up to 1 W per band on the Nomad)
+   - 2.4 GHz power limits
+   - the analog VTX bands and powers
+
+   The ELRS regulatory-domain firmware (e.g. EU 868) should match. This plan does not assess legality; it flags that the manual currently says nothing about it.
+8. **Network table** (§3.3), including the UDP 5600 single-listener note.
+9. **Bandwidth budget** (new, §6.1.4).
+10. **Latency budget** (new) from the relay design: video ≈ 20 ms in the relay + HM30 (est. 150–180 ms, unmeasured) + GCS decode 10–50 ms; RC ≤ one CRSF period in the relay + HM30 uplink (unknown) + one ELRS interval. Put **measured** values here once the relay design's tests 1, 2 and 6 are done.
 
 #### 6.1.4 New chapter: Relay Electronics
 
@@ -348,7 +395,17 @@ Place it under **Aircraft ▾ → Relay Electronics**:
 
 #### 6.1.5 Flight Modes
 
-- Corrected failsafe table (S-01…S-03).
+- Open with the **design-intent statement** (§4).
+- Corrected failsafe table:
+
+  | Event | Detection | Carrier action | Pilot action |
+  |---|---|---|---|
+  | **SIYI / Mission Planner link lost** | No GCS heartbeat for `FS_LONG_TIMEOUT` = 5 s (plus HM30 `remrssi = 0` if the HM30 reports it), **all modes** | `FS_LONG_ACTN` = 1 → **RTL** (Q-mode behaviour: per param file + SITL test) | Monitor; use the Nomad only if within close range |
+  | 915 MHz backup link lost | ELRS RX failsafe | **None** — RC ignored (`THR_FAILSAFE` = 2) | None beyond close range; during manual phases, take over in MP (S-01a) |
+  | Battery critical 22.2 V | `BATT_CRT_VOLT` | Loiter → QLand at current position | Clear the area below |
+  | Battery low | `BATT_LOW_VOLT` = 0 (not set) | None | Manual RTL at 23.0 V |
+  | Transition fail | `Q_TRANS_FAIL` 4 s | `Q_TRANS_FAIL_ACT` → QHOVER | Per emergency card |
+- The SVG becomes a **SIYI-loss timeline**: 0 s link lost → 5 s RTL → climb to `RTL_ALTITUDE` (above home) → return → back-transition/land per Q settings.
 - **New: client failsafe chain** (diagram §9.3 D6). GCS app stops sending, *or* the HM30 link is lost, *or* the bridge watchdog fires → the bridge goes silent after `T_hold` (start 250 ms) → the ELRS TX module stops sending (behaviour to be measured) → client RX failsafe → client FC failsafe (e.g. Betaflight stage 1 → GPS Rescue). **Total time = measured value from relay-design test 6**, per cause.
 - **New: the relay never sends default sticks at boot.** The bridge waits for 5 valid packets before any CRSF.
 
@@ -365,11 +422,13 @@ Place it under **Aircraft ▾ → Relay Electronics**:
 7. **Camera check:** set `CAM_ENABLE` on in the GCS app → carrier camera RTSP shows → status packet reports camera on. Then set it to the state planned for the sortie (normally **off** before the client launches, unless test 9 has passed).
 8. 915 MHz Nomad on → RC visible in MP.
 
-> **Operational consequence of the camera design:** the camera is gated by the GCS RC stream. With the GCS app closed (e.g. a carrier-only test flight) the camera stays **off**. Either always run the app (it can stream with the client absent — the bridge just drives an unbound TX module), or ask for a firmware option such as "camera default on when no client stream". See open question Q12.
+> **Carrier-only flights:** with the firmware change proposed in §3.4 (camera ON until a client RC stream starts), the camera works without the GCS app. Until that change is made, carrier-only flights need the app's "carrier-only mode" to enable the camera.
 
 **Relay operations:** add *"Watch the GCS app status bar: RTT, LQ, bridge state, camera state. Call 'RC LINK DEGRADED' at the thresholds in §7.5."* Add the **camera protocol**: who may switch the camera on (carrier pilot requests, FPV pilot confirms the client is in a stable hover or landed), and the callouts "CAMERA ON" / "CAMERA OFF".
 
-**Bind procedure (replaces "hold LEFT button on carrier Nomad 3 s"):** ELRS binding phrase set once on the TX module and on each client RX. Model-match/ModelID per client. **No bind every preflight** (the old note "bind does not persist between power cycles" goes). Configuring the TX module (packet rate, power, model match) is done through the GCS app's CRSF parameter menu (§7.7) or the module's WiFi UI.
+**Bind procedure (replaces "hold LEFT button on carrier Nomad 3 s"):** ELRS binding phrase set once on the relay's TX module (Nomad or DBR4-as-TX) and on each client RX. Model-match/ModelID per client. **No bind every preflight** (the old note "bind does not persist between power cycles" goes). Configuring the TX module (packet rate, power, Gemini/band, model match, telemetry ratio, VTX Admin) is done through the GCS app's CRSF parameter menu (§7.7) or the module's WiFi web UI on the bench.
+
+> **Safety — the FPV pilot's EdgeTX radio must not transmit.** The radio is used as a USB joystick. Its internal and external RF modules must be **off** in the relay model. A co-located radio transmitting ELRS with the same binding phrase could fight the relay for control of the client. See §7.3.
 
 #### 6.1.7 FPV Sub-Drone → **Client Drones**
 
@@ -382,13 +441,13 @@ Place it under **Aircraft ▾ → Relay Electronics**:
 
 | Scenario | Change |
 |---|---|
-| **RC Link Loss — 915 MHz (carrier)** | Rewrite per S-01: no automatic action; GCS remains primary; nothing to "wait" for. |
+| **RC Link Loss — 915 MHz (carrier)** | **Demote from emergency to a note** (S-01): beyond close range this is expected and needs no action. Keep only the close-in case as an emergency: *"915 lost during manual takeoff/landing → take over in MP (QLOITER / QLAND)"*, with the S-01a test result. Remove "1.5 s FBWA / 5 s RTL / do not touch TX". |
 | **Relay Link Loss — 2.4 GHz** → **Client RC Loss** | IMMEDIATE: *FPV PILOT HANDS OFF · CARRIER HOLD ORBIT · CHECK GCS APP STATUS · CLIENT FAILSAFE FIRES (t ≈ measured) · WATCH VIDEO/OSD*. CLEAN-UP: diagnose from the app status (no packets out → app/controller; RTT gone → HM30; bridge FAILSAFE → watchdog; LQ low with bridge RUN → ELRS RF/range/orbit geometry). Remove "re-bind" and "carrier Nomad antenna". Replace "Monitor using SIYI carrier camera" with: *"Carrier camera is forced off if the GCS stream was lost; re-enable it only once the stream is back."* |
 | **Video Loss** | Split into **(a) client analog RF** (snow, VRX) and **(b) digital chain** (N6 decoder lock LED, encoder, HM30). Remove the CVBS→HDMI / SIYI HDMI→IP items. Add: *"Video board reset does not affect RC — keep flying on OSD only if video returns within N s, otherwise client RTH."* Add: viewer restart steps (GStreamer pipeline). |
 | **New: Relay PCB fault** | Bridge LED patterns; what keeps working; when to recall the client. |
 | **New: GCS app / controller failure** | Controller unplugged or app crash → the bridge goes silent → client failsafe. Do **not** try to restart the app mid-recovery unless the client is still controllable. |
 | **New: Carrier camera loss** | Low criticality. First check whether it is **by design**: `CAM_ENABLE` off, or forced off because the GCS stream was lost (status packet / app shows the camera state). Then the P3 rate limit, then the RTSP restart. |
-| **GCS Link Loss (HM30)** | Per S-02 (all modes, 5 s, RTL). **Note:** HM30 loss now also cuts client RC and video, so the client failsafe fires at the same time. The **carrier camera is also forced off** and stays off until the stream is back *and* the pilot re-enables it. Do not rely on the carrier camera to watch the client's RTH in this case (the current clean-up step "Monitor using SIYI carrier camera" must go). The callout order must cover both aircraft. |
+| **GCS Link Loss (HM30)** | **This becomes the primary carrier emergency** (S-02): SIYI/MP lost > 5 s → RTL in any mode. IMMEDIATE: *CHECK MP / CABLE / HM30 LED · CARRIER RTL AUTOMATIC AT 5 s · NOMAD ONLY IF CLOSE · CLIENT FAILSAFE FIRES TOO*. Include S-02a causes (MP closed, laptop asleep). **Note:** HM30 loss now also cuts client RC and video, so the client failsafe fires at the same time. The **carrier camera is also forced off** and stays off until the stream is back *and* the pilot re-enables it. Do not rely on the carrier camera to watch the client's RTH in this case (the current clean-up step "Monitor using SIYI carrier camera" must go). The callout order must cover both aircraft. |
 | Transition / Battery | Unchanged apart from S-04/S-07 fixes. |
 
 #### 6.1.9 Crew Training, Callouts, Maintenance, Mission Planning, Pre-Arm Ref
@@ -414,7 +473,8 @@ Place it under **Aircraft ▾ → Relay Electronics**:
 | C | **Client video viewer** | Copy block: Windows GStreamer pipeline for UDP 5600 (§7.4) or "MP HUD source" pipeline | copy |
 | C | Carrier camera (GStreamer in MP) | existing `.26` pipeline. **Camera must be switched on in the GCS app first** (default off). Verify the picture, then set it to the sortie state. | copy, w |
 | C | ~~mpv.conf / MPV stream .25~~ | **Remove** (or replace with the `.sdp` method, §7.4) | |
-| D | Failsafe params verified | Copy block with **corrected** comments (S-01…S-03) | w, copy |
+| D | Failsafe params verified | Copy block with **corrected** comments: `THR_FAILSAFE = 2 (RC loss ignored — by design)`, `FS_GCS_ENABL = 2 (SIYI loss → failsafe in all modes)`, `FS_LONG_TIMEOUT = 5`, `FS_LONG_ACTN = 1 (RTL on SIYI loss)` | w, copy |
+| C | **Laptop will not sleep** | Power plan: never sleep/hibernate on battery or mains; lid-close action "do nothing". MP closing = carrier RTL after 5 s (S-02a) | w |
 | D | Mode cycle | unchanged | |
 | D | **Bridge in RUN** | App shows RUN, ModelID accepted, timing-frame lock (offset ≈ 0) | w |
 | D | **Camera state set for sortie** | Normally OFF before the client launches (FPV mode), unless relay-design test 9 has passed | w |
@@ -451,7 +511,27 @@ Reads the GCS companion app's localhost API (§7.6). It shows bridge state, RTT,
 
 ## 7. New component: Windows GCS companion app
 
-Replaces `relay/app.py` and the Linux RC sender/receiver from the relay design. Suggested location: `gcs/` in this repo, or a sibling repo that this one links to.
+Replaces `relay/app.py` and the Linux RC sender/receiver from the relay design.
+
+**Location (decided): this repository.**
+
+```
+vtol-manual/
+├── index.html, manual.html, relay/map.html   # static site (unchanged layout)
+├── data/          # shared content: checklists, emergencies, client/pack/link profiles (A-1)
+├── protocol/      # rc_up / status / CRSF-passthrough definitions + test vectors (shared with G0 firmware)
+├── gcs/           # Windows companion app source, tests, build script
+└── docs/
+```
+
+**Why one repo:**
+- The app, the web pages and the firmware share the same **packet definitions**, **client profiles** and **thresholds**. One repo keeps them in lockstep, so one commit changes the protocol, the app and the manual together.
+- It is a small team with one issue tracker.
+- The static site is unaffected. GitHub Pages also serves the `gcs/` sources, which is harmless; add `.nojekyll` and exclude it from the service-worker precache.
+
+**Binaries:** built by a GitHub Actions workflow and attached to **GitHub Releases**, never committed.
+
+**Revisit** if the firmware moves to its own repo; then `protocol/` becomes a git submodule or a published package.
 
 ### 7.1 Responsibilities
 
@@ -484,6 +564,18 @@ Replaces `relay/app.py` and the Linux RC sender/receiver from the relay design. 
   - Detect sleep/hibernate and laptop power-saving; warn if the laptop is on battery saver.
   - Single-instance lock, so two senders can never fight.
 - **Channel mapping and calibration** per controller and per client profile (AETR/TAER, reverse, endpoints, arm channel, mode channels). Save it with the client profile.
+- **RadioMaster EdgeTX radios as the controller** (TX16S, TX15, Boxer, …). Facts from the EdgeTX manual:
+  - USB Joystick has *Classic* mode (default: channels 1–8 → axes, 9–32 → buttons) and *Advanced* mode (per-channel None/Btn/Axis/Sim, EdgeTX ≥ 2.8).
+  - On **Windows the radio may be detected only as a "Joystick"**, whatever interface type is selected.
+  - The mixer runs faster in joystick mode when the internal and external RF modules are off.
+  - Replug USB after changing joystick settings.
+
+  Recommended setup, to document in the manual:
+  1. A dedicated EdgeTX model **"GCS-RELAY"**: internal RF **OFF**, external RF **OFF** (safety, see §6.1.6; also faster mixer), USB mode Joystick, Classic.
+  2. Mixer: AETR on CH1–4, **arm switch on a fixed channel** (e.g. CH5), modes and beeper on CH6–8. The EdgeTX outputs are passed straight through by the app, so the client's channel order is set in EdgeTX, not the app.
+  3. The app identifies the radio by USB VID/PID and name, warns if a different model name or channel count appears, and runs the arm/throttle interlock on the mapped channels.
+  4. **Measure** the HID update interval and jitter on the target laptop; the relay design's estimate is 1–8 ms. Record it in the latency budget.
+  5. EdgeTX Lua scripts (e.g. the ELRS script) **cannot** reach the relay's TX module in this setup, because the radio isn't connected to it. Module configuration moves into the app (§7.7).
 - **Firewall:** first-run helper to add Windows Defender Firewall rules for UDP 5600/5770 (inbound status) on the HM30 interface only.
 - **Never expose the RC port beyond the HM30 subnet.** The relay design adds: if LTE is ever used, only inside WireGuard.
 
@@ -495,7 +587,7 @@ Replaces `relay/app.py` and the Linux RC sender/receiver from the relay design. 
 gst-launch-1.0 udpsrc port=5600 caps="application/x-rtp,media=video,clock-rate=90000,encoding-name=H264,payload=96" ! rtph264depay ! h264parse ! avdec_h264 max-threads=1 ! videoconvert ! videoscale ! video/x-raw,width=768,height=576 ! autovideosink sync=false
 ```
 
-- PAL fields are 704×288 → scale to 768×576. **NTSC** fields are 704×224/240 → scale to 640×480. Since the standard is unknown, the app should pick by detected caps, or offer both pipelines.
+- PAL fields are 704×288 → scale to 768×576. **NTSC** fields are 704×224/240 → scale to 640×480. **Both are in use (owner decision)**, so the app must pick at runtime: read the decoded caps (height 288 → PAL; 224/240 → NTSC), rebuild the scaling element when it changes, and show "PAL/NTSC" in the status bar. Ask the N6 firmware to also report the detected standard in its status, or in an RTP header extension, so the GCS needn't guess. The client profile stores the expected standard, and a mismatch raises a warning.
 - Hardware decode option: `d3d11h264dec` + `d3d11videosink`. Compare latency against `avdec_h264` and keep the faster one.
 - **No `rtpjitterbuffer`** (from the relay design: its default 200 ms would swamp the savings).
 
@@ -537,7 +629,17 @@ Verify that latency matches GStreamer before recommending it.
 
 ### 7.7 CRSF parameter menu (ELRS module configuration)
 
-With the bridge acting as the "handset", there is no radio Lua script to configure the ELRS TX module. The bridge already forwards non-0xEA CRSF frames to the GCS. The app can implement the CRSF **device-ping / parameter read / parameter write** exchange, reproducing what the ELRS Lua script does: packet rate, TX power, model match, binding mode. **This needs the bridge to forward GCS → module CRSF frames too**, a firmware feature to request.
+With the bridge acting as the "handset", there is no radio Lua script to configure the ELRS TX module. The bridge already forwards non-0xEA CRSF frames to the GCS. The app can implement the CRSF parameter protocol that the ELRS Lua script uses:
+- device ping `0x28` / device info `0x29`
+- parameter entry `0x2B`, read `0x2C`, write `0x2D` (extended frames with destination/origin addresses)
+
+That covers packet rate, TX power, Gemini/band, telemetry ratio, model match, binding mode and **VTX Admin** (§14.3).
+
+Two firmware requests follow:
+- **The bridge must forward GCS → module CRSF frames** (a downlink "CRSF passthrough" message in the protocol).
+- Arbitrate them into free slots between RC frames without breaking the timing lock.
+
+Byte-level details: take them from the ExpressLRS source (the CRSF/Lua parameter handling), not from third-party summaries.
 
 ### 7.8 Testing tools built into the app
 
@@ -620,7 +722,7 @@ All inline SVGs share these issues:
 
 | Diagram (location) | Problems | Improvement |
 |---|---|---|
-| **RC failsafe cascade** (`manual.html:400`) | Shows a cascade that is **disabled** (S-01) | Replace with a **carrier failsafe matrix** diagram: inputs (915 loss, GCS loss, battery low/critical, transition fail) → resulting actions per mode, with real parameter values. |
+| **RC failsafe cascade** (`manual.html:400`) | Shows a cascade that is **disabled by design** (S-01) | Replace with (a) a **SIYI-loss timeline** (0 s lost → 5 s RTL) and (b) a **carrier failsafe matrix**: SIYI loss → RTL; 915 loss → nothing; battery critical → QLand here; transition fail → QHOVER, with real parameter values. |
 | **Motor configuration top view** (`:479`) | Correct (3 motors). Prop rotation directions not shown; tilt only as text | Add CW/CCW arrows, the tilt axis, and a small **side-view inset** showing 0° (VTOL) and 80° (cruise) tilt. |
 | **Battery voltage gauge** (`:574`) | Missing 22.5 V hard limit and 22.8 V storage; zone naming (MAN-14); 6S only | Draw it **from the pack profile** in JS, so the same component serves carrier, mast and client packs. Add markers for BATT_LOW (if set), manual RTL, hard limit, BATT_CRT, storage. |
 | **Mission altitude profile** (`:618`) | No numbers on the y-axis; no horizontal distances; "relay" is just a word | Add the altitude scale (REL m) from the 7-WP template ranges, distances, the transition corridor (WP1→WP2 clear to 60 m), the back-transition glide (~130 m), and the abort branch (QHOVER). |
@@ -787,7 +889,7 @@ flowchart LR
 ### 10.7 Security and privacy
 
 - Escape all dynamic HTML (IDX-07); add a CSP meta tag (`default-src 'self'`; allow listed APIs and tile hosts).
-- GitHub token: recommend a **fine-grained token** with Gists only. Warn that it is stored in the browser. Offer "file sync only" as the default.
+- GitHub token: **remove Gist sync** (Q11 recommendation), which removes the stored token. If it is kept, use a fine-grained Gists-only token and warn that it is stored in the browser.
 - Remove the hard-coded site location (MAP-09). Strip EXIF (REP-08). Review the public `ai/` notes (REP-05).
 - GCS app API: localhost only, read-only, explicit CORS origin (§7.6).
 
@@ -804,11 +906,12 @@ flowchart LR
 
 | Phase | Content | Exit criterion |
 |---|---|---|
-| **0 — Safety content (P0)** | S-01…S-08; IDX-01, IDX-02; captions T2 Cruza/3 motors | Manual and Tools agree with the current `.param` file; reviewed by both pilots |
+| **0 — Safety content (P0)** | S-01…S-08 (failsafe docs rewritten from the design intent; S-01a SITL/bench test; S-02a laptop/MP procedure); IDX-01, IDX-02; captions T2 Cruza/3 motors | Manual and Tools agree with the current `.param` file and the stated failsafe intent; reviewed by both pilots |
 | **1 — Code bugs** | IDX-03…09, MAP-01…07, SW-01…04, REP-01/03/04/08 | Unit tests for parsers/geometry pass; offline load works for all three pages |
 | **2 — Relay content** | §6.1 and §6.2 (new architecture, chapters, checklists, emergency), single data source A-1, D1–D6 diagrams | Dry-run of the full preflight with the new relay on the bench |
 | **3 — GCS companion app** | §7.1–7.5 (RC sender, interlocks, camera control, status, alarms, video helper, logging) | Relay-design tests 5, 6 and 9 recorded with the app; jitter < 1 ms p99 |
-| **4 — Integration** | App local API → Tools "Link" tab and live map (§7.6, §8.3); retire `app.py` | Live client telemetry visible on phone and map in a field test |
+| **4 — Integration** | App local API → Tools "Link" tab and live map (§7.6, §8.3); client in Mission Planner (§14.4); automatic alarms (§14.2); retire `app.py` | Live client telemetry visible on phone, map and MP in a field test |
+| **4b — Telemetry features** | §14.3 VTX/VRX channel management, §14.5 measured-coverage logging, CRSF parameter menu (needs firmware Q7) | Channel change from the GCS moves the client VTX and the relay VRX together on the bench |
 | **5 — Map v2** | §8.2 link profiles, Fresnel, intersection, orbit sweep | Predicted vs observed LQ/video edge in at least two field tests |
 | **6 — Polish** | §9 graphics, §10.2–10.8 | — |
 
@@ -816,21 +919,42 @@ flowchart LR
 
 ## 12. Open questions
 
+**Answered (Rev B):**
+
+| # | Question | Answer → effect on this plan |
+|---|---|---|
+| Q1 | Is `THR_FAILSAFE = 2` intentional? | **Yes.** The SIYI link is primary (standing in for any IP radio), the 915 link is close-range backup, and the carrier fails safe only on SIYI loss → §4 rewritten as documentation fixes; no parameter change. |
+| Q4 | Switch and port numbering | **Cleared in the latest relay design**: KSZ8795, P1 HM30 · P2 W5500 · P3 camera · P4 spare · P5 N6; optional 50 MHz oscillator. |
+| Q5 | Which ELRS TX module? | **RadioMaster Nomad**, or a **RadioMaster DBR4 flashed as TX** → §3.4 item 4, §14.6. |
+| Q6 | PAL or NTSC? | **Both** → runtime detection (§7.4), per-client profile field. |
+| Q8 | Which controllers? | **RadioMaster EdgeTX radios** (TX16S, TX15, Boxer, …) → §7.3 EdgeTX joystick setup. |
+| Q9 | Remote piloting authorised? | **Yes** (Luftfartstilsynet). Spectrum rules (Nkom) are tracked separately as Q14. |
+| Q10 | Where does the GCS app live? | **Decided: this repo**, `gcs/` + `protocol/` (§7). |
+| Q12 | Camera gating | **Only needed while a client is connected** → firmware request in §3.4 item 3. |
+
+**Q11 — "What is the sync for?"** The Tools page has **SETUP SYNC** / **SYNC NOW** buttons (Pre-Flight tab, Data File bar). With a GitHub personal access token, they copy two things into a **private GitHub Gist** so a phone and a laptop see the same data:
+- the **preflight-timer archive** (date, duration, GO/NO-GO, notes)
+- the **saved weather locations**
+
+They do **not** sync the battery log or the checklists. The page also has **LINK FILE** (auto-save to a local JSON file) and **EXPORT/IMPORT**.
+
+**Recommendation:** since the feature isn't in active use, **remove Gist sync**:
+- It keeps a GitHub token in the browser (§10.7).
+- It has a data-loss bug (IDX-03).
+- It covers only minor data.
+
+Keep **EXPORT/IMPORT and LINK FILE**, and extend them to *all* data, including the battery log (IDX-04). If phone↔laptop sync is wanted later, the GCS companion app can act as the local sync point on the field network instead of GitHub.
+
+**Still open:**
+
 | # | Question | Needed for |
 |---|---|---|
-| Q1 | Is `THR_FAILSAFE = 2` intentional (GCS-primary design), or should an RC failsafe action be enabled? | S-01 wording vs param change |
-| Q2 | Does the HM30 send MAVLink `RADIO_STATUS`? (Affects `FS_GCS_ENABL = 2` behaviour.) | S-02 |
-| Q3 | Final IPs of the N6 board, the bridge and the GCS laptop; is multicast possible through the HM30? | §3.3, §7.4 |
-| Q4 | ~~Which switch / port numbering?~~ **Resolved:** KSZ8795, P1 HM30 · P2 W5500 · P3 camera · P4 spare · P5 N6. Still open: the RMII clock direction on P5, and what (if anything) goes on P4. | §3.4, D2 |
-| Q5 | Which ELRS TX module(s) and antennas, and their supply and peak current? (Also an open question in the relay design.) | §8, maintenance, power table |
-| Q6 | PAL or NTSC per client (or both supported at runtime)? | §7.4 pipelines, profiles |
-| Q7 | Will the bridge forward GCS→module CRSF frames (for the parameter menu, §7.7) and include decoder-lock/N6 health in its status? | §7.5, §7.7 |
-| Q8 | Which USB controller(s) will the FPV pilot use? | §7.3 mapping and interlocks |
-| Q9 | Is remote piloting through the relay covered by the operational authorisation (Luftfartstilsynet)? | Checklist A, manual Overview |
-| Q10 | Should the GCS app live in this repo (`gcs/`) or a separate one? | §7 |
-| Q11 | Keep the GitHub Gist sync, or move to file-only sync? | IDX-03, §10.7 |
-| Q12 | The camera is gated by the GCS RC stream (default off, off on stream loss). Is that wanted for **carrier-only** flights, and during **GCS-link emergencies** when the carrier pilot might want the camera? Options: always run the app; a firmware "camera default on when the client stream was never started" mode; or a MAVLink command path via the N6 SP5/SP6 UART. | §6.1.6, §6.1.8 |
-| Q13 | What is the measured HM30 capacity, and the P3 ingress-limit value that results from it? This decides whether the camera may stay on while the client flies (relay-design test 9). | §6.1.4, D8 |
+| Q2 | Does the HM30 send MAVLink `RADIO_STATUS`? **Unknown** → check with MP's MAVLink Inspector (S-02c). Either result is consistent with the design intent. | S-02c |
+| Q3 | Final IPs of the N6 board, the bridge and the GCS laptop; is multicast possible through the HM30? **Undecided** → keep the §3.3 proposal (`.20`, `.21`, laptop `.100`) as the working assumption and decide at bring-up. | §3.3, §7.4 |
+| Q7 | Will the bridge (a) forward GCS→module CRSF frames and (b) report N6 decoder lock / video standard in its status? **Unknown** → listed as firmware requests: §7.7, §7.4, §14. Without (a), module configuration has to happen on the bench via the module's WiFi UI, and VTX Admin from the GCS is not possible. | §7.5, §7.7, §14 |
+| Q13 | Measured HM30 capacity and the resulting P3 ingress limit. **Unknown** → measure with the GCS app's RTT/throughput tools during bring-up (relay-design tests "UDP echo" and 9). Until then: camera **off** while the client is armed. | §6.1.4, D8 |
+| Q14 | Radio-spectrum compliance in Norway (Nkom) for the 915 MHz backup link, the ELRS TX module band and power (Nomad up to 1 W per band), 2.4 GHz power, and the VTX bands/powers. | §6.1.3 |
+| Q15 | S-01a bench/SITL result: QHOVER behaviour when the 915 link drops during a manual phase. | S-01a |
 
 ---
 
@@ -873,3 +997,162 @@ To edit in phase 2 (search terms: `Nomad`, `DBR4`, `868`, `2.4GHz`, `CVBS`, `HDM
 - `manual.html`: Overview `:253`, `:275-277`; RF & Comms `:290-367`; Procedures `:710-713`; Emergency `:778-820`; Crew `:1064`, `:1071`; FPV tab `:1092-1114`, `:1206-1214`; Maintenance `:1243-1246`; Mission Planning `:1417`, orbit SVG `:1541-1546`; glossary `:988-989`, `:995`, `:1002`, `:1006`.
 - `relay/map.html`: title and constants `:206`, `:442`, `:310`.
 - `README.md`, `CLAUDE.md`, `ai/*.txt`.
+
+---
+
+## 14. Research: new possibilities from the relay
+
+The old relay was a "dumb" radio chain: the ground station never saw anything from the client except its analog picture. In the new design the **bridge (G0) is the client's handset**, and the relay design already says it *"forwards all other [CRSF] frames to the GCS"*. Everything the client's receiver and flight controller send back over ELRS therefore reaches the laptop. This section collects what that enables, what each feature depends on, and how sure we are.
+
+**Confidence labels:** **Documented** = stated in official ExpressLRS/Betaflight/EdgeTX docs (sources in §14.8) · **Community** = forum/retailer reports, not verified · **Proposal** = this plan's design idea, needs prototyping.
+
+### 14.1 Overview
+
+| # | Possibility | Value | Depends on | Effort | Confidence |
+|---|---|---|---|---|---|
+| 1 | Live client status in the GCS app (link, battery, GPS, mode) | Closes the "carrier pilot can't see the FPV" gap | Client telemetry enabled; bridge forwarding (in the relay design) | M | Documented |
+| 2 | Automatic alarms: client failsafe, RTH, LQ low, battery low, sats low | Replaces part of the verbal callout load with reliable triggers | #1 | S | Documented + Proposal |
+| 3 | "Relay edge" warning from geometry (client position vs. coverage and patch boresight) | Automates the carrier pilot's main relay-phase duty | #1 + carrier position from MAVLink (read-only) + map model (§8) | M | Proposal |
+| 4 | Client shown in Mission Planner and on the coverage map | One picture of both aircraft | #1 | M | Proposal |
+| 5 | Change client VTX channel/power from the GCS (ELRS VTX Admin) | No landing to change channels; quick escape from interference | Bridge GCS→module CRSF passthrough (Q7a); client VTX control (SmartAudio/Tramp/MSP) + Betaflight VTX table | M | Documented (feature) / Proposal (our path) |
+| 6 | Relay VRX follows the client channel automatically | Channel change in one action; uses the band-agnostic VRX | #5 + Nomad TX backpack + a VRX backpack, **or** N6 controlling the VRX | M–L | Documented (backpack) / Proposal (N6) |
+| 7 | Configure the relay's ELRS module from the GCS (rate, power, Gemini, telemetry ratio, model match) | No bench WiFi session per change; documented settings per client | Q7a passthrough; CRSF parameter protocol | M | Documented (protocol) / Proposal |
+| 8 | Measured-coverage logging and heatmap | Calibrates the map model with real data per site | #1 + carrier position | M | Proposal |
+| 9 | Auto-fill client battery log and flight records from telemetry | Less manual logging | #1 | S | Proposal |
+| 10 | Full MAVLink to ArduPilot/iNAV/(new) Betaflight clients via ELRS MAVLink mode | Missions/params for "smart" clients through the relay | ESP-based module ≥ 3.5, backpack ≥ 1.5; a path for the module's MAVLink output to reach the IP network (see §14.4) | L | Documented (ELRS) / Proposal (path) |
+| 11 | Advisory relay positioning ("move orbit 150 m NE"), later optional automation | Keeps the client in the bubble with less workload | #3 | M (advisory) / L (auto) | Proposal |
+| 12 | Recording client video with telemetry overlay for debrief | Training and incident review | GCS app video helper | S–M | Proposal |
+
+### 14.2 Client status and automatic alarms
+
+**What a Betaflight client sends over CRSF** (Betaflight telemetry docs):
+
+| Group | Datapoints |
+|---|---|
+| Link (from the ELRS RX) | 1RSS/2RSS (uplink RSSI per antenna, dB), RQLY (uplink LQ %), RSNR (uplink SNR), ANT, RFMD (rate), TPWR (TX power, mW), TRSS/TQLY/TSNR (downlink) |
+| GPS | position, ground speed (km/h), heading, altitude (m), satellites |
+| Battery | voltage (total, or per-cell with `report_cell_voltage`), current (A), consumed mAh, remaining % |
+| Attitude | pitch, roll, yaw (radians) |
+| Flight mode | string: `!FS!` (failsafe), `RTH`, `ANGL`, `HOR`, `ACRO`, `AIR`, … with disarmed suffix `*` (ready), `!` (arming disabled), `?` (**GPS Rescue configured but no fix**) |
+| Optional | vario, baro altitude; CRSF v3 adds GPS time, extended GPS, etc. |
+
+**Conditions to put in the client checklist and profile:**
+- Telemetry must be enabled in Betaflight.
+- If the telemetry UART is shared with another function, telemetry only flows **when armed**.
+- The ELRS **telemetry ratio** must be non-zero. Each telemetry slot replaces an uplink RC packet, so choose a ratio that gives a few GPS updates per second without hurting RC (per-client setting).
+
+**Alarm rules for the GCS app** (each with an audio cue and the callout phrase from the manual):
+
+| Trigger | Rule | Callout |
+|---|---|---|
+| Client failsafe | flight-mode string contains `!FS!` | "FPV FAILSAFE" |
+| GPS Rescue / RTH active | mode `RTH` | "FPV RTH" |
+| Rescue not ready before launch | disarmed suffix `?` | blocks the client "READY" item in the checklist |
+| Link weak | RQLY < 70 % or RSSI below the profile threshold | "FPV LINK WEAK" |
+| Battery | per-cell voltage < profile threshold | "FPV BATT LOW" |
+| Sats | < profile minimum (e.g. 8 for GPS Rescue) | "FPV SATS LOW" |
+| Telemetry stale | no CRSF telemetry for > 2 s while the bridge is in RUN | "FPV TELEMETRY LOST" |
+
+### 14.3 VTX and VRX channel management
+
+**What ELRS offers (documented / community):** **VTX Admin** in the ELRS Lua lets the handset set the client VTX band, channel and power. The command goes over the RC link to the receiver and the FC, which applies it through SmartAudio, Tramp or MSP VTX control. A second part sends the same channel from the **TX backpack** to a **VRX backpack** over ESP-NOW, so the video receiver follows.
+
+Requirements reported:
+- a working VTX control link on the client
+- a Betaflight **VTX table** (BF ≥ 4.1)
+- telemetry enabled with a non-zero ratio
+
+Caveats:
+- community reports of SmartAudio quirks
+- the OSD not refreshing after a change
+- **ArduPilot clients not supported** for VTX Admin
+
+**How it maps onto the relay:**
+1. The GCS app writes the VTX Admin parameters to the relay's TX module through the CRSF parameter protocol (§7.7). This needs firmware feature **Q7a** (GCS→module passthrough).
+2. Client VTX changes channel.
+3. **VRX follow — two options:**
+   - **(a) ELRS backpack:** the Nomad has an ESP32-C3 TX backpack. If the band-agnostic VRX carries an ELRS VRX backpack (ESP8285/ESP-01F-based, or an off-the-shelf unit for supported VRX models), it follows automatically. The VRX is on the same airframe, so ESP-NOW range is no issue. **Check the ExpressLRS Backpack wiki** for whether the chosen VRX type is supported.
+   - **(b) N6 control:** the video board has spare UART/GPIO (SP1–SP6). The GCS sends "VRX channel" in a new status/command message, and the N6 drives the VRX's control interface. Works with any VRX that has a control port; needs firmware on the N6.
+4. **Confirmation:** the N6 decoder lock (status) and a picture in the viewer. The app reverts both ends if there is no lock within N seconds.
+5. **Extra:** a **channel scan** helper using N6 decoder lock / signal quality on the ground, to pick the cleanest channel (relay-design co-site test 7).
+
+### 14.4 Client in Mission Planner and on the map
+
+**From CRSF telemetry (recommended first):**
+- The GCS app translates client CRSF telemetry into a small MAVLink stream with its own **sysid (e.g. 2 — never 1 or 255, see S-02b)**: HEARTBEAT, GLOBAL_POSITION_INT, ATTITUDE, SYS_STATUS (voltage), plus STATUSTEXT for mode changes.
+- It sends this to a local UDP port that Mission Planner opens as a second connection. Mission Planner displays several vehicles. Simpler alternative: `ADSB_VEHICLE` messages, which show the client as a traffic icon on the MP map.
+- **The app must not forward any MP commands back to the carrier.** The client "vehicle" in MP is display-only.
+- The same data feeds the coverage map (§8.3): carrier and client markers, trail, and LQ colouring.
+
+**Native ELRS MAVLink (later, for ArduPilot/iNAV clients):**
+- Documented: ELRS **MAVLink mode** (TX/RX ≥ 3.5.0, TX Backpack ≥ 1.5.0, **ESP-based hardware only**). The telemetry ratio is fixed at 1:2 and the switch mode is forced to Hybrid / 16ch/2. Supported on ArduPilot, PX4, iNAV ≥ 8 and **Betaflight 2025.12.0-beta or later**.
+- RC still comes from the handset (MAVLink packets alternate with RC packets).
+- On the TX side the MAVLink stream leaves via the **module's USB serial (460800)** or the **TX backpack WiFi (UDP, typically 14550)**. The handset gets it converted to CRSF telemetry.
+- **Problem for the relay:** the module sits on the carrier, so neither its USB nor its backpack WiFi reaches the GCS directly. Possible paths:
+  - (a) a small WiFi-client-to-Ethernet bridge on **spare port P4** joins the Nomad backpack's network and forwards UDP 14550 onto the HM30 network
+  - (b) module USB into a companion device on P4
+
+  Both are experimental. Also, MAVLink mode halves the uplink RC rate. **Recommendation:** CRSF telemetry first (works for any Betaflight client today); MAVLink mode only if a client needs missions or parameters in flight.
+
+### 14.5 Measured coverage
+
+- Log, at 1–5 Hz:
+  - carrier position, altitude and attitude (MAVLink, read-only)
+  - client position and altitude (CRSF)
+  - uplink RSSI, LQ and SNR
+  - N6 decoder lock and video packet loss
+- Map layers:
+  - a **heatmap** of LQ/RSSI per position relative to the carrier
+  - **"observed edge"** markers where LQ fell below the threshold or video lost lock
+- Fit the model's fade margin / effective sensitivity per band and antenna setup (§8.2), so the predicted polygon matches reality. Keep per-site history.
+
+### 14.6 TX module choice (Q5)
+
+| | RadioMaster Nomad | RadioMaster DBR4 flashed as TX |
+|---|---|---|
+| RF | 2 × LR1121; 2.4 GHz + 868/900 MHz; **Gemini** (both bands at once) | 2 × LR1121, ESP32 (retailer spec) |
+| Output power | up to **1 W per band** (retail spec) | receiver-class PA, **much lower** (check spec) |
+| Supply | XT30 **6–16.8 V**; > 250 mW needs XT30 (2S–4S) | small receiver supply (check) |
+| TX backpack | **Yes** (ESP32-C3) → VRX follow, MAVLink WiFi | No |
+| ELRS "RX as TX" | n/a | ELRS supports flashing **ESP32 receivers** as a TX (half-duplex on the TX UART). **DBR4 not confirmed** — community guidance only |
+| Size/weight | ~71 g without antenna (retail) | very small |
+| **Recommendation** | **Default choice** for range, Gemini and backpack features | Lightweight experimental option. Bench-verify first: CRSF half-duplex on the G0 port, **timing frames (0x3A) are emitted** (the G0 needs them for its lock), parameter access, real output power |
+
+**Note:** Gemini only helps if the **client receiver is also Gemini-capable** (e.g. a DBR4 on the client). Make this a client-profile field.
+
+### 14.7 Further ideas
+
+- **Advisory relay positioning:** from the client position and the coverage model, suggest the orbit shift that maximises margin. Show it on the map and in the app ("MOVE ORBIT 150 m NE"); the carrier pilot applies it in MP. Automatic repositioning would need the app to command the carrier, which conflicts with S-02b and the "MP is the single command path" principle. Keep it advisory unless a later safety review says otherwise.
+- **MSP over CRSF (Betaflight):** Betaflight has carried MSP over CRSF since 2017. If the bridge passthrough exists, the app could read the client's configuration (GPS Rescue settings, VTX table, failsafe stage timings) to **auto-fill the client profile and the preflight checks**. Research-level; verify the current Betaflight implementation.
+- **Client battery log at disarm:** take start, min and end voltage and mAh from telemetry and create the battery-log entry automatically (§10.3).
+- **Debrief package:** client video recording (raw RTP to file), app log, carrier `.bin` and client blackbox, aligned on GPS time. CRSF v3 sends GPS time while disarmed.
+- **Checklist automation:** items like "client GPS Rescue ready", "client battery voltage", "ELRS link up" and "VTX channel = profile" tick themselves from telemetry, with the pilot confirming. That makes the checklist faster and harder to skip.
+
+### 14.8 Sources
+
+ExpressLRS:
+- [ExpressLRS MAVLink documentation](https://www.expresslrs.org/software/mavlink/)
+- [ExpressLRS Backpack info](https://expresslrs.org/hardware/backpack/esp-backpack/) · [VRX backpack setup](https://expresslrs.org/hardware/backpack/backpack-vrx-setup)
+- [ExpressLRS TX prep: external module pins and baud](https://www.expresslrs.org/quick-start/transmitters/tx-prep/)
+- [ExpressLRS 3.5.0 release notes (forum copy)](https://intofpv.com/t-expresslrs-3-5-0-final-release-now-available)
+
+Betaflight:
+- [Betaflight telemetry (CRSF datapoints, flight-mode strings)](https://betaflight.com/docs/wiki/guides/current/Telemetry)
+- [Betaflight VTX tab](https://betaflight.com/docs/wiki/app/vtx-tab) · [VTX CLI settings](https://betaflight.com/docs/wiki/guides/current/VTX-CLI-Settings)
+
+Community (VTX Admin, RX-as-TX, ArduPilot):
+- [VTX Admin requirements (IntoFPV)](https://intofpv.com/archive/index.php/thread-22717.html)
+- [ELRS VTX Admin with ArduPilot (ArduPilot forum)](https://discuss.ardupilot.org/t/smartaudio-and-elrs-vtx-admin/91728)
+- [Using an ELRS RX as a TX (IntoFPV)](https://intofpv.com/t-expresslrs-using-an-rx-as-a-tx)
+
+CRSF protocol:
+- [CRSF working-group packet types](https://github.com/crsf-wg/crsf/wiki/Packet-Types)
+
+EdgeTX:
+- [EdgeTX USB Joystick](https://manual.edgetx.org/color-radios/model-settings/model-setup/usb-joystick) · [Configure advanced joystick](https://manual.edgetx.org/edgetx-how-to/configure-advanced-joystick-with-edgetx)
+
+Hardware (retail specifications):
+- [RadioMaster Nomad (retail spec)](https://www.getfpv.com/radios/radio-transmitters/radiomaster-nomad-dual-1w-gemini-xrossband-expresslrs-module.html) · [RadioMaster DBR4 (retail spec)](https://www.getfpv.com/radiomaster-dbr4-dual-band-xross-gemini-expresslrs-receiver.html)
+
+ArduPilot:
+- [ArduPlane `Parameters.cpp` (THR_FAILSAFE, FS_GCS_ENABL, FS_SHORT/LONG_ACTN, RTL_ALTITUDE)](https://github.com/ArduPilot/ardupilot/blob/master/ArduPlane/Parameters.cpp)
