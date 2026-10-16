@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const C = require('../../data/content.js');
 
-const ROOT = path.join(__dirname, '..', '..');
+const { ROOT, readText } = require('../repo-files.js');
 const ID_RE = /^[A-Za-z0-9][A-Za-z0-9-]*$/;   // safe in HTML ids and data attributes
 
 // Every string in the content, with its path.
@@ -104,7 +104,7 @@ test('WP05 rework F1: app/controller card — airborne client only via RESUME (a
   const all = [card.title, card.summary].concat(card.immediate, card.cleanup);
   const imm = card.immediate.join(' | ');
   assert.match(imm, /AIRBORNE: NEVER NORMAL START/);
-  assert.match(imm, /RESUME — ARM SWITCH ARMED/);
+  assert.match(imm, /IF TAKING OVER: RESUME ONLY — ARM SWITCH ARMED/);
   const airborne = all.filter(s => /airborne/i.test(s));
   assert.ok(airborne.length >= 2);
   for (const s of airborne) {
@@ -215,7 +215,7 @@ test('forbidden-terms scan: index.html, data/ and js/ (acceptance grep)', () => 
   const OLD = [/nomad relay/i, /DBR4 receiver/i, /hold left button/i, /CVBS\s*(→|->)\s*HDMI/i, /SIYI HDMI/i, /HDMI\s*(→|->)\s*IP/i, /192\.168\.144\.25\b/, /MPV RTSP/i, /MPV\.net/i, /mpv\.conf/i, /re-bind/i, /sub-drone/i, /rear pair/i, /120\s?m AGL/i, /all 4 motors/i];
   const hits = [];
   for (const f of files) {
-    const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split(/\r?\n/);
+    const lines = readText(f).split('\n');
     lines.forEach((l, i) => OLD.forEach(re => { if (re.test(l)) hits.push(f + ':' + (i + 1) + ' ' + re); }));
   }
   assert.deepEqual(hits, []);

@@ -71,7 +71,7 @@
         { id: 'build-airframe', s: 'Airframe inspected', t: 'Carrier drone (Heewing T2 Cruza) assembled and inspected — no cracks at tilt motor mounts or wing joins.' },
         { id: 'build-pitot-cover', s: 'Pitot cover on', t: 'Pitot cover installed.', n: 'Leave on until pitot calibration step.', w: true },
         { id: 'build-relay-pcb', s: 'Relay PCB secured', t: 'Relay PCB mount secure, connectors locked (JST-GH, HM30 Ethernet, XT30, CRSF lead). Antennas: VRX patches facing inward, ELRS TX module antenna fitted.', n: 'Never plug goggles in parallel with the relay on one VRX output (CVBS lead).', w: true },
-        { id: 'build-battery-power', s: 'Battery secured & power on', t: 'Battery secured — strap tight, no movement. Power on carrier drone early to allow GPS fix acquisition while the ground station is being set up.', n: 'Do not arm yet. The relay bridge stays silent (WAIT_GCS) until the GCS app stream arrives — it never sends default sticks. Final power-up order with the relay: [[TBD — confirm by bench test, plan §6.1.6]].' },
+        { id: 'build-battery-power', s: 'Battery secured & power on', t: 'Battery secured — strap tight, no movement. Connect the carrier battery at power-up **step 4**: after the HM30 ground unit (1), the laptop and GCS app — arm switch DISARMED, throttle low (2) and the client (3); the 915 Nomad comes last (8). Allow GPS fix time after step 4, before arming.', n: 'Power-up order: Manual → Procedures → Power-Up Sequence. Do not arm yet. The relay bridge stays silent (WAIT_GCS) until the GCS app stream arrives — it never sends default sticks. Final power-up order with the relay: [[TBD — confirm by bench test, plan §6.1.6]].' },
         { id: 'build-props', s: 'Props tight, rotation correct', t: 'All props tight — correct rotation direction confirmed for all 3 motors (M1/M2 tilt, M4 tail).', n: 'M1/M2: wing tilt-motor props. M4: tail lift-motor prop (VTOL only).', w: true }
       ] },
       { id: 'C', name: 'GROUND STATION', items: [
@@ -203,7 +203,7 @@
       ],
       cleanup: [
         'Diagnose from the GCS app status: no packets out → app or controller · RTT gone → HM30 link · bridge FAILSAFE → bridge watchdog / T_hold (start value 250 ms) · LQ low with bridge RUN → ELRS RF: range, band, orbit geometry.',
-        'Client failsafe ({client.failsafe.type}, delay {client.failsafe.delayS} s, needs {client.failsafe.minSats}+ sats). Reference client #1 GPS Rescue: climbs 30m, cruises home at 100m / 7.5 m/s, motor cut at 4m.',
+        'Client failsafe ({client.failsafe.type}, delay {client.failsafe.delayS} s, needs {client.failsafe.minSats}+ sats). Reference client #1 GPS Rescue: climbs 30m, cruises home at 100m / 7.5 m/s, landing phase from 4 m (gps_rescue_landing_alt) [[VERIFY — Betaflight 4.5 docs: landing-phase altitude, not a confirmed motor cut]].',
         'The carrier camera is forced off if the GCS stream was lost; re-enable it only once the stream is back.',
         'Keep the carrier on station until the client has landed — it may be returning toward its home point.',
         'Confirm the client is disarmed before anyone approaches it on the ground.',
@@ -252,7 +252,7 @@
         'FPV PILOT: HANDS OFF',
         'CARRIER: HOLD ORBIT',
         'CLIENT AIRBORNE: NEVER NORMAL START',
-        'TAKE OVER ONLY BY RESUME — ARM SWITCH ARMED',
+        'IF TAKING OVER: RESUME ONLY — ARM SWITCH ARMED',
         'WATCH VIDEO / OSD'
       ],
       cleanup: [
@@ -393,7 +393,7 @@
         { id: 'co-transitioning', trigger: 'Transition commencing', who: 'Carrier Pilot', call: 'TRANSITIONING' },
         { id: 'co-clean-transition', trigger: 'Airspeed >11 m/s, wings level', who: 'FPV Pilot (monitors MP)', call: 'CLEAN TRANSITION' },
         { id: 'co-advancing-wp', trigger: 'Co-pilot advancing mission WP1→WP2', who: 'FPV Pilot', call: 'ADVANCING WAYPOINT' },
-        { id: 'co-transition-fail', trigger: 'No airspeed build after 2s', who: 'Either pilot', call: 'TRANSITION FAIL — QHOVER', note: 'Carrier Pilot acts immediately' },
+        { id: 'co-transition-fail', trigger: 'No airspeed build within 3 s', who: 'Either pilot', call: 'TRANSITION FAIL — QHOVER', note: 'Carrier Pilot acts immediately' },
         { id: 'co-on-station', trigger: 'Carrier at relay altitude, loitering', who: 'FPV Pilot (monitors MP)', call: 'CARRIER ON STATION' }
       ] },
       { id: 'co-relay', title: 'Relay Operations', rows: [
