@@ -1,0 +1,1842 @@
+{
+ "meta": {
+  "title": "Relay UDP protocol v1 + CRSF test vectors",
+  "status": "PROPOSAL v1 — agree with G0 firmware before flight",
+  "protocol_version": 1,
+  "hex": "uppercase, no separators, bytes in wire order",
+  "generator": "gcs/tools/gen_test_vectors.py (reference code: gcs/vtolgcs/protocol.py, crsf.py)",
+  "spec": "protocol/README.md",
+  "external_items": "items with \"external\": true come from the cited source, not from this code"
+ },
+ "crc": [
+  {
+   "algo": "crc16_ccitt_false",
+   "input_ascii": "123456789",
+   "value": "29B1",
+   "external": true,
+   "source": "https://reveng.sourceforge.io/crc-catalogue/all.htm (CRC-16/IBM-3740 a.k.a. CCITT-FALSE, check=0x29b1)"
+  },
+  {
+   "algo": "crc16_ccitt_false",
+   "input_hex": "",
+   "value": "FFFF"
+  },
+  {
+   "algo": "crc8_d5",
+   "input_ascii": "123456789",
+   "value": "BC",
+   "external": true,
+   "source": "https://reveng.sourceforge.io/crc-catalogue/all.htm (CRC-8/DVB-S2, poly 0xd5, check=0xbc)"
+  },
+  {
+   "algo": "crc8_d5",
+   "input_hex": "1400000000FF0103000000",
+   "value": "F4",
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp TEST(Crossfire, crc8)"
+  },
+  {
+   "algo": "crc8_d5",
+   "input_hex": "3AEAEE1000009C400000001C",
+   "value": "D7",
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp droppedBytes2 (first frame with its length byte restored)"
+  },
+  {
+   "algo": "crc8_ba",
+   "input_ascii": "123456789",
+   "value": "20",
+   "note": "generated; poly 0xBA is not a catalogued CRC — cross-checked via the EdgeTX table in tests"
+  }
+ ],
+ "us_to_crsf": [
+  {
+   "us": 880,
+   "crsf": 172
+  },
+  {
+   "us": 987.5,
+   "crsf": 172
+  },
+  {
+   "us": 988,
+   "crsf": 173
+  },
+  {
+   "us": 1000,
+   "crsf": 192
+  },
+  {
+   "us": 1250,
+   "crsf": 592
+  },
+  {
+   "us": 1500,
+   "crsf": 992
+  },
+  {
+   "us": 1750,
+   "crsf": 1392
+  },
+  {
+   "us": 2000,
+   "crsf": 1792
+  },
+  {
+   "us": 2012,
+   "crsf": 1811
+  },
+  {
+   "us": 2100,
+   "crsf": 1811
+  }
+ ],
+ "channels": [
+  {
+   "name": "centred",
+   "channels": [
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992,
+    992
+   ],
+   "packed": "E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7C"
+  },
+  {
+   "name": "full_scale_min",
+   "channels": [
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172
+   ],
+   "packed": "AC60052B58C10A56B08215AC60052B58C10A56B08215"
+  },
+  {
+   "name": "full_scale_max",
+   "channels": [
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811,
+    1811
+   ],
+   "packed": "139FF8C4273EF1894F7CE2139FF8C4273EF1894F7CE2"
+  },
+  {
+   "name": "alternating_min_max",
+   "channels": [
+    172,
+    1811,
+    172,
+    1811,
+    172,
+    1811,
+    172,
+    1811,
+    172,
+    1811,
+    172,
+    1811,
+    172,
+    1811,
+    172,
+    1811
+   ],
+   "packed": "AC98382B26CE8A89B362E2AC98382B26CE8A89B362E2"
+  },
+  {
+   "name": "ch1_max_rest_min",
+   "channels": [
+    1811,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172
+   ],
+   "packed": "1367052B58C10A56B08215AC60052B58C10A56B08215"
+  },
+  {
+   "name": "ch16_max_rest_min",
+   "channels": [
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    1811
+   ],
+   "packed": "AC60052B58C10A56B08215AC60052B58C10A56B062E2"
+  },
+  {
+   "name": "aetr_arm_high",
+   "channels": [
+    992,
+    992,
+    172,
+    992,
+    1811,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172,
+    172
+   ],
+   "packed": "E0031F2BC0377156B08215AC60052B58C10A56B08215"
+  },
+  {
+   "name": "edgetx_ramp",
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp TEST(Crossfire, createCrossfireChannelsFrame): pulses[i] = -1024 + 128*i, value = 992 + pulses*4/5 (C truncation)",
+   "channels": [
+    173,
+    276,
+    378,
+    480,
+    583,
+    685,
+    788,
+    890,
+    992,
+    1094,
+    1196,
+    1299,
+    1401,
+    1504,
+    1606,
+    1708
+   ],
+   "packed": "ADA0885EC073A456514C6FE033222B279A57F01A99D5"
+  }
+ ],
+ "rc_up": [
+  {
+   "name": "centred_cam_off_seq1",
+   "fields": {
+    "seq": 1,
+    "t_gcs_us": 0,
+    "channels": [
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992
+    ],
+    "cam_enable": false,
+    "reserved_flags": 0
+   },
+   "hex": "524301000100000000000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7C919B"
+  },
+  {
+   "name": "centred_cam_on",
+   "fields": {
+    "seq": 2,
+    "t_gcs_us": 4000,
+    "channels": [
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992
+    ],
+    "cam_enable": true,
+    "reserved_flags": 0
+   },
+   "hex": "5243010102000000A00F0000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7C510F"
+  },
+  {
+   "name": "full_scale_min",
+   "fields": {
+    "seq": 1000,
+    "t_gcs_us": 123456789,
+    "channels": [
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172
+    ],
+    "cam_enable": false,
+    "reserved_flags": 0
+   },
+   "hex": "52430100E803000015CD5B07AC60052B58C10A56B08215AC60052B58C10A56B082154B0E"
+  },
+  {
+   "name": "full_scale_max_cam_on",
+   "fields": {
+    "seq": 1001,
+    "t_gcs_us": 123460789,
+    "channels": [
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811,
+     1811
+    ],
+    "cam_enable": true,
+    "reserved_flags": 0
+   },
+   "hex": "52430101E9030000B5DC5B07139FF8C4273EF1894F7CE2139FF8C4273EF1894F7CE2110D"
+  },
+  {
+   "name": "arm_high",
+   "fields": {
+    "seq": 66051,
+    "t_gcs_us": 168496141,
+    "channels": [
+     992,
+     992,
+     172,
+     992,
+     1811,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172
+    ],
+    "cam_enable": false,
+    "reserved_flags": 0
+   },
+   "hex": "52430100030201000D0C0B0AE0031F2BC0377156B08215AC60052B58C10A56B0821527CF"
+  },
+  {
+   "name": "seq_and_time_max",
+   "fields": {
+    "seq": 4294967295,
+    "t_gcs_us": 4294967295,
+    "channels": [
+     172,
+     1811,
+     172,
+     1811,
+     172,
+     1811,
+     172,
+     1811,
+     172,
+     1811,
+     172,
+     1811,
+     172,
+     1811,
+     172,
+     1811
+    ],
+    "cam_enable": false,
+    "reserved_flags": 0
+   },
+   "hex": "52430100FFFFFFFFFFFFFFFFAC98382B26CE8A89B362E2AC98382B26CE8A89B362E26BFF"
+  },
+  {
+   "name": "reserved_flag_bits_set",
+   "fields": {
+    "seq": 7,
+    "t_gcs_us": 7,
+    "channels": [
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992
+    ],
+    "cam_enable": true,
+    "reserved_flags": 254
+   },
+   "hex": "524301FF0700000007000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7CAD65",
+   "note": "senders must send reserved bits as 0; receivers ignore them (bridge still accepts)"
+  }
+ ],
+ "status": [
+  {
+   "name": "boot",
+   "fields": {
+    "state": 0,
+    "seq": 1,
+    "t_gcs_us_echo": 0,
+    "camera_on_readback": false,
+    "timing_locked": false,
+    "p2_link_100fd": false,
+    "decoder_lock": false,
+    "std_ntsc": false,
+    "fw_ver": 1,
+    "rx_ok": 0,
+    "rx_bad_crc": 0,
+    "rx_bad_seq": 0,
+    "crsf_tx": 0,
+    "sync_period_x10us": 0,
+    "sync_offset_x10us": 0,
+    "reserved": 0,
+    "reserved_flags": 0
+   },
+   "hex": "525301000000010001000000000000000000000000000000000000000000000000000000000000004B56"
+  },
+  {
+   "name": "wait_gcs_p2_up",
+   "fields": {
+    "state": 1,
+    "seq": 2,
+    "t_gcs_us_echo": 0,
+    "camera_on_readback": false,
+    "timing_locked": false,
+    "p2_link_100fd": true,
+    "decoder_lock": false,
+    "std_ntsc": false,
+    "fw_ver": 1,
+    "rx_ok": 0,
+    "rx_bad_crc": 0,
+    "rx_bad_seq": 0,
+    "crsf_tx": 0,
+    "sync_period_x10us": 0,
+    "sync_offset_x10us": 0,
+    "reserved": 0,
+    "reserved_flags": 0
+   },
+   "hex": "52530101040001000200000000000000000000000000000000000000000000000000000000000000CEEC"
+  },
+  {
+   "name": "start",
+   "fields": {
+    "state": 2,
+    "seq": 3,
+    "t_gcs_us_echo": 4000,
+    "camera_on_readback": false,
+    "timing_locked": false,
+    "p2_link_100fd": true,
+    "decoder_lock": false,
+    "std_ntsc": false,
+    "fw_ver": 1,
+    "rx_ok": 5,
+    "rx_bad_crc": 0,
+    "rx_bad_seq": 0,
+    "crsf_tx": 1,
+    "sync_period_x10us": 40000,
+    "sync_offset_x10us": 1200,
+    "reserved": 0,
+    "reserved_flags": 0
+   },
+   "hex": "525301020400010003000000A00F000005000000000000000000000001000000409C0000B0040000532F"
+  },
+  {
+   "name": "run_locked_cam_on",
+   "fields": {
+    "state": 3,
+    "seq": 1000,
+    "t_gcs_us_echo": 123456789,
+    "camera_on_readback": true,
+    "timing_locked": true,
+    "p2_link_100fd": true,
+    "decoder_lock": false,
+    "std_ntsc": false,
+    "fw_ver": 1,
+    "rx_ok": 25000,
+    "rx_bad_crc": 3,
+    "rx_bad_seq": 1,
+    "crsf_tx": 24990,
+    "sync_period_x10us": 50000,
+    "sync_offset_x10us": -15,
+    "reserved": 0,
+    "reserved_flags": 0
+   },
+   "hex": "5253010307000100E803000015CD5B07A861000003000000010000009E61000050C30000F1FFFFFF364E"
+  },
+  {
+   "name": "failsafe",
+   "fields": {
+    "state": 4,
+    "seq": 1001,
+    "t_gcs_us_echo": 123456789,
+    "camera_on_readback": false,
+    "timing_locked": false,
+    "p2_link_100fd": true,
+    "decoder_lock": false,
+    "std_ntsc": false,
+    "fw_ver": 1,
+    "rx_ok": 25000,
+    "rx_bad_crc": 3,
+    "rx_bad_seq": 1,
+    "crsf_tx": 25050,
+    "sync_period_x10us": 0,
+    "sync_offset_x10us": 0,
+    "reserved": 0,
+    "reserved_flags": 0
+   },
+   "hex": "5253010404000100E903000015CD5B07A86100000300000001000000DA6100000000000000000000F20F"
+  },
+  {
+   "name": "all_flags_counters_max",
+   "fields": {
+    "state": 3,
+    "seq": 4294967295,
+    "t_gcs_us_echo": 4294967295,
+    "camera_on_readback": true,
+    "timing_locked": true,
+    "p2_link_100fd": true,
+    "decoder_lock": true,
+    "std_ntsc": true,
+    "fw_ver": 65535,
+    "rx_ok": 4294967295,
+    "rx_bad_crc": 4294967295,
+    "rx_bad_seq": 4294967295,
+    "crsf_tx": 4294967295,
+    "sync_period_x10us": 2147483647,
+    "sync_offset_x10us": -2147483648,
+    "reserved": 0,
+    "reserved_flags": 0
+   },
+   "hex": "525301031F00FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF7F00000080F3A8"
+  }
+ ],
+ "crsf_frames": [
+  {
+   "name": "link_statistics",
+   "hex": "EA0C143C3E640800060746640627",
+   "type": 20,
+   "decoder": "LinkStatistics",
+   "decoded": {
+    "rssi1_dbm": -60,
+    "rssi2_dbm": -62,
+    "lq_pct": 100,
+    "snr_db": 8,
+    "active_antenna": 0,
+    "rf_mode": 6,
+    "tx_power_index": 7,
+    "dl_rssi_dbm": -70,
+    "dl_lq_pct": 100,
+    "dl_snr_db": 6,
+    "dl_rssi2_dbm": null,
+    "tx_power_mw": 250
+   }
+  },
+  {
+   "name": "link_statistics_elrs_11b",
+   "hex": "EA0D145F652AFD0104036326FB67D0",
+   "type": 20,
+   "decoder": "LinkStatistics",
+   "decoded": {
+    "rssi1_dbm": -95,
+    "rssi2_dbm": -101,
+    "lq_pct": 42,
+    "snr_db": -3,
+    "active_antenna": 1,
+    "rf_mode": 4,
+    "tx_power_index": 3,
+    "dl_rssi_dbm": -99,
+    "dl_lq_pct": 38,
+    "dl_snr_db": -5,
+    "dl_rssi2_dbm": -103,
+    "tx_power_mw": 100
+   }
+  },
+  {
+   "name": "link_statistics_edgetx",
+   "hex": "C80C1400000000FF0103000000F4",
+   "type": 20,
+   "decoder": "LinkStatistics",
+   "decoded": {
+    "rssi1_dbm": 0,
+    "rssi2_dbm": 0,
+    "lq_pct": 0,
+    "snr_db": 0,
+    "active_antenna": 255,
+    "rf_mode": 1,
+    "tx_power_index": 3,
+    "dl_rssi_dbm": 0,
+    "dl_lq_pct": 0,
+    "dl_snr_db": 0,
+    "dl_rssi2_dbm": null,
+    "tx_power_mw": 100
+   },
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp TEST(Crossfire, crc8) (address byte 0x00 replaced by 0xC8)",
+   "hex_original": "000C1400000000FF0103000000F4"
+  },
+  {
+   "name": "gps",
+   "hex": "EA110223B5E600066AACB1021F6A0E043F0E43",
+   "type": 2,
+   "decoder": "Gps",
+   "decoded": {
+    "lat_deg": 59.9123456,
+    "lon_deg": 10.7654321,
+    "gspd_kmh": 54.3,
+    "hdg_deg": 271.5,
+    "alt_m": 87,
+    "sats": 14
+   }
+  },
+  {
+   "name": "gps_southern_western_negative_alt",
+   "hex": "EA1102EBD0073BA5DF4AE50000000003DC0547",
+   "type": 2,
+   "decoder": "Gps",
+   "decoded": {
+    "lat_deg": -33.8688197,
+    "lon_deg": -151.2092955,
+    "gspd_kmh": 0.0,
+    "hdg_deg": 0.0,
+    "alt_m": -12,
+    "sats": 5
+   }
+  },
+  {
+   "name": "battery",
+   "hex": "EA0A0800EA00BB00034D2391",
+   "type": 8,
+   "decoder": "Battery",
+   "decoded": {
+    "voltage_v": 23.4,
+    "current_a": 18.7,
+    "used_mah": 845,
+    "remaining_pct": 35
+   }
+  },
+  {
+   "name": "attitude",
+   "hex": "EA081EFDF5121C8549AC",
+   "type": 30,
+   "decoder": "Attitude",
+   "decoded": {
+    "pitch_rad": -0.0523,
+    "roll_rad": 0.4636,
+    "yaw_rad": -3.1415
+   }
+  },
+  {
+   "name": "flight_mode_ANGL*",
+   "hex": "EA0821414E474C2A00E4",
+   "type": 33,
+   "decoder": "FlightMode",
+   "decoded": {
+    "text": "ANGL*",
+    "mode": "ANGL",
+    "suffix": "*",
+    "failsafe": false,
+    "armed": false,
+    "ready_to_arm": true,
+    "arming_disabled": false,
+    "rescue_not_ready": false,
+    "rth": false
+   }
+  },
+  {
+   "name": "flight_mode_ANGL",
+   "hex": "EA0721414E474C00A7",
+   "type": 33,
+   "decoder": "FlightMode",
+   "decoded": {
+    "text": "ANGL",
+    "mode": "ANGL",
+    "suffix": null,
+    "failsafe": false,
+    "armed": true,
+    "ready_to_arm": false,
+    "arming_disabled": false,
+    "rescue_not_ready": false,
+    "rth": false
+   }
+  },
+  {
+   "name": "flight_mode_!FS!",
+   "hex": "EA07212146532100DA",
+   "type": 33,
+   "decoder": "FlightMode",
+   "decoded": {
+    "text": "!FS!",
+    "mode": "!FS!",
+    "suffix": null,
+    "failsafe": true,
+    "armed": false,
+    "ready_to_arm": false,
+    "arming_disabled": false,
+    "rescue_not_ready": false,
+    "rth": false
+   }
+  },
+  {
+   "name": "flight_mode_RTH",
+   "hex": "EA062152544800AF",
+   "type": 33,
+   "decoder": "FlightMode",
+   "decoded": {
+    "text": "RTH",
+    "mode": "RTH",
+    "suffix": null,
+    "failsafe": false,
+    "armed": true,
+    "ready_to_arm": false,
+    "arming_disabled": false,
+    "rescue_not_ready": false,
+    "rth": true
+   }
+  },
+  {
+   "name": "flight_mode_ACRO!",
+   "hex": "EA08214143524F210051",
+   "type": 33,
+   "decoder": "FlightMode",
+   "decoded": {
+    "text": "ACRO!",
+    "mode": "ACRO",
+    "suffix": "!",
+    "failsafe": false,
+    "armed": false,
+    "ready_to_arm": false,
+    "arming_disabled": true,
+    "rescue_not_ready": false,
+    "rth": false
+   }
+  },
+  {
+   "name": "flight_mode_HOR?",
+   "hex": "EA0721484F523F0081",
+   "type": 33,
+   "decoder": "FlightMode",
+   "decoded": {
+    "text": "HOR?",
+    "mode": "HOR",
+    "suffix": "?",
+    "failsafe": false,
+    "armed": false,
+    "ready_to_arm": false,
+    "arming_disabled": false,
+    "rescue_not_ready": true,
+    "rth": false
+   }
+  },
+  {
+   "name": "flight_mode_AIR",
+   "hex": "EA0621414952003F",
+   "type": 33,
+   "decoder": "FlightMode",
+   "decoded": {
+    "text": "AIR",
+    "mode": "AIR",
+    "suffix": null,
+    "failsafe": false,
+    "armed": true,
+    "ready_to_arm": false,
+    "arming_disabled": false,
+    "rescue_not_ready": false,
+    "rth": false
+   }
+  },
+  {
+   "name": "vario",
+   "hex": "EA0407FF831E",
+   "type": 7,
+   "decoder": "Vario",
+   "decoded": {
+    "vspd_ms": -1.25
+   }
+  },
+  {
+   "name": "baro_altitude_betaflight_3b",
+   "hex": "EA05092BE22AD3",
+   "type": 9,
+   "decoder": "BaroAltitude",
+   "decoded": {
+    "alt_m": 123.4,
+    "vspd_ms": 1.9802285732240186,
+    "vspd_format": "betaflight"
+   }
+  },
+  {
+   "name": "baro_altitude_elrs_4b",
+   "hex": "EA06092695FFCE6C",
+   "type": 9,
+   "decoder": "BaroAltitude",
+   "decoded": {
+    "alt_m": -12.3,
+    "vspd_ms": -0.5,
+    "vspd_format": "elrs"
+   }
+  },
+  {
+   "name": "baro_altitude_metres_mode",
+   "hex": "EA04098BB8BB",
+   "type": 9,
+   "decoder": "BaroAltitude",
+   "decoded": {
+    "alt_m": 3000.0,
+    "vspd_ms": null,
+    "vspd_format": "none"
+   }
+  },
+  {
+   "name": "radio_timing_200hz_negative_offset",
+   "hex": "EA0D3AEAEE100000C350FFFFFB2E4C",
+   "type": 58,
+   "decoder": "RadioTiming",
+   "decoded": {
+    "dest": 234,
+    "origin": 238,
+    "rate_x10us": 50000,
+    "offset_x10us": -1234,
+    "interval_us": 5000.0
+   }
+  },
+  {
+   "name": "radio_timing_edgetx",
+   "hex": "C80D3AEAEE1000009C400000001CD7",
+   "type": 58,
+   "decoder": "RadioTiming",
+   "decoded": {
+    "dest": 234,
+    "origin": 238,
+    "rate_x10us": 40000,
+    "offset_x10us": 28,
+    "interval_us": 4000.0
+   },
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp droppedBytes2 (frame with its length byte 0x0D restored)"
+  },
+  {
+   "name": "device_info_elrs",
+   "hex": "EA1B29EAEE524D204E6F6D616400454C525300000000000305002A009B",
+   "type": 41,
+   "decoder": "DeviceInfo",
+   "decoded": {
+    "dest": 234,
+    "origin": 238,
+    "name": "RM Nomad",
+    "serial_no": 1162629715,
+    "hardware_ver": 0,
+    "software_ver": 197888,
+    "field_count": 42,
+    "parameter_version": 0,
+    "is_elrs": true,
+    "software_version_str": "3.5.0"
+   }
+  },
+  {
+   "name": "parameter_chunk",
+   "hex": "EA242BEAEE010000095061636B65742052617465003530487A3B313530487A000100010000CD",
+   "type": 43,
+   "decoder": "ParameterChunk",
+   "decoded": {
+    "dest": 234,
+    "origin": 238,
+    "param_number": 1,
+    "chunks_remaining": 0,
+    "data": "00095061636B65742052617465003530487A3B313530487A000100010000"
+   }
+  }
+ ],
+ "parameter_entries": [
+  {
+   "name": "text_selection_1",
+   "frames": [
+    "EA302BEAEE010000095061636B65742052617465003530487A3B313530487A3B323530487A3B353030487A000200030000F7"
+   ],
+   "decoded": {
+    "number": 1,
+    "parent": 0,
+    "type": 9,
+    "hidden": false,
+    "name": "Packet Rate",
+    "value": 2,
+    "min": 0,
+    "max": 3,
+    "default": 0,
+    "units": "",
+    "options": [
+     "50Hz",
+     "150Hz",
+     "250Hz",
+     "500Hz"
+    ],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "00095061636B65742052617465003530487A3B313530487A3B323530487A3B353030487A000200030000"
+   }
+  },
+  {
+   "name": "text_selection_4",
+   "frames": [
+    "EA272BEAEE040003894D617820506F7765720031303B32353B3130303B32353000010003006D570015"
+   ],
+   "decoded": {
+    "number": 4,
+    "parent": 3,
+    "type": 9,
+    "hidden": true,
+    "name": "Max Power",
+    "value": 1,
+    "min": 0,
+    "max": 3,
+    "default": 0,
+    "units": "mW",
+    "options": [
+     "10",
+     "25",
+     "100",
+     "250"
+    ],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "03894D617820506F7765720031303B32353B3130303B32353000010003006D5700"
+   }
+  },
+  {
+   "name": "folder_3",
+   "frames": [
+    "EA152BEAEE0300000B545820506F77657200040506FF1E"
+   ],
+   "decoded": {
+    "number": 3,
+    "parent": 0,
+    "type": 11,
+    "hidden": false,
+    "name": "TX Power",
+    "value": null,
+    "min": null,
+    "max": null,
+    "default": null,
+    "units": "",
+    "options": [],
+    "children": [
+     4,
+     5,
+     6
+    ],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "000B545820506F77657200040506FF"
+   }
+  },
+  {
+   "name": "uint8_7",
+   "frames": [
+    "EA162BEAEE070000004D6F64656C204964000C003F0000A0"
+   ],
+   "decoded": {
+    "number": 7,
+    "parent": 0,
+    "type": 0,
+    "hidden": false,
+    "name": "Model Id",
+    "value": 12,
+    "min": 0,
+    "max": 63,
+    "default": 0,
+    "units": "",
+    "options": [],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "00004D6F64656C204964000C003F0000"
+   }
+  },
+  {
+   "name": "int8_8",
+   "frames": [
+    "EA152BEAEE080000015472696D00FBEC140070747300D6"
+   ],
+   "decoded": {
+    "number": 8,
+    "parent": 0,
+    "type": 1,
+    "hidden": false,
+    "name": "Trim",
+    "value": -5,
+    "min": -20,
+    "max": 20,
+    "default": 0,
+    "units": "pts",
+    "options": [],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "00015472696D00FBEC140070747300"
+   }
+  },
+  {
+   "name": "uint16_9",
+   "frames": [
+    "EA1A2BEAEE09000002506572696F64000FA003E84E20000075730041"
+   ],
+   "decoded": {
+    "number": 9,
+    "parent": 0,
+    "type": 2,
+    "hidden": false,
+    "name": "Period",
+    "value": 4000,
+    "min": 1000,
+    "max": 20000,
+    "default": 0,
+    "units": "us",
+    "options": [],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "0002506572696F64000FA003E84E200000757300"
+   }
+  },
+  {
+   "name": "int16_10",
+   "frames": [
+    "EA1A2BEAEE0A0000034F666673657400FED4FC1803E80000757300DE"
+   ],
+   "decoded": {
+    "number": 10,
+    "parent": 0,
+    "type": 3,
+    "hidden": false,
+    "name": "Offset",
+    "value": -300,
+    "min": -1000,
+    "max": 1000,
+    "default": 0,
+    "units": "us",
+    "options": [],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "00034F666673657400FED4FC1803E80000757300"
+   }
+  },
+  {
+   "name": "float_11",
+   "frames": [
+    "EA242BEAEE0B0000084761696E00FFFFFF83FFFFFC18000003E80000000002000000057800A1"
+   ],
+   "decoded": {
+    "number": 11,
+    "parent": 0,
+    "type": 8,
+    "hidden": false,
+    "name": "Gain",
+    "value": -125,
+    "min": -1000,
+    "max": 1000,
+    "default": 0,
+    "units": "x",
+    "options": [],
+    "children": [],
+    "precision": 2,
+    "step": 5,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "00084761696E00FFFFFF83FFFFFC18000003E80000000002000000057800"
+   }
+  },
+  {
+   "name": "info_12",
+   "frames": [
+    "EA1D2BEAEE0C00000C56657273696F6E00332E352E302049534D3247340019"
+   ],
+   "decoded": {
+    "number": 12,
+    "parent": 0,
+    "type": 12,
+    "hidden": false,
+    "name": "Version",
+    "value": "3.5.0 ISM2G4",
+    "min": null,
+    "max": null,
+    "default": null,
+    "units": "",
+    "options": [],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "000C56657273696F6E00332E352E302049534D32473400"
+   }
+  },
+  {
+   "name": "string_13",
+   "frames": [
+    "EA142BEAEE0D00000A4E616D650072656C61790010EF"
+   ],
+   "decoded": {
+    "number": 13,
+    "parent": 0,
+    "type": 10,
+    "hidden": false,
+    "name": "Name",
+    "value": "relay",
+    "min": null,
+    "max": null,
+    "default": null,
+    "units": "",
+    "options": [],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": 16,
+    "raw": "000A4E616D650072656C61790010"
+   }
+  },
+  {
+   "name": "command_14",
+   "frames": [
+    "EA102BEAEE0E00000D42696E640000C80065"
+   ],
+   "decoded": {
+    "number": 14,
+    "parent": 0,
+    "type": 13,
+    "hidden": false,
+    "name": "Bind",
+    "value": 0,
+    "min": null,
+    "max": null,
+    "default": null,
+    "units": "",
+    "options": [],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": 2000,
+    "info": "",
+    "max_length": null,
+    "raw": "000D42696E640000C800"
+   }
+  },
+  {
+   "name": "text_selection_15",
+   "frames": [
+    "EA3E2BEAEE0F0300094C6F6E67206F7074696F6E206C6973742074686174206E65656473206D6F7265207468616E206F6E65206368756E6B004F7074696F6E1B",
+    "EA3E2BEAEE0F02206E756D62657220303B4F7074696F6E206E756D62657220313B4F7074696F6E206E756D62657220323B4F7074696F6E206E756D62657220AC",
+    "EA3E2BEAEE0F01333B4F7074696F6E206E756D62657220343B4F7074696F6E206E756D62657220353B4F7074696F6E206E756D62657220363B4F7074696F6E49",
+    "EA352BEAEE0F00206E756D62657220373B4F7074696F6E206E756D62657220383B4F7074696F6E206E756D6265722039000500090000CB"
+   ],
+   "decoded": {
+    "number": 15,
+    "parent": 0,
+    "type": 9,
+    "hidden": false,
+    "name": "Long option list that needs more than one chunk",
+    "value": 5,
+    "min": 0,
+    "max": 9,
+    "default": 0,
+    "units": "",
+    "options": [
+     "Option number 0",
+     "Option number 1",
+     "Option number 2",
+     "Option number 3",
+     "Option number 4",
+     "Option number 5",
+     "Option number 6",
+     "Option number 7",
+     "Option number 8",
+     "Option number 9"
+    ],
+    "children": [],
+    "precision": null,
+    "step": null,
+    "timeout_ms": null,
+    "info": "",
+    "max_length": null,
+    "raw": "00094C6F6E67206F7074696F6E206C6973742074686174206E65656473206D6F7265207468616E206F6E65206368756E6B004F7074696F6E206E756D62657220303B4F7074696F6E206E756D62657220313B4F7074696F6E206E756D62657220323B4F7074696F6E206E756D62657220333B4F7074696F6E206E756D62657220343B4F7074696F6E206E756D62657220353B4F7074696F6E206E756D62657220363B4F7074696F6E206E756D62657220373B4F7074696F6E206E756D62657220383B4F7074696F6E206E756D6265722039000500090000"
+   }
+  }
+ ],
+ "crsf_builders": [
+  {
+   "name": "rc_centred",
+   "builder": "build_rc_channels_frame",
+   "args": {
+    "channels": [
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992,
+     992
+    ]
+   },
+   "hex": "EE1816E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7CAD"
+  },
+  {
+   "name": "rc_arm_high",
+   "builder": "build_rc_channels_frame",
+   "args": {
+    "channels": [
+     992,
+     992,
+     172,
+     992,
+     1811,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172,
+     172
+    ]
+   },
+   "hex": "EE1816E0031F2BC0377156B08215AC60052B58C10A56B082150F"
+  },
+  {
+   "name": "model_id_0",
+   "builder": "build_model_id_frame",
+   "args": {
+    "model_id": 0
+   },
+   "hex": "EE0832EEEA100500DC4D"
+  },
+  {
+   "name": "model_id_17",
+   "builder": "build_model_id_frame",
+   "args": {
+    "model_id": 17
+   },
+   "hex": "EE0832EEEA100511FE2D"
+  },
+  {
+   "name": "device_ping_broadcast",
+   "builder": "build_device_ping",
+   "args": {},
+   "hex": "EE042800EA54"
+  },
+  {
+   "name": "param_read_1_chunk0",
+   "builder": "build_param_read",
+   "args": {
+    "param": 1,
+    "chunk": 0
+   },
+   "hex": "EE062CEEEA010086"
+  },
+  {
+   "name": "param_read_15_chunk1",
+   "builder": "build_param_read",
+   "args": {
+    "param": 15,
+    "chunk": 1
+   },
+   "hex": "EE062CEEEA0F0131"
+  },
+  {
+   "name": "param_write_select",
+   "builder": "build_param_write",
+   "args": {
+    "param": 1,
+    "type": 9,
+    "value": 3
+   },
+   "hex": "EE062DEEEA01039A"
+  },
+  {
+   "name": "param_write_int16",
+   "builder": "build_param_write",
+   "args": {
+    "param": 10,
+    "type": 3,
+    "value": -300
+   },
+   "hex": "EE072DEEEA0AFED4ED"
+  },
+  {
+   "name": "param_write_command_click",
+   "builder": "build_param_write",
+   "args": {
+    "param": 14,
+    "type": 13,
+    "value": 1
+   },
+   "hex": "EE062DEEEA0E018C"
+  }
+ ],
+ "crsf_fwd": [
+  {
+   "name": "link_statistics",
+   "frame": "EA0C143C3E640800060746640627",
+   "hex": "5246010EEA0C143C3E64080006074664062757CF"
+  },
+  {
+   "name": "flight_mode_fs",
+   "frame": "EA07212146532100DA",
+   "hex": "52460109EA07212146532100DA74E5"
+  },
+  {
+   "name": "gps",
+   "frame": "EA110223B5E600066AACB1021F6A0E043F0E43",
+   "hex": "52460113EA110223B5E600066AACB1021F6A0E043F0E43D84F"
+  },
+  {
+   "name": "max_size_64",
+   "frame": "EA3E2BEAEE0F0300094C6F6E67206F7074696F6E206C6973742074686174206E65656473206D6F7265207468616E206F6E65206368756E6B004F7074696F6E1B",
+   "hex": "52460140EA3E2BEAEE0F0300094C6F6E67206F7074696F6E206C6973742074686174206E65656473206D6F7265207468616E206F6E65206368756E6B004F7074696F6E1B90BB"
+  }
+ ],
+ "crsf_pass": [
+  {
+   "name": "device_ping",
+   "frame": "EE042800EA54",
+   "hex": "52500106EE042800EA54F6E6"
+  },
+  {
+   "name": "param_read",
+   "frame": "EE062CEEEA010086",
+   "hex": "52500108EE062CEEEA0100862C90"
+  },
+  {
+   "name": "param_write",
+   "frame": "EE062DEEEA01039A",
+   "hex": "52500108EE062DEEEA01039A6253"
+  }
+ ],
+ "malformed": [
+  {
+   "name": "rc_up_bad_crc",
+   "message": "rc_up",
+   "hex": "524301000100000000000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7C909B",
+   "error": "CrcError"
+  },
+  {
+   "name": "rc_up_payload_bit_flip",
+   "message": "rc_up",
+   "hex": "524301000100000000000000E0031FF8C0073EF0800F7CE0031FF8C0073EF0810F7C919B",
+   "error": "CrcError"
+  },
+  {
+   "name": "rc_up_ver_2",
+   "message": "rc_up",
+   "hex": "524302000100000000000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7C5B70",
+   "error": "VersionError"
+  },
+  {
+   "name": "rc_up_ver_0",
+   "message": "rc_up",
+   "hex": "524300000100000000000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7CD7C2",
+   "error": "VersionError"
+  },
+  {
+   "name": "rc_up_truncated_35",
+   "message": "rc_up",
+   "hex": "524301000100000000000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7C91",
+   "error": "LengthError"
+  },
+  {
+   "name": "rc_up_too_long_37",
+   "message": "rc_up",
+   "hex": "524301000100000000000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7C919B00",
+   "error": "LengthError"
+  },
+  {
+   "name": "rc_up_bad_magic",
+   "message": "rc_up",
+   "hex": "525801000100000000000000E0031FF8C0073EF0810F7CE0031FF8C0073EF0810F7C919B",
+   "error": "MagicError"
+  },
+  {
+   "name": "rc_up_two_bytes",
+   "message": "rc_up",
+   "hex": "5243",
+   "error": "LengthError"
+  },
+  {
+   "name": "empty",
+   "message": "rc_up",
+   "hex": "",
+   "error": "LengthError"
+  },
+  {
+   "name": "status_bad_crc",
+   "message": "status",
+   "hex": "5253010307000100E803000015CD5B07A861000003000000010000009E61000050C30000F1FFFFFF364F",
+   "error": "CrcError"
+  },
+  {
+   "name": "status_ver_2",
+   "message": "status",
+   "hex": "5253020307000100E803000015CD5B07A861000003000000010000009E61000050C30000F1FFFFFFBA73",
+   "error": "VersionError"
+  },
+  {
+   "name": "status_truncated_41",
+   "message": "status",
+   "hex": "5253010307000100E803000015CD5B07A861000003000000010000009E61000050C30000F1FFFFFF36",
+   "error": "LengthError"
+  },
+  {
+   "name": "status_unknown_state_5",
+   "message": "status",
+   "hex": "5253010507000100E803000015CD5B07A861000003000000010000009E61000050C30000F1FFFFFFCE57",
+   "error": "FieldError"
+  },
+  {
+   "name": "crsf_fwd_bad_crc",
+   "message": "crsf_fwd",
+   "hex": "5246010EEA0C143C3E64080006074664062757CE",
+   "error": "CrcError"
+  },
+  {
+   "name": "crsf_fwd_ver_2",
+   "message": "crsf_fwd",
+   "hex": "5246020EEA0C143C3E6408000607466406271A27",
+   "error": "VersionError"
+  },
+  {
+   "name": "crsf_fwd_truncated",
+   "message": "crsf_fwd",
+   "hex": "5246010EEA0C143C3E6408000607466406",
+   "error": "LengthError"
+  },
+  {
+   "name": "crsf_fwd_len_field_mismatch",
+   "message": "crsf_fwd",
+   "hex": "5246010FEA0C143C3E640800060746640627AB61",
+   "error": "LengthError"
+  },
+  {
+   "name": "crsf_fwd_inner_length_mismatch",
+   "message": "crsf_fwd",
+   "hex": "5246010EEA0B143C3E6408000607466406275F05",
+   "error": "FieldError"
+  },
+  {
+   "name": "crsf_fwd_len_below_4",
+   "message": "crsf_fwd",
+   "hex": "52460103C801141443",
+   "error": "LengthError"
+  },
+  {
+   "name": "crsf_pass_bad_crc",
+   "message": "crsf_pass",
+   "hex": "52500106EE042900EA54F6E6",
+   "error": "CrcError"
+  },
+  {
+   "name": "crsf_pass_ver_2",
+   "message": "crsf_pass",
+   "hex": "52500206EE042800EA54832E",
+   "error": "VersionError"
+  },
+  {
+   "name": "status_magic_as_rc_up",
+   "message": "rc_up",
+   "hex": "5253010307000100E803000015CD5B07A861000003000000010000009E61000050C30000F1FFFFFF364E",
+   "error": "MagicError"
+  }
+ ],
+ "crsf_streams": [
+  {
+   "name": "garbage_between_frames",
+   "stream": "00FF1234C8FFEE01EA00EA0C143C3E64080006074664062700FF1234C8FFEE01EA00EA0821414E474C2A00E4EA0D3AEAEE100000C350FFFFFB2E4CC8",
+   "frames": [
+    "EA0C143C3E640800060746640627",
+    "EA0821414E474C2A00E4",
+    "EA0D3AEAEE100000C350FFFFFB2E4C"
+   ]
+  },
+  {
+   "name": "corrupt_frame_then_good",
+   "stream": "EA0C143C3E9B0800060746640627EA0821414E474C2A00E4EA0D3AEAEE100000C350FFFFFB2E4C",
+   "frames": [
+    "EA0821414E474C2A00E4",
+    "EA0D3AEAEE100000C350FFFFFB2E4C"
+   ]
+  },
+  {
+   "name": "truncated_frame_then_good",
+   "stream": "EA0C143C3E6408EA0821414E474C2A00E4",
+   "frames": [
+    "EA0821414E474C2A00E4"
+   ]
+  },
+  {
+   "name": "edgetx_invalid_frames",
+   "stream": "EA14FF11FD0500001301012A000000000000015D98B40035A4EA21FF1EFD1200001401014A000000000000000000008FC2353FFDC7D13C4C01923F31EA020001EA1FFF1CFD100000150101240000357DF240E803E803DC05DC05E105E1052AFE5F",
+   "frame_count": 3,
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp TEST(Crossfire, frameParser_badFrames) invalid_frames[]: frames of len 0x14, 0x21, 0x1F survive random bytes and a bad-CRC frame"
+  },
+  {
+   "name": "edgetx_dropped_bytes",
+   "stream": "C80C14D0006409001DC9640879C80DFFEAEE1000004E200000004AF3",
+   "frame_count": 1,
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp TEST(Crossfire, frameParser_droppedBytes) droppedBytes[]: first frame is missing a payload byte; only the second (13-byte) frame is valid"
+  },
+  {
+   "name": "edgetx_dropped_length_byte",
+   "stream": "C83AEAEE1000009C400000001CD7C80DF0EAEE1000009C40000000385CC80CF1D700640C001B01D2640BFEC80DF2EAEE1000009C4000000041DBC80CF3D600640C001B01D1640B64",
+   "frame_count": 4,
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp TEST(Crossfire, frameParser_droppedBytes) droppedBytes2[]: first frame lost its length byte; the 4 frames after it are recovered"
+  },
+  {
+   "name": "edgetx_length_error3",
+   "stream": "EA09FF11FD05000013018C2A095F00EA09FF11FD05000013018C",
+   "frame_count": 2,
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp TEST(Crossfire, frameParser_length) length_error3[]: two valid frames around an invalid frame start"
+  },
+  {
+   "name": "edgetx_split_incomplete_then_cont",
+   "stream": "EA14FF11FD0500001301012A000000000000015D98B4EA21FF1EFD1200001401014A000000000000000000008FC2353FFDC7D13C4C01923F31EA1FFF1CFD100000150101240000357DF240E803E803DC05DC05E105E1052AFE5FEA0A0B",
+   "frame_count": 3,
+   "external": true,
+   "source": "https://github.com/EdgeTX/edgetx/blob/65db64b4890c399b8fcc9cc6a3d002c2b86e4706/radio/src/tests/crossfire.cpp TEST(Crossfire, frameParser_incompleteFrames) incomplete_frame[] + cont_frame[]: 3 frames, 3 bytes (EA 0A 0B) left pending",
+   "chunks": [
+    64,
+    29
+   ],
+   "pending": 3
+  }
+ ],
+ "crsf_malformed": [
+  {
+   "name": "bad_crc",
+   "hex": "EA0C143C3E9B0800060746640627",
+   "error": "CrsfError"
+  },
+  {
+   "name": "length_byte_too_big",
+   "hex": "C83F1400",
+   "error": "CrsfError"
+  },
+  {
+   "name": "length_byte_too_small",
+   "hex": "C8011400",
+   "error": "CrsfError"
+  },
+  {
+   "name": "bad_sync",
+   "hex": "2A0C143C3E640800060746640627",
+   "error": "CrsfError"
+  },
+  {
+   "name": "timing_wrong_subtype",
+   "hex": "EA0D3AEAEE11000000000000000054",
+   "error": "CrsfError",
+   "decode": true
+  },
+  {
+   "name": "gps_short_payload",
+   "hex": "EA1002000000000000000000000000000019",
+   "error": "CrsfError",
+   "decode": true
+  }
+ ],
+ "flight_modes": [
+  {
+   "mode": "ANGL",
+   "suffix": "*",
+   "failsafe": false,
+   "armed": false,
+   "ready_to_arm": true,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "ANGL*"
+  },
+  {
+   "mode": "ANGL",
+   "suffix": "!",
+   "failsafe": false,
+   "armed": false,
+   "ready_to_arm": false,
+   "arming_disabled": true,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "ANGL!"
+  },
+  {
+   "mode": "ANGL",
+   "suffix": "?",
+   "failsafe": false,
+   "armed": false,
+   "ready_to_arm": false,
+   "arming_disabled": false,
+   "rescue_not_ready": true,
+   "rth": false,
+   "raw": "ANGL?"
+  },
+  {
+   "mode": "ANGL",
+   "suffix": null,
+   "failsafe": false,
+   "armed": true,
+   "ready_to_arm": false,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "ANGL"
+  },
+  {
+   "mode": "ACRO",
+   "suffix": null,
+   "failsafe": false,
+   "armed": true,
+   "ready_to_arm": false,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "ACRO"
+  },
+  {
+   "mode": "AIR",
+   "suffix": "*",
+   "failsafe": false,
+   "armed": false,
+   "ready_to_arm": true,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "AIR*"
+  },
+  {
+   "mode": "HOR",
+   "suffix": null,
+   "failsafe": false,
+   "armed": true,
+   "ready_to_arm": false,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "HOR"
+  },
+  {
+   "mode": "RTH",
+   "suffix": null,
+   "failsafe": false,
+   "armed": true,
+   "ready_to_arm": false,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": true,
+   "raw": "RTH"
+  },
+  {
+   "mode": "RTH",
+   "suffix": "*",
+   "failsafe": false,
+   "armed": false,
+   "ready_to_arm": true,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": true,
+   "raw": "RTH*"
+  },
+  {
+   "mode": "!FS!",
+   "suffix": null,
+   "failsafe": true,
+   "armed": false,
+   "ready_to_arm": false,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "!FS!"
+  },
+  {
+   "mode": "!FS!",
+   "suffix": "*",
+   "failsafe": true,
+   "armed": false,
+   "ready_to_arm": true,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "!FS!*"
+  },
+  {
+   "mode": "POSH",
+   "suffix": "?",
+   "failsafe": false,
+   "armed": false,
+   "ready_to_arm": false,
+   "arming_disabled": false,
+   "rescue_not_ready": true,
+   "rth": false,
+   "raw": "POSH?"
+  },
+  {
+   "mode": "ALTH",
+   "suffix": "!",
+   "failsafe": false,
+   "armed": false,
+   "ready_to_arm": false,
+   "arming_disabled": true,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": "ALTH!"
+  },
+  {
+   "mode": "",
+   "suffix": null,
+   "failsafe": false,
+   "armed": null,
+   "ready_to_arm": false,
+   "arming_disabled": false,
+   "rescue_not_ready": false,
+   "rth": false,
+   "raw": ""
+  }
+ ]
+}
