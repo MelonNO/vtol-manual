@@ -104,7 +104,7 @@ test('WP05 rework F1: app/controller card — airborne client only via RESUME (a
   const all = [card.title, card.summary].concat(card.immediate, card.cleanup);
   const imm = card.immediate.join(' | ');
   assert.match(imm, /AIRBORNE: NEVER NORMAL START/);
-  assert.match(imm, /RESUME — ARM SWITCH ARMED/);
+  assert.match(imm, /IF TAKING OVER: RESUME ONLY — ARM SWITCH ARMED/);
   const airborne = all.filter(s => /airborne/i.test(s));
   assert.ok(airborne.length >= 2);
   for (const s of airborne) {
