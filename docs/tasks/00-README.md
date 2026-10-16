@@ -47,10 +47,10 @@ The PM updates this table.
 | WP | Impl | Verify | Merged |
 |---|---|---|---|
 | WP01 | done (1 rework) | APPROVED (round 2) | yes |
-| WP02 | done | in verification | |
+| WP02 | done (1 rework) | APPROVED (round 2) | yes |
 | WP03 | done (1 rework) | APPROVED (round 2) | yes |
 | WP04 | done | APPROVED (round 1) | yes |
-| WP05 | | | |
+| WP05 | in progress | | |
 | WP06 | | | |
 | WP07 | | | |
 | WP08a | in progress | | |
