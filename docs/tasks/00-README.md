@@ -49,7 +49,7 @@ The PM updates this table.
 | WP01 | | | |
 | WP02 | | | |
 | WP03 | | | |
-| WP04 | | | |
+| WP04 | done | APPROVED (round 1) | yes |
 | WP05 | | | |
 | WP06 | | | |
 | WP07 | | | |
