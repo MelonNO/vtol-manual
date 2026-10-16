@@ -78,14 +78,24 @@ def test_headless_sim_streams_then_failsafe_on_exit(tmp_path: Path) -> None:
         assert "bridge START after" in out                    # start_packets expectation reported
         with sim.lock:
             assert sim.core.visited(BridgeState.RUN)
-        t_end = time.time() + 5                     # the app is gone: the bridge must reach FAILSAFE
-        while time.time() < t_end:
+        # The app is gone: the bridge must reach FAILSAFE.  Poll with a generous deadline (PM, WP08b: a
+        # fixed 5 s failed once on a busy machine) and print diagnostics on timeout.
+        t_end = time.monotonic() + 15
+        reached = False
+        while not reached and time.monotonic() < t_end:
             with sim.lock:
-                if sim.core.visited(BridgeState.FAILSAFE):
-                    break
-            time.sleep(0.02)
-        with sim.lock:
-            assert sim.core.visited(BridgeState.FAILSAFE)
+                reached = sim.core.visited(BridgeState.FAILSAFE)
+            if not reached:
+                time.sleep(0.05)
+        if not reached:
+            with sim.lock:
+                core = sim.core
+                diag = (f"sim state {core.state.name}; transitions "
+                        f"{[(round(t, 3), a.name, b.name) for t, a, b in core.transitions]}; rx_ok {core.rx_ok}; "
+                        f"last valid rc_up {None if core.last_valid_time is None else round(sim.clock() - core.last_valid_time, 3)} s ago; "
+                        f"sim thread alive {sim._thread is not None and sim._thread.is_alive()}")
+            raise AssertionError("bridge never reached FAILSAFE within 15 s after the app exited:\n  " + diag
+                                 + "\n  app stdout tail:\n" + out[-2000:] + "\n  stderr tail:\n" + proc.stderr[-2000:])
         assert (tmp_path / "cfg.json").exists()       # config created with defaults
         logs = list(tmp_path.glob("session-*.jsonl"))
         assert len(logs) == 1

@@ -221,6 +221,8 @@ class PygameController:
         self._next_scan = 0.0
         self.devices: list[str] = []
         self.error: str | None = None
+        #: Raw (axes, buttons) of the last poll, for the UI mapping wizard (WP08b); None without a device.
+        self.raw: tuple[tuple[float, ...], tuple[bool, ...]] | None = None
 
     # -- public
     def start(self) -> None:
@@ -273,6 +275,7 @@ class PygameController:
         if self._joy is not None:
             log.warning("controller disconnected (%s)", why)
         self._joy = None
+        self.raw = None
         self._snap = ControllerSnapshot(False, None, CENTRED_US, self._clock(), NONE_MAPPED)
 
     def _scan(self) -> None:
@@ -314,4 +317,5 @@ class PygameController:
         axes = [joy.get_axis(i) for i in range(joy.get_numaxes())]
         buttons = [bool(joy.get_button(i)) for i in range(joy.get_numbuttons())]
         channels, mapped = map_inputs_with_mapping(axes, buttons, self.cfg.channel_map)
+        self.raw = (tuple(axes), tuple(buttons))
         self._snap = ControllerSnapshot(True, joy.get_name(), channels, self._clock(), mapped)
