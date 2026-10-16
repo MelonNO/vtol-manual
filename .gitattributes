@@ -1,2 +1,27 @@
+# Line endings: every text file is stored AND checked out with LF on every OS,
+# whatever core.autocrlf says (GitHub Pages and CI are Linux; the tests read files as LF).
+# This includes the PowerShell scripts: Windows PowerShell 5.1 parses and runs LF-only
+# .ps1 files (here-strings, block comments, backtick continuations) without any issue.
+* text=auto eol=lf
+
+# cmd.exe mis-parses labels/goto in LF-only batch files, so these keep CRLF (none yet).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: never converted, never diffed as text.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.zip   binary
+*.pdf   binary
+*.exe   binary
+
 # Vendored third-party files: store byte-for-byte (keeps the official SRI hashes valid).
 relay/vendor/** -text
