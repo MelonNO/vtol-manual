@@ -1035,7 +1035,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>HM30 ground unit</strong><p>Mast unit on (6S 3000mAh). Confirm the HM30 link LED.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Laptop and GCS app</strong><p>Static IP verified (<code>192.168.144.X</code>, see the network table) → GCS companion app started → EdgeTX radio connected as USB joystick; <strong>arm switch DISARMED; throttle low</strong>. The app enforces this for a normal start.</p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Client drone</strong><p>Client powered → VTX on the planned band/channel (<span data-tok="client.vtx.band">R</span><span data-tok="client.vtx.channel">5</span> · <span data-tok="client.vtx.freqMHz">5806</span> MHz) → ELRS RX waiting for the relay.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Carrier battery</strong><p>Connect the single 6S pack: FC, HM30 air unit, relay PCB and camera boot together. Wait for the ArduPlane boot tone. Bridge: BOOT → WAIT_GCS → START (ModelID ×3) → RUN once the app's stream is seen. The client RX links (bound by binding phrase — no per-flight bind).</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Carrier battery</strong><p>Connect the single 6S pack: FC, HM30 air unit, relay PCB and camera boot together. Wait for the ArduPlane boot tone. Allow GPS fix time from here, before arming. Bridge: BOOT → WAIT_GCS → START (ModelID ×3) → RUN once the app's stream is seen. The client RX links (bound by binding phrase — no per-flight bind).</p></div></div>
     <div class="step"><div class="step-n">5</div><div class="step-body"><strong>Mission Planner</strong><p>Connect UDPCI <code>192.168.144.12</code> : <code>19856</code>. Telemetry live.</p></div></div>
     <div class="step"><div class="step-n">6</div><div class="step-body"><strong>Client video</strong><p>GStreamer viewer (UDP 5601) or MP HUD (UDP 5602) shows the client picture.</p></div></div>
     <div class="step"><div class="step-n">7</div><div class="step-body"><strong>Camera check</strong><p>Switch the camera on in the GCS app → carrier camera RTSP picture shows → the app reports camera ON (read-back). Then set it to the state planned for the sortie — normally <strong>OFF</strong> before the client launches, unless relay-design test 9 has passed.</p></div></div>
@@ -1554,7 +1554,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <tr><td>Return speed</td><td>7.5 m/s</td><td>Horizontal return ground speed</td></tr>
       <tr><td>Descent start</td><td>20m from home</td><td>Begins descent when within 20m of home horizontally</td></tr>
       <tr><td>Descent rate</td><td>1.5 m/s</td><td>Slow controlled descent</td></tr>
-      <tr><td>Landing altitude</td><td>4m</td><td>Previous manual: motors cut at 4m. <code>gps_rescue_landing_alt = 4</code> in the dump — <span class="warn-val">VERIFY its meaning in the Betaflight 4.5 docs</span></td></tr>
+      <tr><td>Landing phase</td><td>4m</td><td>Landing phase from 4 m (<code>gps_rescue_landing_alt = 4</code> in the dump) — not a confirmed motor cut. <span class="warn-val">VERIFY — Betaflight 4.5 docs</span></td></tr>
       <tr><td>Min start distance</td><td>15m</td><td>Won't activate if already within 15m of home — descends in place</td></tr>
       <tr><td>Throttle range</td><td>1100–1700</td><td>Hover estimate: 1300</td></tr>
       </tbody>
@@ -1600,7 +1600,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <text x="62" y="48" fill="#f97316" font-size="8" text-anchor="middle" transform="rotate(-90,62,48)">CLIMB</text>
     <text x="350" y="16" fill="#f97316" font-size="9" text-anchor="middle" letter-spacing="1">CRUISE HOME — 7.5 m/s AT 100m REL</text>
     <text x="636" y="85" fill="#f97316" font-size="8" text-anchor="start" transform="rotate(72,626,85)">DESCENT</text>
-    <text x="643" y="150" fill="#ef4444" font-size="8" text-anchor="start">MOTOR CUT</text>
+    <text x="643" y="150" fill="#ef4444" font-size="8" text-anchor="start">LANDING PHASE</text>
     <text x="360" y="188" fill="#ef444455" font-size="8" text-anchor="middle" letter-spacing="1">REQUIRES 8+ GPS SATS TO ACTIVATE</text>
   </svg>
 

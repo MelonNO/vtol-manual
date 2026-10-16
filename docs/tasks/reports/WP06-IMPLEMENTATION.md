@@ -160,3 +160,20 @@ main (ab6b875): no-implicit-button-type 24, no-inline-style 46, no-raw-character
   - plan: §3.3/§3.4, §4, §6.1.x, §7.3/§7.5, §13.1, §14.2
   - `gcs/README.md` (WP08a working copy): alarms, start paths, carrier-only, keys and exit codes
   - `docs/FPV_betaflight_dump.txt`: BF values
+
+## PM amendments
+
+The PM decided §5 items 1–3 and permitted these `data/content.js` edits. Items 4 (WP08a README re-check at verification) and 6 (inline `manual-core`) were accepted as they are.
+
+| Item | Change | Evidence |
+|---|---|---|
+| 1 — MAN-06 | Callout `co-transition-fail` trigger is now "No airspeed build within 3 s". Content, cards and the manual have no other transition time than 3 s. | `data/content.js:396` |
+| 2 — Power-up order | Tools item `build-battery-power` now follows plan §6.1.6: carrier battery at **step 4**, after HM30 (1), laptop + app with arm switch DISARMED and throttle low (2), and client (3); Nomad last (8). It says "Allow GPS fix time after step 4, before arming" and points to the manual. "Power on early" is gone. The bench-test TBD is kept. In the manual, step 4 gains "Allow GPS fix time from here, before arming". Other checklist items (`ta-power-gps`, `carrier-mode-cycle`, `gs-app`) do not imply another order. | `data/content.js:74`; `manual.html` power-up step 4 |
+| 3 — GPS Rescue 4 m | `emerg-client-rc` now says "landing phase from 4 m (gps_rescue_landing_alt) [[VERIFY — Betaflight 4.5 docs: landing-phase altitude, not a confirmed motor cut]]". The manual's GPS Rescue table row became "Landing phase", and the rescue SVG label "MOTOR CUT" became "LANDING PHASE". The SVG geometry is left to WP07. | `data/content.js:206`; `manual.html` GPS Rescue table and SVG |
+
+Tests:
+- New `test/manual/amendments.test.js` (3 tests): one transition number; one power-up order with TBD and no "early"; landing phase with VERIFY and no "motor cut" anywhere.
+- `node --test test/` → **163/163 pass**.
+- html-validate on `manual.html` → 0 errors.
+- jsdom smoke `S\wp06\smoke.js` → 102/102.
+- The WP05 Tools smoke run on this tree → 92/92.
