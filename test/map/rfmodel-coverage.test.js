@@ -190,3 +190,47 @@ test('orbit sweep: worst case = intersection, best case = union (R11)', () => {
   }
   assert.deepEqual(M.gridRings(M.gridCreate(0, 0, 1, 1, 5000), 'best'), []);
 });
+
+// Brute-force reference: the original O(n²) clearance check at fixed spacing, no fast path.
+function refEdge(o) {
+  const n = Math.ceil(o.maxR / o.step), lam = o.fHz ? M.C_MS / o.fHz : 0, d = [], blk = [], tgt = [];
+  for (let i = 0; i < n; i++) {
+    d[i] = Math.min(o.maxR, (i + 1) * o.step);
+    const [la, lo] = M.dest(o.lat, o.lon, o.brg, d[i]);
+    blk[i] = o.elev(la, lo); tgt[i] = blk[i] + o.targetAgl;
+  }
+  let range = 0;
+  for (let i = 0; i < n; i++) {
+    let ok = true;
+    for (let j = 0; j < i && ok; j++) {
+      const los = o.hAsl + (tgt[i] - o.hAsl) * d[j] / d[i] - d[j] * (d[i] - d[j]) / (2 * M.EARTH_R_EFF);
+      const clr = (lam ? o.k * Math.sqrt(lam * d[j] * (d[i] - d[j]) / d[i]) : 0) + (o.marginM || 0);
+      if (blk[j] > los - clr) ok = false;
+    }
+    if (!ok) return { range, limit: 'terrain' };
+    range = d[i];
+  }
+  return { range, limit: 'rf' };
+}
+
+test('traceRay fast path gives exactly the brute-force edge on random terrain', () => {
+  let seed = 7;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let t = 0; t < 40; t++) {
+    const a1 = rnd() * 60, a2 = rnd() * 30, f1 = 200 + rnd() * 2000, f2 = 50 + rnd() * 500;
+    const elev = (lat, lon) => { const x = M.distM(60, 10, lat, lon); return a1 * Math.sin(x / f1) + a2 * Math.sin(x / f2 + 1); };
+    const o = { lat: 60, lon: 10, hAsl: 20 + rnd() * 150, brg: rnd() * 360, maxR: 3000 + rnd() * 6000, step: 30,
+      fHz: [868e6, 2.44e9, 5.8e9][t % 3], k: 0.6, marginM: t % 4 ? 0 : 3, elev, targetAgl: 3 };
+    const fast = M.traceRay(o), ref = refEdge(o);
+    assert.equal(fast.range, ref.range, 'case ' + t);
+    assert.equal(fast.limit, ref.limit, 'case ' + t);
+  }
+});
+
+test('traceRay samples 8x coarser where there is no terrain data', () => {
+  let calls = 0;
+  const elev = (lat, lon) => { calls++; return M.distM(60, 10, lat, lon) < 1000 ? 0 : null; };
+  const r = M.traceRay({ lat: 60, lon: 10, hAsl: 100, brg: 0, maxR: 10000, step: 25, fHz: 5.8e9, elev, targetAgl: 3 });
+  assert.equal(r.limit, 'nodata'); assert.equal(r.range, 10000);
+  assert.ok(calls < 40 + 9000 / 200 + 2, 'samples: ' + calls);
+});

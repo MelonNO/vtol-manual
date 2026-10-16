@@ -108,6 +108,8 @@ function rangeForLossM(lossDb, fHz) { return 10 ** ((lossDb - 20 * Math.log10(fH
 
 // LinkProfile fields needed for a link budget. null = unknown (TBD) → no budget.
 const LINK_FIELDS = ['freqMHz', 'txPowerDbm', 'txGainDbi', 'rxGainDbi', 'rxSensDbm', 'marginDb'];
+const FIELD_LABELS = { freqMHz: 'frequency', txPowerDbm: 'TX power', txGainDbi: 'TX gain',
+                       rxGainDbi: 'RX gain', rxSensDbm: 'sensitivity', marginDb: 'fade margin' };
 function missingFields(p, ov) {
   const q = Object.assign({}, p, ov);
   return LINK_FIELDS.filter(f => !isNum(q[f]));
@@ -203,7 +205,8 @@ function antennaFacing(kind, hdg) {
 }
 
 // ─── Terrain line of sight along one radial ───────────────────────────────────
-// Samples every `step` metres (callers pass ≤ the DEM pixel size, MAP-05) out to maxR.
+// Samples every `step` metres (callers pass ≤ the DEM pixel size, MAP-05) out to maxR
+// (8 × step across stretches without terrain data).
 // Target i is visible when every earlier sample j clears the earth-curved LOS line by
 //   k · F1(d_j, d_i − d_j, f) + marginM                 (Fresnel clearance, plan §8.2-3)
 // and reach(d, info) (the RF check) is true. The coverage edge is the first failure
@@ -216,51 +219,72 @@ function antennaFacing(kind, hdg) {
 //      reach(d, {groundAsl, canopyM, targetAsl}) → bool (optional) }
 // → { range, limit: 'rf'|'terrain'|'nodata'|'antnull', shadows }
 function traceRay(o) {
-  const n = Math.max(1, Math.ceil(o.maxR / o.step));
   const lam = o.fHz > 0 ? C_MS / o.fHz : 0, k = isNum(o.k) ? o.k : 0.6, mg = o.marginM || 0;
-  const d = new Float64Array(n), blk = new Float64Array(n), tgt = new Float64Array(n);
-  const known = new Uint8Array(n), info = new Array(n);
-  for (let i = 0; i < n; i++) {
-    d[i] = Math.min(o.maxR, (i + 1) * o.step);
-    const [la, lo] = dest(o.lat, o.lon, o.brg, d[i]);
-    const e = o.elev(la, lo);
-    known[i] = isNum(e) ? 1 : 0;
-    const g = known[i] ? e : (o.groundFallback || 0);
-    const c = o.canopy ? (o.canopy(la, lo) || 0) : 0;
-    blk[i] = g + c;
-    const tAsl = isNum(o.targetAsl) ? o.targetAsl : g + o.targetAgl;
-    tgt[i] = Math.max(tAsl, g + c);                  // below the canopy: LOS to the canopy top
-    info[i] = { groundAsl: g, canopyM: c, targetAsl: tAsl };
-  }
+  const twoRe = 2 * EARTH_R_EFF;
+  const d = [], blk = [], tgt = [], known = [];
+  // Exact fast path. Dividing the condition by d_j separates it:
+  //   (blk_j − los_ij) / d_j = a_j − b_i,   a_j = (blk_j − h)/d_j − d_j/2Re,   b_i = (t_i − h)/d_i − d_i/2Re
+  // and the clearance per metre is bounded: clr_ij / d_j ≤ c_j = k·√(λ/d_j) + margin/d_j.
+  // So max a_j > b_i → blocked, max(a_j + c_j) ≤ b_i → clear; only the band between runs the loop.
+  let maxA = -Infinity, maxU = -Infinity, slow = 0;
   function clear(i) {
+    const b = (tgt[i] - o.hAsl) / d[i] - d[i] / twoRe;
+    if (maxA > b) return false;
+    if (maxU <= b) return true;
+    slow++;
     for (let j = 0; j < i; j++) {
       if (!known[j]) continue;
       const frac = d[j] / d[i];
-      const los = o.hAsl + (tgt[i] - o.hAsl) * frac - d[j] * (d[i] - d[j]) / (2 * EARTH_R_EFF);
+      const los = o.hAsl + (tgt[i] - o.hAsl) * frac - d[j] * (d[i] - d[j]) / twoRe;
       const clr = (lam ? k * Math.sqrt(lam * d[j] * (d[i] - d[j]) / d[i]) : 0) + mg;
       if (blk[j] > los - clr) return false;
     }
     return true;
   }
-  let range = 0, limit = null, noData = false, run = null;
-  const shadows = [], half = o.step / 2;
-  for (let i = 0; i < n; i++) {
-    const vis = clear(i), rf = o.reach ? o.reach(d[i], info[i]) : true;
+  let range = 0, limit = null, noData = false, run = null, slowAtEdge = 0;
+  const shadows = [];
+  for (let i = 0, dist = 0; dist < o.maxR; i++) {
+    // Adaptive spacing: `step` (≤ DEM pixel) where terrain is known; 8 × step across samples
+    // without terrain data — there is no DEM pixel to miss there, only the RF check.
+    dist = Math.min(o.maxR, dist + (i && !known[i - 1] ? 8 * o.step : o.step));
+    d[i] = dist;
+    const [la, lo] = dest(o.lat, o.lon, o.brg, dist);
+    const e = o.elev(la, lo);
+    known[i] = isNum(e);
+    const g = known[i] ? e : (o.groundFallback || 0);
+    const c = o.canopy ? (o.canopy(la, lo) || 0) : 0;
+    const tAsl = isNum(o.targetAsl) ? o.targetAsl : g + o.targetAgl;
+    blk[i] = g + c;
+    tgt[i] = Math.max(tAsl, g + c);                   // below the canopy: LOS to the canopy top
+    const vis = clear(i), rf = o.reach ? o.reach(dist, { groundAsl: g, canopyM: c, targetAsl: tAsl }) : true;
+    if (known[i]) {                                   // sample i is an obstacle for every later target
+      const a = (blk[i] - o.hAsl) / dist - dist / twoRe;
+      if (a > maxA) maxA = a;
+      const u = a + (lam ? k * Math.sqrt(lam / dist) : 0) + mg / dist;
+      if (u > maxU) maxU = u;
+    }
     if (limit === null) {
       if (!known[i]) noData = true;
-      if (vis && rf) { range = d[i]; continue; }
+      if (vis && rf) { range = dist; continue; }
       limit = !vis ? 'terrain' : (range === 0 ? 'antnull' : 'rf');
       if (limit !== 'terrain') break;
-    } else if (vis && rf) {
-      if (!run) run = [Math.max(0, d[i] - half), d[i]];
-      run[1] = Math.min(o.maxR, d[i] + half);
-    } else if (run) { shadows.push(run); run = null; }
+      slowAtEdge = slow;
+    } else {
+      const half = (d[i] - d[i - 1]) / 2;
+      if (vis && rf) {
+        if (!run) run = [Math.max(0, dist - half), dist];
+        run[1] = Math.min(o.maxR, dist + half);
+      } else if (run) { shadows.push(run); run = null; }
+      if (slow - slowAtEdge > SHADOW_BUDGET) break;   // shadows are optional: stop when costly
+    }
   }
   if (run) shadows.push(run);
   if (limit === null) limit = 'rf';
   if (noData && limit !== 'terrain') limit = 'nodata';
   return { range, limit, shadows };
 }
+// Max exact LOS evaluations spent per ray on the optional "shadow re-acquired" scan.
+const SHADOW_BUDGET = 200;
 
 // Sample spacing that never exceeds the DEM pixel size anywhere on a ray of length maxR.
 function demStep(lat, maxR, z) {
@@ -341,7 +365,7 @@ function gcsCoverage(o) {
   // continues from the canopy top.
   const origin = gGround + Math.max(o.antH, gCan);
   const notes = [];
-  if (!budgetOk) notes.push('HM30 link budget TBD — geometry only (set ' + miss.join(', ') + ')');
+  if (!budgetOk) notes.push('HM30 link budget TBD — geometry only (set ' + miss.map(f => FIELD_LABELS[f]).join(', ') + ')');
   if (!fHz) notes.push('Fresnel clearance not applied — HM30 frequency TBD');
   if (inForest && !budgetOk) notes.push('GCS below canopy: foliage loss not applied (budget TBD)');
   const nBrg = o.nBrg || 72, radials = [];
@@ -605,7 +629,7 @@ function fmtFreq(mhz) {
 }
 
 return {
-  EARTH_R, EARTH_R_EFF, C_MS, DEFAULT_PROFILES, LINK_FIELDS, NAV_CMDS, FRAME_REF, PATCH_N,
+  EARTH_R, EARTH_R_EFF, C_MS, DEFAULT_PROFILES, LINK_FIELDS, FIELD_LABELS, NAV_CMDS, FRAME_REF, PATCH_N,
   PATCH_BORESIGHTS, SIM_CLIMB_MS, SIM_SINK_MS, LQ_WEAK_PCT, FOREST_RGB,
   isNum, dest, distM, bearingTo,
   tileFrac, tileOf, tilePixel, tileKey, tilesForBounds, mPerPixel, terrariumM, demStep,
