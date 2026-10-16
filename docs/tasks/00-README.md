@@ -58,3 +58,4 @@ The PM updates this table.
 | WP09 | | | |
 | WP10 | | | |
 | WP11 | in progress | | |
+| WP12 | done (hotfix) | APPROVED (round 1) | yes |
