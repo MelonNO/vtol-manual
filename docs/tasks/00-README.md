@@ -27,6 +27,11 @@ Work packages in the same wave run in parallel. They never own the same file.
 | WP09 | Offline/PWA/field-use features | 5 | WP02, WP05, WP06, WP07, WP11 | `sw.js`, `manifest.webmanifest`, `icons/`, small hooks in pages | SW-01…04, F-1…F-8 |
 | WP10 | CI, tests, docs, retirement of the Flask app | 6 | all | `.github/`, `README.md`, `CLAUDE.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `ai/`, `docs/relay/`, `relay/app.py` etc. (delete) | Q-1…Q-5, REP-03/05/07, §6.3, A-5 |
 | WP11 | Tools analysis & UX extras | 3 | WP05, WP08a | `index.html`, `js/tools-core.js` | §10.4, §10.3 (maintenance), §10.8 (Tools), §14.7 (checklist automation, battery autofill) |
+| WP12 | Hotfix: line-ending robustness | — (hotfix) | — | `.gitattributes`, `test/repo-files.js` | (CI robustness) |
+| WP13 | GCS app hardening (WP08b verification findings) | — (follow-up) | WP08b | `gcs/**` | §7 (control channel) |
+| WP14 | Carrier parameter update (Rev C) and parameter reference | — (after WP09) | WP09 | `data/content.js`, pages, `js/store.js`, `js/tools-core.js`, `docs/reference/`, `data/params-reference.js` | §15 (Rev C), C1.6 |
+| WP15 | RC sender console safety (WP13 verification finding 3) | — (follow-up) | WP13 | `gcs/**` | §7.3 |
+| WP16 | RC sender follow-ups (WP15 verification) | — (follow-up) | WP15 | `gcs/**` | §7.3 |
 
 ## Not implementable in software (documented as TBD / requests instead)
 
@@ -60,6 +65,11 @@ The PM updates this table.
 | WP16 | done | APPROVED (round 1) | yes |
 | WP14 | done (2 reworks) | APPROVED (round 3) | yes |
 | WP09 | done | APPROVED (round 1) | yes |
-| WP10 | in progress | | |
+| WP10 | done | (pending — PM) | (pending) |
 | WP11 | done (1 rework) | APPROVED (round 2) | yes |
 | WP12 | done (hotfix) | APPROVED (round 1) | yes |
+
+**Final state (WP10, 2026-10-17):** every work package is implemented; WP10 is the last one and awaits verification
+and merge. After that merge the programme is complete. What remains is outside software or undecided, and is tracked
+in `docs/relay/OPEN-ITEMS.md` (hardware, firmware, measurements, owner decisions, photos, deferred features, known
+minor follow-ups) and `docs/relay/FIRMWARE-REQUESTS.md`. Changes per release: `CHANGELOG.md` (2.0.0).

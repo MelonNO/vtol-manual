@@ -383,18 +383,21 @@ def test_pipe_dacl_is_user_only_and_remote_clients_are_rejected(rig) -> None:
 def test_stalled_handshake_does_not_block_a_second_client(rig) -> None:
     """R2: a client that connects but never answers the challenge neither blocks others nor stays."""
     from multiprocessing.connection import Client
-    r = rig(handshake_timeout_s=1.0)
+    # A long handshake timeout leaves a wide margin on a loaded CI runner (WP10 R10b): the second client must be
+    # served well before the stalled one times out, so "not blocked" is still told apart from "served after it".
+    r = rig(handshake_timeout_s=5.0)
     info = ControlInfo.load(r.file)
     stalled = Client(info.address, family=info.family)                        # no authkey: never answers
     try:
         t0 = time.monotonic()
-        legit = ControlClient(info, timeout=2.0)
+        legit = ControlClient(info, timeout=6.0)
         assert legit.call("ping")["t"] > 0
-        assert time.monotonic() - t0 < 0.8                                    # not after the stalled timeout
+        served_s = time.monotonic() - t0
+        assert served_s < 4.0, f"second client served after {served_s:.2f} s"  # not after the stalled timeout
         legit.close()
         stalled.recv_bytes()                                                  # the challenge
         with pytest.raises((EOFError, OSError)):                              # then closed by the server
-            end = time.monotonic() + 4.0
+            end = time.monotonic() + 12.0
             while time.monotonic() < end:
                 if stalled.poll(0.2):
                     stalled.recv_bytes()

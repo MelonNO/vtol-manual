@@ -94,3 +94,27 @@ test('F8 / F9: manual — a store write in the same tab re-renders it; a disable
   assert.deepEqual(errors, []);
   w.close();
 });
+
+test('WP10 R10a (WP14 F10): the Aircraft "Battery & Power" table is labelled as reference values and marks a failsafe the imported file disables', async t => {
+  const JSDOM = loadJsdom();
+  if (!JSDOM) { t.skip('jsdom not available — set VTOL_JSDOM to the jsdom package path to run this check'); return; }
+  const { w, d, errors } = open(JSDOM, 'manual.html');
+  const title = d.getElementById('ac-battery');
+  assert.equal(txt(title), 'Battery & Power (reference param file 2026-10-17)');
+  const table = title.nextElementSibling.querySelector('table');
+  const row = name => [...table.querySelectorAll('tr')].find(r => txt(r.cells[0]) === name);
+  const note = name => row(name).querySelector('[data-fs]');
+  ['BATT_LOW_VOLT', 'BATT_CRT_VOLT', 'BATT_ARM_VOLT'].forEach(n => assert.equal(txt(note(n)), '', n + ': no note while the reference applies'));
+  w.VtolStore.update(s => { s.paramFile = { name: 'sample.param', importedAt: '2026-10-17T10:00:00.000Z', params: { BATT_LOW_VOLT: 0, BATT_CRT_VOLT: 22.2 } }; });
+  assert.equal(txt(note('BATT_LOW_VOLT')), 'LOW-BATT FAILSAFE: DISABLED (sample.param; reference 22.0V auto RTL)');
+  assert.ok(note('BATT_LOW_VOLT').classList.contains('crit-val'), 'red, like the other DISABLED statements');
+  assert.equal(txt(note('BATT_CRT_VOLT')), '', 'critical failsafe still active (22.2 V in the file): no note');
+  assert.equal(txt(note('BATT_ARM_VOLT')), '');
+  assert.match(txt(row('BATT_LOW_VOLT').cells[1]), /^22\.0V$/, 'the reference value itself stays (the table is labelled reference)');
+  w.VtolStore.update(s => { s.paramFile.params.BATT_FS_CRT_ACT = 0; });
+  assert.match(txt(note('BATT_CRT_VOLT')), /^CRIT-BATT FAILSAFE: DISABLED \(sample\.param; reference 21\.0V QLand here\)$/);
+  w.VtolStore.update(s => { delete s.paramFile; });
+  ['BATT_LOW_VOLT', 'BATT_CRT_VOLT', 'BATT_ARM_VOLT'].forEach(n => assert.equal(txt(note(n)), '', n + ': cleared'));
+  assert.deepEqual(errors, []);
+  w.close();
+});

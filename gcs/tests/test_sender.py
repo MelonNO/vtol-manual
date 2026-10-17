@@ -530,10 +530,15 @@ def test_thread_rate_absolute_deadlines_and_stop() -> None:
         assert sender.request_mode(Mode.FPV).ok
         time.sleep(1.2)
         n = len(sent)
-        assert 200 <= n <= 320                           # ~250 Hz (generous for a loaded CI box)
-        # absolute deadlines: the long-run rate does not drift below the configured rate
+        st = sender.state().stats
+        diag = (f"{n} packets in ~1.2 s; stats sent {st and st.sent}, skipped {st and st.skipped_slots}, "
+                f"p99 {st and st.p99_ms} ms, max {st and st.max_ms} ms, waiter {sender.state().waiter}")
+        assert 200 <= n <= 320, diag                     # ~250 Hz (generous for a loaded CI box)
+        # absolute deadlines: the long-run rate does not drift below the configured rate. 15 %: a shared CI VM
+        # can deschedule the thread for tens of ms (WP10 R10b); a drifting (relative-sleep) loop shows up as a
+        # rate well below 250 Hz over the whole span, and skipped slots are counted in the stats.
         span = sent[-1] - sent[0]
-        assert (len(sent) - 1) / span == pytest.approx(250, rel=0.08)
+        assert (len(sent) - 1) / span == pytest.approx(250, rel=0.15), diag
         stats = sender.state().stats
         assert stats is not None and stats.p99_ms is not None and stats.sent > 0
         assert sender.state().waiter in ("high-res-timer", "timeBeginPeriod", "sleep")

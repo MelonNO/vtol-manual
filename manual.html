@@ -875,18 +875,20 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </div>
   <div class="diagram-slot" data-diagram="D9"><figure class="dg"><a href="img/diagrams/d09-antenna-layout.svg" target="_blank" rel="noopener"><img src="img/diagrams/d09-antenna-layout.svg" width="400" height="1168" loading="lazy" decoding="async" alt="Diagram D9: schematic top and rear views; VRX patch 1 boresight horizontal right (90°), patch 2 right and 45° down (135°), orbit centre on the right (clockwise). Antennas: HM30 air unit, VRX patches, ELRS TX module, ELRS RX 915, GPS — positions TBD. Co-site test 7 TBD; 25 MHz harmonics near 5800 MHz and GPS L1."></a><figcaption><strong>D9</strong> · Carrier antenna layout — schematic; mounting positions and separations TBD (own photos, test 7). VRX patches face the right wing (inward). Tap to open full size.</figcaption></figure></div>
 
-  <div class="section-title" id="ac-battery">Battery &amp; Power</div>
+  <div class="section-title" id="ac-battery">Battery &amp; Power (reference param file 2026-10-17)</div>
+  <!-- Reference values (WP14 verification F10, WP10 R10a). The data-fs notes stay empty unless the imported param file
+       DISABLES that failsafe; then fillFailsafePhrases() writes the same red DISABLED statement as everywhere else. -->
   <div class="tbl-wrap"><table>
     <thead><tr><th>Parameter</th><th>Value</th><th>Notes</th></tr></thead>
     <tbody>
     <tr><td>Carrier battery</td><td class="val">6S 7000mAh</td><td>Single pack powers all carrier systems: FC, ESCs, HM30 air unit, relay PCB, IP camera</td></tr>
     <tr><td>Mast battery</td><td class="val">6S 3000mAh</td><td>Powers HM30 ground unit only</td></tr>
-    <tr><td><code>BATT_LOW_VOLT</code></td><td class="warn-val">22.0V</td><td>3.67V/cell — low battery → <strong>automatic RTL</strong> after <code>BATT_LOW_TIMER</code> = 10 s below the threshold</td></tr>
+    <tr><td><code>BATT_LOW_VOLT</code></td><td class="warn-val">22.0V</td><td>3.67V/cell — low battery → <strong>automatic RTL</strong> after <code>BATT_LOW_TIMER</code> = 10 s below the threshold<div data-fs="battLowVolt"></div></td></tr>
     <tr><td><code>BATT_FS_LOW_ACT</code></td><td class="val">1</td><td>RTL: home in fixed-wing at 120 m, then an automatic VTOL landing at home</td></tr>
-    <tr><td><code>BATT_CRT_VOLT</code></td><td class="crit-val">21.0V</td><td>3.50V/cell — critical battery</td></tr>
+    <tr><td><code>BATT_CRT_VOLT</code></td><td class="crit-val">21.0V</td><td>3.50V/cell — critical battery<div data-fs="battCrtVolt"></div></td></tr>
     <tr><td><code>BATT_FS_CRT_ACT</code></td><td class="val">6</td><td>Loiter → QLand at the <strong>current position, not home</strong></td></tr>
     <tr><td><code>BATT_FS_VOLTSRC</code></td><td class="val">1</td><td>The failsafes use the sag-compensated (resting) voltage estimate; the OSD and Mission Planner show raw voltage, which reads lower under load</td></tr>
-    <tr><td><code>BATT_ARM_VOLT</code></td><td class="val">24.6V</td><td>4.10V/cell — arming refused below: a part-used pack cannot be flown</td></tr>
+    <tr><td><code>BATT_ARM_VOLT</code></td><td class="val">24.6V</td><td>4.10V/cell — arming refused below: a part-used pack cannot be flown<div data-fs="battArmVolt"></div></td></tr>
     <tr><td><code>Q_M_BAT_VOLT_MAX/MIN</code></td><td class="val">25.2 / 19.8V</td><td>VTOL motor battery-voltage compensation range</td></tr>
     <tr><td><code>RTL_ALTITUDE</code></td><td class="val">120m</td><td>Fixed-wing RTL altitude, above home (REL)</td></tr>
     <tr><td><code>Q_RTL_MODE</code></td><td class="val">2</td><td>RTL flies home in fixed-wing at <code>RTL_ALTITUDE</code>, loiters down, then an <strong>automatic VTOL landing at home</strong>. Keep the home landing zone clear for the whole flight.</td></tr>
