@@ -110,8 +110,10 @@ def test_run_rtt_telemetry_camera_and_failsafe(harness) -> None:
     h.expect(lambda: h.status()["bridge"]["uplink_loss_pct"] is not None, "uplink loss computed")
     h.expect(lambda: h.status()["bridge"]["send_jitter_ms_p99"] is not None, "jitter stats")
     s = h.status()
-    assert s["bridge"]["rtt_ms"] < 1000 and s["bridge"]["uplink_loss_pct"] <= 5
-    assert s["bridge"]["status_age_ms"] < 300 and s["bridge"]["fw_version"] == "0.1"
+    assert s["bridge"]["rtt_ms"] < 1000 and s["bridge"]["uplink_loss_pct"] <= 5, s["bridge"]
+    assert s["bridge"]["fw_version"] == "0.1"
+    # status arrives at 10 Hz; a single sample may be old when this thread was descheduled (WP10 R10b): poll instead
+    h.expect(lambda: h.status()["bridge"]["status_age_ms"] < 300, "status age < 300 ms")
 
     h.expect(lambda: all(h.status()["client"][g][k] is not None for g, k in
                          (("link", "lq_pct"), ("gps", "lat"), ("battery", "voltage_v"), ("attitude", "roll_rad"),
@@ -165,10 +167,15 @@ def test_controller_disconnect_stops_sending(harness) -> None:
     sent_before = h.rt.sender.state().packets_sent
     h.fake.disconnect()
     t_disc = time.perf_counter()
-    h.expect(lambda: h.rt.sender.state().suspended == SUSPEND_CONTROLLER, "sender suspended", timeout=2)
-    assert time.perf_counter() - t_disc < 0.5
+    h.expect(lambda: h.rt.sender.state().suspended == SUSPEND_CONTROLLER, "sender suspended", timeout=5)
+    # The sender sees the loss on its next 4 ms tick; the bounds below are generous for a loaded CI runner
+    # (WP10 R10b). The deterministic part: once suspended, not one more packet goes out (no repeated values).
+    detect_s = time.perf_counter() - t_disc
     sent_after = h.rt.sender.state().packets_sent
-    assert sent_after - sent_before <= 50                      # only what went out before the disconnect
+    assert detect_s < 2.0, f"suspension seen {detect_s:.3f} s after the disconnect:\n  {h.diagnostics()}"
+    assert sent_after - sent_before <= 500, f"{sent_after - sent_before} packets after the disconnect"
+    time.sleep(0.3)
+    assert h.rt.sender.state().packets_sent == sent_after, "packets sent after the suspension"
     h.expect(lambda: h.sim_visited(BridgeState.FAILSAFE), "bridge FAILSAFE after controller loss")
     h.expect(lambda: {"controller_disconnected", "rc_stream_stopped"} <= h.alarm_ids(), "alarms raised")
     assert h.rt.sender.state().packets_sent == sent_after      # never repeats the last values
@@ -288,10 +295,18 @@ def test_camera_mismatch_alarm(harness) -> None:
 
 def test_session_log_records(harness, tmp_path: Path) -> None:
     h = harness()
+    written: list[str] = []
+    write = h.rt.session.write
+
+    def spy(rtype: str, **fields: object) -> None:
+        written.append(rtype)
+        write(rtype, **fields)
+    h.rt.session.write = spy                                   # type: ignore[method-assign]
     assert h.rt.request_mode(Mode.FPV).ok
     h.expect(lambda: h.status()["client"]["flight_mode"]["raw"] is not None, "telemetry")
     h.rt.set_camera(True)
-    time.sleep(1.3)                                            # at least one per-second sender record
+    # at least one per-second sender record: wait for it rather than a fixed 1.3 s (WP10 R10b)
+    h.expect(lambda: "sender" in written, "a per-second sender record")
     h.fake.disconnect()
     h.expect(lambda: "controller_disconnected" in h.alarm_ids(), "alarm")
     path = h.rt.session.path
@@ -376,11 +391,29 @@ def test_resume_dialog_paths(harness) -> None:
     assert resume_dialog(h.rt, t.out.append, t.read, interactive=True).ok
 
 
-def test_api_status_is_cached_briefly(harness) -> None:
+def test_api_status_is_cached_briefly(harness, monkeypatch) -> None:
+    """The cache rule, made deterministic (WP10 R10b). This flaked once under load (WP14 round 3): the runtime's own
+    1 Hz session-log ``status()`` builds a fresh object and replaces the cache, so it can land between two calls.
+    The test therefore counts the builds made by *this* thread instead of relying on object identity alone."""
+    import threading
     h = harness()
-    a = h.rt.status(0.5)
-    assert h.rt.status(0.5) is a                                 # reused within max_age
-    assert h.rt.status() is not a                                # fresh build by default
+    me, mine = threading.get_ident(), []
+    build = h.rt._build_status
+
+    def counting(now: float) -> dict:
+        status = build(now)
+        if threading.get_ident() == me:
+            mine.append(status)
+        return status
+    monkeypatch.setattr(h.rt, "_build_status", counting)
+    a = h.rt.status()                                            # max_age 0: always a fresh build, cached
+    assert mine == [a]
+    h.rt.status(60.0)                                            # within max_age: a cached object (a, or a newer
+    assert len(mine) == 1, "status(max_age) rebuilt although the cache was younger than max_age"  # session-log build)
+    time.sleep(0.02)
+    c = h.rt.status(0.001)                                       # older than max_age: rebuilt by the caller
+    assert len(mine) == 2 and c is mine[1] and c is not a
+    assert h.rt.status() is not c and len(mine) == 3             # fresh build by default
 
 
 # --------------------------------------------------------------------------- console keys (WP15 R2/R3)

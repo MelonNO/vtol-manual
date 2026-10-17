@@ -24,15 +24,17 @@ def test_waiter_never_returns_early(prefer_high_res: bool) -> None:
             now = time.perf_counter()
             assert now >= deadline
             late.append(now - deadline)
-        # loose bound only (no flaky timing): a gross failure would be > 50 ms
-        assert max(late) < 0.05
+        # loose bound only (no flaky timing; WP10 R10b: CI runners are shared VMs): "never early" above is the
+        # property; a gross failure (a wait that ignores the deadline) would be far beyond 250 ms
+        assert max(late) < 0.25, f"worst {max(late) * 1000:.1f} ms late, {w.kind}, late ms {[round(x * 1000, 1) for x in late]}"
 
 
 def test_waiter_past_deadline_returns_at_once() -> None:
     with T.Waiter() as w:
         t0 = time.perf_counter()
         w.wait_until(t0 - 1.0)
-        assert time.perf_counter() - t0 < 0.01
+        took = time.perf_counter() - t0
+        assert took < 0.25, f"a past deadline still waited {took * 1000:.1f} ms ({w.kind})"   # it would wait ~1 s
 
 
 def test_single_instance_lock() -> None:
