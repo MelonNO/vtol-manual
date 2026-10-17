@@ -191,3 +191,15 @@ run takes ~93 s); it finished normally. No process was ended.
    workflow then attaches the zip to the release.
 4. OPEN-ITEMS O-5 / O-6 (history purge of the GPS-tagged image and of `CONVERSATION_LOG.txt`) need a force-push and
    must be decided by the owner **before** the repository is shared more widely.
+
+## PM decisions after the report (release)
+
+| Decision | Done | Evidence |
+|---|---|---|
+| This is the release: `js/version.js` `app` → `'2.0.0'` (content and paramFile unchanged) | yes | `js/version.js:4`; `test/tools/common.test.js:57` follows it; `sw-precache.js` regenerated (new content hash, so browsers get the RELOAD prompt) |
+| CHANGELOG says 2.0.0; no tag (the owner tags) | yes | `CHANGELOG.md` "## [2.0.0] — 2026-10-17" with a note that the `v2.0.0` tag is the owner's; OPEN-ITEMS O-16 updated. Deviation 7 above is resolved by this. |
+| The test runs keep full output, so an unidentified failure cannot happen again | yes | `ci.yml` job `python-windows`: every run writes its **full** output (`-rfE --tb=long --durations=10`) to `pytest-logs/run-N.txt` via `Tee-Object`; all five runs always execute; each failing test is printed as a `::error::` annotation with its name; the step "Keep the full pytest logs" uploads `pytest-logs/` as an artifact with `if: always()`. The loop logic was checked in Windows PowerShell with a deliberately failing test (both failures named, exit 1). Locally the R10b runs used the same rule from the second batch on (`pyrun*.txt`, full `-rf --tb=long` output). |
+
+Checks after these changes: `node --test test/` 303 tests (294 pass + 9 skipped without jsdom; 303/303 with jsdom);
+`gen-precache.mjs --check` (57 assets), `diagrams/build.js --check`, `gen-params-reference.mjs --check`,
+`check-links`, `check-images`, `check-colours` all green; `ci.yml` parses.

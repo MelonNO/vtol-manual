@@ -101,12 +101,31 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: python -m pip install pytest pygame-ce
       - name: pytest gcs protocol, five consecutive runs (R10b — timing-sensitive tests must not flake)
+        # Every run keeps its FULL output (long tracebacks, the slowest tests, and the short summary naming each
+        # failing test) in pytest-logs/run-N.txt, uploaded below whatever the result, so a rare failure is never
+        # reduced to a count. All five runs always execute; the step fails if any of them failed.
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force pytest-logs | Out-Null
+          $failed = @()
           for ($i = 1; $i -le 5; $i++) {
             Write-Host "::group::pytest run $i of 5"
-            python -m pytest gcs protocol -q -p no:cacheprovider
+            python -m pytest gcs protocol -p no:cacheprovider -rfE --tb=long --durations=10 2>&1 |
+              Tee-Object -FilePath "pytest-logs/run-$i.txt"
             $code = $LASTEXITCODE
             Write-Host "::endgroup::"
-            if ($code -ne 0) { Write-Host "::error::pytest run $i of 5 failed"; exit $code }
+            if ($code -ne 0) {
+              $failed += $i
+              Select-String -Path "pytest-logs/run-$i.txt" -Pattern '^(FAILED|ERROR) ' |
+                ForEach-Object { Write-Host "::error::pytest run $i of 5: $($_.Line)" }
+            }
           }
+          if ($failed.Count) { Write-Host "::error::pytest failed in run(s) $($failed -join ', ') of 5"; exit 1 }
+
+      - name: Keep the full pytest logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-logs-windows
+          path: pytest-logs/
+          retention-days: 30

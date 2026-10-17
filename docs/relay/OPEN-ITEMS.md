@@ -69,7 +69,7 @@ implementation and verification report in `docs/tasks/reports/`.
 | O-13 | **ELRS writes while the client may be armed**: refused by default (`crsf_menu.allow_write_while_armed` false), so a TX-power change in flight needs the option set | Alternative: a typed confirmation (WP08b §5.3) |
 | O-14 | **Reference client #1 facts:** video standard (PAL/NTSC, `null` today), size 7" vs 5" (VERIFY), the meaning of `gps_rescue_landing_alt` = 4 ("motor cut at 4 m"?), GPS Rescue altitude mode CURRENT_ALT vs the 100 m return altitude (VERIFY), ELRS packet rate / model id / telemetry ratio (`null`) | Fill in through the Tools Profiles tab and `data/content.js` |
 | O-15 | **VRX follow:** ELRS VRX backpack (option a) or N6 control (option b, FR-6); and which VRX is fitted | — |
-| O-16 | **Release 2.0.0:** bump `js/version.js` `app` from `2.0.0-dev` to `2.0.0` (and decide the GCS app's version, `gcs/vtolgcs/__init__.py` 0.1.0), regenerate the precache list, tag `v2.0.0` | Steps in [`README.md`](../../README.md) "Releases and rollback" |
+| O-16 | **Release 2.0.0 — tag it:** `js/version.js` is set to `app: '2.0.0'` (PM decision, WP10). Remaining: decide the GCS app's version (`gcs/vtolgcs/__init__.py`, 0.1.0) and tag `v2.0.0` on `main` — the tag is the owner's call | Steps in [`README.md`](../../README.md) "Releases and rollback" |
 | O-17 | **Maintenance intervals** for the periodic relay tests (tests 5 and 9) and where the firmware log is kept | Manual Maintenance tab TBD |
 
 ## 4. Content and media

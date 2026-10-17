@@ -6,7 +6,9 @@ listed here (plan Q-5). Format: newest first; each entry says what changed for t
 Versions: the web suite's version is `VTOL_VERSION.app` in `js/version.js` (shown in every page footer, with the
 content date and the parameter file). The GCS companion app has its own version (`gcs/vtolgcs/__init__.py`).
 
-## [2.0.0] — 2026-10-17 (to be tagged `v2.0.0`)
+## [2.0.0] — 2026-10-17
+
+`js/version.js` says `app: '2.0.0'`. The git tag `v2.0.0` is set by the owner (README "Tagging a release").
 
 The whole suite was rewritten for the **new two-board relay** (the old Nomad 868 → DBR4 → Nomad 2.4 and
 CVBS → HDMI → SIYI chain is removed), for the owner's **failsafe intent** (the carrier fails safe only on SIYI/GCS
@@ -109,7 +111,7 @@ packages, each independently verified (`docs/tasks/`).
 - Tests: `node --test test/` (unit, rendering, offline simulation, jsdom smoke) and `pytest gcs protocol`.
 - **CI** (`.github/workflows/ci.yml`): unit and jsdom tests, html-validate (accepted rules in `.htmlvalidate.cjs`),
   internal link check, image-size budget, inline-SVG colour lint, generated-file checks, the full GCS suite five
-  times on Windows. **GCS build** (`.github/workflows/gcs-build.yml`): Windows build, artifact, zip attached to the
+  times on Windows, keeping the full log of every run as an artifact. **GCS build** (`.github/workflows/gcs-build.yml`): Windows build, artifact, zip attached to the
   GitHub Release on `v*` tags. `.nojekyll` for GitHub Pages.
 - Line endings forced to LF (`.gitattributes`); `watch-push.ps1` and `git-setup.ps1` fixed; images stripped of
   metadata and optimised.

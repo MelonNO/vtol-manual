@@ -54,7 +54,7 @@ test('toggleCleanup toggles the next sibling and the button label', () => {
 });
 
 test('VTOL_VERSION has app, content date and paramFile', () => {
-  assert.equal(V.app, '2.0.0-dev');
+  assert.equal(V.app, '2.0.0');
   assert.match(V.content, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(V.paramFile, '2026-10-17 (reference)');   // WP14 rework F5: the reference param file the content was checked against
 });
