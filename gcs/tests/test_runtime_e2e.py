@@ -20,7 +20,7 @@ import pytest
 import bridge_sim as BS
 from _c2 import assert_c2_status
 from vtolgcs import protocol
-from vtolgcs.__main__ import carrier_only_dialog, resume_dialog
+from vtolgcs.__main__ import Console, carrier_only_dialog, resume_dialog
 from vtolgcs.config import Config
 from vtolgcs.controller import FakeController
 from vtolgcs.protocol import BridgeState
@@ -381,3 +381,86 @@ def test_api_status_is_cached_briefly(harness) -> None:
     a = h.rt.status(0.5)
     assert h.rt.status(0.5) is a                                 # reused within max_age
     assert h.rt.status() is not a                                # fresh build by default
+
+
+# --------------------------------------------------------------------------- console keys (WP15 R2/R3)
+
+def _console(h: Harness, *lines: str, interactive: bool = True) -> tuple[Console, Typed]:
+    t = Typed(*lines)
+    c = Console(h.rt, h.fake, tty=False, interactive=interactive, read_line=t.read)
+    c.print_line = t.out.append                                  # type: ignore[method-assign]
+    return c, t
+
+
+def _streaming_fpv(h: Harness) -> None:
+    st = h.rt.sender.state()
+    assert st.mode is Mode.FPV and st.streaming, st
+
+
+def test_single_console_keys_change_nothing_while_streaming(harness) -> None:
+    h = harness()
+    assert h.rt.request_mode(Mode.FPV).ok
+    h.expect(lambda: h.status()["bridge"]["state"] == "RUN", "bridge RUN")
+    arm0 = h.fake.snapshot().channel_us(5)
+    for interactive in (True, False):
+        for ch in "qiafrkdcR":
+            # a stray key, then Enter / a wrong word / nothing at all (EOF)
+            for answer in ("", "stop", "yes"):
+                c, t = _console(h, answer, interactive=interactive)
+                assert c.key(ch) is True, (ch, t.out)               # never quits
+                _streaming_fpv(h)
+                assert not h.rt.sender.stopping
+                assert h.rt.sender.state().camera_requested is False
+                assert h.fake.snapshot().connected and h.fake.snapshot().channel_us(5) == arm0
+                if not interactive:
+                    assert t.lines == [answer], (ch, t.out)          # nothing read from piped input
+    n = h.sim_rx_ok()
+    time.sleep(0.3)
+    assert h.sim_rx_ok() - n > 40                                # still streaming at ~250 Hz
+    assert [e for e in h.events if e[0] == "mode"][-1][1]["mode"] == "fpv"
+    assert h.status()["bridge"]["state"] == "RUN"
+
+
+def test_console_typed_confirmations_still_work(harness) -> None:
+    h = harness()
+    c, t = _console(h, "START")
+    assert c.key("f") and h.rt.sender.state().streaming          # f + START: normal start
+    h.expect(lambda: h.status()["bridge"]["state"] == "RUN", "bridge RUN")
+    c, t = _console(h, "CAMERA")
+    assert c.key("k") and h.rt.sender.state().camera_requested   # k + CAMERA
+    c, t = _console(h, "CAMERA")
+    assert c.key("k") and not h.rt.sender.state().camera_requested
+    c, t = _console(h, "STOP")
+    assert c.key("i") and h.rt.sender.state().mode is Mode.IDLE  # i + STOP: idle
+    c, t = _console(h)
+    assert c.key("i") and any("already idle" in x for x in t.out)
+    c, t = _console(h, "ARM")
+    assert c.key("a") and h.fake.snapshot().channel_us(5) == protocol.US_MAX     # sim a + ARM
+    c, t = _console(h, "SAFE")
+    assert c.key("a") and h.fake.snapshot().channel_us(5) == h.cfg.interlock.arm_safe_min_us
+    c, t = _console(h, "START")
+    assert c.key("f") and h.rt.sender.state().streaming
+    c, t = _console(h, "UNPLUG")
+    assert c.key("d") and not h.fake.snapshot().connected       # sim d + UNPLUG: controller lost
+    h.expect(lambda: not h.rt.sender.state().streaming, "stream stopped (controller lost)")
+    c, t = _console(h, "PLUG")
+    assert c.key("d") and h.fake.snapshot().connected
+    assert not h.rt.sender.state().streaming                    # never auto-resumes
+    c, t = _console(h, "START")
+    assert c.key("r") and h.rt.sender.state().streaming          # r + START: restart
+    c, t = _console(h, "STOP")
+    assert c.key("q") is False and h.rt.sender.stopping          # q + STOP while streaming: quit
+    c, t = _console(h, "START")                                  # the process exits next; nothing restarts
+    c.key("f")
+    assert any("stop was accepted" in r for r in
+               [r for k, d in h.events if k == "interlock_refused" for r in d["reasons"]])
+
+
+def test_console_quit_and_harmless_keys_when_not_streaming(harness) -> None:
+    h = harness()
+    c, t = _console(h, "never read")
+    assert c.key("s") and c.key("h") and c.key("?")             # act at once, read nothing
+    assert t.lines == ["never read"] and any("bridge" in x for x in t.out) and any("START" in x for x in t.out)
+    assert c.key("q") is False and t.lines == ["never read"]     # idle: q quits at once (nothing streams)
+    assert h.rt.sender.stopping
+    assert not h.rt.request_mode(Mode.FPV).ok                    # ...and nothing can start any more

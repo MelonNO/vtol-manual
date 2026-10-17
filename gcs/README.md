@@ -51,7 +51,7 @@ Python 3.12 with `pygame-ce` (controller input). Everything else is the standard
 
 ```
 cd gcs
-python -m vtolgcs                         # the UI; it starts the RC sender in its own console window
+python -m vtolgcs                         # the UI; it starts the RC sender without a console window
 python -m vtolgcs --sim                   # the UI with a simulated sender (bridge_sim on 127.0.0.1:5770)
 python -m vtolgcs --headless              # the RC sender alone: real controller, bridge from the config file
 python -m vtolgcs --headless --sim        # the RC sender alone: fake controller, bridge_sim on 127.0.0.1:5770
@@ -61,14 +61,26 @@ The UI passes its options (`--sim`, `--config`, `--bridge`, ...) on to the RC se
 sender is already running (its control file answers), the UI attaches instead (`--attach-only`: never start
 one).
 
+**The RC sender the UI starts has no console (WP15).** It runs with `CREATE_NO_WINDOW`, stdin `NUL` and
+`--no-keys`: no window appears, it never takes the keyboard focus, and it reads no keys and no typed input
+(a stray keystroke cannot reach it). Every operator action goes through the UI and its typed confirmations;
+`--resume` or `--mode carrier_only` given to the UI are therefore refused by that sender (it needs a typed
+confirmation on an interactive console; nothing is sent): use the UI's RESUME / CARRIER-ONLY buttons.
+Its output (start-up line, status line every second, events, errors such as `CONFIG ERROR`) is appended
+to **`sender-YYYYMMDDTHHMMSSZ.log` in the log folder** (`--log-dir`, else `log.dir`, else
+`%APPDATA%\vtol-gcs\logs`); Flight tab → *Sender output* opens it, and when that sender exits the UI shows
+its exit code and last lines under *Events*. Closing the UI leaves the sender running in the background
+(the UI says so and asks first); a new UI attaches to it. It is listed in Task Manager as
+`vtol-gcs-sender.exe` (`python` for source runs).
+
 For `--sim`, start the simulator first in a second console: `python gcs/tools/bridge_sim.py`.
 With `--sim` the app starts in **FPV** mode (normal start), so the simulator goes WAIT_GCS → START → RUN.
-Kill the app (or press `q`) and the simulator reports `RUN -> FAILSAFE` after T_hold (250 ms).
+Kill the app (or press `q` and type `STOP`) and the simulator reports `RUN -> FAILSAFE` after T_hold (250 ms).
 
 **`--sim` is confined to a simulator on a loopback address.** It sets the bridge to `127.0.0.1:5770`;
 `--bridge` may only change that to another loopback address. A non-loopback `--bridge` with `--sim` is a
-hard error (exit 4). The fake controller, its keyboard arm switch (`a`) and the automatic FPV start exist
-only with a loopback bridge, so they can never reach real hardware.
+hard error (exit 4). The fake controller, its keyboard arm switch (`a` + typed `ARM` / `SAFE`) and the
+automatic FPV start exist only with a loopback bridge, so they can never reach real hardware.
 
 Without `--sim` the app always starts **idle** and never starts or resumes by itself. Every start that can
 reach an airborne client with a non-pilot value needs a **typed confirmation on an interactive console**
@@ -81,7 +93,7 @@ reach an airborne client with a non-pilot value needs a **typed confirmation on 
 Options: `--config PATH`, `--bridge HOST:PORT`, `--api-port N`, `--no-api`, `--mavlink-port N`,
 `--log-dir DIR`, `--no-log`, `--mode idle|fpv|carrier_only`, `--resume`, `--camera on|off`, `-v`,
 `--control-file PATH` (default: `control.json` next to the config file), `--no-control` (sender: no UI can
-attach), `--attach-only` (UI);
+attach), `--attach-only` (UI), `--no-keys` (sender: read no keys and no typed input; the UI always passes it);
 `--sim-armed` (with `--sim` only: the fake arm switch starts ARMED, throttle mid, to try RESUME).
 Exit codes: 0 normal, 2 configuration error or bad argument, 3 another instance is running, 4 usage
 (including `--sim` with a non-loopback bridge), 5 start-up failure (e.g. the local UDP port is taken).
@@ -90,20 +102,32 @@ The test suites run several runtimes at once and give each its own single-instan
 environment variable `VTOLGCS_TEST_INSTANCE_NAME`. **Never set it operationally**: it lets two senders run
 at the same time.
 
-The console shows one status line (mode, bridge state, RTT, uplink loss, send-jitter p99, camera
-requested/reported, controller, client LQ, battery, flight mode, active alarm ids) and prints every alarm,
-refusal and state change on its own line. Keys:
+The console of a sender started by hand (`--headless`, without `--no-keys`) shows one status line (mode,
+bridge state, RTT, uplink loss, send-jitter p99, camera requested/reported, controller, client LQ, battery,
+flight mode, active alarm ids) and prints every alarm, refusal and state change on its own line.
 
-| Key | Action |
-|---|---|
-| `f` | FPV mode, normal start (start interlock applies) |
-| `c` | carrier-only: shows what it sends, then asks for the typed `NOCLIENT` (and `LANDED`) confirmation |
-| `i` | idle: stop streaming (the bridge goes to FAILSAFE after T_hold) |
-| `r` | normal restart of a stopped stream (start interlock applies) |
-| `R` | **RESUME (client airborne)**: prints the live arm/throttle values, then asks for a typed confirmation — see "Modes and interlocks" |
-| `k` | toggle the carrier camera request |
-| `q` | quit |
-| `a`, `d` | `--sim` with a loopback bridge only: toggle the fake arm switch; fake controller disconnect/reconnect |
+**Keys (WP15): no single key starts, ends or changes the RC stream, the mode or the camera.** Such a key
+only prints what it would do and asks for a typed word + Enter; anything else (also just Enter) cancels and
+nothing changes. The words are case-sensitive, as on the control channel. Typed words need an interactive
+console: with piped or redirected input (or `--no-keys`) these keys are refused. While a key waits for its
+word the RC stream keeps running unchanged; the status line pauses.
+
+| Key | Typed word | Action |
+|---|---|---|
+| `s` | — | print the status line (acts at once) |
+| `h`, `?` | — | key help (acts at once) |
+| `f` | `START` | FPV mode, normal start (start interlock applies; an airborne client would be disarmed — use `R`) |
+| `r` | `START` | normal restart of a stopped FPV stream (start interlock applies) |
+| `R` | `RESUME` (+ `THROTTLE`) | **RESUME (client airborne)**: prints the live arm/throttle values first — see "Modes and interlocks" |
+| `c` | `NOCLIENT` (+ `LANDED`) | carrier-only: shows what it sends first |
+| `i` | `STOP` | idle: stop streaming (the bridge goes to FAILSAFE after T_hold) |
+| `k` | `CAMERA` | switch the carrier camera request on or off (the camera interlock still applies) |
+| `q`, Ctrl+C | `STOP` while streaming | quit; while nothing is streaming it quits at once. The stop is final, as on the control channel (`begin_stop`: no later start) |
+| `a` | `ARM` / `SAFE` | `--sim` with a loopback bridge only: move the fake arm switch |
+| `d` | `UNPLUG` / `PLUG` | `--sim` with a loopback bridge only: fake controller disconnect / reconnect |
+
+Ctrl+Break and closing the console window still end the process at once (deliberate hard exits, like
+ending it in Task Manager; a closed window cannot be refused); the bridge then goes to FAILSAFE after T_hold.
 
 ## Configuration
 
@@ -397,6 +421,14 @@ path), `test_testtools.py`, `test_ui.py` (UI importable without a display; RC SE
 streaming when a UI process dies), `test_packaging.py`. A windowed smoke run (UI + spawned sender + simulator,
 camera round trip) runs with `VTOLGCS_UI_SMOKE=1`.
 
+WP15 tests (sender console): `test_ui.py` starts the real sender the way the UI does and checks that it has no
+visible window, never becomes the foreground window, writes its output to `sender-*.log`, and ignores keys
+(and Ctrl+C) typed into its windowless console; `test_main_cli.py` types single keys and Ctrl+C into the
+console of a hand-started `--headless --sim` sender while it streams (nothing changes) and then the typed
+words (`CAMERA`, `STOP`, `START`, `ARM`, `STOP` to quit); `test_runtime_e2e.py` checks every key against the
+real runtime, interactive and piped. The keys are typed with `WriteConsoleInputW` into a console that has no
+window (`tests/_console.py`), so these tests open nothing on the desktop.
+
 ---
 
 ## User guide
@@ -409,7 +441,7 @@ camera round trip) runs with `VTOLGCS_UI_SMOKE=1`.
 | File | What |
 |---|---|
 | `vtol-gcs.exe` | the UI (start this one) |
-| `vtol-gcs-sender.exe` | the RC sender; the UI starts it in its own console window. Also runs the video fan-out |
+| `vtol-gcs-sender.exe` | the RC sender; the UI starts it without a console window (output: `sender-*.log` in the log folder). Also runs the video fan-out |
 | `scripts\firewall.ps1` | firewall rules (below) |
 | `README.md` | this guide |
 
@@ -428,7 +460,8 @@ and battery saver.
 1. Run the firewall script once (below) and set the HM30 network adapter to **Private**.
 2. Plug in the RadioMaster radio with the **GCS-RELAY** model (next section).
 3. Start `vtol-gcs.exe`. The first start creates `%APPDATA%\vtol-gcs\config.json` with the defaults.
-   The RC sender opens in its own console window; the status bar (always on top) and the main window open.
+   The UI starts the RC sender in the background (no window; its output goes to `sender-*.log` in the log
+   folder); the status bar (always on top) and the main window open.
    The sender starts **idle** and sends nothing.
 4. **Client tab:** *Open profiles file* → the profiles JSON exported from the Tools page (EXPORT) → select the
    client → *Use this client*. This sets the client id in C2, the cell count of the battery alarm and the
@@ -501,12 +534,12 @@ else the app uses is loopback. Then set the HM30 adapter to Private (`Get-NetCon
 
 | Symptom | Check |
 |---|---|
-| `RC SENDER DOWN` (red) | The RC sender process is gone or not answering. Flight tab → *Start sender*; look at its console window and the session log. A client in the air goes to its own failsafe after T_hold; use **RESUME (client airborne)** after restarting. |
-| Sender console: `NOT STARTED: another GCS runtime is running` | A sender is already running (single instance). Start the UI: it attaches. |
+| `RC SENDER DOWN` (red) | The RC sender process is gone or not answering. Flight tab → *Start sender*; look at *Events* (the UI shows the exit code and last output lines of a sender it started), *Sender output* (`sender-*.log` in the log folder) and the session log. A client in the air goes to its own failsafe after T_hold; use **RESUME (client airborne)** after restarting. |
+| Sender output / console: `NOT STARTED: another GCS runtime is running` | A sender is already running (single instance). Start the UI: it attaches. |
 | `CONFIG ERROR` / `CONFIG MIGRATED` | The sender lists every problem with its key; a migration notice names the renamed key and the backup file. |
 | Bridge `UNREACHABLE` while idle | Normal: the bridge only answers a GCS that streams. While streaming: bridge IP (Q3), HM30 link, firewall rule and **Private** network profile. |
-| `NO BRIDGE STATUS` / `BRIDGE NOT RUN` | HM30 link, bridge power, bridge IP; the console prints `bridge START after N packets` at each start. |
-| `SEND JITTER HIGH` | Close CPU-heavy programs and use mains power; see "Timing limits". The sender does not depend on window focus, so minimising its console is fine. |
+| `NO BRIDGE STATUS` / `BRIDGE NOT RUN` | HM30 link, bridge power, bridge IP; the sender output (or console) prints `bridge START after N packets` at each start. |
+| `SEND JITTER HIGH` | Close CPU-heavy programs and use mains power; see "Timing limits". The sender does not depend on window focus (the one the UI starts has no window at all). |
 | `CONTROLLER DISCONNECTED` | USB cable; radio in Joystick mode with the GCS-RELAY model; `controller.prefer_names` / `device_name`. |
 | ELRS tab: `Not supported by bridge firmware (Q7a)` | The bridge does not implement `crsf_pass` yet (future firmware feature). |
 | ELRS tab: `no RC stream` | The menu works only while streaming (the bridge answers the current GCS only). |

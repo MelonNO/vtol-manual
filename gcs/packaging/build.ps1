@@ -59,6 +59,6 @@ foreach ($exe in @($Sender, $Ui)) {
 if ($LASTEXITCODE -ne 0) { throw "the built vtol-gcs-sender.exe does not start" }
 
 Write-Host "Built $Out"
-Write-Host "  vtol-gcs.exe         UI (starts the sender in its own console window)"
+Write-Host "  vtol-gcs.exe         UI (starts the sender without a console window; output: logs\sender-*.log)"
 Write-Host "  vtol-gcs-sender.exe  RC sender (--headless) / video fan-out"
 Write-Host "Next: run scripts\firewall.ps1 as administrator (see README 'Firewall')."

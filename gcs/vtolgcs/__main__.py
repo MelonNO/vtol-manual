@@ -3,7 +3,8 @@
 Process separation (WP08b brief R0): the **RC sender** (this module with ``--headless``) runs in its
 own process and serves the local control channel (:mod:`vtolgcs.control`).  Without ``--headless``
 the windowed UI (:mod:`vtolgcs.ui`) starts in this process and attaches to a running sender, or
-starts one in its own console window; the UI never runs inside the sender process.
+starts one **without a console window** (``--no-keys``, WP15 R1); the UI never runs inside the
+sender process.
 ``--video-fanout`` (first argument, internal) runs the video fan-out helper process.
 
 ``--sim`` uses a fake controller (sticks centred, throttle low, arm switch
@@ -22,12 +23,16 @@ refused):
 * ``--mode carrier_only`` / key ``c`` — carrier-only sends DISARM: ``NOCLIENT``
   (no client powered or bound), plus ``LANDED`` after an FPV stream in this session.
 
-Console keys (Windows console):
+Console keys (Windows console, WP15 R2): **no single key starts, ends or changes the RC stream, the
+mode or the camera.**  Such a key only asks for a typed word + Enter (anything else cancels):
 
-  f  FPV, normal start (interlock)      c  carrier-only (NOCLIENT confirmation)   i  idle (stop)
-  r  normal restart of the stopped mode R  RESUME (client airborne): preview + typed confirmation
-  k  toggle the carrier camera           q  quit
-  --sim only:  a  toggle the fake arm switch   d  fake controller disconnect / reconnect
+  f  FPV, normal start (interlock): START   c  carrier-only: NOCLIENT (+ LANDED)   i  idle: STOP
+  r  normal restart of the stopped mode: START   R  RESUME (client airborne): RESUME (+ THROTTLE)
+  k  camera request on/off: CAMERA         q / Ctrl+C  quit: STOP while streaming (else at once)
+  --sim only:  a  fake arm switch: ARM / SAFE   d  fake controller: UNPLUG / PLUG
+  s  print the status line   h / ?  help   (the only keys that act at once)
+
+``--no-keys`` (the UI passes it to the sender it starts): no key or typed input is read at all.
 """
 
 from __future__ import annotations
@@ -38,6 +43,7 @@ import logging
 import logging.handlers
 import os
 import queue
+import signal
 import sys
 import threading
 import time
@@ -45,7 +51,7 @@ from pathlib import Path
 from typing import Any, Callable, Sequence
 
 from . import __version__, config as config_mod, protocol
-from .control import ControlServer, default_control_file
+from .control import WORD_STOP, ControlServer, default_control_file
 from .controller import FakeController, safe_channels
 from .runtime import Runtime
 from .sender import Mode, ModeResult
@@ -93,6 +99,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="headless: do not serve the local control channel (no UI can attach)")
     p.add_argument("--attach-only", action="store_true",
                    help="UI: attach to a running RC sender, never start one")
+    p.add_argument("--no-keys", action="store_true",
+                   help="headless: read no console keys and no typed confirmations (the UI starts its sender so)")
     p.add_argument("--ui-smoke-out", help=argparse.SUPPRESS)                   # tests: UI smoke summary file
     p.add_argument("--run-seconds", type=float, help=argparse.SUPPRESS)        # tests: stop after N s
     p.add_argument("-v", "--verbose", action="store_true", help="debug logging")
@@ -119,16 +127,32 @@ def status_line(s: dict) -> str:
             f"LQ {_fmt(cl['link']['lq_pct'])} batt {_fmt(batt, '{:.1f}')}V fm {_fmt(fm)} | alarms {alarms}")
 
 
-class Console:
-    """Prints events and a periodic status line; reads single keys on a Windows console."""
+#: Typed words of the console keys (WP15 R2).  ``STOP`` is the control channel's word for ending the stream.
+WORD_START, WORD_CAMERA = "START", "CAMERA"
+WORD_SIM_ARM, WORD_SIM_SAFE, WORD_SIM_UNPLUG, WORD_SIM_PLUG = "ARM", "SAFE", "UNPLUG", "PLUG"
 
-    def __init__(self, rt: Runtime, fake: FakeController | None, tty: bool, interactive: bool = False) -> None:
+KEYS_HELP = ("keys (each asks for a typed word + Enter; anything else cancels): f FPV start (START) | "
+             "c carrier-only (NOCLIENT) | i idle (STOP) | r restart (START) | R RESUME client airborne (RESUME) | "
+             "k camera (CAMERA) | q / Ctrl+C quit (STOP while streaming) | s status | h help")
+KEYS_HELP_SIM = " | sim: a fake arm switch (ARM / SAFE), d fake controller (UNPLUG / PLUG)"
+
+
+class Console:
+    """Prints events and a periodic status line; reads single keys on a Windows console.
+
+    WP15 R2: no single key starts, ends or changes the RC stream, the mode or the camera.  Those keys
+    only print what they would do and ask for a typed word on an interactive console (piped or
+    redirected input is refused, like the RESUME and carrier-only dialogs).  ``s`` and ``h`` act at once.
+    """
+
+    def __init__(self, rt: Runtime, fake: FakeController | None, tty: bool, interactive: bool = False,
+                 read_line: Callable[[], str] | None = None) -> None:
         self.rt = rt
         self.fake = fake
         self.tty = tty
         self.interactive = interactive
+        self.read_line = read_line or (sys.stdin.readline if sys.stdin is not None else (lambda: ""))
         self._lock = threading.Lock()
-        self._fake_arm_high = False
         self._last_len = 0
         self._events: queue.SimpleQueue = queue.SimpleQueue()
         rt.add_listener(lambda kind, data: self._events.put((kind, data)))   # never print on the caller's thread
@@ -183,33 +207,78 @@ class Console:
         elif kind in ("mode", "camera", "bridge_state", "error"):
             self.print_line(f"{kind}: {data}")
 
+    def confirm(self, what: str, explain: str, word: str) -> bool:
+        """Print what a key would do, then read one line: True only for exactly ``word``."""
+        if not self.interactive:
+            self.print_line(f"{what} {NOT_INTERACTIVE} - nothing changed")
+            return False
+        self.print_line(f"{what}: {explain} Type {word} + Enter to confirm, anything else cancels:")
+        if self.read_line().strip() != word:
+            self.print_line(f"{what} cancelled - nothing changed")
+            return False
+        return True
+
+    def quit_ok(self) -> bool:
+        """``q`` / Ctrl+C: True when the process may stop now.  While streaming it needs the typed ``STOP``
+        (the control channel's word); the streaming check and the "no later start" gate are one locked
+        step in the sender (``begin_stop``, WP13 R4)."""
+        sender = self.rt.sender
+        if sender.begin_stop(stream_stop_confirmed=False):
+            return True
+        if not self.confirm("QUIT", "the RC stream is running; quitting ends it (the client goes to its "
+                            "failsafe after T_hold).", WORD_STOP):
+            return False
+        return sender.begin_stop(stream_stop_confirmed=True)
+
+    def help(self) -> None:
+        self.print_line(KEYS_HELP + (KEYS_HELP_SIM if self.fake is not None else ""))
+
     def key(self, ch: str) -> bool:
         """Handle one key. Returns False to quit."""
         rt = self.rt
         if ch == "q":
-            return False
-        if ch == "f":
-            rt.request_mode(Mode.FPV)
+            return not self.quit_ok()
+        if ch == "s":
+            self.print_line(status_line(rt.status()))
+        elif ch in ("h", "?"):
+            self.help()
+        elif ch == "r" and rt.sender.state().mode is not Mode.FPV:
+            self.print_line("r restarts a stopped FPV stream only (idle: f; carrier-only: c)")
+        elif ch in ("f", "r"):
+            if self.confirm("FPV normal start", "the start interlock applies (arm switch SAFE, throttle low); "
+                            "an airborne client would be DISARMED - for a client in the air use R (RESUME).",
+                            WORD_START):
+                rt.request_mode(Mode.FPV)
         elif ch == "c":
-            carrier_only_dialog(rt, self.print_line, sys.stdin.readline, self.interactive)
+            carrier_only_dialog(rt, self.print_line, self.read_line, self.interactive)
         elif ch == "i":
-            rt.request_mode(Mode.IDLE)
-        elif ch == "r":
-            rt.request_mode(rt.sender.state().mode)
+            if rt.sender.state().mode is Mode.IDLE:
+                self.print_line("already idle")
+            elif self.confirm("IDLE", "stops the RC stream (the bridge goes to FAILSAFE after T_hold, the "
+                              "client to its failsafe).", WORD_STOP):
+                rt.request_mode(Mode.IDLE)
         elif ch == "R":
-            resume_dialog(rt, self.print_line, sys.stdin.readline, self.interactive)
+            resume_dialog(rt, self.print_line, self.read_line, self.interactive)
         elif ch == "k":
-            rt.set_camera(not rt.sender.state().camera_requested)
+            on = not rt.sender.state().camera_requested
+            if self.confirm(f"CAMERA {'ON' if on else 'OFF'}", f"switches the carrier camera request "
+                            f"{'ON' if on else 'OFF'}.", WORD_CAMERA):
+                rt.set_camera(on)
         elif ch == "a" and self.fake is not None:
-            self._fake_arm_high = not self._fake_arm_high
             il = rt.cfg.interlock
-            self.fake.set_channel_us(il.arm_channel, protocol.US_MAX if self._fake_arm_high else il.arm_safe_min_us)
-            self.print_line(f"sim: fake arm switch {'HIGH (armed)' if self._fake_arm_high else 'low (safe)'}")
+            armed = self.fake.snapshot().channel_us(il.arm_channel) > il.arm_safe_max_us
+            if self.confirm(f"sim: fake arm switch {'SAFE' if armed else 'ARMED'}", "moves the fake arm switch.",
+                            WORD_SIM_SAFE if armed else WORD_SIM_ARM):
+                self.fake.set_channel_us(il.arm_channel, il.arm_safe_min_us if armed else protocol.US_MAX)
+                self.print_line(f"sim: fake arm switch {'low (safe)' if armed else 'HIGH (armed)'}")
         elif ch == "d" and self.fake is not None:
             if self.fake.snapshot().connected:
-                self.fake.disconnect()
-                self.print_line("sim: fake controller DISCONNECTED")
-            else:
+                if self.confirm("sim: fake controller DISCONNECT", "the FPV stream stops (controller lost).",
+                                WORD_SIM_UNPLUG):
+                    self.fake.disconnect()
+                    self.print_line("sim: fake controller DISCONNECTED")
+            elif self.confirm("sim: fake controller reconnect", "the stream stays stopped until a start.",
+                              WORD_SIM_PLUG):
                 self.fake.connect()
                 self.print_line("sim: fake controller reconnected")
         return True
@@ -319,6 +388,31 @@ def initial_start(args: argparse.Namespace, cfg: config_mod.Config) -> str | Non
     return None
 
 
+def is_console(stream: Any) -> bool:
+    """True only for a real console.  On Windows ``isatty()`` is also True for ``NUL`` (the UI starts
+    its sender with stdin = NUL), so the console mode is checked as well."""
+    try:
+        if stream is None or not stream.isatty():
+            return False
+        if sys.platform != "win32":
+            return True
+        import ctypes
+        import msvcrt
+        mode = ctypes.c_uint32()
+        handle = ctypes.c_void_p(msvcrt.get_osfhandle(stream.fileno()))
+        return bool(ctypes.WinDLL("kernel32").GetConsoleMode(handle, ctypes.byref(mode)))
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
+def console_input(args: argparse.Namespace) -> tuple[bool, bool]:
+    """``(read_keys, interactive)``: whether keys are read, and whether typed confirmations can be.
+    ``--no-keys`` (the sender the UI starts, WP15 R1) turns both off."""
+    if args.no_keys:
+        return False, False
+    return is_console(sys.stdout), is_console(sys.stdin)
+
+
 def _read_key() -> str | None:
     if sys.platform != "win32":
         return None
@@ -421,31 +515,43 @@ def _main(argv: Sequence[str] | None) -> int:
         except Exception as exc:                # the RC path must still run without it
             print(f"WARNING: control channel not started ({exc}); no UI can attach", file=sys.stderr)
             control = None
-    tty = sys.stdout.isatty()
-    interactive = sys.stdin is not None and sys.stdin.isatty()
+    tty = sys.stdout.isatty()                          # display style only
+    read_keys, interactive = console_input(args)
     console = Console(rt, fake, tty, interactive)
     console.print_line(f"vtol-gcs {__version__} headless - bridge {cfg.bridge.ip}:{cfg.bridge.port}"
                        + (f", API {rt.api.base_url}" if rt.api else ", API off")
                        + (f", log {rt.session.path}" if rt.session else "")
                        + (", control channel on" if control else "")
                        + ("  [SIM]" if args.sim else ""))
-    console.print_line("keys: f fpv | c carrier-only | i idle | r restart | R RESUME (client airborne) | k camera | q quit"
-                       + (" | a sim arm | d sim disconnect" if args.sim else ""))
+    if args.no_keys:
+        console.print_line("console keys off (--no-keys): control this sender through the UI")
+    elif read_keys:
+        console.help()
+    # Ctrl+C is handled like the key q (typed STOP while streaming), never as an immediate exit (WP15 R2).
+    interrupted = threading.Event()
+    old_sigint: Any = signal.getsignal(signal.SIGINT)
+    try:
+        signal.signal(signal.SIGINT, lambda signum, frame: interrupted.set())
+    except ValueError:                                 # not the main thread (in-process callers)
+        old_sigint = None
     if args.camera:
         rt.set_camera(args.camera == "on")
     start = initial_start(args, cfg)
     console.drain()
     if start == "resume":
-        resume_dialog(rt, console.print_line, sys.stdin.readline, interactive)
+        resume_dialog(rt, console.print_line, console.read_line, interactive)
     elif start == "carrier_only":
-        carrier_only_dialog(rt, console.print_line, sys.stdin.readline, interactive)
+        carrier_only_dialog(rt, console.print_line, console.read_line, interactive)
     elif start == "fpv":
         rt.request_mode(Mode.FPV)
     end = time.monotonic() + args.run_seconds if args.run_seconds else None
     next_line = 0.0
     try:
         while (end is None or time.monotonic() < end) and not stop_requested.is_set():
-            ch = _read_key() if tty else None
+            ch = _read_key() if read_keys else None
+            if interrupted.is_set():
+                interrupted.clear()
+                ch = "q"
             if ch is not None and not console.key(ch):
                 break
             console.drain()
@@ -456,6 +562,8 @@ def _main(argv: Sequence[str] | None) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        if old_sigint is not None:
+            signal.signal(signal.SIGINT, old_sigint)   # (this process exits next)
         if stop_requested.is_set():
             console.print_line("stop requested through the control channel")
         if control is not None:

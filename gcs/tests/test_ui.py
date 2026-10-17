@@ -1,8 +1,9 @@
 """UI process (brief R0/R1/R9): importable without a display, pure view/profile/wizard logic, the link's
 up/down detection ("RC SENDER DOWN"), and the RC sender surviving the death of a UI process.
 
-A full windowed smoke run (UI + spawned sender + bridge_sim, camera round trip) opens windows and a
-console, so it runs only with ``VTOLGCS_UI_SMOKE=1``.
+A full windowed smoke run (UI + spawned sender + bridge_sim, camera round trip) opens windows, so it
+runs only with ``VTOLGCS_UI_SMOKE=1``.  WP15: the spawned sender has no console window, takes no focus
+and ignores keys (tested without any window, by typing into its windowless console).
 """
 
 from __future__ import annotations
@@ -96,8 +97,97 @@ def test_passthrough_and_commands() -> None:
     argv = ["--sim", "--run-seconds", "5", "--config", "c.json", "--attach-only", "--ui-smoke-out=x", "--headless"]
     assert passthrough_args(argv) == ["--sim", "--config", "c.json"]
     cmd = sender_command(["--sim"])
-    assert cmd[-2:] == ["--headless", "--sim"] and "vtolgcs" in cmd
+    assert cmd[-3:] == ["--headless", "--no-keys", "--sim"] and "vtolgcs" in cmd     # WP15 R1: no keys
+    assert sender_command(["--no-keys", "--sim"]).count("--no-keys") == 1
     assert "--video-fanout" in fanout_command(5600, [5601, 5602], None)
+
+
+def test_sender_output_file_helpers(tmp_path: Path) -> None:
+    from vtolgcs.ui.link import sender_output_path, tail_lines
+    path = sender_output_path(tmp_path)
+    assert path.parent == tmp_path and path.name.startswith("sender-") and path.suffix == ".log"
+    path.write_text("".join(f"line {i}\n" for i in range(2000)) + "\n\n", encoding="utf-8")
+    assert tail_lines(path, 3) == ["line 1997", "line 1998", "line 1999"]
+    assert tail_lines(tmp_path / "missing.log") == [] and tail_lines(None) == []
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows console flags")
+def test_spawn_sender_gives_no_console_window_and_no_input(tmp_path: Path) -> None:
+    """WP15 R1: the process has no console window and its stdin is NUL; its output lands in the file."""
+    from vtolgcs.ui.link import spawn_sender
+    probe = ("import ctypes, sys; from vtolgcs.__main__ import is_console; "
+             "print('window', ctypes.WinDLL('kernel32').GetConsoleWindow()); "
+             "print('stdin console', is_console(sys.stdin), 'read', repr(sys.stdin.read())); "
+             "print('stdout console', is_console(sys.stdout)); print('err', file=sys.stderr)")
+    out = tmp_path / "logs" / "sender-x.log"
+    proc = spawn_sender([sys.executable, "-c", probe], out)
+    assert proc.wait(30) == 0
+    text = out.read_text(encoding="utf-8")
+    assert "window 0" in text and "stdin console False read ''" in text and "stdout console False" in text
+    assert "err" in text                                                        # stderr goes to the file too
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows console and windows")
+def test_spawned_sender_has_no_window_takes_no_focus_and_ignores_keys(tmp_path: Path, monkeypatch) -> None:
+    """WP15 R1/R3: the real sender started the way the UI starts it - no visible window, never the
+    foreground window, and keys typed into its (windowless) console change nothing, Ctrl+C included."""
+    from _console import ctrl_c, foreground_pid, type_keys, visible_windows
+    from vtolgcs.__main__ import TEST_INSTANCE_ENV
+    from vtolgcs.control import ControlClient, ControlError
+    from vtolgcs.ui.link import passthrough_args, sender_command, sender_output_path, spawn_sender
+    monkeypatch.setenv(TEST_INSTANCE_ENV, f"vtol-gcs-test-{uuid.uuid4().hex}")
+    sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1), seed=1)).start()
+    argv = ["--sim", "--bridge", f"127.0.0.1:{sim.address[1]}", "--config", str(tmp_path / "cfg.json"),
+            "--log-dir", str(tmp_path), "--api-port", "0", "--mavlink-port", "0", "--run-seconds", "30"]
+    out = sender_output_path(tmp_path)
+    proc = spawn_sender(sender_command(passthrough_args(argv)), out)
+    client = None
+    try:
+        pids, fg = {proc.pid}, set()
+        end = time.monotonic() + 20
+        while client is None and time.monotonic() < end:
+            fg.add(foreground_pid())
+            try:
+                client = ControlClient.from_file(tmp_path / "control.json", timeout=2.0)
+                pids.add(client.request("hello")["result"]["pid"])         # the sender (the venv launcher's child)
+            except (ControlError, OSError, KeyError):
+                client = None
+                time.sleep(0.05)
+        assert client is not None, out.read_text(encoding="utf-8", errors="replace") if out.exists() else "no output"
+
+        def status() -> dict:
+            return client.request("status")["result"]
+        assert _wait(lambda: status()["bridge"]["state"] == "RUN", 15)
+        for _ in range(20):
+            fg.add(foreground_pid())
+            time.sleep(0.05)
+        assert not (fg & pids), "the sender took the focus"
+        assert visible_windows(pids) == []
+        for keys in ("q", "i", "a", "d", "k", "iSTOP\r", "qSTOP\r", "aARM\r", "dUNPLUG\r"):
+            type_keys(proc.pid, keys)                                       # typed into its own console
+        ctrl_c(proc.pid)
+        time.sleep(1.0)
+        s = status()
+        assert proc.poll() is None and s["app"]["mode"] == "fpv" and s["app"]["streaming"], s["app"]
+        assert s["controller"]["connected"] and s["controller"]["arm_switch_safe"]
+        assert s["bridge"]["camera"]["requested"] is False and s["bridge"]["state"] == "RUN"
+        assert visible_windows(pids) == []
+        assert client.request("stop", typed="STOP")["ok"]                    # the UI's way to stop it
+        assert proc.wait(15) == 0
+    finally:
+        if client is not None:
+            client.close()
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        sim.stop()
+    text = out.read_text(encoding="utf-8")
+    assert "headless - bridge 127.0.0.1" in text and "console keys off (--no-keys)" in text
+    # Ctrl+C never even reaches it (CREATE_NEW_PROCESS_GROUP disables Ctrl+C); had it, --no-keys refuses QUIT
+    assert "cancelled" not in text and "Type " not in text                         # it never asked for input
+    assert "stop requested through the control channel" in text and "stopped (RC stream off" in text
+    recs = [json.loads(x) for x in next(tmp_path.glob("session-*.jsonl")).read_text(encoding="utf-8").splitlines()]
+    assert [r["mode"] for r in recs if r["type"] == "mode"] == ["fpv"]
 
 
 def test_hotkey_names_and_sse_parser() -> None:
@@ -192,6 +282,8 @@ def test_ui_smoke_with_spawned_sender(tmp_path: Path) -> None:
         assert proc.returncode == 0
         smoke = json.loads(out.read_text())
         assert smoke["last_bridge_state"] == "RUN" and smoke["camera_reported_on"] and smoke["link_state"] == "up"
+        outputs = list(tmp_path.glob("sender-*.log"))                     # WP15 R1: no console, output to a file
+        assert len(outputs) == 1 and "console keys off (--no-keys)" in outputs[0].read_text(encoding="utf-8")
     finally:
         sim.stop()
 
