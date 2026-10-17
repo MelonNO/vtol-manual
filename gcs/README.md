@@ -472,7 +472,7 @@ spawned sender ignores Ctrl+C and refuses QUIT on a real Ctrl+Break, the refusal
 
 | Guard | What it covers | Behaviour | Setting |
 |---|---|---|---|
-| Per-test watchdog (a Python thread) | any hang that releases the GIL: sleeps, waits on locks, threads, processes, sockets, pipes, polling loops | after the timeout (120 s): `+++ TIMEOUT [time] <test id>` and the stacks of all threads; the processes the tests started are killed, `TestTimeout` is raised in the main thread and the test is reported FAILED; the run goes on. WP18: it is raised only while the main thread runs the test's own setup or call; while pytest itself is busy (e.g. formatting a failure) it waits for the test's next phase, because an exception there ended the session with `INTERNALERROR` and skipped every teardown. A teardown is never interrupted at once: it gets its own budget (30 s, `VTOLGCS_TEST_TEARDOWN_BUDGET`) so every finaliser runs; only a teardown still running after it gets `TestTimeout`, and the hard exit moves behind it. If the test is still running 20 s later (e.g. `time.sleep`, which no exception interrupts): the stacks again and exit status 1 | `VTOLGCS_TEST_TIMEOUT`, `@pytest.mark.timeout(s)` (the test's own value), `VTOLGCS_TEST_GRACE`; `VTOLGCS_TEST_DUMP_DIR` also writes these dumps to `pytest-timeouts.txt` there (CI: the uploaded `pytest-logs`) |
+| Per-test watchdog (a Python thread) | any hang that releases the GIL: sleeps, waits on locks, threads, processes, sockets, pipes, polling loops | after the timeout (120 s): `+++ TIMEOUT [time] <test id>` and the stacks of all threads; the processes the tests started are killed, `TestTimeout` is raised in the main thread and the test is reported FAILED; the run goes on. WP18: it is raised only while the main thread runs the test's own setup or call; while pytest itself is busy (e.g. formatting a failure) it waits for the test's next phase, because an exception there ended the session with `INTERNALERROR` and skipped every teardown. A teardown is never interrupted at once: it gets its own budget (30 s, `VTOLGCS_TEST_TEARDOWN_BUDGET`) so every finaliser runs; only a teardown still running after it gets `TestTimeout`, and the hard exit moves behind it. WP19: pytest skips the rest of that teardown's finalisers then, and would give the never torn down fixtures (module or session scope, and cached function-scoped ones such as `monkeypatch`) to later tests; the conftest runs the skipped finalisers and finishes the teardown (`+++ TIMEOUT: <id>: its teardown was interrupted after its budget: ran the N finaliser(s) pytest skipped …`), so later tests get fresh fixtures; if pytest's internals ever change so that this cannot be done, it takes the hard exit instead. If the test is still running 20 s later (e.g. `time.sleep`, which no exception interrupts): the stacks again and exit status 1 | `VTOLGCS_TEST_TIMEOUT`, `@pytest.mark.timeout(s)` (the test's own value), `VTOLGCS_TEST_TEARDOWN_BUDGET`, `VTOLGCS_TEST_GRACE`; `VTOLGCS_TEST_DUMP_DIR` also writes these dumps to `pytest-timeouts.txt` there (CI: the uploaded `pytest-logs`) |
 | Per-test faulthandler backstop (a C thread, needs no GIL) | a hang in native code that **holds the GIL** (the Python watchdog cannot run then) | 10 s after the watchdog's hard exit: `Timeout (h:mm:ss)!` and the stacks of all threads on stdout (the CI log and its uploaded copy), exit status 1. The test is the last `START` line before it; CI annotates it | `VTOLGCS_TEST_BACKSTOP_MARGIN` |
 | Exit guard (Python thread) | the process not exiting after the session (a leaked non-daemon thread, a slow atexit handler) | 60 s after the session: `+++ EXIT GUARD` and the stacks, exit status (or 1) | `VTOLGCS_EXIT_GRACE` |
 | Exit backstop (faulthandler) | the same with the GIL held (Python atexit handlers, thread shutdown) | 10 s later: `Timeout (h:mm:ss)!` and the stacks, exit status 1 | — |
@@ -484,6 +484,30 @@ spawned sender ignores Ctrl+C and refuses QUIT on a real Ctrl+Break, the refusal
 
 Not covered: a hang during collection or pytest's own start-up (before the first test); the CI step timeout is the
 last resort there.
+
+**Time bounds (WP19).** With the defaults (timeout 120 s, grace 20 s, teardown budget 30 s, backstop margin 10 s)
+a hanging test ends, counted from its start:
+
+| Where it hangs | Ends | At most |
+|---|---|---|
+| setup or call, interruptible | `TestTimeout`, the run goes on | 120 s |
+| setup or call, not interruptible (`time.sleep`) | hard exit, status 1 | 140 s |
+| teardown | `TestTimeout` after its budget, the skipped finalisers run, the run goes on; or the hard exit | 120 + 20 + 30 = 170 s; hard exit at 120 + 20 + 30 + 20 = **190 s** |
+| anywhere, with the GIL held | faulthandler backstop, status 1 | **200 s** |
+
+The teardown term is the worst case: the timeout fires while pytest formats the failure, which may take almost the
+grace, and the teardown that follows still gets its full budget. The pytest header prints the values in force
+(`worst case per hanging test 190 s (200 s with the GIL held)`). An interrupted hang does not end the run, so every
+further hanging test in the same run adds up to 190 s. After the session the exit guards add at most 60 / 70 / 80 s.
+
+Against the workflow step timeouts (a full CI-mode run takes about 130 s, on the runner about the same):
+
+- `ci.yml`, five runs in one 35-minute step (2100 s): one hanging test per run costs at most
+  5 × (130 + 200 + ~5 start-up) ≈ 1675 s ≈ 28 min. That leaves about 7 minutes. It fits as long as one full run
+  stays under about 215 s. A teardown hang that ends with `TestTimeout` (170 s), followed by an exit-guard hang
+  (80 s), gives 5 × (130 + 170 + 80 + 5) ≈ 1925 s. That fits too. Two hanging tests in every run do not fit. The
+  step then times out, but the logs are still uploaded, because the step timeout is below the 45-minute job timeout.
+- `gcs-build.yml`, one 15-minute step (900 s): 130 + 200 ≈ 330 s with one hang, and up to three hanging tests fit.
 
 **Writing tests that start things (WP18).** Every test or fixture that starts a `Runtime`, `Sender`, `Receiver`,
 `ControlServer`, `SessionLog` or `BridgeSim` registers its stop as soon as it exists, so a failure, an assertion

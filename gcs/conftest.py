@@ -16,15 +16,27 @@ failure text nor slow down the tests after it.  What each layer covers:
    waits for the test's next phase and otherwise takes the hard-exit path.  A **teardown is never interrupted at
    once** (round 2): it gets its own budget ``TEARDOWN_BUDGET_S`` (``VTOLGCS_TEST_TEARDOWN_BUDGET``, 30 s) from
    the later of its start and the timeout, because pytest stops running the remaining finalisers when one raises
-   the ``BaseException`` ``TestTimeout``; only a teardown still running after its budget gets it.  If the test is
+   the ``BaseException`` ``TestTimeout``; only a teardown still running after its budget gets it.  **WP19 R2:**
+   pytest then skips that test's remaining finalisers and would hand their never torn down fixtures (module or
+   session scope, and function-scoped ones such as ``monkeypatch``, which pytest caches too) to later tests; the
+   conftest runs the skipped finalisers and finishes the teardown pytest broke off, so later tests get fresh
+   fixtures (if pytest's internals are not as expected: the hard exit instead).  If the test is
    still running ``GRACE_S`` (``VTOLGCS_TEST_GRACE``) after the timeout (or after the teardown's budget), it dumps
    again and exits with status 1 (the faulthandler backstop moves with it).  Covers every hang that
    releases the GIL: sleeps, waits on locks, threads, processes, sockets and pipes, polling loops.  **It cannot
    run while native code holds the GIL** (a C extension blocking without releasing it).
 2. **Per-test faulthandler backstop** (``faulthandler.dump_traceback_later(exit=True)``: a C thread that needs no
-   GIL), armed at timeout + grace + ``BACKSTOP_MARGIN_S`` (``VTOLGCS_TEST_BACKSTOP_MARGIN``).  Covers a test that
+   GIL), armed at timeout + grace + ``BACKSTOP_MARGIN_S`` (``VTOLGCS_TEST_BACKSTOP_MARGIN``), moved to the hard
+   exit + margin when a teardown gets its budget.  Covers a test that
    hangs with the GIL held: it prints ``Timeout (h:mm:ss)!`` and the stacks of all threads to the real stdout
    (the CI log and its uploaded copy) and exits with status 1.  The test is the last ``START`` line before it.
+
+   **Worst case per hanging test (WP19 R3)**, from its start: setup or call interrupted at the timeout (120 s), hard
+   exit at timeout + grace (140 s).  A teardown can start as late as the hard exit (the timeout fired while pytest
+   formatted the report for almost the grace) and then gets its budget: ``TestTimeout`` at timeout + grace + budget
+   (170 s), hard exit at timeout + grace + budget + grace = **190 s**, faulthandler backstop at **200 s** (a hang
+   with the GIL held).  The pytest header prints these values with the settings in force.  A hang that the
+   watchdog interrupts does not end the run, so a run with k hanging tests can take up to k times as long.
 3. **Exit guards**, armed when the session ends:
    a. a Python thread: if the interpreter has not exited ``EXIT_GRACE_S`` (``VTOLGCS_EXIT_GRACE``) later
       (a leaked non-daemon thread, a slow atexit handler), ``+++ EXIT GUARD`` + stacks, exit status (or 1);
@@ -519,9 +531,10 @@ class _Watchdog:
     A **teardown is never interrupted at once** (round 2, verify F1): it gets its own budget
     (``VTOLGCS_TEST_TEARDOWN_BUDGET``, from the later of its start and the timeout), because ``TestTimeout`` is a
     ``BaseException`` and pytest stops running the remaining finalisers when one raises it, which would leave
-    the test's runtimes running.  Only a teardown still running after its budget gets ``TestTimeout``.  While the
-    main thread is in pytest's own code nothing is raised.  The hard exit comes ``GRACE_S`` after the timeout, or
-    after the teardown's budget, whichever is later."""
+    the test's runtimes running.  Only a teardown still running after its budget gets ``TestTimeout`` (then
+    :func:`_finish_teardown` runs the finalisers pytest skipped: WP19 R2).  While the main thread is in pytest's own
+    code nothing is raised.  The hard exit comes ``GRACE_S`` after the timeout, or after the teardown's budget,
+    whichever is later: at most timeout + grace + budget + grace after the test started (:func:`worst_case_s`)."""
 
     def __init__(self, nodeid: str, timeout: float) -> None:
         self.nodeid, self.timeout = nodeid, timeout
@@ -609,18 +622,25 @@ class _Watchdog:
             self.done.wait(0.05)
         if self.done.is_set():
             return
-        _emit(f"\n+++ TIMEOUT: {shown} is still running {time.monotonic() - fired_at:.0f} s later: hard exit "
-              "(status 1). Stacks of all threads:\n", dump=True)
-        CHILDREN.kill_all()
-        os._exit(1)
+        _hard_exit(f"\n+++ TIMEOUT: {shown} is still running {time.monotonic() - fired_at:.0f} s later: hard exit "
+                   "(status 1). Stacks of all threads:\n")
 
 
-def _in_phase(item: pytest.Item, when: str, after: Any = None, always: bool = False) -> Iterator[Any]:
+def _hard_exit(text: str) -> None:
+    """Print ``text`` and the stacks of all threads, kill the processes the tests started, exit with status 1."""
+    _emit(text, dump=True)
+    CHILDREN.kill_all()
+    os._exit(1)
+
+
+def _in_phase(item: pytest.Item, when: str, after: Any = None, always: bool = False,
+              on_timeout: Any = None) -> Iterator[Any]:
     """Run one of the item's own hooks (setup / call / teardown) with the phase marked (WP18 R5).
 
     ``after()`` runs after the hook, still inside the phase (its exception becomes that phase's report); with
     ``always`` also when the hook raised (round 2, verify F2: the leak check must run when a finaliser raised),
-    chained to the hook's exception."""
+    chained to the hook's exception.  ``on_timeout(exc)`` runs first when the hook raised after the watchdog
+    raised ``TestTimeout`` in this phase (WP19 R2)."""
     wd = item.stash.get(_WATCHDOG, None)
     with _PHASE_LOCK:
         _PHASE["when"], _PHASE["wd"], _PHASE["since"] = when, wd, time.monotonic()
@@ -628,6 +648,8 @@ def _in_phase(item: pytest.Item, when: str, after: Any = None, always: bool = Fa
         try:
             result = yield
         except BaseException as exc:
+            if on_timeout is not None and wd is not None and when in wd.raised_in:
+                on_timeout(exc)
             if after is not None and always:
                 try:
                     after()
@@ -653,6 +675,16 @@ _LEAKS: list[tuple[str, list[str]]] = []
 
 def _default_timeout() -> float:
     return _env_seconds(TIMEOUT_ENV, DEFAULT_TIMEOUT_S)
+
+
+def worst_case_s(timeout: float | None = None) -> tuple[float, float]:
+    """WP19 R3: the longest a hanging test can run, from its start, with the settings in force: (hang the watchdog
+    sees: its hard exit, timeout + grace + teardown budget + grace; hang with the GIL held: + the backstop margin).
+    The teardown can start as late as timeout + grace (pytest's own report code after the timeout gets the grace)."""
+    t = _default_timeout() if timeout is None else timeout
+    grace, budget = _env_seconds(GRACE_ENV, GRACE_S), _env_seconds(TEARDOWN_BUDGET_ENV, TEARDOWN_BUDGET_S)
+    worst = t + grace + budget + grace
+    return worst, worst + _env_seconds(MARGIN_ENV, BACKSTOP_MARGIN_S)
 
 
 def _timeout_for(item: pytest.Item) -> float:
@@ -765,6 +797,93 @@ def _check_threads(item: pytest.Item) -> None:
                         "(gcs/README.md, Tests).")
 
 
+# --------------------------------------------------------------------------- an interrupted teardown (WP19 R2)
+
+def _finaliser_lists(item: pytest.Item) -> dict[Any, list] | None:
+    """pytest's set-up nodes and their finaliser lists (the lists themselves, not copies) before ``item``'s teardown;
+    None if pytest's internals are not as expected."""
+    try:
+        return {node: entry[0] for node, entry in item.session._setupstate.stack.items()}
+    except (AttributeError, TypeError, IndexError, KeyError):
+        return None
+
+
+def _scope_node(item: pytest.Item, scope: str) -> Any:
+    """The node a fixture of ``scope`` used by ``item`` belongs to (as pytest's fixture requests find it)."""
+    if scope == "session":
+        return item.session
+    if scope == "package":
+        return item.getparent(pytest.Package) or item.session
+    if scope == "module":
+        return item.getparent(pytest.Module)
+    if scope == "class":
+        return item.getparent(pytest.Class) or item
+    return item
+
+
+def _finish_teardown(item: pytest.Item, nextitem: pytest.Item | None, lists: dict[Any, list] | None,
+                     exc: BaseException) -> None:
+    """The watchdog raised ``TestTimeout`` in a teardown still running after its budget.  It is a ``BaseException``,
+    so pytest's ``teardown_exact`` stopped there: the remaining finalisers of the node it was tearing down (other
+    fixtures, pytest's own ``monkeypatch`` / ``tmp_path``, the module's teardown) were skipped, and so were the nodes
+    the next test does not need.  Those fixtures keep their cached value, and pytest would hand the never torn
+    down object to every later test that asks for it (WP18 verify round 2, finding 1).
+
+    So: run the skipped finalisers (in pytest's order, each error collected), let ``teardown_exact`` finish the
+    nodes it did not reach, and reset any fixture of this test that is still cached although its node is gone (its
+    object is dropped without a teardown, named in the log); later tests get fresh fixtures.  All of this runs
+    under the watchdog's hard exit (the grace after the budget).  If pytest's internals are not as expected, the
+    run ends with the hard exit instead, so a stale fixture can never reach a later test."""
+    shown = _display_id(item.nodeid)
+    try:
+        if lists is None:
+            raise AttributeError("the finaliser lists were not readable before the teardown")
+        state = item.session._setupstate
+        stack = state.stack
+        chains = list(getattr(getattr(item, "_fixtureinfo", None), "name2fixturedefs", {}).values())
+    except AttributeError as e:
+        _hard_exit(f"\n+++ TIMEOUT: {shown}: its teardown was interrupted after its budget, and the finalisers pytest "
+                   f"skipped cannot be found ({e}): hard exit (status 1), so that no later test gets a fixture that "
+                   "was never torn down. Stacks of all threads:\n")
+        return
+    ran, errors = 0, []
+    for node, fins in reversed(list(lists.items())):          # innermost first, like pytest
+        if node in stack:
+            continue                                            # not torn down yet: teardown_exact below decides
+        while fins:
+            fin = fins.pop()
+            ran += 1
+            try:
+                fin()
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException as e:                          # like pytest: report it and go on with the rest
+                errors.append(e)
+    try:
+        state.teardown_exact(nextitem)                          # the nodes pytest did not reach
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as e:
+        errors.append(e)
+    reset = []
+    for chain in chains:
+        for fd in chain:
+            if getattr(fd, "cached_result", None) is not None and _scope_node(item, fd.scope) not in stack:
+                fd.cached_result = None                         # never torn down: the next request makes a new one
+                fd._finalizers.clear()
+                reset.append(f"{fd.argname} ({fd.scope})")
+    text = (f"+++ TIMEOUT: {shown}: its teardown was interrupted after its budget: ran the {ran} finaliser(s) pytest "
+            "skipped and finished its teardown"
+            + (f"; their errors: {[f'{type(e).__name__}: {e}' for e in errors]}" if errors else "")
+            + (f"; reset without a teardown: {reset}" if reset else "")
+            + "; later tests get fresh fixtures\n")
+    _emit(text)
+    try:
+        exc.add_note(text.strip())
+    except AttributeError:  # pragma: no cover - Python < 3.11
+        pass
+
+
 # --------------------------------------------------------------------------- hooks
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -791,9 +910,12 @@ def pytest_configure(config: pytest.Config) -> None:
 def pytest_report_header(config: pytest.Config) -> list[str]:
     ok, why = config.stash[_SESSION]
     grace, margin = _env_seconds(GRACE_ENV, GRACE_S), _env_seconds(MARGIN_ENV, BACKSTOP_MARGIN_S)
+    worst, worst_gil = worst_case_s()
     lines = [f"vtolgcs: interactive_desktop tests {'RUN' if ok else 'SKIPPED'} ({why})",
-             f"vtolgcs: per-test timeout {_default_timeout():.0f} s, hard exit {grace:.0f} s later, faulthandler "
-             f"backstop {margin:.0f} s after that; stack dumps to stdout"
+             f"vtolgcs: per-test timeout {_default_timeout():.0f} s (setup/call interrupted then), a teardown gets "
+             f"{_env_seconds(TEARDOWN_BUDGET_ENV, TEARDOWN_BUDGET_S):.0f} s more, hard exit {grace:.0f} s after the "
+             f"timeout or that budget, faulthandler backstop {margin:.0f} s after the hard exit; worst case per hanging "
+             f"test {worst:.0f} s ({worst_gil:.0f} s with the GIL held); stack dumps to stdout"
              f"{' and ' + os.environ[DUMP_DIR_ENV] if os.environ.get(DUMP_DIR_ENV) else ''}",
              f"vtolgcs: process cleanup after each test: {CHILDREN.describe()}",
              f"vtolgcs: threads still running {_env_seconds(THREAD_GRACE_ENV, THREAD_GRACE_S):g} s after a test's "
@@ -868,7 +990,9 @@ def pytest_runtest_call(item: pytest.Item):
 
 @pytest.hookimpl(wrapper=True, tryfirst=True)
 def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None):
-    return (yield from _in_phase(item, "teardown", lambda: _check_threads(item), always=True))   # after the finalisers
+    lists = _finaliser_lists(item)
+    return (yield from _in_phase(item, "teardown", lambda: _check_threads(item), always=True,   # after the finalisers
+                                 on_timeout=lambda exc: _finish_teardown(item, nextitem, lists, exc)))
 
 
 @pytest.hookimpl(trylast=True)
