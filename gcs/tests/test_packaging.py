@@ -33,9 +33,7 @@ def test_build_script_outputs_to_gcs_dist_and_checks_the_result() -> None:
 
 
 def test_firewall_script_private_profile_and_uninstall() -> None:
-    ps = (GCS / "scripts" / "firewall.ps1").read_text(encoding="utf-8").replace("
-", "
-")
+    ps = (GCS / "scripts" / "firewall.ps1").read_text(encoding="utf-8").replace("\r\n", "\n")
     assert "#Requires -RunAsAdministrator" in ps and "[switch]$Uninstall" in ps
     news = [line for line in ps.splitlines() if "New-NetFirewallRule" in line]
     assert len(news) == 2
