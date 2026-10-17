@@ -538,7 +538,7 @@
     { name: 'Q_TRANS_FAIL', value: 4, unit: 's', meaning: 'transition timeout (not re-verified, plan §13.1)', source: PARAM_SRC_MAN + '; plan §6.1.5' },
     { name: 'Q_TRANS_FAIL_ACT', value: 0, meaning: '0 = QLand at the current position (−1 warn only · 1 QRTL) — not QHOVER', source: 'plan §13.1 (ArduPlane quadplane.cpp)' },
     { name: 'Q_ASSIST_SPEED', value: 9, unit: 'm/s', meaning: 'VTOL assist below this airspeed in FW modes', source: PARAM_SRC_MAN },
-    { name: 'Q_ASSIST_ALT', value: 25, unit: 'm', meaning: 'VTOL assist below this altitude', source: PARAM_SRC_MAN },
+    { name: 'Q_ASSIST_ALT', value: 25, unit: 'm', meaning: 'VTOL assist below this altitude (altitude reference: VERIFY, plan S-04)', source: PARAM_SRC_MAN },
     { name: 'Q_FRAME_CLASS', value: 7, meaning: '7 = Tri (not re-verified, plan §13.1)', source: PARAM_SRC_MAN },
     { name: 'Q_TILT_MASK', value: 3, meaning: 'motors 1 and 2 (front pair) tilt', source: PARAM_SRC_MAN },
     { name: 'AIRSPEED_CRUISE', value: 13, unit: 'm/s', meaning: 'cruise airspeed', source: PARAM_SRC_MAN },

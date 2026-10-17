@@ -303,8 +303,8 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <button onclick="switchTab('link',this)">Link</button>
   <button onclick="switchTab('battlog',this)">Battery Log</button>
   <button onclick="switchTab('tlog',this)">Telemetry</button>
-  <button onclick="switchTab('flights',this)">Flights</button>
-  <button onclick="switchTab('params',this)">Params</button>
+  <button type="button" onclick="switchTab('flights',this)">Flights</button>
+  <button type="button" onclick="switchTab('params',this)">Params</button>
   <button onclick="switchTab('weather',this)">Weather</button>
   <button onclick="switchTab('profiles',this)">Profiles</button>
   <a class="nav-manual-btn" href="manual.html">MANUAL ▶</a>
@@ -360,7 +360,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <button class="cl-reset" onclick="pfTimerReset()" title="Reset timer">↺</button>
     </div>
     <button class="cl-reset" id="expand-btn" aria-expanded="false" onclick="toggleExpandAll('preflight')">EXPAND ALL</button>
-    <button class="cl-reset" onclick="crOpen('preflight')" title="One item at a time, full screen (two-person check)">CHALLENGE–RESPONSE</button>
+    <button type="button" class="cl-reset" onclick="crOpen('preflight')" title="One item at a time, full screen (two-person check)">CHALLENGE–RESPONSE</button>
     <button class="cl-reset" onclick="resetCL('preflight')">RESET</button>
   </div>
   <div id="cl-notice" class="alert alert-warn cl-notice" role="status" style="display:none"></div>
@@ -390,7 +390,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <div class="cl-progress-label" id="pl2">0 / 0 ITEMS COMPLETE</div>
     </div>
     <button class="cl-reset" id="expand-btn2" aria-expanded="false" onclick="toggleExpandAll('turnaround')">EXPAND ALL</button>
-    <button class="cl-reset" onclick="crOpen('turnaround')" title="One item at a time, full screen (two-person check)">CHALLENGE–RESPONSE</button>
+    <button type="button" class="cl-reset" onclick="crOpen('turnaround')" title="One item at a time, full screen (two-person check)">CHALLENGE–RESPONSE</button>
     <button class="cl-reset" onclick="resetCL('turnaround')">RESET</button>
   </div>
   <div id="cl-notice2" class="alert alert-warn cl-notice" role="status" style="display:none"></div>
@@ -479,7 +479,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <div class="card accent" style="margin-bottom:20px">
     <label class="bl-label" for="gcs-file" style="margin-bottom:8px;display:block">SELECT SESSION LOG (.JSONL)</label>
     <input type="file" id="gcs-file" accept=".jsonl,.json,.log,.txt" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
-    <button class="bl-btn wp-btn" onclick="gcsLoad()">LOAD SESSION</button>
+    <button type="button" class="bl-btn wp-btn" onclick="gcsLoad()">LOAD SESSION</button>
     <div id="gcs-status" role="status" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
   </div>
   <div id="gcs-result"></div>
@@ -513,8 +513,8 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
     <label class="bl-label" for="pf-file" style="margin-bottom:8px;display:block">SELECT .PARAM FILE</label>
     <input type="file" id="pf-file" accept=".param,.params,.parm,.txt" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
     <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button class="bl-btn wp-btn" onclick="paramImport()">IMPORT</button>
-      <button class="cl-reset wp-btn" onclick="paramClear()">CLEAR PARAM FILE</button>
+      <button type="button" class="bl-btn wp-btn" onclick="paramImport()">IMPORT</button>
+      <button type="button" class="cl-reset wp-btn" onclick="paramClear()">CLEAR PARAM FILE</button>
       <label style="display:flex;gap:8px;align-items:center;min-height:44px;color:var(--text);font-size:13px;cursor:pointer"><input type="checkbox" id="pf-only-diff" onchange="renderParams()" style="width:20px;height:20px"> SHOW ONLY DIFFERENCES / MISSING</label>
     </div>
     <div id="pf-status" role="status" style="font-size:13px;color:var(--muted);margin-top:8px"></div>

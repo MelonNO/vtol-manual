@@ -2,11 +2,10 @@
 // WP11 R1: parameter-file import and comparison against the documented values (plan §10.1 A-3).
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+const { readText } = require('../repo-files.js');
 const T = require('../../js/tools-core.js');
 
-const SAMPLE = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'sample.param'), 'utf8');
+const SAMPLE = readText('test/fixtures/sample.param');
 
 test('expected-values table holds the values the manual relies on (incl. Q_TRANS_FAIL_ACT 0 = QLand)', () => {
   const E = Object.fromEntries(T.EXPECTED_PARAMS.map(e => [e.name, e]));
