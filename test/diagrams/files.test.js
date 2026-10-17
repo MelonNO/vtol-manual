@@ -19,7 +19,7 @@ const svg = id => readText('img/diagrams/' + FILES[id] + '.svg');
 // Visible text of an SVG (title/desc/comments excluded) for content checks.
 const visible = s => s.replace(/<title[\s\S]*?<\/title>|<desc[\s\S]*?<\/desc>|<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/\s+/g, ' ');
 const PALETTE = ['#0f0f0f', '#1a1a1a', '#222222', '#2a2a2a', '#333333', '#444444', '#e8e8e8', '#777777', '#f97316', '#facc15', '#ef4444', '#22c55e'];
-const PHONE_CONTENT_PX = 332;   // 360 px viewport minus the manual's 14 px side padding
+const PHONE_CONTENT_PX = 330;   // 360 px viewport minus the manual's 14 px side padding and the figure's 1 px border (img/README.md)
 
 test('R1/R6: every D1–D15 file exists, is well-formed, ≤ 60 KB, accessible, uses only the palette (with the mapping comment)', () => {
   const onDisk = fs.readdirSync(DIR).filter(f => f.endsWith('.svg')).sort();

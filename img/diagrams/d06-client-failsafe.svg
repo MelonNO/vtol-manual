@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 1055" width="400" height="1055" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
 <title id="title">D6 — Client failsafe timeline through the relay, with the time of each stage and the measured total per cause</title>
 <desc id="desc">Cause at t = 0: the GCS app stops or crashes, the controller is unplugged, the HM30 link is lost, or the bridge watchdog fires / the G0 resets. The bridge goes silent after T_hold (start value 250 ms): FAILSAFE, no more CRSF. The ELRS TX module reacts to the silent handset (time TBD, measure in relay-design test 6). Client receiver failsafe (timeout TBD per client). Client FC failsafe per profile, e.g. Betaflight stage 1 then GPS Rescue; Reference client #1: delay 2.5 s (1.5 s + 1 s). The client returns or lands per its failsafe type. Total time per cause: TBD (test 6). On HM30 loss the carrier also RTLs after 5 s and the camera is forced off. The bridge sends no CRSF until it has 5 consecutive valid packets.</desc>
-<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css (muted: the manual value).
      Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
      #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
      #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->

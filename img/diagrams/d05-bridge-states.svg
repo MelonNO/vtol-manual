@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 840" width="400" height="840" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
 <title id="title">D5 — RC bridge (G0) state machine: BOOT, WAIT_GCS, START, RUN, FAILSAFE, with the CRSF output and LED pattern per state</title>
 <desc id="desc">BOOT (no CRSF) → WAIT_GCS when the peripherals and the W5500 are up. WAIT_GCS (no CRSF) → START after 5 consecutive valid packets. START sends ModelID three times → RUN. RUN sends an RC frame on every scheduler tick → FAILSAFE when no valid packet arrives for T_hold (start value 250 ms). FAILSAFE is silent and returns immediately to WAIT_GCS. A valid packet has the right magic, version, CRC, source IP and an increasing sequence number. The watchdog (about 100 ms) resets the G0 to BOOT if the scheduler or the W5500 stops. LED pattern per state: TBD, to be defined by the bridge firmware. The GCS app shows UNREACHABLE when no bridge status arrives within 300 ms, which is normal before streaming.</desc>
-<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css (muted: the manual value).
      Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
      #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
      #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->

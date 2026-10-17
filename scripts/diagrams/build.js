@@ -34,6 +34,15 @@ function generateManual(html, svgs) {
 
 function main() {
   const check = process.argv.includes('--check');
+  try { run(check); } catch (e) {
+    // A broken slot / inline block (or any generator error): one clean line, no stack trace, non-zero exit.
+    console.log('ERROR ' + (e && e.message ? e.message : e));
+    console.log(check ? 'diagrams check failed: fix manual.html or the generator, then run: node scripts/diagrams/build.js' : 'nothing was written for manual.html');
+    process.exit(1);
+  }
+}
+
+function run(check) {
   const svgs = generateSvgs();
   const diffs = [];
   const want = new Set(Object.keys(svgs).map(n => n + '.svg'));

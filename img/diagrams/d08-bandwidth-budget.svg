@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 655" width="400" height="655" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
 <title id="title">D8 — Bandwidth budget: HM30 capacity split in FPV mode (camera off) and camera mode (camera at its P3 cap)</title>
 <desc id="desc">Not to scale; all values TBD until the HM30 capacity is measured (open question Q13). FPV mode: N6 client video at a constant bitrate below the HM30 capacity (TBD), RC uplink about 100–130 kbit/s, MAVLink TBD, margin TBD, camera off (P3 disabled or at minimum). Camera mode: the same plus the IP camera at its P3 ingress cap (TBD); the total must stay below the HM30 capacity. The HM30 radio, not the 100 Mbit cable, is the bottleneck: switch priorities (RC, then video, then camera) only order packets on the cable. Until measured the camera is off while the client is armed; relay-design test 9 must show unchanged FPV latency with the camera at its cap, otherwise the rule becomes camera off whenever the client is airborne.</desc>
-<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css (muted: the manual value).
      Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
      #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
      #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->

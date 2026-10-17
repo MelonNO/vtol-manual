@@ -44,7 +44,7 @@ function blocks() {
       + T(500, 268, 'FW: fully forward', { fill: 'var(--accent)' })
       + T(410, 128, 'rate', { fill: 'var(--muted)' }) + T(410, 144, '40°/s', { fill: 'var(--muted)' })
       + T(16, 316, 'M1/M2 wing motors: VTOL lift (0°) and fixed-wing thrust.') + T(16, 334, 'M4 tail: VTOL lift only, stops when the transition is complete.')
-      + T(16, 352, 'Q_TILT_MAX = tilt held during the transition until airspeed', { fill: 'var(--muted)' }) + T(16, 370, '(ArduPilot tilt-rotor guide) — VERIFY against the param file.', { fill: 'var(--muted)' })
+      + T(16, 352, 'Q_TILT_MAX = tilt held during the transition until airspeed', { fill: 'var(--muted)' }) + T(16, 370, '(ArduPilot tilt-rotor guide) — VERIFY against the param file.', { fill: 'var(--amber)' })
       + '</svg>';
     B.motors = wrap(s, 'Tri tilt-rotor (<code>Q_FRAME_CLASS</code> 7): M1/M2 tilt, M4 lift only. Prop directions: <span class="warn-val">TBD — confirm on the airframe</span> (ArduPilot: the front pair must turn in opposite directions, or roll and pitch inputs cause adverse yaw).');
   }
@@ -77,7 +77,7 @@ function blocks() {
     // abort branch
     const ax = 190, ay = Y(25 + (65 - 25) * (190 - 110) / 150);
     s += '<polyline points="' + ax + ',' + r(ay) + ' 180,92" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#mis-ah-red)"/>'
-      + T(84, 64, 'ABORT: no airspeed in 3 s → QHOVER', { fill: 'var(--red)', weight: 'bold' }) + T(84, 82, '(4 s: automatic QLand — VERIFY)', { fill: 'var(--red)' });
+      + T(84, 64, 'ABORT: no airspeed in 3 s → QHOVER', { fill: 'var(--red)', weight: 'bold' }) + T(84, 82, '(4 s: automatic QLand — VERIFY)', { fill: 'var(--amber)' });
     // WP labels
     const names = ['VTOL_TAKEOFF', 'WAYPOINT', 'LOITER_TO_ALT', 'WAYPOINT', 'LOITER_TO_ALT', 'WAYPOINT', 'VTOL_LAND'];
     const alts = ['20–30 m', '50–80 m', 'relay alt', 'relay alt', '30–40 m', '20–25 m', '0 m'];

@@ -59,17 +59,33 @@
   const LEVEL_FILL = { ok: 'var(--green)', warn: 'var(--amber)', crit: 'var(--red)' };
   const LEVEL_TEXT = { ok: 'OK', warn: 'LOW', crit: 'CRIT' };
 
+  // Greedy word wrap for SVG text: lines of at most `width` user units at font `size` (monospace advance ≤ 0.6 em:
+  // Share Tech Mono is 0.54 em, the fallbacks up to 0.6). A word longer than a line is split.
+  function wrapText(s, size, width) {
+    const max = Math.max(4, Math.floor(width / (0.6 * size)));
+    const lines = [];
+    let cur = '';
+    String(s).split(/\s+/).filter(Boolean).forEach(w => {
+      while (w.length > max) { if (cur) { lines.push(cur); cur = ''; } lines.push(w.slice(0, max)); w = w.slice(max); }
+      if (!cur) cur = w; else if ((cur + ' ' + w).length <= max) cur += ' ' + w; else { lines.push(cur); cur = w; }
+    });
+    if (cur) lines.push(cur);
+    return lines.length ? lines : [''];
+  }
+
   // ══════════════ BATTERY GAUGE (plan §9.2, MAN-14) ══════════════
   // From the pack profile (carrier, mast or client) and the store settings. opts.battLowVolt: BATT_LOW_VOLT from the
   // param file when known (0 / null = not set). Carrier markers: BATT_LOW (if set), manual RTL, hard limit, BATT_CRT,
   // storage; other packs: storage and the chemistry longevity floor. Scale: chemistry hard floor → full charge.
-  // 360 units wide, ≥ 12-unit text: readable at 332 px (phone) and up; the page caps the width on desktop.
+  // 360 units wide, every text ≥ 14 units and wrapped to the width (no clipping): at a 360 px viewport the gauge is
+  // 315–330 px wide (with / without a scrollbar), i.e. ≥ 12.2 px text; the page caps the width on desktop.
+  // Zone names are visible text (a legend under the bar), not only tooltips.
   function batteryGauge(pack, settings, opts) {
     opts = opts || {};
     const TC = core();
     const th = TC.packThresholds(pack, settings || {});
     const cells = th.cells, chem = th.chem;
-    const lo = th.critV, hi = th.fullV, W = 360, x0 = 18, x1 = 342;
+    const lo = th.critV, hi = th.fullV, W = 360, x0 = 18, x1 = 342, FS = 14;
     const X = v => x0 + (clamp(v, lo, hi) - lo) / (hi - lo || 1) * (x1 - x0);
     const pc = v => f2(v / cells) + ' V/cell';
     const low = isNum(opts.battLowVolt) && opts.battLowVolt > 0 ? opts.battLowVolt : null;
@@ -89,6 +105,7 @@
         { a: th.lowV, b: hi, fill: 'var(--green)', op: 0.2, name: 'Usable range' }
       ];
     }
+    zones = zones.filter(z => z.b > z.a);
     // Markers, highest voltage first (numbered in that order).
     const m = [];
     if (th.carrier) {
@@ -104,45 +121,63 @@
     m.forEach((k, i) => { k.n = i + 1; });
 
     // Number badges above the bar, staggered when two markers are closer than one badge.
-    const barY = 74, barH = 26;
+    const barY = 84, barH = 26, R = 10;
     const byX = m.slice().sort((a, b) => X(a.v) - X(b.v));
     let lastX = -1e9, lvl = 0;
-    byX.forEach(k => { const x = X(k.v); lvl = x - lastX < 22 ? (lvl + 1) % 3 : 0; k.lvl = lvl; lastX = x; });
+    byX.forEach(k => { const x = X(k.v); lvl = x - lastX < 2 * R + 3 ? (lvl + 1) % 3 : 0; k.lvl = lvl; lastX = x; });
 
     const notes = [];
     if (th.carrier && low === null) notes.push({ c: 'var(--amber)', t: 'BATT_LOW_VOLT not set (0): no warning before BATT_CRT_VOLT' });
     if (th.carrier && !(isNum(th.rtlV) && isNum(th.hardV) && isNum(th.crtV))) notes.push({ c: 'var(--amber)', t: 'Carrier thresholds: TBD in the settings' });
     if (!isNum(th.storageV)) notes.push({ c: 'var(--amber)', t: 'Storage voltage for ' + chem.name + ': TBD (the setting is a LiPo value)' });
 
-    const rowsY = barY + barH + 34, rowH = 34;
-    const H = rowsY + m.length * rowH + notes.length * 22 + 28;
+    // Layout, top → bottom: label, badges, bar, scale ends, zone legend, marker rows, notes, scale footnote.
+    const LH = 18;                                                   // line height of 14-unit text
+    const legW = W - (x0 + 22) - 8, rowW = W - (x0 + 28) - 8, noteW = W - x0 - 8;
+    let y = barY + barH + 22;                                        // below the scale end labels
+    const legend = zones.slice().reverse().map(z => {                // highest zone first, like the markers
+      const lines = wrapText(f1(z.a) + '–' + f1(z.b) + ' V ' + z.name, FS, legW), top = y + 6;
+      y = top + lines.length * LH; return { z, lines, top };
+    });
+    y += 14;
+    const rows = m.map(k => {
+      const lines = wrapText(k.l, FS, rowW), top = y;
+      y = top + 22 + lines.length * LH + 6; return { k, lines, top };
+    });
+    const noteRows = notes.map(n => { const lines = wrapText(n.t, FS, noteW), top = y; y = top + lines.length * LH + 6; return { n, lines, top }; });
+    const foot = wrapText('Scale: hard floor ' + chem.critical + ' → full ' + chem.full + ' V/cell (' + chem.name + ')', FS, noteW), footTop = y + 4;
+    const H = Math.ceil(footTop + foot.length * LH + 6);
+
     const title = (opts.title || ((pack.label || 'Pack') + ' — ' + cells + 'S ' + chem.name)) + ' voltage gauge';
     let s = open(W, H, title, 'Scale ' + f1(lo) + ' V (hard floor ' + chem.critical + ' V/cell) to ' + f1(hi) + ' V (full ' + chem.full + ' V/cell). '
+      + 'Zones: ' + zones.map(z => f1(z.a) + '–' + f1(z.b) + ' V ' + z.name).join('; ') + '. '
       + m.map(k => k.n + ': ' + f1(k.v) + ' V ' + k.l).join('; ') + (notes.length ? '. ' + notes.map(n => n.t).join('. ') : ''), ' class="dg-gauge"');
-    s += txt(x0, 20, (pack.label || 'Pack') + ' · ' + cells + 'S ' + chem.name, { size: 13, fill: 'var(--muted)' });
+    const head = wrapText((pack.label || 'Pack') + ' · ' + cells + 'S ' + chem.name, FS, noteW - 20);   // a long pack label is cut (full text in <title>)
+    s += txt(x0, 22, head[0] + (head.length > 1 ? ' …' : ''), { size: FS, fill: 'var(--muted)' });
     zones.forEach(z => {
-      if (!(z.b > z.a)) return;
       s += '<rect x="' + r1(X(z.a)) + '" y="' + barY + '" width="' + r1(X(z.b) - X(z.a)) + '" height="' + barH + '" fill="' + z.fill + '" fill-opacity="' + z.op + '"><title>' + esc(f1(z.a) + '–' + f1(z.b) + ' V: ' + z.name) + '</title></rect>';
     });
     s += '<rect x="' + x0 + '" y="' + barY + '" width="' + (x1 - x0) + '" height="' + barH + '" fill="none" stroke="var(--border2)"/>';
     m.forEach(k => {
-      const x = r1(X(k.v)), cy = barY - 12 - k.lvl * 20;
-      s += '<line x1="' + x + '" y1="' + (cy + 9) + '" x2="' + x + '" y2="' + (barY + barH) + '" stroke="' + k.c + '" stroke-width="2"/>'
-        + '<circle cx="' + x + '" cy="' + cy + '" r="9" fill="var(--surface)" stroke="' + k.c + '" stroke-width="1.5"/>'
-        + txt(x, cy + 4.5, String(k.n), { size: 12, fill: k.c, anchor: 'middle', weight: 'bold' });
+      const x = r1(X(k.v)), cy = barY - 14 - k.lvl * (2 * R + 2);
+      s += '<line x1="' + x + '" y1="' + (cy + R) + '" x2="' + x + '" y2="' + (barY + barH) + '" stroke="' + k.c + '" stroke-width="2"/>'
+        + '<circle cx="' + x + '" cy="' + cy + '" r="' + R + '" fill="var(--surface)" stroke="' + k.c + '" stroke-width="1.5"/>'
+        + txt(x, cy + 5, String(k.n), { size: FS, fill: k.c, anchor: 'middle', weight: 'bold' });
     });
-    s += txt(x0, barY + barH + 16, f1(lo) + ' V', { size: 12, fill: 'var(--muted)' })
-      + txt(x1, barY + barH + 16, f1(hi) + ' V full', { size: 12, fill: 'var(--muted)', anchor: 'end' });
-    m.forEach((k, i) => {
-      const y = rowsY + i * rowH;
-      s += '<circle cx="' + (x0 + 9) + '" cy="' + (y + 6) + '" r="9" fill="var(--surface)" stroke="' + k.c + '" stroke-width="1.5"/>'
-        + txt(x0 + 9, y + 10.5, String(k.n), { size: 12, fill: k.c, anchor: 'middle', weight: 'bold' })
-        + txt(x0 + 26, y + 3, f1(k.v) + ' V · ' + pc(k.v), { size: 13, fill: k.c, weight: 'bold' })
-        + txt(x0 + 26, y + 20, k.l, { size: 12 });
+    s += txt(x0, barY + barH + 18, f1(lo) + ' V', { size: FS, fill: 'var(--muted)' })
+      + txt(x1, barY + barH + 18, f1(hi) + ' V full', { size: FS, fill: 'var(--muted)', anchor: 'end' });
+    legend.forEach(({ z, lines, top }) => {
+      s += '<rect x="' + x0 + '" y="' + top + '" width="14" height="14" fill="' + z.fill + '" fill-opacity="' + Math.min(0.9, z.op * 2.5).toFixed(2) + '" stroke="' + z.fill + '"/>';
+      lines.forEach((t, i) => { s += txt(x0 + 22, top + 12 + i * LH, t, { size: FS }); });
     });
-    let ny = rowsY + m.length * rowH + 4;
-    notes.forEach(n => { s += txt(x0, ny + 10, n.t, { size: 12, fill: n.c }); ny += 22; });
-    s += txt(x0, H - 8, 'Scale: hard floor ' + chem.critical + ' → full ' + chem.full + ' V/cell (' + chem.name + ')', { size: 12, fill: 'var(--muted)' });
+    rows.forEach(({ k, lines, top }) => {
+      s += '<circle cx="' + (x0 + R) + '" cy="' + (top + 6) + '" r="' + R + '" fill="var(--surface)" stroke="' + k.c + '" stroke-width="1.5"/>'
+        + txt(x0 + R, top + 11, String(k.n), { size: FS, fill: k.c, anchor: 'middle', weight: 'bold' })
+        + txt(x0 + 28, top + 11, f1(k.v) + ' V · ' + pc(k.v), { size: 15, fill: k.c, weight: 'bold' });
+      lines.forEach((t, i) => { s += txt(x0 + 28, top + 30 + i * LH, t, { size: FS }); });
+    });
+    noteRows.forEach(({ n, lines, top }) => { lines.forEach((t, i) => { s += txt(x0, top + 12 + i * LH, t, { size: FS, fill: n.c }); }); });
+    foot.forEach((t, i) => { s += txt(x0, footTop + 12 + i * LH, t, { size: FS, fill: 'var(--muted)' }); });
     return s + '</svg>';
   }
 
