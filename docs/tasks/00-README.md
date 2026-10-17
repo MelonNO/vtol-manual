@@ -54,7 +54,8 @@ The PM updates this table.
 | WP06 | done | APPROVED (round 1) | yes |
 | WP07 | in progress | | |
 | WP08a | done (1 rework) | APPROVED (round 2) | yes |
-| WP08b | done | in verification | |
+| WP08b | done | APPROVED (round 1) | yes |
+| WP13 | in progress (GCS hardening follow-up) | | |
 | WP09 | | | |
 | WP10 | | | |
 | WP11 | done (1 rework) | APPROVED (round 2) | yes |
