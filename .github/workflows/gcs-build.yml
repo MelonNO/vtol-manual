@@ -1,5 +1,15 @@
 # Windows build of the GCS companion app (WP10 R2): tests, PyInstaller build (gcs/packaging/build.ps1), artifact.
 # On a tag v* the zip is also attached to the GitHub Release of that tag (created if it does not exist yet).
+#
+# Action versions (WP17 R8): the current majors, all `runs.using: node24` (GitHub deprecated the Node 20 runtime
+# of the older majors). Checked on 2026-10-17 on the release pages and in each tag's action.yml:
+#   actions/checkout@v7          https://github.com/actions/checkout/releases          (v7.0.1 latest)
+#   actions/setup-python@v7      https://github.com/actions/setup-python/releases      (v7.0.0 latest)
+#   actions/upload-artifact@v7   https://github.com/actions/upload-artifact/releases   (v7.0.2 latest)
+#   actions/download-artifact@v8 https://github.com/actions/download-artifact/releases (v8.0.2 latest)
+# Runner images are pinned: windows-2025 is what windows-latest is today (actions/runner-images README);
+# ubuntu-latest moves to Ubuntu 26.04 from 2026-10-19 (GitHub changelog 2026-09-17), so the release job uses
+# ubuntu-24.04. Moving to a newer image is a deliberate change, tested on its own.
 name: GCS build
 
 on:
@@ -22,31 +32,72 @@ concurrency:
 
 jobs:
   build:
-    name: Build vtol-gcs (windows-latest)
-    runs-on: windows-latest
-    timeout-minutes: 40
+    name: Build vtol-gcs (windows-2025)
+    runs-on: windows-2025
+    timeout-minutes: 30
     outputs:
       zip: ${{ steps.zip.outputs.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - name: Install build and test dependencies
+        timeout-minutes: 10
         run: python -m pip install pytest pygame-ce "pyinstaller>=6"
 
-      - name: Tests (the 5-run stability check is in ci.yml)
-        run: python -m pytest gcs protocol -q -p no:cacheprovider
+      - name: Tests, headless-safe suite (interactive_desktop tests run on a desktop before a release; ×5 in ci.yml)
+        # WP17: -m "not interactive_desktop" leaves out the tests that need a real console/desktop (they also skip
+        # themselves on any runner: gcs/conftest.py). -v, unbuffered output and a START line per test name the
+        # running test live; a hanging test is dumped ("+++ TIMEOUT [time] <id>") and failed by the per-test
+        # watchdog; a hang with the GIL held ends the run through faulthandler ("Timeout (h:mm:ss)!" + stacks): the
+        # annotated id is the last START line before it, or an interpreter-exit hang after "END of session".
+        # The step timeout is below the job timeout, so the log upload below still runs after a hang.
+        shell: pwsh
+        timeout-minutes: 15
+        env:
+          PYTHONUNBUFFERED: '1'
+          VTOLGCS_TEST_DUMP_DIR: pytest-logs
+        run: |
+          New-Item -ItemType Directory -Force pytest-logs | Out-Null
+          python -u -m pytest gcs protocol -m "not interactive_desktop" -v -p no:cacheprovider -rfEs --tb=long --durations=10 2>&1 |
+            Tee-Object -FilePath pytest-logs/build-tests.txt
+          $code = $LASTEXITCODE
+          $summary = Select-String -Path pytest-logs/build-tests.txt -Pattern '^=+ .*\b\d+ (failed|errors?)\b'
+          if ($code -ne 0 -or $summary) {
+            foreach ($m in (Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '^(FAILED|ERROR|\+\+\+ TIMEOUT \[[0-9:]+\]) ((gcs|protocol)/\S+)' | Select-Object -First 9)) {
+              Write-Host "::error::$($m.Matches[0].Groups[2].Value) failed"
+            }
+            $hang = Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '(^|\s)Timeout \([0-9:]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
+            if ($hang) {
+              $last = Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '^\[[0-9:]+\] (START ((gcs|protocol)/\S+)|END of session)' |
+                Where-Object { $_.LineNumber -lt $hang.LineNumber } | Select-Object -Last 1
+              $id = if ($last -and $last.Matches[0].Groups[2].Success) { $last.Matches[0].Groups[2].Value } else { '(hang at interpreter exit)' }
+              Write-Host "::error::$id hung (stack dump in the log: $($hang.Matches[0].Value.Trim()))"
+            }
+            Write-Host "::error::pytest failed (exit code $code); full log: artifact pytest-logs-build"
+            exit 1
+          }
+
+      - name: Keep the full pytest log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pytest-logs-build
+          path: pytest-logs/
+          retention-days: 30
 
       - name: Build with gcs/packaging/build.ps1
         shell: pwsh
+        timeout-minutes: 10
         run: powershell -NoProfile -ExecutionPolicy Bypass -File gcs\packaging\build.ps1 -Python python -SkipInstall -Clean
 
       - name: Zip the build folder
         id: zip
         shell: pwsh
+        timeout-minutes: 5
         run: |
           if ($env:GITHUB_REF_TYPE -eq 'tag') { $ver = $env:GITHUB_REF_NAME } else { $ver = "build-$($env:GITHUB_SHA.Substring(0, 8))" }
           $name = "vtol-gcs-$ver-windows-x64.zip"
@@ -54,7 +105,7 @@ jobs:
           "name=$name" >> $env:GITHUB_OUTPUT
           Get-Item $name | Format-List Name, Length
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: vtol-gcs-windows
           path: ${{ steps.zip.outputs.name }}
@@ -65,11 +116,12 @@ jobs:
     name: Attach the zip to the GitHub Release
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: vtol-gcs-windows
 

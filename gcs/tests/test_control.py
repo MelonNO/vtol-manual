@@ -88,7 +88,7 @@ def test_control_file_is_private_and_removed_on_stop(rig) -> None:
     assert len(info.token) == 64 and info.pid > 0
     if sys.platform == "win32":
         assert info.family == "AF_PIPE" and str(info.address).startswith("\\\\.\\pipe\\vtol-gcs-ctl-")
-        acl = subprocess.run(["icacls", str(r.file)], capture_output=True, text=True).stdout
+        acl = subprocess.run(["icacls", str(r.file)], capture_output=True, text=True, timeout=30).stdout
         entries = [line for line in acl.splitlines() if ":(" in line]
         assert len(entries) == 1, acl                                # one entry: the current user
         assert "Everyone" not in acl and "BUILTIN\\Users" not in acl and "Administrators" not in acl
@@ -415,6 +415,9 @@ def test_many_stalled_handshakes_time_out_and_free_their_slots(rig) -> None:
     stalled = [Client(info.address, family=info.family) for _ in range(MAX_PENDING + 2)]
     try:
         r.expect(lambda: r.server.handshake_failures >= MAX_PENDING, "stalled handshakes timed out", 5.0)
+        # WP17: a slot is freed just after its failure is counted (finally: _pending -= 1); connecting in between
+        # was refused as "all slots busy" (EOFError) - seen once in a CI-like run with the non-venv Python
+        r.expect(lambda: r.server._pending == 0, "their slots were freed", 5.0)
         assert ControlClient(info, timeout=2.0).call("ping")["t"] > 0
     finally:
         for c in stalled:

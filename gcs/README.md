@@ -466,6 +466,42 @@ spawned sender ignores Ctrl+C and refuses QUIT on a real Ctrl+Break, the refusal
 `--mode carrier_only` reaches *Events* (and, with `VTOLGCS_UI_SMOKE=1`, in the windowed UI), and the
 `sender-*.log` clean-up.
 
+### Test guards and desktop-only tests (WP17)
+
+`gcs/conftest.py` keeps the suite from hanging a CI job silently. Each layer covers a different kind of hang:
+
+| Guard | What it covers | Behaviour | Setting |
+|---|---|---|---|
+| Per-test watchdog (a Python thread) | any hang that releases the GIL: sleeps, waits on locks, threads, processes, sockets, pipes, polling loops | after the timeout (120 s): `+++ TIMEOUT [time] <test id>` and the stacks of all threads; the processes the tests started are killed, `TestTimeout` is raised in the main thread and the test is reported FAILED; the run goes on. If the test is still running 20 s later (e.g. `time.sleep`, which no exception interrupts): the stacks again and exit status 1 | `VTOLGCS_TEST_TIMEOUT`, `@pytest.mark.timeout(s)` (the test's own value), `VTOLGCS_TEST_GRACE`; `VTOLGCS_TEST_DUMP_DIR` also writes these dumps to `pytest-timeouts.txt` there (CI: the uploaded `pytest-logs`) |
+| Per-test faulthandler backstop (a C thread, needs no GIL) | a hang in native code that **holds the GIL** (the Python watchdog cannot run then) | 10 s after the watchdog's hard exit: `Timeout (h:mm:ss)!` and the stacks of all threads on stdout (the CI log and its uploaded copy), exit status 1. The test is the last `START` line before it; CI annotates it | `VTOLGCS_TEST_BACKSTOP_MARGIN` |
+| Exit guard (Python thread) | the process not exiting after the session (a leaked non-daemon thread, a slow atexit handler) | 60 s after the session: `+++ EXIT GUARD` and the stacks, exit status (or 1) | `VTOLGCS_EXIT_GRACE` |
+| Exit backstop (faulthandler) | the same with the GIL held (Python atexit handlers, thread shutdown) | 10 s later: `Timeout (h:mm:ss)!` and the stacks, exit status 1 | — |
+| Exit watcher (a separate process) | a hang in the interpreter's last C-level exit hooks (`Py_AtExit`, e.g. pygame's SDL quit), which run after faulthandler is stopped | 20 s after the exit guard: `+++ EXIT WATCHDOG`, the test process is terminated with status 1 (no stacks: it is another process) | — |
+| Processes (Windows job object) | every process the tests start and their descendants, orphans included | after each test every one still alive is killed by PID and listed in the summary; when the test process ends, the job kills whatever is left. Without a job object (setup failed; the header says so) only processes started through `subprocess` and their live descendants are covered. A module- or session-scoped fixture that must keep a process across tests registers it with `CHILDREN.keep(pid)` | — |
+| Live test names | — | on GitHub each test start is printed on its own line (`[time] START <id>`), and the end as `END of session` | `VTOLGCS_LIVE_TEST_NAMES=1` locally |
+
+Not covered: a hang during collection or pytest's own start-up (before the first test); the CI step timeout is the
+last resort there.
+
+Tests marked **`interactive_desktop`** need a real interactive console or desktop: the four hand-started-sender
+console tests in `test_main_cli.py` (keys, Ctrl+C / Ctrl+Break, screen reads), the focus-and-keys test of the
+UI-spawned sender in `test_ui.py` (its headless part,
+`test_spawned_sender_streams_without_input_and_stops_only_through_the_control_channel`, runs everywhere), and the
+two windowed UI smoke tests. They are **skipped** where there is no interactive session: `GITHUB_ACTIONS` or `CI`
+set, session 0, or a window station that is not interactive. The pytest header says which applies
+(`vtolgcs: interactive_desktop tests RUN (…)` / `SKIPPED (…)`). `VTOLGCS_INTERACTIVE_TESTS=1` forces them on, `=0`
+off. The GCS build workflow runs `-m "not interactive_desktop"`. The real pygame/SDL test
+(`test_controller.py::test_real_pygame_thread_starts_and_stops`) runs everywhere, CI included, with a 60 s timeout.
+
+**Before each release, run them on a real desktop** (logged on, a normal PowerShell terminal, repository root;
+[OPEN-ITEMS](../docs/relay/OPEN-ITEMS.md) M-16), and record the result in
+[`docs/relay/TEST-RESULTS.md`](../docs/relay/TEST-RESULTS.md):
+
+```
+python -m pytest gcs protocol -p no:cacheprovider                       # header: interactive_desktop tests RUN
+$env:VTOLGCS_UI_SMOKE='1'; python -m pytest gcs -m interactive_desktop -v -p no:cacheprovider   # 7 passed, none skipped
+```
+
 ---
 
 ## User guide

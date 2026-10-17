@@ -2,6 +2,16 @@
 # Runs on every push and pull request. No build step: the pages are served as they are committed.
 # Node packages (jsdom, html-validate) are installed in CI only, outside the repository: the repo has no
 # package.json and no node_modules.
+#
+# Action versions (WP17 R8): the current majors, all `runs.using: node24` (GitHub deprecated the Node 20 runtime
+# of the older majors). Checked on 2026-10-17 on the release pages and in each tag's action.yml:
+#   actions/checkout@v7        https://github.com/actions/checkout/releases          (v7.0.1 latest)
+#   actions/setup-node@v7      https://github.com/actions/setup-node/releases        (v7.1.0 latest)
+#   actions/setup-python@v7    https://github.com/actions/setup-python/releases      (v7.0.0 latest)
+#   actions/upload-artifact@v7 https://github.com/actions/upload-artifact/releases   (v7.0.2 latest)
+# Runner images are pinned (WP17 R8): ubuntu-latest moves to Ubuntu 26.04 from 2026-10-19 (GitHub changelog
+# 2026-09-17); windows-2025 is what windows-latest is today (actions/runner-images README). Moving to a newer
+# image is a deliberate change, tested on its own.
 name: CI
 
 on:
@@ -25,12 +35,12 @@ env:
 jobs:
   web:
     name: Web pages — tests, jsdom smoke, html-validate, links, images, colours, generated files
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -85,16 +95,19 @@ jobs:
 
   python-portable:
     name: Python — protocol and CRSF reference (Linux)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: python -m pip install pytest
       - name: Protocol and CRSF tests (platform-neutral; the full suite runs on Windows below)
-        run: python -m pytest gcs/tests/test_protocol.py gcs/tests/test_crsf.py -q -p no:cacheprovider
+        timeout-minutes: 5
+        env:
+          PYTHONUNBUFFERED: '1'
+        run: python -u -m pytest gcs/tests/test_protocol.py gcs/tests/test_crsf.py -v -p no:cacheprovider -rfEs --durations=5
       - name: Test vectors up to date, protocol self-test
         run: |
           python gcs/tools/gen_test_vectors.py --check
@@ -103,18 +116,22 @@ jobs:
   python-windows:
     name: Python — full GCS suite ×5 (Windows)
     # The GCS app is Windows-only: named pipes, consoles, waitable timers and tkinter are exercised for real here.
-    runs-on: windows-latest
-    timeout-minutes: 60
+    # Tests marked interactive_desktop (real console input, Ctrl+C delivery, foreground window, SDL) skip themselves
+    # on a runner (GITHUB_ACTIONS=true; gcs/conftest.py); they run on a desktop before each release
+    # (docs/relay/OPEN-ITEMS.md). Every test has a hard timeout with a stack dump (gcs/conftest.py, WP17).
+    runs-on: windows-2025
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: python -m pip install pytest pygame-ce
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: The piped test steps of this workflow fail on a failing test (test/ci/workflows.test.js)
+        timeout-minutes: 5
         # Runs the jsdom step (Git Bash, `bash -e`) and the pytest loop below (PowerShell) verbatim on throw-away
         # trees with failing and passing tests. Here every check must run: an unavailable tool fails the step.
         env:
@@ -128,25 +145,43 @@ jobs:
         # OR a "N failed" / "N error" summary line). Annotations: GitHub shows at most 10 per step, so each distinct
         # failing test id comes first (once, with its runs; at most 9), then one summary line. Only pytest's summary
         # lines ("FAILED gcs/…::test", "ERROR gcs/…") match, never captured log lines ("ERROR    vtolgcs.…").
-        # Proven by test/ci/workflows.test.js (runs this script on trees with failing / passing tests).
+        # A test that hangs is named live (-v, unbuffered, a START line per test), dumped and failed by the per-test
+        # watchdog ("+++ TIMEOUT [time] <id>", also annotated); dumps also go to pytest-logs/pytest-timeouts.txt.
+        # A hang with the GIL held ends the run through faulthandler ("Timeout (h:mm:ss)!" + stacks, exit 1): the
+        # annotated id is the last START line before it; after "END of session" (or "+++ EXIT GUARD/WATCHDOG")
+        # it is a hang at interpreter exit (gcs/conftest.py lists what each guard covers).
+        # The step timeout (35 min) is below the job timeout (45 min), so the logs are uploaded even after a hang.
+        # Proven by test/ci/workflows.test.js (runs this script on trees with failing / passing / hanging tests).
         shell: pwsh
+        timeout-minutes: 35
+        env:
+          PYTHONUNBUFFERED: '1'
+          VTOLGCS_TEST_DUMP_DIR: pytest-logs
         run: |
           New-Item -ItemType Directory -Force pytest-logs | Out-Null
           $failed = @()
           $tests = [ordered]@{}
           for ($i = 1; $i -le 5; $i++) {
             Write-Host "::group::pytest run $i of 5"
-            python -m pytest gcs protocol -p no:cacheprovider -rfE --tb=long --durations=10 2>&1 |
+            python -u -m pytest gcs protocol -v -p no:cacheprovider -rfEs --tb=long --durations=10 2>&1 |
               Tee-Object -FilePath "pytest-logs/run-$i.txt"
             $code = $LASTEXITCODE
             Write-Host "::endgroup::"
             $summary = Select-String -Path "pytest-logs/run-$i.txt" -Pattern '^=+ .*\b\d+ (failed|errors?)\b'
             if ($code -ne 0 -or $summary) {
               $failed += $i
-              foreach ($m in (Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '^(FAILED|ERROR) ((gcs|protocol)/\S+)')) {
+              foreach ($m in (Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '^(FAILED|ERROR|\+\+\+ TIMEOUT \[[0-9:]+\]) ((gcs|protocol)/\S+)')) {
                 $id = $m.Matches[0].Groups[2].Value
                 if (-not $tests.Contains($id)) { $tests[$id] = @() }
-                $tests[$id] = @($tests[$id]) + $i
+                if (-not (@($tests[$id]) -contains $i)) { $tests[$id] = @($tests[$id]) + $i }
+              }
+              $hang = Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '(^|\s)Timeout \([0-9:]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
+              if ($hang) {
+                $last = Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '^\[[0-9:]+\] (START ((gcs|protocol)/\S+)|END of session)' |
+                  Where-Object { $_.LineNumber -lt $hang.LineNumber } | Select-Object -Last 1
+                $id = if ($last -and $last.Matches[0].Groups[2].Success) { $last.Matches[0].Groups[2].Value } else { '(hang at interpreter exit)' }
+                if (-not $tests.Contains($id)) { $tests[$id] = @() }
+                if (-not (@($tests[$id]) -contains $i)) { $tests[$id] = @($tests[$id]) + $i }
               }
             }
           }
@@ -163,7 +198,7 @@ jobs:
 
       - name: Keep the full pytest logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pytest-logs-windows
           path: pytest-logs/

@@ -368,6 +368,7 @@ QUIT_PROMPT = "QUIT: the RC stream is running"
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
+@pytest.mark.interactive_desktop             # WriteConsoleInput / Ctrl+C / screen reads on a console
 def test_real_console_single_keys_change_nothing_typed_words_work(tmp_path: Path) -> None:
     """WP15 R2/R3 on a real (windowless) console: keys typed into the sender's own console input buffer.
     WP16 R4: Ctrl+C and Ctrl+Break are delivered for real and must show the QUIT prompt."""
@@ -423,6 +424,7 @@ def test_real_console_single_keys_change_nothing_typed_words_work(tmp_path: Path
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
+@pytest.mark.interactive_desktop             # WriteConsoleInput / Ctrl+C / screen reads on a console
 def test_open_console_prompt_does_not_delay_a_control_stop(tmp_path: Path) -> None:
     """WP16 R1: with a console prompt open, a STOP from the control channel (the UI) ends the RC stream
     within 100 ms."""
@@ -465,6 +467,7 @@ def test_open_console_prompt_does_not_delay_a_control_stop(tmp_path: Path) -> No
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
+@pytest.mark.interactive_desktop             # WriteConsoleInput / Ctrl+C / screen reads on a console
 def test_console_prompt_cancelled_when_the_state_changes_events_keep_printing(tmp_path: Path) -> None:
     """WP16 R1: alarms print while a prompt is open; a state change underneath cancels it, and the rest of
     the typed line is ignored (it never becomes key presses)."""
@@ -499,6 +502,7 @@ def test_console_prompt_cancelled_when_the_state_changes_events_keep_printing(tm
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
+@pytest.mark.interactive_desktop             # WriteConsoleInput / Ctrl+C / screen reads on a console
 def test_launch_resume_prompt_does_not_block_the_control_channel(tmp_path: Path) -> None:
     """WP16 R1: the --resume dialog at launch waits for its word off the main loop; a control stop works."""
     h = _HandSender(tmp_path, "--sim-armed", "--resume")

@@ -127,74 +127,128 @@ def test_spawn_sender_gives_no_console_window_and_no_input(tmp_path: Path) -> No
     assert "err" in text                                                        # stderr goes to the file too
 
 
+class _UiSpawnedSender:
+    """The real sender started exactly the way the UI starts it (``spawn_sender``: no console window, stdin
+    NUL, ``--no-keys``), against an in-process bridge_sim, and its control-channel client."""
+
+    def __init__(self, tmp_path: Path, monkeypatch, watch_foreground: bool = False) -> None:
+        from vtolgcs.__main__ import TEST_INSTANCE_ENV
+        from vtolgcs.control import ControlClient, ControlError
+        from vtolgcs.ui.link import passthrough_args, sender_command, sender_output_path, spawn_sender
+        monkeypatch.setenv(TEST_INSTANCE_ENV, f"vtol-gcs-test-{uuid.uuid4().hex}")
+        self.tmp = tmp_path
+        self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1), seed=1)).start()
+        argv = ["--sim", "--bridge", f"127.0.0.1:{self.sim.address[1]}", "--config", str(tmp_path / "cfg.json"),
+                "--log-dir", str(tmp_path), "--api-port", "0", "--mavlink-port", "0", "--run-seconds", "30"]
+        self.out = sender_output_path(tmp_path)
+        self.proc = spawn_sender(sender_command(passthrough_args(argv)), self.out)
+        self.client = None
+        self.pids, self.fg = {self.proc.pid}, set()
+        try:
+            end = time.monotonic() + 20
+            while self.client is None and time.monotonic() < end:
+                if watch_foreground:
+                    from _console import foreground_pid
+                    self.fg.add(foreground_pid())
+                try:
+                    self.client = ControlClient.from_file(tmp_path / "control.json", timeout=2.0)
+                    self.pids.add(self.client.request("hello")["result"]["pid"])    # the sender (a launcher's child)
+                except (ControlError, OSError, KeyError):
+                    self.client = None
+                    time.sleep(0.05)
+            assert self.client is not None, self.text() or "no output"
+        except BaseException:
+            self.close()
+            raise
+
+    def status(self) -> dict:
+        assert self.client is not None
+        return self.client.request("status")["result"]
+
+    def text(self) -> str:
+        return self.out.read_text(encoding="utf-8", errors="replace") if self.out.exists() else ""
+
+    def close(self) -> None:
+        if self.client is not None:
+            self.client.close()
+        if self.proc.poll() is None:
+            self.proc.kill()
+            self.proc.wait(10)
+        self.sim.stop()
+
+    def assert_streaming_unchanged(self) -> None:
+        s = self.status()
+        assert self.proc.poll() is None and s["app"]["mode"] == "fpv" and s["app"]["streaming"], s["app"]
+        assert s["controller"]["connected"] and s["controller"]["arm_switch_safe"]
+        assert s["bridge"]["camera"]["requested"] is False and s["bridge"]["state"] == "RUN"
+
+    def assert_final_output(self) -> str:
+        text = self.text()
+        assert "headless - bridge 127.0.0.1" in text and "console keys off (--no-keys)" in text
+        assert "cancelled" not in text and "Type " not in text                         # it never asked for input
+        assert "stop requested through the control channel" in text and "stopped (RC stream off" in text
+        recs = [json.loads(x) for x in next(self.tmp.glob("session-*.jsonl")).read_text(encoding="utf-8").splitlines()]
+        assert [r["mode"] for r in recs if r["type"] == "mode"] == ["fpv"]
+        return text
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows console flags")
+def test_spawned_sender_streams_without_input_and_stops_only_through_the_control_channel(tmp_path: Path,
+                                                                                       monkeypatch) -> None:
+    """WP15 R1, the part that needs no interactive desktop (WP17 split; runs on CI): the real sender started the
+    way the UI starts it streams with console keys off and no visible window, asks for nothing, and stops only
+    through the control channel with the typed STOP."""
+    from _console import visible_windows
+    h = _UiSpawnedSender(tmp_path, monkeypatch)
+    try:
+        assert _wait(lambda: h.status()["bridge"]["state"] == "RUN", 15)
+        time.sleep(0.5)
+        h.assert_streaming_unchanged()
+        assert visible_windows(h.pids) == []
+        assert h.client is not None
+        assert not h.client.request("stop")["ok"]                              # streaming: STOP must be typed
+        h.assert_streaming_unchanged()
+        assert h.client.request("stop", typed="STOP")["ok"]                    # the UI's way to stop it
+        assert h.proc.wait(15) == 0
+    finally:
+        h.close()
+    assert "QUIT" not in h.assert_final_output()
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows console and windows")
+@pytest.mark.interactive_desktop             # foreground window + WriteConsoleInput / Ctrl+C / Ctrl+Break
 def test_spawned_sender_has_no_window_takes_no_focus_and_ignores_keys(tmp_path: Path, monkeypatch) -> None:
     """WP15 R1/R3: the real sender started the way the UI starts it - no visible window, never the
     foreground window, and keys typed into its (windowless) console change nothing, Ctrl+C included.
     WP16 R3/R4: Ctrl+C never reaches it (its process group ignores Ctrl+C); Ctrl+Break does reach it, for
     real, and only gives the refused QUIT (no console to type STOP on)."""
     from _console import ctrl_break, ctrl_c, foreground_pid, type_keys, visible_windows
-    from vtolgcs.__main__ import TEST_INSTANCE_ENV
-    from vtolgcs.control import ControlClient, ControlError
-    from vtolgcs.ui.link import passthrough_args, sender_command, sender_output_path, spawn_sender
-    monkeypatch.setenv(TEST_INSTANCE_ENV, f"vtol-gcs-test-{uuid.uuid4().hex}")
-    sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1), seed=1)).start()
-    argv = ["--sim", "--bridge", f"127.0.0.1:{sim.address[1]}", "--config", str(tmp_path / "cfg.json"),
-            "--log-dir", str(tmp_path), "--api-port", "0", "--mavlink-port", "0", "--run-seconds", "30"]
-    out = sender_output_path(tmp_path)
-    proc = spawn_sender(sender_command(passthrough_args(argv)), out)
-    client = None
+    h = _UiSpawnedSender(tmp_path, monkeypatch, watch_foreground=True)
     try:
-        pids, fg = {proc.pid}, set()
-        end = time.monotonic() + 20
-        while client is None and time.monotonic() < end:
-            fg.add(foreground_pid())
-            try:
-                client = ControlClient.from_file(tmp_path / "control.json", timeout=2.0)
-                pids.add(client.request("hello")["result"]["pid"])         # the sender (the venv launcher's child)
-            except (ControlError, OSError, KeyError):
-                client = None
-                time.sleep(0.05)
-        assert client is not None, out.read_text(encoding="utf-8", errors="replace") if out.exists() else "no output"
-
-        def status() -> dict:
-            return client.request("status")["result"]
-        assert _wait(lambda: status()["bridge"]["state"] == "RUN", 15)
+        assert _wait(lambda: h.status()["bridge"]["state"] == "RUN", 15)
         for _ in range(20):
-            fg.add(foreground_pid())
+            h.fg.add(foreground_pid())
             time.sleep(0.05)
-        assert not (fg & pids), "the sender took the focus"
-        assert visible_windows(pids) == []
+        assert not (h.fg & h.pids), "the sender took the focus"
+        assert visible_windows(h.pids) == []
         for keys in ("q", "i", "a", "d", "k", "iSTOP\r", "qSTOP\r", "aARM\r", "dUNPLUG\r"):
-            type_keys(proc.pid, keys)                                       # typed into its own console
-        ctrl_c(proc.pid)
+            type_keys(h.proc.pid, keys)                                     # typed into its own console
+        ctrl_c(h.proc.pid)
         time.sleep(1.0)
-        assert "QUIT" not in out.read_text(encoding="utf-8")                  # Ctrl+C: ignored (process group)
-        ctrl_break(proc.pid)                                                # Ctrl+Break: delivered, refused
-        assert _wait(lambda: "QUIT needs a typed confirmation" in out.read_text(encoding="utf-8"), 10)
+        assert "QUIT" not in h.text()                                       # Ctrl+C: ignored (process group)
+        ctrl_break(h.proc.pid)                                              # Ctrl+Break: delivered, refused
+        assert _wait(lambda: "QUIT needs a typed confirmation" in h.text(), 10)
         time.sleep(0.5)
-        s = status()
-        assert proc.poll() is None and s["app"]["mode"] == "fpv" and s["app"]["streaming"], s["app"]
-        assert s["controller"]["connected"] and s["controller"]["arm_switch_safe"]
-        assert s["bridge"]["camera"]["requested"] is False and s["bridge"]["state"] == "RUN"
-        assert visible_windows(pids) == []
-        assert client.request("stop", typed="STOP")["ok"]                    # the UI's way to stop it
-        assert proc.wait(15) == 0
+        h.assert_streaming_unchanged()
+        assert visible_windows(h.pids) == []
+        assert h.client is not None
+        assert h.client.request("stop", typed="STOP")["ok"]                 # the UI's way to stop it
+        assert h.proc.wait(15) == 0
     finally:
-        if client is not None:
-            client.close()
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait()
-        sim.stop()
-    text = out.read_text(encoding="utf-8")
-    assert "headless - bridge 127.0.0.1" in text and "console keys off (--no-keys)" in text
+        h.close()
+    text = h.assert_final_output()
     # Ctrl+C never even reaches it (CREATE_NEW_PROCESS_GROUP disables Ctrl+C); had it, --no-keys refuses QUIT
-    assert "cancelled" not in text and "Type " not in text                         # it never asked for input
-    assert "stop requested through the control channel" in text and "stopped (RC stream off" in text
-    assert text.count("QUIT needs a typed confirmation") == 1                     # Ctrl+Break only
-    recs = [json.loads(x) for x in next(tmp_path.glob("session-*.jsonl")).read_text(encoding="utf-8").splitlines()]
-    assert [r["mode"] for r in recs if r["type"] == "mode"] == ["fpv"]
+    assert text.count("QUIT needs a typed confirmation") == 1                       # Ctrl+Break only
 
 
 def test_prune_sender_outputs(tmp_path: Path) -> None:
@@ -397,6 +451,7 @@ def test_sender_keeps_streaming_when_the_ui_process_dies(tmp_path: Path) -> None
 
 
 @pytest.mark.skipif(os.environ.get("VTOLGCS_UI_SMOKE") != "1", reason="opens windows; set VTOLGCS_UI_SMOKE=1")
+@pytest.mark.interactive_desktop                                 # Tk windows on the desktop
 def test_ui_smoke_launch_resume_refusal_in_events(tmp_path: Path) -> None:
     """WP16 R2 in the windowed UI: ``--resume`` reaches a sender without a console; the refusal and its
     reason appear under Events, and nothing is sent."""
@@ -422,6 +477,7 @@ def test_ui_smoke_launch_resume_refusal_in_events(tmp_path: Path) -> None:
 
 
 @pytest.mark.skipif(os.environ.get("VTOLGCS_UI_SMOKE") != "1", reason="opens windows; set VTOLGCS_UI_SMOKE=1")
+@pytest.mark.interactive_desktop                                 # Tk windows on the desktop
 def test_ui_smoke_with_spawned_sender(tmp_path: Path) -> None:
     sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1), seed=1)).start()
     try:
