@@ -93,6 +93,19 @@ def _rx() -> socket.socket:
     return s
 
 
+def _first_line(proc: subprocess.Popen, timeout: float) -> str:
+    """The child's first stdout line, or kill it after ``timeout`` (WP17: no read without a time limit)."""
+    import threading
+    box: list[str] = []
+    reader = threading.Thread(target=lambda: box.append(proc.stdout.readline()), daemon=True)
+    reader.start()
+    reader.join(timeout)
+    if not box:
+        proc.kill()
+        raise AssertionError(f"no output from the fan-out helper within {timeout} s")
+    return box[0]
+
+
 def _free_udp_port() -> int:
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind(("127.0.0.1", 0))
@@ -136,7 +149,7 @@ def test_fanout_helper_process() -> None:
                              "--out", str(a.getsockname()[1]), "--run-seconds", "2.5"],
                             cwd=GCS_DIR, env=env, stdout=subprocess.PIPE, text=True)
     try:
-        first = json.loads(proc.stdout.readline())
+        first = json.loads(_first_line(proc, 20))
         assert first["started"] and first["listen"] == listen
         src = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         for _ in range(20):
@@ -150,6 +163,7 @@ def test_fanout_helper_process() -> None:
     finally:
         if proc.poll() is None:
             proc.kill()
+            proc.wait(10)
         a.close()
 
 

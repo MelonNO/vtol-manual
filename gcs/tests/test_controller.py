@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from vtolgcs import protocol
 from vtolgcs.config import ChannelSource, ControllerConfig, edgetx_classic_map
 from vtolgcs.controller import (FakeController, PygameController, axis_to_us, button_to_us,
@@ -176,14 +178,26 @@ def test_pygame_missing_reports_error() -> None:
     assert not ctl.snapshot().connected
 
 
+@pytest.mark.interactive_desktop
 def test_real_pygame_thread_starts_and_stops() -> None:
-    """The real pygame-ce backend runs headless in its thread (no device needed)."""
+    """The real pygame-ce backend runs in its thread (no device needed), polls, and its thread ends on stop.
+
+    WP17: it loads SDL's video and joystick stack (display enumeration, HID / XInput / Windows.Gaming.Input), the
+    operator desktop's device stack, in a background thread; a hang there would also block the interpreter's exit
+    (pygame quits SDL at exit).  So it runs on a desktop only; the backend logic is covered with a fake module
+    above."""
+    import time
     ctl = PygameController(ControllerConfig())
+    t0 = ctl.snapshot().t
     ctl.start()
+    thread = ctl._thread
     try:
-        import time
-        time.sleep(0.5)
+        end = time.monotonic() + 10
+        while ctl.snapshot().t == t0 and ctl.error is None and time.monotonic() < end:
+            time.sleep(0.05)
         assert ctl.error is None
+        assert ctl.snapshot().t != t0, "SDL init or the first poll did not finish within 10 s"
         assert isinstance(ctl.snapshot().connected, bool)
     finally:
         ctl.stop()
+    assert thread is not None and not thread.is_alive(), "the input thread did not end within 2 s of stop()"
