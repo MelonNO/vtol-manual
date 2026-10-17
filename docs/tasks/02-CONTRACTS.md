@@ -96,6 +96,13 @@ Consumers must treat `null` as **unknown**: show "TBD" and do not compute with i
 - **Extra `VtolStore` helpers:** `live`, `find`, `upsert`, `remove`, `mergeStores`, `IDS` (the default profile ids — **consumers must use these ids; WP02's fallback must match them**), `importJSON.lastStats`, `takeIssues`, and `_setStorage` (tests only). `save()` returns true/false.
 - **Validation:** every record and setting is validated and coerced on load and import. Invalid incoming records must **not** overwrite a valid local record. WP05 must fix the remaining case where an invalid incoming default-pack record resets local fields, and must add validation for client and link profiles when it builds their UI.
 
+### C1.5 Extensions accepted with WP11 (normative)
+
+- `paramFile = { name, importedAt (ISO), params: { NAME: number } }`: a single record. Newer `importedAt` (parsed date) wins on import; invalid dates never win. Clearing it does not propagate through import (known limitation).
+- `flights: [ { id, date (YYYY-MM-DD), archiveId, battIds: [id], binSummary {}, gcsSummary {}, notes, updatedAt } ]` and `maintenance: [ { id, item, date (YYYY-MM-DD), notes, updatedAt } ]`. Both are validated, merged by id, with tombstones.
+- `battLog[].usedMah` (optional number).
+- Display helper: `ToolsCore.paramFileLabel(store.paramFile)` → "verified against param file <name> <date>".
+
 ---
 
 ## C2. GCS companion app local API — owner WP08; consumers WP02 (map live layer), WP05 (Tools "Link" tab)
