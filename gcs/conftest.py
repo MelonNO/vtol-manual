@@ -20,11 +20,11 @@ failure text nor slow down the tests after it.  What each layer covers:
    pytest then skips that test's remaining finalisers and would hand their never torn down fixtures (module or
    session scope, and function-scoped ones such as ``monkeypatch``, which pytest caches too) to later tests; the
    conftest runs the skipped finalisers and finishes the teardown pytest broke off, so later tests get fresh
-   fixtures (if pytest's internals are not as expected: the hard exit instead).  If the test is
-   still running ``GRACE_S`` (``VTOLGCS_TEST_GRACE``) after the timeout (or after the teardown's budget), it dumps
-   again and exits with status 1 (the faulthandler backstop moves with it).  Covers every hang that
-   releases the GIL: sleeps, waits on locks, threads, processes, sockets and pipes, polling loops.  **It cannot
-   run while native code holds the GIL** (a C extension blocking without releasing it).
+   fixtures (on a pytest release not in ``PYTEST_VERIFIED``, or with its internals missing: the hard exit
+   instead).  If the test is still running ``GRACE_S`` (``VTOLGCS_TEST_GRACE``) after the timeout (or after the
+   teardown's budget), it dumps again and exits with status 1 (the faulthandler backstop moves with it).  Covers
+   every hang that releases the GIL: sleeps, waits on locks, threads, processes, sockets and pipes, polling loops.
+   **It cannot run while native code holds the GIL** (a C extension blocking without releasing it).
 2. **Per-test faulthandler backstop** (``faulthandler.dump_traceback_later(exit=True)``: a C thread that needs no
    GIL), armed at timeout + grace + ``BACKSTOP_MARGIN_S`` (``VTOLGCS_TEST_BACKSTOP_MARGIN``), moved to the hard
    exit + margin when a teardown gets its budget.  Covers a test that
@@ -799,6 +799,20 @@ def _check_threads(item: pytest.Item) -> None:
 
 # --------------------------------------------------------------------------- an interrupted teardown (WP19 R2)
 
+#: pytest releases (major, minor) whose internals :func:`_finish_teardown` was checked against (WP19 round 2, verify
+#: F2).  It relies on ``SetupState.teardown_exact`` popping each finaliser from its node's list before calling it (a
+#: list then holds only what has not run) and on ``FixtureDef.finish`` clearing ``cached_result`` (pytest 9.1.1:
+#: ``runner.py`` ``teardown_exact``, ``fixtures.py`` ``finish``).  pytest is not pinned (CI installs the latest), so on
+#: any other release the recovery is not trusted: it takes the hard exit instead, the header says so, and the
+#: self-test ``test_the_teardown_recovery_was_verified_for_this_pytest`` fails until it is re-checked and listed here.
+PYTEST_VERIFIED = ((9, 1),)
+
+
+def teardown_recovery_verified() -> bool:
+    """Whether this pytest is one :func:`_finish_teardown` was checked against."""
+    return tuple(pytest.version_tuple[:2]) in PYTEST_VERIFIED
+
+
 def _finaliser_lists(item: pytest.Item) -> dict[Any, list] | None:
     """pytest's set-up nodes and their finaliser lists (the lists themselves, not copies) before ``item``'s teardown;
     None if pytest's internals are not as expected."""
@@ -832,10 +846,15 @@ def _finish_teardown(item: pytest.Item, nextitem: pytest.Item | None, lists: dic
     So: run the skipped finalisers (in pytest's order, each error collected), let ``teardown_exact`` finish the
     nodes it did not reach, and reset any fixture of this test that is still cached although its node is gone (its
     object is dropped without a teardown, named in the log); later tests get fresh fixtures.  All of this runs
-    under the watchdog's hard exit (the grace after the budget).  If pytest's internals are not as expected, the
-    run ends with the hard exit instead, so a stale fixture can never reach a later test."""
+    under the watchdog's hard exit (the grace after the budget).  On a pytest release not in :data:`PYTEST_VERIFIED`,
+    or if the attributes it reads are missing, the run ends with the hard exit instead.  A semantic change on a
+    verified release cannot be detected here; the R2 self-test (fresh fixtures, each finaliser exactly once) covers
+    that for the release CI installs."""
     shown = _display_id(item.nodeid)
     try:
+        if not teardown_recovery_verified():
+            raise AttributeError(f"pytest {pytest.__version__} is not a release this recovery was verified for "
+                                 f"(PYTEST_VERIFIED {PYTEST_VERIFIED})")
         if lists is None:
             raise AttributeError("the finaliser lists were not readable before the teardown")
         state = item.session._setupstate
@@ -843,8 +862,8 @@ def _finish_teardown(item: pytest.Item, nextitem: pytest.Item | None, lists: dic
         chains = list(getattr(getattr(item, "_fixtureinfo", None), "name2fixturedefs", {}).values())
     except AttributeError as e:
         _hard_exit(f"\n+++ TIMEOUT: {shown}: its teardown was interrupted after its budget, and the finalisers pytest "
-                   f"skipped cannot be found ({e}): hard exit (status 1), so that no later test gets a fixture that "
-                   "was never torn down. Stacks of all threads:\n")
+                   f"skipped cannot be run safely ({e}): hard exit (status 1), so that no later test gets a fixture "
+                   "that was never torn down. Stacks of all threads:\n")
         return
     ran, errors = 0, []
     for node, fins in reversed(list(lists.items())):          # innermost first, like pytest
@@ -917,6 +936,10 @@ def pytest_report_header(config: pytest.Config) -> list[str]:
              f"timeout or that budget, faulthandler backstop {margin:.0f} s after the hard exit; worst case per hanging "
              f"test {worst:.0f} s ({worst_gil:.0f} s with the GIL held); stack dumps to stdout"
              f"{' and ' + os.environ[DUMP_DIR_ENV] if os.environ.get(DUMP_DIR_ENV) else ''}",
+             (f"vtolgcs: a teardown interrupted after its budget: the finalisers pytest skipped are run (pytest "
+              f"{pytest.__version__}, verified)" if teardown_recovery_verified() else
+              f"vtolgcs: WARNING pytest {pytest.__version__} is not verified for the teardown recovery "
+              f"(PYTEST_VERIFIED {PYTEST_VERIFIED}): a teardown interrupted after its budget takes the hard exit"),
              f"vtolgcs: process cleanup after each test: {CHILDREN.describe()}",
              f"vtolgcs: threads still running {_env_seconds(THREAD_GRACE_ENV, THREAD_GRACE_S):g} s after a test's "
              "teardown are reported, stopped and fail that test"]

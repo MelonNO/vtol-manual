@@ -602,6 +602,12 @@ class Res:
     def close(self):
         self.closed = True
         open(f"closed-{self.name}-{self.serial}.flag", "w").write("1")
+        log(f"{self.name}-{self.serial}")
+
+
+def log(line):                   # every finaliser that ran: each must run exactly once
+    with open("finalisers.log", "a") as f:
+        f.write(line + "\\n")
 
 
 @pytest.fixture(scope="session")
@@ -614,6 +620,13 @@ def shared():                    # still needed after the hang: must stay the sa
 @pytest.fixture(scope="module")
 def mod_res():                   # every module gets its own instance; a stale one is a closed-never object of another module
     r = Res("mod")
+    yield r
+    r.close()
+
+
+@pytest.fixture
+def fn_res():
+    r = Res("fn")
     yield r
     r.close()
 '''
@@ -661,12 +674,19 @@ def hangs_in_teardown():
         time.sleep(0.05)
 
 
-def test_function_teardown_hangs(monkeypatch, hangs_in_teardown):    # monkeypatch is torn down after the hang
+def log(line):
+    with open("finalisers.log", "a") as f:
+        f.write(line + "\\n")
+
+
+def test_function_teardown_hangs(request, monkeypatch, fn_res, hangs_in_teardown):   # both torn down after the hang
+    request.node.addfinalizer(lambda: log("node-fin"))    # runs before the hang (last in, first out): exactly once
     monkeypatch.setenv("WP19_LEFT_BEHIND", "1")
 
 
-def test_next_test_gets_a_fresh_monkeypatch(monkeypatch):
+def test_next_test_gets_a_fresh_monkeypatch(monkeypatch, fn_res):
     assert "WP19_LEFT_BEHIND" not in os.environ, "the hung test's monkeypatch was never undone"
+    assert not fn_res.closed and fn_res.serial == 5
 '''
 
 
@@ -691,6 +711,19 @@ def test_a_hung_teardown_leaves_no_stale_fixture_for_later_tests(tmp_path: Path)
     assert "test_c_fn.py::test_next_test_gets_a_fresh_monkeypatch PASSED" in out, out
     assert "4 passed, 2 errors" in out and proc.returncode == 1, out
     assert took < 60, took
+    # round 2 (verify F2): every finaliser ran exactly once, the skipped ones included, none twice
+    ran = (root / "finalisers.log").read_text().split()
+    assert sorted(ran) == sorted(["mod-2", "mod-3", "node-fin", "fn-4", "fn-5", "shared-1"]), ran
+
+
+def test_the_teardown_recovery_was_verified_for_this_pytest() -> None:
+    """WP19 round 2 (verify F2): pytest is not pinned.  ``_finish_teardown`` relies on how this pytest tears down;
+    on a release it was not checked against it takes the hard exit, and this test fails until someone re-checks it
+    against the new ``SetupState.teardown_exact`` / ``FixtureDef.finish`` and adds the release to PYTEST_VERIFIED."""
+    g = _guards()
+    assert g.teardown_recovery_verified(), (f"pytest {pytest.__version__}: re-verify gcs/conftest.py "
+                                            "_finish_teardown against this release, then add it to "
+                                            f"PYTEST_VERIFIED {g.PYTEST_VERIFIED}")
 
 
 def test_the_documented_worst_case_per_hanging_test(monkeypatch) -> None:

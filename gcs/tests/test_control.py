@@ -573,24 +573,35 @@ def test_rate_limit_refuses_the_excess_with_a_warning(rig, caplog, monkeypatch) 
     """R3: beyond the per-connection rate the commands are refused (not executed, not queued), with a warning, and
     the refusals are paced too.  WP19: the bucket runs on a fake clock, so every count is exact.  The wall-clock
     version had a margin of about 10 ms, measured with ``time.monotonic`` (15.6 ms ticks on Windows), and failed
-    once in a desktop run (WP18 verification round 2, finding 3)."""
+    once in a desktop run (WP18 verification round 2, finding 3).  WP19 round 2: the refused commands are FPV starts,
+    and every executed command is counted, so a refused command that ran anyway fails the test."""
     import logging
     clock = _FakeClock()
     r = rig(rate_per_s=20.0, rate_burst=5, rate_clock=clock)
     pauses: list[float] = []
-    process = r.server._process
+    handled: list[str] = []
+    process, handle = r.server._process, r.server.handle
 
     def recording(raw: bytes, bucket: object, stats: dict) -> tuple:
         out = process(raw, bucket, stats)
         pauses.append(out[2])                                                   # the pause before the next read
         return out
+
+    def counting(req: dict) -> dict:
+        handled.append(req.get("cmd"))                                         # every command the server executes
+        return handle(req)
     monkeypatch.setattr(r.server, "_process", recording)
+    monkeypatch.setattr(r.server, "handle", counting)
     caplog.set_level(logging.WARNING, logger="vtolgcs.control")
     t0 = time.perf_counter()
-    replies = [r.client.request("request_mode", mode="idle") for _ in range(15)]   # no time passes: no new token
+    replies = [r.client.request("request_mode", mode="idle") for _ in range(5)]     # no time passes: no new token
+    replies += [r.client.request("request_mode", mode="fpv") for _ in range(10)]    # would start the RC stream
     took = time.perf_counter() - t0
     assert [x.get("ok") for x in replies] == [True] * 5 + [False] * 10, replies     # exactly the burst ran
     assert all("rate limit" in x["error"] and "not executed" in x["error"] for x in replies[5:]), replies
+    assert handled == ["request_mode"] * 5, handled                             # the refused ones never ran
+    st = r.rt.sender.state()
+    assert st.mode.value == "idle" and not st.streaming and r.rx_ok() == 0, st
     assert r.server.rate_limited == 10
     assert any("commands/s" in m for m in caplog.messages)
     # paced: after each refusal the server waits one token interval (50 ms) before it reads the next request.  Only a
@@ -600,8 +611,10 @@ def test_rate_limit_refuses_the_excess_with_a_warning(rig, caplog, monkeypatch) 
     clock.t += 0.151                                                            # 3.02 token intervals later
     assert [r.client.request("request_mode", mode="idle")["ok"] for _ in range(4)] == [True, True, True, False]
     clock.t += 1.0
+    assert r.client.request("request_mode", mode="fpv")["ok"]                   # with a token the same command runs
+    r.expect(lambda: r.rt.sender.state().streaming, "the stream the accepted FPV start begins")
     assert r.client.request("ping")["ok"]                                       # the connection stays usable
-    assert r.server.rate_limited == 11
+    assert r.server.rate_limited == 11 and len(handled) == 5 + 3 + 2
 
 
 def test_ui_load_is_never_rate_limited(rig) -> None:
