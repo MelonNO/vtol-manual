@@ -67,7 +67,7 @@ STATUS_CACHE_S = 0.1
 VIDEO_REPORT_MAX_AGE_S = 3.0
 #: crsf_pass frames per second the control channel may send (app default; the bridge has to fit
 #: them into free CRSF slots, plan §7.7).
-CRSF_PASS_MAX_PER_S = 20
+CRSF_PASS_MAX_PER_S = 50
 #: Frames the ELRS menu may send through crsf_pass (ping, parameter read, parameter write).
 CRSF_PASS_TYPES = (crsf.FrameType.DEVICE_PING, crsf.FrameType.PARAMETER_READ, crsf.FrameType.PARAMETER_WRITE)
 

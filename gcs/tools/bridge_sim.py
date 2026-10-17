@@ -15,7 +15,11 @@ port so the GCS app can be developed and tested without hardware:
   FAILSAFE -> ``RTH``; CH5 must be seen low before arming), sent as ``crsf_fwd`` at ``--telemetry-hz``;
 * optional fake "video" (RTP header + filler, not H.264) at ``--video-kbps``;
 * optional ``--crsf-pass``: accept ``crsf_pass`` (future firmware feature Q7a)
-  and answer device ping / parameter read / write from a small fake module.
+  and answer device ping / parameter read / write from a small fake module;
+  ``--module elrs`` (WP08b) uses a larger ELRS-like tree with nested folders, a
+  multi-chunk entry, hidden entries, commands and a VTX Administrator folder;
+  ``--no-vrx-follow`` makes a VTX change drop the reported decoder lock (status
+  bit 3, with ``--report-video``) until the old band/channel is restored.
 
 All simulated values are for software testing only — never use them as
 operational figures.
@@ -125,6 +129,8 @@ class BridgeCore:
         # camera
         self.cam_command = self._camera_command()
         self.cam_register = self._apply_fault(self.cam_command)
+        #: WP08b: None = decoder lock as configured; False = lost (simulated VRX not following a VTX change)
+        self.decoder_lock_override: bool | None = None
         # timing lock simulation
         self._offset0 = self._rng.randint(800, 2000) * self._rng.choice((-1, 1))
 
@@ -274,7 +280,7 @@ class BridgeCore:
             t_gcs_us_echo=self.last_rc.t_gcs_us if self.last_rc else 0,
             camera_on_readback=self.cam_register, timing_locked=self.timing_locked(now),
             p2_link_100fd=self.cfg.p2_link_100fd,
-            decoder_lock=self.cfg.report_video is not None,
+            decoder_lock=self.cfg.report_video is not None and self.decoder_lock_override is not False,
             std_ntsc=self.cfg.report_video == "NTSC",
             fw_ver=self.cfg.fw_ver, rx_ok=self.rx_ok & 0xFFFFFFFF,
             rx_bad_crc=self.rx_bad_crc & 0xFFFFFFFF, rx_bad_seq=self.rx_bad_seq & 0xFFFFFFFF,
@@ -550,6 +556,90 @@ class FakeModule:
         return []
 
 
+class ElrsModule(FakeModule):
+    """A larger, ELRS-like parameter tree for the WP08b menu tests (``--module elrs``).
+
+    Folder and field names follow the ELRS TX Lua menu, including its "VTX Administrator" folder;
+    options and values are SIMULATOR data, not a copy of a real module.  Commands go CLICK ->
+    EXECUTING -> IDLE after ``command_s``; "Bind" asks for confirmation first (ASK_CONFIRM).
+    """
+
+    NAME = "SIM ELRS TX (tree)"
+
+    def __init__(self, command_s: float = 0.3, clock: Callable[[], float] = time.monotonic) -> None:
+        super().__init__()
+        P = crsf.ParamType
+        E = crsf.ParameterEntry
+        rates = ["50Hz(-115dBm)", "100Hz Full(-112dBm)", "150Hz(-112dBm)", "250Hz(-108dBm)",
+                 "333Hz Full(-105dBm)", "500Hz(-105dBm)", "D250(-104dBm)", "D500(-104dBm)", "F500(-104dBm)",
+                 "F1000(-104dBm)"]
+        self.params = {
+            1: E(1, 0, P.TEXT_SELECTION, False, "Packet Rate", value=3, min=0, max=len(rates) - 1, options=rates),
+            2: E(2, 0, P.TEXT_SELECTION, False, "Telem Ratio", value=3, min=0, max=4,
+                 options=["Off", "1:128", "1:64", "1:16", "1:8"]),
+            3: E(3, 0, P.FOLDER, False, "TX Power", children=[4, 5]),
+            4: E(4, 3, P.TEXT_SELECTION, False, "Max Power", value=1, min=0, max=3,
+                 options=["10", "25", "100", "250"], units="mW"),
+            5: E(5, 3, P.TEXT_SELECTION, False, "Dynamic", value=0, min=0, max=1, options=["Off", "On"]),
+            6: E(6, 0, P.FOLDER, False, "VTX Administrator", children=[7, 8, 9, 10, 11]),
+            7: E(7, 6, P.TEXT_SELECTION, False, "Band", value=5, min=0, max=6,
+                 options=["Off", "A", "B", "E", "F", "R", "L"]),
+            8: E(8, 6, P.TEXT_SELECTION, False, "Channel", value=4, min=0, max=7,
+                 options=["1", "2", "3", "4", "5", "6", "7", "8"]),
+            9: E(9, 6, P.TEXT_SELECTION, False, "Pwr Lvl", value=1, min=0, max=8,
+                 options=["-", "1", "2", "3", "4", "5", "6", "7", "8"]),
+            10: E(10, 6, P.TEXT_SELECTION, False, "Pitmode", value=0, min=0, max=1, options=["Off", "On"]),
+            11: E(11, 6, P.COMMAND, False, "Send VTx", value=crsf.CommandStep.IDLE, timeout_ms=200, info=""),
+            12: E(12, 0, P.COMMAND, False, "Bind", value=crsf.CommandStep.IDLE, timeout_ms=200, info=""),
+            13: E(13, 0, P.UINT8, False, "Model Id", value=0, min=0, max=63, default=0),
+            14: E(14, 0, P.INFO, True, "Hidden diag", value="x"),
+            15: E(15, 0, P.INFO, False, "Sim build", value="WP08b bridge_sim"),
+        }
+        self.command_s = command_s
+        self._clock = clock
+        self._running: dict[int, float] = {}
+        self.vtx_initial = self._vtx()
+        self.vtx_sent: tuple[int, int, int] | None = None
+        self.commands_run: list[str] = []
+
+    def _vtx(self) -> tuple[int, int, int]:
+        return int(self.params[7].value), int(self.params[8].value), int(self.params[9].value)
+
+    def _finish_commands(self) -> None:
+        now = self._clock()
+        for num, started in list(self._running.items()):
+            if now - started >= self.command_s:
+                entry = self.params[num]
+                entry.value, entry.info = crsf.CommandStep.IDLE, ""
+                del self._running[num]
+                self.commands_run.append(entry.name)
+                if entry.name == "Send VTx":
+                    self.vtx_sent = self._vtx()
+                    log.info("fake module: VTX sent band/channel/power %s", self.vtx_sent)
+
+    def handle(self, frame: crsf.CrsfFrame) -> list[bytes]:
+        self._finish_commands()
+        if frame.type == crsf.FrameType.PARAMETER_WRITE and len(frame.body) >= 2:
+            entry = self.params.get(frame.body[0])
+            if entry is not None and entry.type == crsf.ParamType.COMMAND:
+                step = frame.body[1]
+                S = crsf.CommandStep
+                if step == S.CLICK and entry.name == "Bind":
+                    entry.value, entry.info = S.ASK_CONFIRM, "Bind?"
+                elif step in (S.CLICK, S.CONFIRMED):
+                    entry.value, entry.info = S.EXECUTING, "Sending..."
+                    self._running[entry.number] = self._clock()
+                elif step == S.CANCEL:
+                    entry.value, entry.info = S.IDLE, ""
+                    self._running.pop(entry.number, None)
+                return []
+            if entry is not None and entry.type == crsf.ParamType.TEXT_SELECTION:
+                value = frame.body[1]
+                if not int(entry.min or 0) <= value <= int(entry.max or 0):
+                    return []                       # out of range: ignored, like a real module would
+        return super().handle(frame)
+
+
 # =========================================================================== UDP runner
 
 @dataclass
@@ -565,6 +655,8 @@ class SimConfig:
     video_kbps: float = 0.0               # 0 = off
     video_dest: tuple[str, int] = ("127.0.0.1", protocol.VIDEO_PORT)
     crsf_pass: bool = False
+    module: str = "basic"                 # 'basic' (FakeModule) | 'elrs' (ElrsModule, WP08b)
+    vrx_follows: bool = True              # False: a VTX change drops the decoder lock (WP08b R6)
     bridge: BridgeConfig = field(default_factory=BridgeConfig)
     client: ClientConfig = field(default_factory=ClientConfig)
     seed: int | None = None
@@ -591,7 +683,7 @@ class BridgeSim:
         self.lock = threading.RLock()
         self.core = BridgeCore(cfg.bridge, now)
         self.client = ClientSim(cfg.client, now)
-        self.module = FakeModule()
+        self.module = ElrsModule() if cfg.module == "elrs" else FakeModule()
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         _disable_udp_connreset(self.sock)
         self.sock.bind((cfg.host, cfg.port))
@@ -668,6 +760,15 @@ class BridgeSim:
         self.core.crsf_tx += 1               # the frame goes out to the module in a free slot
         for reply in self.module.handle(frame):
             self._queue(protocol.CrsfFwd(reply).pack(), self.core.reply_addr, "crsf_fwd", now)
+        self._vrx_follow()
+
+    def _vrx_follow(self) -> None:
+        """WP08b: without a following VRX, a sent VTX change loses the (simulated) decoder lock."""
+        mod = self.module
+        if self.cfg.vrx_follows or not isinstance(mod, ElrsModule) or mod.vtx_sent is None:
+            return
+        same = mod.vtx_sent[:2] == mod.vtx_initial[:2]
+        self.core.decoder_lock_override = None if same else False
 
     # ------------------------------------------------------------------ loop
     def step(self, now: float | None = None) -> None:
@@ -685,6 +786,9 @@ class BridgeSim:
                 self._next_status = max(self._next_status + 1 / self.cfg.status_hz, now - 1)
             rc_flowing = core.state == BridgeState.RUN
             self.client.update(now, rc_flowing, core.last_rc.channels if core.last_rc else None)
+            if isinstance(self.module, ElrsModule):
+                self.module._finish_commands()
+                self._vrx_follow()
             if self.cfg.telemetry_hz > 0 and now >= self._next_tlm:
                 self._next_tlm = max(self._next_tlm + 1 / self.cfg.telemetry_hz, now - 1)
                 if core.reply_addr is not None:
@@ -801,6 +905,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     b.add_argument("--p2-down", action="store_true", help="report p2_link_100fd = 0")
     b.add_argument("--report-video", choices=("PAL", "NTSC"), help="set status bits 3/4 (future)")
     b.add_argument("--crsf-pass", action="store_true", help="accept crsf_pass (Q7a) with a fake module")
+    b.add_argument("--module", choices=("basic", "elrs"), default="basic",
+                   help="fake module parameter tree for --crsf-pass (elrs: larger tree with VTX Administrator)")
+    b.add_argument("--no-vrx-follow", action="store_true",
+                   help="a sent VTX change drops the reported decoder lock (needs --report-video)")
     c = p.add_argument_group("client")
     c.add_argument("--telemetry-hz", type=float, default=10.0, help="crsf_fwd bursts per second (0=off)")
     c.add_argument("--client-lat", type=float, default=ClientConfig.lat)
@@ -834,6 +942,7 @@ def config_from_args(args: argparse.Namespace) -> SimConfig:
                      telemetry_hz=args.telemetry_hz, latency_ms=args.latency_ms, jitter_ms=args.jitter_ms,
                      loss_pct=args.loss_pct, uplink_loss_pct=args.uplink_loss_pct,
                      video_kbps=args.video_kbps, video_dest=args.video_dest, crsf_pass=args.crsf_pass,
+                     module=args.module, vrx_follows=not args.no_vrx_follow,
                      bridge=bridge, client=client, seed=args.seed)
 
 

@@ -165,6 +165,16 @@ class ControlInfo:
 
 # --------------------------------------------------------------------------- server (runtime process)
 
+def _close(conn: Connection | None) -> None:
+    """Close quietly (a connection may be closed by two threads at shutdown)."""
+    if conn is None:
+        return
+    try:
+        conn.close()
+    except (OSError, TypeError, AttributeError):
+        pass
+
+
 #: Command name -> one-line description (documented in gcs/README.md).
 COMMANDS = {
     "hello": "app, version, pid, runtime time, API URL",
@@ -271,10 +281,7 @@ class ControlServer:
             for q in self._subs:
                 q.put_nowait(None)
         for c in conns:
-            try:
-                c.close()
-            except OSError:
-                pass
+            _close(c)
         if self._thread is not None:
             self._thread.join(timeout=2)
 
@@ -343,10 +350,7 @@ class ControlServer:
             with self._lock:
                 if conn in self._conns:
                     self._conns.remove(conn)
-            try:
-                conn.close()
-            except OSError:
-                pass
+            _close(conn)
 
     def _stream(self, conn: Connection, req_id: Any) -> None:
         q: queue.Queue = queue.Queue(maxsize=EVENT_QUEUE_MAX)
@@ -514,10 +518,7 @@ class ControlClient:
     def close(self) -> None:
         with self._lock:
             if self._conn is not None:
-                try:
-                    self._conn.close()
-                except OSError:
-                    pass
+                _close(self._conn)
                 self._conn = None
 
     def request(self, cmd: str, **params: Any) -> dict:
@@ -533,10 +534,7 @@ class ControlClient:
                     raise ControlError(f"control channel: no reply to {cmd} within {self.timeout:.0f} s")
                 reply = json.loads(self._conn.recv_bytes(MAX_MESSAGE).decode("utf-8"))
             except (EOFError, OSError, ValueError, ControlError) as exc:
-                try:
-                    self._conn.close()
-                except OSError:
-                    pass
+                _close(self._conn)
                 self._conn = None
                 if isinstance(exc, ControlError):
                     raise
@@ -577,10 +575,7 @@ class EventStream:
             raise ControlError(f"event stream closed ({type(exc).__name__})") from exc
 
     def close(self) -> None:
-        try:
-            self._conn.close()
-        except OSError:
-            pass
+        _close(self._conn)
 
 
 def wait_for_control_file(path: Path, timeout: float, not_pid: int | None = None) -> ControlInfo | None:
