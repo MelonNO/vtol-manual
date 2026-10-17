@@ -274,7 +274,8 @@ class Runtime:
                 self._stream_start_seq = None
             else:
                 self._stream_stop_t = None
-                self._stream_start_seq = self.sender.state().seq if self.sender else None
+                # seq at the accept (the RC thread may already have sent a packet before this callback runs)
+                self._stream_start_seq = self.sender.accepted_seq() if self.sender else None
         elif kind == "suspended":
             self._stream_stop_t, self._stream_start_seq = now, None
         self._log(kind, **data)

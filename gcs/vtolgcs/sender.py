@@ -82,6 +82,9 @@ RESUME_VALUE_BAND_US = 50
 #: Carrier-only is refused while client telemetry was heard within this window (PM, WP08a rework 1).
 CARRIER_ONLY_QUIET_S = 30.0
 
+#: Refusal once :meth:`Sender.begin_stop` was accepted (WP13 R4).
+STOPPING_TEXT = "a stop was accepted: the RC sender is stopping, no new start"
+
 #: Why a stream was suspended (mode kept, nothing sent).
 SUSPEND_CONTROLLER = "controller_disconnected"
 SUSPEND_INTERNAL = "internal_error"
@@ -347,9 +350,11 @@ class Sender:
         self._co_token = 0
         self._co_preview: CarrierOnlyPreview | None = None
         self._fpv_this_session = False
+        self._stopping = False                  # begin_stop() accepted: no start of any kind from now on
         self._thread_dead = False
         self._camera = cfg.camera.default_on
         self._seq = 0
+        self._accepted_seq = 0
         self._sent = 0
         self._errors = 0
         self._stats: SenderStats | None = None
@@ -371,6 +376,31 @@ class Sender:
         self._emit(events)
         return result
 
+    def begin_stop(self, *, stream_stop_confirmed: bool) -> bool:
+        """The process is about to stop (control-channel ``stop``, WP13 R4).
+
+        In one locked step: refused (False) while streaming unless the operator confirmed ending the
+        stream; otherwise every later start (normal, RESUME, carrier-only, restart) is refused, so no
+        start that was queued or in flight can execute after the stop was accepted.
+        """
+        with self._lock:
+            if self._streaming_locked() and not stream_stop_confirmed:
+                return False
+            self._stopping = True
+            self._resume_preview = self._co_preview = None
+        log.info("stop accepted: no further start until the process exits")
+        return True
+
+    @property
+    def stopping(self) -> bool:
+        with self._lock:
+            return self._stopping
+
+    def accepted_seq(self) -> int:
+        """``seq`` at the latest accepted mode change (before any packet of that mode was built)."""
+        with self._lock:
+            return self._accepted_seq
+
     def _refuse(self, requested: str, reasons: list[str], events: list[tuple[str, dict]]) -> ModeResult:
         events.append(("interlock_refused", {"requested": requested, "from": self._mode.value,
                                              "reasons": reasons}))
@@ -382,6 +412,7 @@ class Sender:
         cur, was_suspended = self._mode, self._suspended
         self._mode, self._suspended, self._start_path = mode, None, path
         self._resume_preview = self._co_preview = None
+        self._accepted_seq = self._seq            # under the lock: no packet of the new mode is built yet
         if mode is Mode.FPV:
             self._fpv_this_session = True
         data: dict = {"mode": mode.value, "from": cur.value, "resumed": was_suspended is not None,
@@ -403,6 +434,8 @@ class Sender:
                 else ModeResult(True, mode)
         if self._thread_dead:
             return self._refuse(mode.value, ["RC sender thread is not running: restart the app"], events)
+        if self._stopping:
+            return self._refuse(mode.value, [STOPPING_TEXT], events)
         if mode is cur and suspended is None:
             return ModeResult(True, mode)                       # already running
         if mode is Mode.CARRIER_ONLY:
@@ -432,6 +465,8 @@ class Sender:
             connected = not problems
             if self._thread_dead:
                 problems.append("RC sender thread is not running: restart the app")
+            if self._stopping:
+                problems.append(STOPPING_TEXT)
             if self._streaming_locked():
                 problems.append("already streaming: RESUME only starts a stopped stream")
             armed = not arm_switch_safe(snap, self.il) if connected else None
@@ -471,6 +506,8 @@ class Sender:
     def _confirm_locked(self, token: int, throttle_min_confirmed: bool,
                         events: list[tuple[str, dict]]) -> ModeResult:
         preview, now = self._resume_preview, self._clock()
+        if self._stopping:
+            return self._refuse("resume", [STOPPING_TEXT], events)
         if preview is None or preview.token != token:
             return self._refuse("resume", ["no valid RESUME preview: show the live values first"], events)
         if now - preview.created > RESUME_CONFIRM_S:
@@ -505,6 +542,8 @@ class Sender:
         problems = []
         if self._thread_dead:
             problems.append("RC sender thread is not running: restart the app")
+        if self._stopping:
+            problems.append(STOPPING_TEXT)
         if self._streaming_locked():
             problems.append("stop the current stream (idle) first")
         if heard is not None and heard < CARRIER_ONLY_QUIET_S:
@@ -736,7 +775,7 @@ class Sender:
 
 
 __all__ = ["CARRIER_ONLY_QUIET_S", "CONFIRM_S", "CarrierOnlyPreview", "Mode", "ModeResult", "Packet",
-           "RESUME_CONFIRM_S", "RESUME_VALUE_BAND_US", "ResumePreview", "START_NORMAL", "START_RESUME",
+           "RESUME_CONFIRM_S", "RESUME_VALUE_BAND_US", "ResumePreview", "START_NORMAL", "START_RESUME", "STOPPING_TEXT",
            "SUSPEND_CONTROLLER", "SUSPEND_INTERNAL", "SUSPEND_THREAD", "Sender", "SenderState", "SenderStats",
            "arm_switch_safe", "carrier_only_channels", "controller_problems", "gcs_time_us", "input_problems",
            "interlock_problems", "mapping_problems", "percentile", "throttle_low"]

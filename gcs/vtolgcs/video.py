@@ -7,7 +7,10 @@
   UI; brief R0): it never shares an interpreter with the RC sender.  It prints one JSON stats line per
   second on stdout (the UI reads it) and reports ``rx_kbps`` to the RC sender over the control
   channel, which fills C2 ``video.rx_kbps``.  It keeps running if the UI dies (the pilot keeps the
-  picture); stop it from a new UI or with Task Manager.
+  picture).  A new UI has no handle on such an orphaned helper: it can neither stop nor adopt it, and
+  its own *Start fan-out* reports "cannot listen on UDP 5600".  End the orphan in Task Manager (the
+  ``vtol-gcs-sender.exe`` / ``python`` process started with ``--video-fanout``; README
+  "Troubleshooting"), then start the fan-out again from the UI.
 * :func:`viewer_pipeline` / :func:`mp_hud_pipeline` build the GStreamer pipelines for PAL (fields
   704x288 -> 768x576) and NTSC (704x224/240 -> 640x480); the ``avdec_h264`` form is identical to
   ``data/content.js`` ``pipelines``.  No ``rtpjitterbuffer`` (relay design).
@@ -136,6 +139,31 @@ def find_gst(configured: str | None = None, env: dict[str, str] | None = None,
         if exists(cand):
             return cand
     return None
+
+
+#: How long a :class:`GstLocator` result is reused before the next file-system check (WP13 R6).
+GST_RECHECK_S = 30.0
+
+
+class GstLocator:
+    """:func:`find_gst` with a cache: the UI redraws every 100 ms and must not scan PATH each time.
+
+    :meth:`get` re-checks after ``recheck_s``, or at once with ``refresh`` (on demand: *Launch viewer*).
+    """
+
+    def __init__(self, configured: str | None = None, recheck_s: float = GST_RECHECK_S,
+                 clock: Callable[[], float] = time.monotonic,
+                 finder: Callable[[str | None], str | None] = find_gst) -> None:
+        self.configured, self.recheck_s = configured, recheck_s
+        self._clock, self._finder = clock, finder
+        self._path: str | None = None
+        self._checked: float | None = None
+
+    def get(self, refresh: bool = False) -> str | None:
+        now = self._clock()
+        if refresh or self._checked is None or now - self._checked >= self.recheck_s:
+            self._path, self._checked = self._finder(self.configured), now
+        return self._path
 
 
 def launch_viewer(gst: str, pipeline: str) -> subprocess.Popen:
@@ -372,6 +400,6 @@ class FanoutProcess:
                 self.proc.kill()
 
 
-__all__ = ["FANOUT_PORTS", "FanoutProcess", "FanoutStats", "GST_INSTALL_HELP", "SDP_NAME", "UdpFanout",
-           "choose_standard", "fanout_main", "find_gst", "launch_viewer", "mp_hud_pipeline", "pipeline_args",
-           "sdp_text", "viewer_pipeline", "write_sdp"]
+__all__ = ["FANOUT_PORTS", "FanoutProcess", "FanoutStats", "GST_INSTALL_HELP", "GST_RECHECK_S", "GstLocator",
+           "SDP_NAME", "UdpFanout", "choose_standard", "fanout_main", "find_gst", "launch_viewer", "mp_hud_pipeline",
+           "pipeline_args", "sdp_text", "viewer_pipeline", "write_sdp"]

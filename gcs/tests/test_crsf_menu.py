@@ -183,3 +183,21 @@ def test_menu_retries_lost_replies() -> None:
     menu = CrsfMenu(send, timeout_s=0.05, retries=3)
     assert menu.ping().name == "SIM ELRS TX (tree)"
     assert len(menu.read_param(1).options) == 10
+
+
+def test_vrx_follow_revert_label_waits_for_the_outcome() -> None:
+    """WP13 R5: "reverted" only after the revert writes succeeded; a refused revert says so."""
+    t = [0.0]
+    f = VrxFollow(10, clock=lambda: t[0])
+    f.start({"band": 5, "channel": 4})
+    t[0] = 10.0
+    assert f.update(False) == "no_lock" and f.offer_revert
+    assert f.begin_revert() == {"band": 5, "channel": 4}
+    assert f.state == "reverting" and "reverted" not in f.text() and not f.offer_revert
+    assert f.update(False) == "reverting"                           # status polls do not overwrite it
+    f.revert_done("write refused: the client may be armed")
+    assert f.state == "revert_failed" and "revert FAILED" in f.text() and "may be armed" in f.text()
+    assert f.update(True) == "revert_failed" and f.offer_revert     # the operator can retry
+    f.begin_revert()
+    f.revert_done(None)
+    assert f.state == "reverted" and f.text().endswith(" - reverted") and not f.offer_revert

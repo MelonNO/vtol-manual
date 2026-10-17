@@ -337,7 +337,8 @@ class VrxFollow:
 
     Without decoder-lock reporting (C2 ``video.decoder_lock`` null) only :data:`VRX_FOLLOW_TEXT` is
     shown.  With it, the state goes ``waiting`` -> ``locked``, or ``no_lock`` after
-    ``lock_timeout_s`` (the UI then offers to revert to the previous values).
+    ``lock_timeout_s`` (the UI then offers to revert to the previous values).  A revert goes
+    ``reverting`` -> ``reverted`` or ``revert_failed`` only when its outcome is known (WP13 R5).
     """
 
     def __init__(self, lock_timeout_s: float, clock: Callable[[], float] = time.monotonic) -> None:
@@ -345,13 +346,26 @@ class VrxFollow:
         self._clock = clock
         self.state = "idle"
         self.previous: dict[str, int | None] | None = None
+        self.error: str | None = None
         self._since: float | None = None
 
     def start(self, previous: dict[str, int | None]) -> None:
         self.previous, self._since, self.state = previous, self._clock(), "waiting"
 
+    def begin_revert(self) -> dict[str, int | None]:
+        """The revert writes are being sent; returns the values to write back."""
+        self.state, self.error = "reverting", None
+        return dict(self.previous or {})
+
+    def revert_done(self, error: str | None) -> None:
+        """The outcome of the revert writes: ``None`` = all written, else why they failed."""
+        if error is None:
+            self.state = "reverted"
+        else:
+            self.state, self.error = "revert_failed", error
+
     def update(self, decoder_lock: bool | None) -> str:
-        if self.state in ("idle", "locked", "reverted"):
+        if self.state in ("idle", "locked", "reverting", "reverted", "revert_failed"):
             return self.state
         if decoder_lock is None:
             self.state = "unknown"
@@ -365,13 +379,15 @@ class VrxFollow:
 
     @property
     def offer_revert(self) -> bool:
-        return self.state == "no_lock" and self.previous is not None
+        return self.state in ("no_lock", "revert_failed") and self.previous is not None
 
     def text(self) -> str:
         extra = {"idle": "", "unknown": " - decoder lock not reported: check the picture",
                  "waiting": " - waiting for decoder lock", "locked": " - decoder LOCKED",
                  "no_lock": f" - NO decoder lock after {self.lock_timeout_s:.0f} s: revert?",
-                 "reverted": " - reverted"}[self.state]
+                 "reverting": " - reverting...", "reverted": " - reverted",
+                 "revert_failed": f" - revert FAILED ({self.error}): the VTX may still be on the new "
+                                  "channel; retry?"}[self.state]
         return VRX_FOLLOW_TEXT + extra
 
 

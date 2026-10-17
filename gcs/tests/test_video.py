@@ -164,3 +164,22 @@ def test_fanout_helper_reports_port_in_use() -> None:
         assert proc.returncode == 5 and "cannot listen" in proc.stdout
     finally:
         busy.close()
+
+
+def test_gst_locator_caches_the_lookup() -> None:
+    """WP13 R6: not a PATH scan per redraw; re-checked every GST_RECHECK_S (>= 30 s) or on demand."""
+    t = [0.0]
+    calls: list[str | None] = []
+
+    def finder(configured: str | None) -> str | None:
+        calls.append(configured)
+        return "C:/gst/bin/gst-launch-1.0.exe" if len(calls) > 1 else None
+    loc = V.GstLocator("cfg", clock=lambda: t[0], finder=finder)
+    assert V.GST_RECHECK_S >= 30
+    for _ in range(299):                                             # 29.9 s of 100 ms UI redraws
+        assert loc.get() is None
+        t[0] += 0.1
+    assert calls == ["cfg"]
+    t[0] = 30.0
+    assert loc.get() == "C:/gst/bin/gst-launch-1.0.exe" and len(calls) == 2
+    assert loc.get(refresh=True) and len(calls) == 3                 # on demand (Launch viewer)
