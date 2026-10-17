@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 894" width="400" height="894" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
+<title id="title">D15 — Video field timing: one PAL/NTSC field, its slices and packets, and why the relay adds about one field time</title>
+<desc id="desc">A PAL field arrives over 18.4 ms (288 lines × 64 µs) as 9 slices of 32 lines (NTSC: 7 slices, 15.3 ms). The N6 encodes each slice as soon as it is complete (each slice must finish within 2 ms; the last slice about 0.5 ms, estimate) and sends RTP packets of at most 1400 bytes at once (10–30 kB per field at 100 Mbit/s = 0.8–2.4 ms). The last packet leaves at most 3 ms after the last active line (relay-design test 1). The top line waits for the whole field, so the relay adds about one field time; the relay electronics add about 20 ms in total, while the HM30 (about 150–180 ms, estimate) and the GCS (10–50 ms) dominate. PAL 704×288, 50 Hz; NTSC 704×224 cropped (or 704×240 with 16-line slices), 59.94 Hz. No field for 25 ms → the last field is re-sent; decoder lost for more than 1 s → reset.</desc>
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+     Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
+     #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
+     #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->
+<!-- Sources: relay design &quot;Latency and link budget&quot; (video path), &quot;Firmware architecture&quot; (N6 steps 3–7), test 1; plan §9.3 D15, §6.1.3 item 10. -->
+<defs><marker id="ah-bg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f0f0f"/></marker><marker id="ah-surf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a1a1a"/></marker><marker id="ah-surf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker><marker id="ah-border" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2a2a2a"/></marker><marker id="ah-border2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker><marker id="ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker><marker id="ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#777777"/></marker><marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f97316"/></marker><marker id="ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#facc15"/></marker><marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker><marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker><marker id="ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444444"/></marker></defs>
+<rect width="400" height="894" fill="#1a1a1a"/>
+<text x="14" y="28" font-size="17" fill="#f97316" font-weight="bold">D15 · VIDEO FIELD TIMING</text>
+<text x="14" y="50" fill="#777777">One field → slices → packets</text>
+<text x="18" y="78" font-weight="bold">PAL FIELD (288 lines × 64 µs)</text>
+<line x1="30" y1="248" x2="379.59999999999997" y2="248" stroke="#777777"/>
+<line x1="30" y1="248" x2="30" y2="253" stroke="#777777"/>
+<text x="30" y="268" fill="#777777" text-anchor="middle">0</text>
+<line x1="106" y1="248" x2="106" y2="253" stroke="#777777"/>
+<text x="106" y="268" fill="#777777" text-anchor="middle">5</text>
+<line x1="182" y1="248" x2="182" y2="253" stroke="#777777"/>
+<text x="182" y="268" fill="#777777" text-anchor="middle">10</text>
+<line x1="258" y1="248" x2="258" y2="253" stroke="#777777"/>
+<text x="258" y="268" fill="#777777" text-anchor="middle">15</text>
+<line x1="334" y1="248" x2="334" y2="253" stroke="#777777"/>
+<text x="334" y="268" fill="#777777" text-anchor="middle">20</text>
+<text x="379.6" y="268" fill="#777777" text-anchor="end">ms</text>
+<text x="30" y="110" fill="#777777">lines in (slices of 32 lines)</text>
+<rect x="30" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="45.6" y="136" text-anchor="middle">1</text>
+<rect x="61.1" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="76.7" y="136" text-anchor="middle">2</text>
+<rect x="92.3" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="107.8" y="136" text-anchor="middle">3</text>
+<rect x="123.4" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="139" y="136" text-anchor="middle">4</text>
+<rect x="154.5" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="170.1" y="136" text-anchor="middle">5</text>
+<rect x="185.6" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="201.2" y="136" text-anchor="middle">6</text>
+<rect x="216.8" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="232.3" y="136" text-anchor="middle">7</text>
+<rect x="247.9" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="263.5" y="136" text-anchor="middle">8</text>
+<rect x="279" y="118" width="30.1" height="26" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="294.6" y="136" text-anchor="middle">9</text>
+<text x="30" y="164" fill="#777777">encode each slice (≤ 2 ms limit)</text>
+<rect x="61.1" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<rect x="92.3" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<rect x="123.4" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<rect x="154.5" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<rect x="185.6" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<rect x="216.8" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<rect x="247.9" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<rect x="279" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<rect x="310.2" y="172" width="7.6" height="14" fill="#f97316" fill-opacity="0.6"/>
+<text x="30" y="204" fill="#777777">RTP packets out (≤ 1400 B)</text>
+<rect x="68.7" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<rect x="99.9" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<rect x="131" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<rect x="162.1" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<rect x="193.2" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<rect x="224.4" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<rect x="255.5" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<rect x="286.6" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<rect x="317.8" y="212" width="3.8" height="14" fill="#22c55e" fill-opacity="0.8"/>
+<line x1="309.7" y1="114" x2="309.7" y2="248" stroke="#e8e8e8" stroke-dasharray="3,3"/>
+<line x1="355.3" y1="168" x2="355.3" y2="248" stroke="#facc15" stroke-dasharray="3,3"/>
+<text x="18" y="288">Dashed white: last active line at</text><text x="18" y="306" fill="#facc15">18.4 ms. Dashed amber: last packet</text><text x="18" y="324" fill="#facc15">≤ 3 ms later (test 1 pass criterion).</text><text x="18" y="342" fill="#777777">Bar lengths of encode / send are</text><text x="18" y="360" fill="#777777">illustrative (estimates below).</text>
+<text x="18" y="400" fill="#f97316" font-weight="bold">WHY THE RELAY ADDS ≈ 1 FIELD</text>
+<text x="18" y="422">Each field is one H.264 picture. The</text><text x="18" y="440">top line waits for the whole field</text><text x="18" y="458">(18.4 ms PAL, 15.3 ms NTSC); every</text><text x="18" y="476">slice is encoded and sent as soon as</text><text x="18" y="494">it is complete, so only ≈ 3 ms more</text><text x="18" y="512">is added after the last line.</text><text x="18" y="530" font-weight="bold">Relay electronics ≈ 20 ms in total;</text><text x="18" y="548" fill="#777777">the HM30 (150–180 ms, estimate) and</text><text x="18" y="566" fill="#777777">the GCS (10–50 ms) dominate.</text>
+<rect x="18" y="600" width="364" height="24" fill="#1a1a1a" stroke="#333333"/>
+<text x="26" y="617" fill="#777777"></text>
+<text x="140" y="617" font-weight="bold">PAL</text>
+<text x="272" y="617" font-weight="bold">NTSC</text>
+<rect x="18" y="624" width="364" height="24" fill="#222222" stroke="#333333"/>
+<text x="26" y="641" fill="#777777">size</text>
+<text x="140" y="641">704×288</text>
+<text x="272" y="641">704×224*</text>
+<rect x="18" y="648" width="364" height="24" fill="#222222" stroke="#333333"/>
+<text x="26" y="665" fill="#777777">slices</text>
+<text x="140" y="665">9 × 32 lines</text>
+<text x="272" y="665">7</text>
+<rect x="18" y="672" width="364" height="24" fill="#222222" stroke="#333333"/>
+<text x="26" y="689" fill="#777777">field rate</text>
+<text x="140" y="689">50 Hz</text>
+<text x="272" y="689">59.94 Hz</text>
+<rect x="18" y="696" width="364" height="24" fill="#222222" stroke="#333333"/>
+<text x="26" y="713" fill="#777777">field time</text>
+<text x="140" y="713">18.4 ms</text>
+<text x="272" y="713">15.3 ms</text>
+<text x="18" y="740" fill="#777777">* cropped, or 704×240 if 16-line</text><text x="18" y="758" fill="#777777">  slices work.</text><text x="18" y="776">Estimates: last slice encoded ≈ 0.5 ms;</text><text x="18" y="794">10–30 kB per field at 100 Mbit/s =</text><text x="18" y="812">0.8–2.4 ms. Picture starts in the</text><text x="18" y="830">vertical blanking (≈ 1.6 ms).</text><text x="18" y="848" fill="#facc15">No field for 25 ms → last field is</text><text x="18" y="866" fill="#facc15">re-sent; decoder lost &gt; 1 s → reset.</text>
+</svg>

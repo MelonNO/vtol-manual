@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 1426" width="400" height="1426" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
+<title id="title">D12 — Troubleshooting trees: &quot;No client RC&quot; and &quot;No client video&quot;, using the GCS app status and the relay LEDs</title>
+<desc id="desc">No client RC: 1. Is the app sending (stream on, no APP DOWN alarm)? No → app or controller (RC STREAM STOPPED, CONTROLLER DISCONNECTED, RC SENDER DEAD); client airborne: RESUME only. 2. Bridge status and RTT shown? No → HM30 link (NO BRIDGE STATUS); if MP telemetry is lost too, use the SIYI / GCS loss card. 3. Bridge state RUN? No → bridge FAILSAFE or WAIT_GCS: watchdog or T_hold (250 ms), relay PCB card. 4. Client LQ good (at least 70 %)? No → ELRS RF: range, band, orbit geometry (FPV LINK WEAK); no telemetry → FPV TELEMETRY LOST, watch video and OSD. No client video: 1. Picture without snow? No → analog RF (VIDEO SNOW): VTX band and channel, VRX patches inward, reduce range or move the orbit. 2. Decoder locked (N6 LED PG10, or the app if the bridge reports it)? No → CVBS lead, VRX, VTX power, then the video board; RC is not affected. 3. RTT and MP telemetry OK? No → HM30 link. 4. Viewer on the right port? No → restart the viewer (UDP 5601) or the MP HUD source (UDP 5602); Mission Planner must not listen on 5600. Bridge LED patterns TBD.</desc>
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+     Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
+     #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
+     #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->
+<!-- Sources: plan §6.1.8 (client RC loss diagnosis, video loss a/b), §9.3 D12, §7.5; data/content.js emergencies emerg-client-rc, emerg-video, emerg-relay-pcb; manual Pre-Arm alarm table; relay design LEDs. -->
+<defs><marker id="ah-bg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f0f0f"/></marker><marker id="ah-surf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a1a1a"/></marker><marker id="ah-surf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker><marker id="ah-border" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2a2a2a"/></marker><marker id="ah-border2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker><marker id="ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker><marker id="ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#777777"/></marker><marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f97316"/></marker><marker id="ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#facc15"/></marker><marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker><marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker><marker id="ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444444"/></marker></defs>
+<rect width="400" height="1426" fill="#1a1a1a"/>
+<text x="14" y="28" font-size="17" fill="#f97316" font-weight="bold">D12 · TROUBLESHOOTING TREES</text>
+<text x="14" y="50" fill="#777777">From the GCS app status and the LEDs</text>
+<text x="18" y="84" font-size="16" fill="#f97316" font-weight="bold">NO CLIENT RC</text>
+<rect x="18" y="98" width="364" height="56" rx="3" fill="#222222" stroke="#f97316" stroke-width="1.5"/><text x="26" y="119" font-weight="bold">App sending? (status bar: stream</text><text x="26" y="138">on; no APP DOWN alarm)</text>
+<polyline points="40,154 40,172 56,172" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="46" y="168"></text>
+<rect x="58" y="158" width="324" height="94" rx="3" fill="#222222" stroke="#ef4444" stroke-dasharray="5,3"/><text x="66" y="179" fill="#ef4444" font-weight="bold">NO → app or controller</text><text x="66" y="198">RC STREAM STOPPED / CONTROLLER</text><text x="66" y="217">DISCONNECTED / RC SENDER DEAD.</text><text x="66" y="236">Client airborne: RESUME only.</text>
+<polyline points="200,254 200,278" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
+<text x="208" y="272" fill="#22c55e" font-weight="bold">YES</text>
+<rect x="18" y="280" width="364" height="37" rx="3" fill="#222222" stroke="#f97316" stroke-width="1.5"/><text x="26" y="301" font-weight="bold">Bridge status / RTT shown?</text>
+<polyline points="40,317 40,335 56,335" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="46" y="331"></text>
+<rect x="58" y="321" width="324" height="75" rx="3" fill="#222222" stroke="#ef4444" stroke-dasharray="5,3"/><text x="66" y="342" fill="#ef4444" font-weight="bold">NO → HM30 link (NO BRIDGE STATUS)</text><text x="66" y="361">MP telemetry gone too → SIYI /</text><text x="66" y="380">GCS LOSS card.</text>
+<polyline points="200,398 200,422" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
+<text x="208" y="416" fill="#22c55e" font-weight="bold">YES</text>
+<rect x="18" y="424" width="364" height="37" rx="3" fill="#222222" stroke="#f97316" stroke-width="1.5"/><text x="26" y="445" font-weight="bold">Bridge state RUN?</text>
+<polyline points="40,461 40,479 56,479" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="46" y="475"></text>
+<rect x="58" y="465" width="324" height="75" rx="3" fill="#222222" stroke="#ef4444" stroke-dasharray="5,3"/><text x="66" y="486" fill="#ef4444" font-weight="bold">NO → bridge FAILSAFE / WAIT_GCS</text><text x="66" y="505">watchdog or T_hold (250 ms) —</text><text x="66" y="524">BRIDGE FAILSAFE; relay PCB card.</text>
+<polyline points="200,542 200,566" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
+<text x="208" y="560" fill="#22c55e" font-weight="bold">YES</text>
+<rect x="18" y="568" width="364" height="37" rx="3" fill="#222222" stroke="#f97316" stroke-width="1.5"/><text x="26" y="589" font-weight="bold">Client LQ good (≥ 70 %)?</text>
+<polyline points="40,605 40,623 56,623" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="46" y="619"></text>
+<rect x="58" y="609" width="324" height="94" rx="3" fill="#222222" stroke="#ef4444" stroke-dasharray="5,3"/><text x="66" y="630" fill="#ef4444" font-weight="bold">NO → ELRS RF: range, band, orbit</text><text x="66" y="649">geometry — FPV LINK WEAK.</text><text x="66" y="668">No telemetry: FPV TELEMETRY LOST</text><text x="66" y="687">→ watch video / OSD.</text>
+<text x="18" y="751" font-size="16" fill="#ef4444" font-weight="bold">NO CLIENT VIDEO</text>
+<rect x="18" y="765" width="364" height="37" rx="3" fill="#222222" stroke="#ef4444" stroke-width="1.5"/><text x="26" y="786" font-weight="bold">Picture clean (no snow / noise)?</text>
+<polyline points="40,802 40,820 56,820" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="46" y="816"></text>
+<rect x="58" y="806" width="324" height="94" rx="3" fill="#222222" stroke="#ef4444" stroke-dasharray="5,3"/><text x="66" y="827" fill="#ef4444" font-weight="bold">NO → analog RF — VIDEO SNOW</text><text x="66" y="846">VTX band / channel per profile?</text><text x="66" y="865">VRX patches inward? Reduce range</text><text x="66" y="884">or move the orbit.</text>
+<polyline points="200,902 200,926" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
+<text x="208" y="920" fill="#22c55e" font-weight="bold">YES</text>
+<rect x="18" y="928" width="364" height="56" rx="3" fill="#222222" stroke="#ef4444" stroke-width="1.5"/><text x="26" y="949" font-weight="bold">Decoder locked? (N6 LED PG10;</text><text x="26" y="968">app, if the bridge reports it)</text>
+<polyline points="40,984 40,1002 56,1002" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="46" y="998"></text>
+<rect x="58" y="988" width="324" height="75" rx="3" fill="#222222" stroke="#ef4444" stroke-dasharray="5,3"/><text x="66" y="1009" fill="#ef4444" font-weight="bold">NO → CVBS lead, VRX, VTX power;</text><text x="66" y="1028">then the video board (N6).</text><text x="66" y="1047">RC is not affected.</text>
+<polyline points="200,1065 200,1089" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
+<text x="208" y="1083" fill="#22c55e" font-weight="bold">YES</text>
+<rect x="18" y="1091" width="364" height="37" rx="3" fill="#222222" stroke="#ef4444" stroke-width="1.5"/><text x="26" y="1112" font-weight="bold">RTT / MP telemetry OK?</text>
+<polyline points="40,1128 40,1146 56,1146" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="46" y="1142"></text>
+<rect x="58" y="1132" width="324" height="56" rx="3" fill="#222222" stroke="#ef4444" stroke-dasharray="5,3"/><text x="66" y="1153" fill="#ef4444" font-weight="bold">NO → HM30 link — SIYI / GCS LOSS</text><text x="66" y="1172">card if MP is lost too.</text>
+<polyline points="200,1190 200,1214" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
+<text x="208" y="1208" fill="#22c55e" font-weight="bold">YES</text>
+<rect x="18" y="1216" width="364" height="37" rx="3" fill="#222222" stroke="#ef4444" stroke-width="1.5"/><text x="26" y="1237" font-weight="bold">Viewer running on the right port?</text>
+<polyline points="40,1253 40,1271 56,1271" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="46" y="1267"></text>
+<rect x="58" y="1257" width="324" height="75" rx="3" fill="#222222" stroke="#ef4444" stroke-dasharray="5,3"/><text x="66" y="1278" fill="#ef4444" font-weight="bold">NO → restart viewer (UDP 5601) or MP</text><text x="66" y="1297">HUD source (UDP 5602); MP must</text><text x="66" y="1316">not listen on 5600.</text>
+<text x="18" y="1362" fill="#facc15">Still lost after the card's wait →</text><text x="18" y="1380" fill="#facc15">client returns home. Bridge LED</text><text x="18" y="1398" fill="#facc15">patterns: TBD (firmware).</text>
+</svg>

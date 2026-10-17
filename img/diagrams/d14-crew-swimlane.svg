@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 983" width="400" height="983" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
+<title id="title">D14 — Crew swim-lane per phase: Carrier Pilot and FPV Pilot actions and callouts</title>
+<desc id="desc">Setup and pre-arm: Carrier Pilot follows the power-up order, connects Mission Planner (&quot;MP LIVE&quot;), runs the checklist (&quot;CHECKLIST GO&quot;, &quot;ARMING&quot;); FPV Pilot does the app normal start with the arm switch DISARMED, checks bridge RUN and video (&quot;FPV READY&quot;, &quot;FPV GO&quot;). Takeoff and transition: Carrier Pilot takes off in QHOVER (&quot;TAKING OFF&quot;), transitions in FBWB (&quot;TRANSITIONING&quot;), reverts to QHOVER if airspeed has not built within 3 s (&quot;TRANSITION FAIL&quot;); FPV Pilot monitors MP (&quot;STABLE&quot;, &quot;CLEAN TRANSITION&quot;), advances WP1 to WP2 (&quot;ADVANCING WAYPOINT&quot;, &quot;CARRIER ON STATION&quot;). Relay operations: Carrier Pilot manages the orbit with the client on the near side, watches the battery (&quot;CARRIER BATT — RTL SOON&quot;) and requests the camera (&quot;CAMERA ON / OFF&quot;); FPV Pilot flies the client (&quot;FPV AIRBORNE&quot;, &quot;RELAY SOLID&quot;) and calls the app alarms (&quot;RC LINK DEGRADED&quot;, &quot;FPV LINK WEAK&quot;, &quot;BRIDGE FAILSAFE&quot;, &quot;APP DOWN&quot;, &quot;VIDEO SNOW&quot; or &quot;VIDEO DIGITAL LOST&quot;, &quot;FPV BATT LOW — RETURNING&quot;). Recovery: FPV Pilot brings the client home first (&quot;FPV RETURNING&quot;, &quot;FPV LANDED&quot;) and calls &quot;ZONE CLEAR&quot;; Carrier Pilot: &quot;CARRIER RTL&quot;, &quot;BACK-TRANSITIONING&quot;, &quot;DESCENDING&quot;, &quot;LANDED&quot;, &quot;SAFE&quot;. Either pilot may call &quot;ABORT ABORT ABORT&quot;.</desc>
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+     Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
+     #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
+     #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->
+<!-- Sources: plan §9.3 D14, §6.1.9; manual Overview crew table, Procedures, Crew Training; data/content.js callouts (phrases verbatim). -->
+<defs><marker id="ah-bg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f0f0f"/></marker><marker id="ah-surf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a1a1a"/></marker><marker id="ah-surf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker><marker id="ah-border" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2a2a2a"/></marker><marker id="ah-border2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker><marker id="ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker><marker id="ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#777777"/></marker><marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f97316"/></marker><marker id="ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#facc15"/></marker><marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker><marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker><marker id="ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444444"/></marker></defs>
+<rect width="400" height="983" fill="#1a1a1a"/>
+<text x="14" y="28" font-size="17" fill="#f97316" font-weight="bold">D14 · CREW SWIM-LANE</text>
+<text x="14" y="50" fill="#777777">Actions and calls per phase</text>
+<rect x="18" y="70" width="177" height="34" rx="3" fill="#222222" stroke="#22c55e"/><text x="106.5" y="89.2" fill="#22c55e" text-anchor="middle" font-weight="bold">CARRIER PILOT</text>
+<rect x="205" y="70" width="177" height="34" rx="3" fill="#222222" stroke="#f97316"/><text x="293.5" y="89.2" fill="#f97316" text-anchor="middle" font-weight="bold">FPV PILOT</text>
+<rect x="8" y="116" width="384" height="26" fill="#222222" stroke="#444444"/>
+<text x="16" y="134" font-weight="bold">1 · SETUP &amp; PRE-ARM</text>
+<text x="18" y="164">power-up order</text>
+<text x="18" y="183">MP connected</text>
+<text x="18" y="202" fill="#22c55e" font-weight="bold">&quot;MP LIVE&quot;</text>
+<text x="18" y="221">checklist</text>
+<text x="18" y="240" fill="#22c55e" font-weight="bold">&quot;CHECKLIST GO&quot;</text>
+<text x="18" y="259" fill="#22c55e" font-weight="bold">&quot;ARMING&quot;</text>
+<text x="205" y="164">app normal start</text>
+<text x="205" y="183">(arm DISARMED)</text>
+<text x="205" y="202">bridge RUN, video</text>
+<text x="205" y="221" fill="#f97316" font-weight="bold">&quot;FPV READY&quot;</text>
+<text x="205" y="240" fill="#f97316" font-weight="bold">&quot;FPV GO&quot;</text>
+<line x1="200" y1="146" x2="200" y2="264" stroke="#444444"/>
+<rect x="8" y="276" width="384" height="26" fill="#222222" stroke="#444444"/>
+<text x="16" y="294" font-weight="bold">2 · TAKEOFF &amp; TRANSITION</text>
+<text x="18" y="324">QHOVER takeoff</text>
+<text x="18" y="343" fill="#22c55e" font-weight="bold">&quot;TAKING OFF&quot;</text>
+<text x="18" y="362">FBWB transition</text>
+<text x="18" y="381" fill="#22c55e" font-weight="bold">&quot;TRANSITIONING&quot;</text>
+<text x="18" y="400">no airspeed in 3 s</text>
+<text x="18" y="419">→ QHOVER</text>
+<text x="18" y="438" fill="#22c55e" font-weight="bold">&quot;TRANSITION FAIL&quot;</text>
+<text x="205" y="324">monitors MP</text>
+<text x="205" y="343" fill="#f97316" font-weight="bold">&quot;STABLE&quot;</text>
+<text x="205" y="362" fill="#f97316" font-weight="bold">&quot;CLEAN TRANSITION&quot;</text>
+<text x="205" y="381">advances WP1→WP2</text>
+<text x="205" y="400" fill="#f97316" font-weight="bold">&quot;ADVANCING</text>
+<text x="205" y="419" fill="#f97316" font-weight="bold"> WAYPOINT&quot;</text>
+<text x="205" y="438" fill="#f97316" font-weight="bold">&quot;CARRIER ON STATION&quot;</text>
+<line x1="200" y1="306" x2="200" y2="443" stroke="#444444"/>
+<rect x="8" y="455" width="384" height="26" fill="#222222" stroke="#444444"/>
+<text x="16" y="473" font-weight="bold">3 · RELAY OPERATIONS</text>
+<text x="18" y="503">AUTO / GUIDED orbit,</text>
+<text x="18" y="522">client on near side</text>
+<text x="18" y="541">battery: at RTL V</text>
+<text x="18" y="560" fill="#22c55e" font-weight="bold">&quot;CARRIER BATT —</text>
+<text x="18" y="579" fill="#22c55e" font-weight="bold"> RTL SOON&quot;</text>
+<text x="18" y="598">camera request</text>
+<text x="18" y="617" fill="#22c55e" font-weight="bold">&quot;CAMERA ON / OFF&quot;</text>
+<text x="205" y="503">flies the client</text>
+<text x="205" y="522" fill="#f97316" font-weight="bold">&quot;FPV AIRBORNE&quot;</text>
+<text x="205" y="541" fill="#f97316" font-weight="bold">&quot;RELAY SOLID&quot;</text>
+<text x="205" y="560">app alarms →</text>
+<text x="205" y="579" fill="#f97316" font-weight="bold">&quot;RC LINK DEGRADED&quot;</text>
+<text x="205" y="598" fill="#f97316" font-weight="bold">&quot;FPV LINK WEAK&quot;</text>
+<text x="205" y="617" fill="#f97316" font-weight="bold">&quot;BRIDGE FAILSAFE&quot;</text>
+<text x="205" y="636" fill="#f97316" font-weight="bold">&quot;APP DOWN&quot;</text>
+<text x="205" y="655" fill="#f97316" font-weight="bold">&quot;VIDEO SNOW&quot; /</text>
+<text x="205" y="674" fill="#f97316" font-weight="bold">&quot;VIDEO DIGITAL LOST&quot;</text>
+<text x="205" y="693" fill="#f97316" font-weight="bold">&quot;FPV BATT LOW —</text>
+<text x="205" y="712" fill="#f97316" font-weight="bold"> RETURNING&quot;</text>
+<line x1="200" y1="485" x2="200" y2="717" stroke="#444444"/>
+<rect x="8" y="729" width="384" height="26" fill="#222222" stroke="#444444"/>
+<text x="16" y="747" font-weight="bold">4 · RECOVERY</text>
+<text x="18" y="777" fill="#22c55e" font-weight="bold">&quot;CARRIER RTL&quot;</text>
+<text x="18" y="796" fill="#22c55e" font-weight="bold">&quot;BACK-</text>
+<text x="18" y="815" fill="#22c55e" font-weight="bold"> TRANSITIONING&quot;</text>
+<text x="18" y="834" fill="#22c55e" font-weight="bold">&quot;DESCENDING&quot;</text>
+<text x="18" y="853" fill="#22c55e" font-weight="bold">&quot;LANDED&quot;</text>
+<text x="18" y="872" fill="#22c55e" font-weight="bold">&quot;SAFE&quot;</text>
+<text x="205" y="777">client home first</text>
+<text x="205" y="796" fill="#f97316" font-weight="bold">&quot;FPV RETURNING&quot;</text>
+<text x="205" y="815" fill="#f97316" font-weight="bold">&quot;FPV LANDED&quot;</text>
+<text x="205" y="834">then assists in MP</text>
+<text x="205" y="853" fill="#f97316" font-weight="bold">&quot;ZONE CLEAR&quot;</text>
+<line x1="200" y1="759" x2="200" y2="877" stroke="#444444"/>
+<rect x="18" y="889" width="364" height="60" rx="3" fill="#222222" stroke="#ef4444" stroke-width="2"/><text x="26" y="909" fill="#ef4444" font-weight="bold">EITHER PILOT: &quot;ABORT ABORT ABORT&quot;</text><text x="26" y="927">Carrier Pilot acts at once: QHOVER</text><text x="26" y="945">in VTOL phase, RTL in cruise.</text>
+<text x="18" y="967" fill="#777777">Bold = callout. Full list: Callouts tab.</text>
+</svg>

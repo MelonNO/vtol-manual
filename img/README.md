@@ -11,6 +11,45 @@
 | Source | **Own photos only**, or images whose licence is recorded in the credits table below. Vendor marketing images are temporary and must be replaced. |
 | Pages | Give `<img>` explicit `width`/`height`, `loading="lazy"`, and serve the `.webp` via `<picture>` with the `.jpg` as fallback. Add new images to the `sw.js` precache list. |
 
+## Diagrams — `img/diagrams/`
+
+The manual's diagrams D1–D15 (plus D8b) are standalone SVG files, `d01-system-overview.svg` … `d15-video-field-timing.svg`. Plan §9.3 lists what each one shows.
+
+**How they are made**
+
+- They are **generated** by `scripts/diagrams/` with plain Node and no npm packages. Edit the definition in `scripts/diagrams/d*.js`, then run `node scripts/diagrams/build.js`.
+- The same run updates the diagram slots in `manual.html` (image, size, alt text, caption) and the four inline SVGs of the manual.
+- `node scripts/diagrams/build.js --check` (also run by `node --test test/`) fails when a committed file differs from the generator output.
+- Do not hand-edit a generated file without changing the generator too. See `scripts/diagrams/README.md`.
+
+**File rules** (tested in `test/diagrams/files.test.js`)
+
+- `role="img"`, `<title>` and a full-text `<desc>`; a `<!-- Sources: … -->` comment naming the plan sections and relay-design tables used.
+- **≤ 60 KB** per file. This is the limit for diagrams; the 10 KB rule above is for simple line art.
+- No invented values: an unknown value is written as **TBD**, a value still to be confirmed as **VERIFY**.
+
+**Palette**
+
+A standalone SVG cannot read the page CSS variables. It therefore uses the same hex values as `:root` in `manual.html` / `index.html`, and each file carries this mapping as a comment:
+
+| Hex | Token | Hex | Token |
+|---|---|---|---|
+| `#0f0f0f` | `--bg` | `#e8e8e8` | `--text` |
+| `#1a1a1a` | `--surface` | `#777777` | `--muted` |
+| `#222222` | `--surface2` | `#f97316` | `--accent` |
+| `#2a2a2a` | `--border` | `#facc15` | `--amber` |
+| `#333333` | `--border2` | `#ef4444` | `--red` |
+| `#444444` | `--dim` | `#22c55e` | `--green` |
+
+Inline SVG and the generated charts (`js/diagrams.js`) use `var(--…)` instead and never hex.
+
+**Readability rule (plan §9.2)**
+
+Text must be **≥ 11 CSS px when the page is 360 px wide** (332 px of content after the manual's padding). There are two ways to meet it:
+
+- **Fit to width** (all `img/diagrams/` files): a viewBox 400 units wide with text ≥ 14 units gives 14 × 332 / 400 ≈ 11.6 px. Desktop caps the image at 560 px.
+- **Scroll** (the manual's inline SVGs and the Tools charts): text ≥ 13 units (charts ≥ 12) plus a `min-width` class (`.mw-560`, `.mw-600`, `.mw-780`) inside an `overflow-x:auto` frame, with min-width ≥ viewBox width × 11 / smallest font.
+
 ## Optimiser
 
 `scripts/optimize-images.py` (needs Python 3 and Pillow: `pip install Pillow`).

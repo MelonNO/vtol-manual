@@ -620,6 +620,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 <script src="js/common.js"></script>
 <script src="js/store.js"></script>
 <script src="js/tools-core.js"></script>
+<script src="js/diagrams.js"></script>
 <script src="js/gcs-client.js"></script>
 <script src="data/content.js"></script>
 <script src="js/render-content.js"></script>
@@ -960,54 +961,25 @@ function resetCL(name, skipConfirm) {
   buildChecklist(name);
 }
 
-// ── BATTERY TREND CHART ──
+// ── BATTERY TREND CHART ── (generator: VtolDiagrams.battTrend — profile thresholds, y-axis ticks, <title> per point)
 function battTrendSVG(entries, pack) {
-  if (entries.length < 2) return '';
-  const th = ToolsCore.packThresholds(pack, store.settings);
+  const svg = VtolDiagrams.battTrend(entries, pack, store.settings);
+  if (!svg) return '';
   const n = Math.min(entries.length, 12);
-  const recent = entries.slice(0, n).reverse();
-  const W = 680, H = 58, pad = 10;
-  const range = th.fullV - th.critV || 1;
-  function yv(v) { return H - pad - ((Math.max(th.critV, Math.min(th.fullV, v)) - th.critV) / range) * (H - pad * 2); }
-  const stepX = n > 1 ? (W - pad * 2) / (n - 1) : 0;
-  const pts = recent.map((e, i) => (pad + i * stepX).toFixed(1) + ',' + yv(e.min).toFixed(1)).join(' ');
-  const dots = recent.map((e, i) => {
-    const x = (pad + i * stepX).toFixed(1), y = yv(e.min).toFixed(1);
-    const lv = ToolsCore.minVoltLevel(e.min, pack, store.settings);
-    return '<circle cx="' + x + '" cy="' + y + '" r="3.5" fill="' + LEVEL_CLR[lv] + '"><title>' + escH(e.date) + ' min ' + escH(e.min) + ' V — ' + LEVEL_TXT[lv] + '</title></circle>';
-  }).join('');
-  const lines = th.carrier
-    ? [{ v: th.rtlV, c: 'var(--accent)', l: th.rtlV.toFixed(1) + 'V MANUAL RTL' }, { v: th.crtV, c: 'var(--red)', l: th.crtV.toFixed(1) + 'V BATT_CRT' }]
-    : [{ v: th.lowV, c: 'var(--amber)', l: th.lowV.toFixed(1) + 'V LONGEVITY FLOOR' }, { v: th.critV, c: 'var(--red)', l: th.critV.toFixed(1) + 'V HARD FLOOR' }];
   return '<div style="margin-bottom:14px">'
-    + '<div style="font-family:var(--head);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">MIN VOLTAGE TREND — LAST ' + n + ' FLIGHTS (oldest → newest)</div>'
-    + '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;display:block;background:var(--surface);border:1px solid var(--border2)">'
-    + lines.map(L => { const y = yv(L.v).toFixed(1); return '<line x1="' + pad + '" y1="' + y + '" x2="' + (W-pad) + '" y2="' + y + '" stroke="' + L.c + '" stroke-width="0.5" stroke-dasharray="3,5" opacity="0.5"/>'; }).join('')
-    + '<polyline points="' + pts + '" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" opacity="0.6"/>'
-    + dots + '</svg>'
-    + '<div style="display:flex;gap:16px;font-size:10px;color:var(--muted);margin-top:4px;flex-wrap:wrap">'
+    + '<div style="font-family:var(--head);font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">MIN VOLTAGE TREND — LAST ' + n + ' FLIGHTS (oldest → newest) · tap a point for date and value</div>'
+    + '<div style="overflow-x:auto">' + svg + '</div>'
+    + '<div style="display:flex;gap:16px;font-size:11px;color:var(--muted);margin-top:4px;flex-wrap:wrap">'
     + '<span>● <span style="color:var(--green)">healthy</span></span>'
     + '<span>● <span style="color:var(--amber)">marginal</span></span>'
     + '<span>● <span style="color:var(--red)">critical</span></span>'
-    + '<span style="margin-left:auto">' + lines.map(L => '— <span style="color:' + L.c + '">' + L.l + '</span>').join(' &nbsp; ') + '</span>'
+    + '<span>dashed lines: profile thresholds</span>'
     + '</div></div>';
 }
 
-// ── BATTERY SPARKLINE ──
-function battSparkline(sv, mv, rv, pack) {
-  const th = ToolsCore.packThresholds(pack, store.settings);
-  const range = th.fullV - th.critV || 1;
-  const W = 72, H = 26, pad = 5;
-  function y(v) { return H - pad - ((Math.max(th.critV, Math.min(th.fullV, v)) - th.critV) / range) * (H - pad * 2); }
-  const pts = [[pad, y(sv)], [W / 2, y(mv)], [W - pad, y(rv)]].map(p => p.join(',')).join(' ');
-  const lvl = ToolsCore.minVoltLevel(mv, pack, store.settings);
-  const c = lvl === 'ok' ? 'var(--accent)' : LEVEL_CLR[lvl];
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;overflow:visible">`
-    + `<polyline points="${pts}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linejoin="round"/>`
-    + `<circle cx="${pad}" cy="${y(sv)}" r="2" fill="${c}"/>`
-    + `<circle cx="${W / 2}" cy="${y(mv)}" r="2.5" fill="${c}"/>`
-    + `<circle cx="${W - pad}" cy="${y(rv)}" r="2" fill="${c}"/>`
-    + `</svg>`;
+// ── BATTERY SPARKLINE ── (generator: VtolDiagrams.battSparkline — start → min → rest, threshold line, <title> with the date)
+function battSparkline(e, pack) {
+  return VtolDiagrams.battSparkline(e, pack, store.settings);
 }
 
 // ── BATTERY LOG ── (entries live in store.battLog, each with packId)
@@ -1073,7 +1045,7 @@ function renderBattLog() {
     entries.map(e => {
       const lvl = ToolsCore.minVoltLevel(e.min, pack, settings);
       const sagC = LEVEL_CLR[ToolsCore.sagLevel(e.sag, cells)];
-      const spark = battSparkline(e.start, e.min, e.rest, pack);
+      const spark = battSparkline(e, pack);
       return `<tr style="${rowBgs[lvl]}"><td>${escH(e.date)}</td><td>${escH(e.flight||'—')}</td><td>${escH(e.start)}V</td><td style="${minStyle[lvl]}">${escH(e.min)}V${lvl !== 'ok' ? '<span class="lvl-txt">' + LEVEL_TXT[lvl] + '</span>' : ''}</td><td style="${minStyle[lvl]}">${(e.min/cells).toFixed(2)}V</td><td>${escH(e.rest)}V</td><td style="color:${sagC}">${escH(e.sag)}V</td><td style="padding:5px 12px">${spark}</td><td>${escH(e.time||'—')}</td><td style="color:var(--muted);font-size:11px">${escH(e.notes||'—')}</td><td><button data-id="${escH(e.id)}" onclick="deleteBattEntry(this.dataset.id)" aria-label="Delete battery entry" class="mini-btn" style="background:none;border:1px solid var(--border2);color:var(--muted);font-size:10px;padding:2px 6px;cursor:pointer">✕</button></td></tr>`;
     }).join('');
 
@@ -1810,32 +1782,21 @@ function parseTlog() {
 const QPLANE_MODES = ToolsCore.PLANE_MODES;   // ArduPlane mode numbers (one table, in js/tools-core.js)
 const MODE_CLR = {MANUAL:'#6b7280',FBWA:'#93c5fd',FBWB:'#60a5fa',CRUISE:'#3b82f6',AUTO:'#f97316',RTL:'#ef4444',LOITER:'#a78bfa',GUIDED:'#f59e0b',TAKEOFF:'#facc15',QSTABILIZE:'#4ade80',QHOVER:'#22c55e',QLOITER:'#16a34a',QLAND:'#ef4444',QRTL:'#dc2626',LOITER_QLAND:'#f97316',CIRCLE:'#e879f9',THERMAL:'#fb923c'};
 
-function binChart(values, times, color, height) {
-  height=height||80;
-  if(!values||values.length<2)return '<div style="color:var(--muted);font-size:12px;padding:8px 0">No data</div>';
-  let vs=values,ts=times;
-  if(vs.length>600){const step=vs.length/600;vs=[];ts=[];for(let k=0;k<600;k++){const idx=Math.round(k*step);if(values[idx]!=null){vs.push(values[idx]);ts.push(times[idx]);}}}
-  const valid=vs.filter(v=>v!=null&&isFinite(v));
-  if(!valid.length)return '<div style="color:var(--muted);font-size:12px;padding:8px 0">No valid data</div>';
-  const minV=Math.min(...valid),maxV=Math.max(...valid),range=maxV-minV||0.1;
-  const W=700,H=height,ml=46,mb=14,mt=6,mr=6,cW=W-ml-mr,cH=H-mt-mb;
-  const durSec=Math.max(0,(ts[ts.length-1]-ts[0])/1e6);
-  const xf=ToolsCore.chartXFractions(ts);   // safe when all timestamps are equal
-  const poly=vs.map((v,i)=>{
-    if(v==null||!isFinite(v))return null;
-    const x=(ml+xf[i]*cW).toFixed(1);
-    const y=(mt+cH-((v-minV)/range)*cH).toFixed(1);
-    return x+','+y;
-  }).filter(Boolean).join(' ');
-  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:'+H+'px;display:block">'
-    +'<rect x="'+ml+'" y="'+mt+'" width="'+cW+'" height="'+cH+'" fill="var(--surface2)"/>'
-    +'<text x="'+(ml-3)+'" y="'+(mt+9)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+maxV.toFixed(1)+'</text>'
-    +'<text x="'+(ml-3)+'" y="'+(mt+cH)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+minV.toFixed(1)+'</text>'
-    +'<text x="'+ml+'" y="'+(H-2)+'" fill="var(--muted)" font-size="9" font-family="monospace">0:00</text>'
-    +'<text x="'+(ml+cW)+'" y="'+(H-2)+'" fill="var(--muted)" font-size="9" font-family="monospace" text-anchor="end">'+Math.floor(durSec/60)+':'+(''+(Math.round(durSec)%60)).padStart(2,'0')+'</text>'
-    +'<rect x="'+ml+'" y="'+mt+'" width="'+cW+'" height="'+cH+'" fill="none" stroke="var(--border2)" stroke-width="0.5"/>'
-    +'<polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linejoin="round"/>'
-    +'</svg>';
+// opts.modes / opts.events: mode timeline and transition / failsafe events (µs), see VtolDiagrams.timeChart.
+function binChart(values, times, color, height, opts) {
+  const svg = VtolDiagrams.timeChart(values, times, Object.assign({ color: color, height: height || 80 }, opts || {}));
+  return svg ? '<div style="overflow-x:auto">' + svg + '</div>' : '<div style="color:var(--muted);font-size:12px;padding:8px 0">No data</div>';
+}
+// Mode segments and marked events of a parsed .bin for the chart overlay.
+function binOverlay(d) {
+  const modes = (d.modes || []).slice().sort((a, b) => a.t - b.t).map((m, k, a) => ({
+    t0: m.t, t1: k + 1 < a.length ? a[k + 1].t : d.lastT,
+    name: QPLANE_MODES[m.mode] || ('MODE_' + m.mode),
+    cls: { vtol: 'vtol', fw: 'fw' }[ToolsCore.modeClass(m.mode)] || 'other'
+  }));
+  const an = ToolsCore.binAnalyze(d, {});
+  const events = an.events.filter(e => e.kinds.some(k => k === 'transition' || k === 'failsafe' || k === 'battery'));
+  return { modes, events, t0: d.firstT };
 }
 
 function parseBinFull() {
@@ -1932,9 +1893,11 @@ function renderBinResult(d, filename) {
   const uniqMsgs=d.msgs.filter(m=>{if(seenTxt.has(m.text))return false;seenTxt.add(m.text);return true;});
 
   // Charts
-  const voltChart=vv.length>2?binChart(vv,vt,'var(--accent)',80):'';
-  const altChart=relAlts.length>2?binChart(relAlts,altTimes,'var(--green)',80):'';
-  const arspChart=spdArr.length>2?binChart(d.arsp.v,d.arsp.t,'#60a5fa',70):'';
+  const ov=binOverlay(d), ovN=ov.events.length;
+  const voltChart=vv.length>2?binChart(vv,vt,'var(--accent)',90,Object.assign({label:'Battery voltage',unit:'V'},ov)):'';
+  const altChart=relAlts.length>2?binChart(relAlts,altTimes,'var(--green)',90,Object.assign({label:'Altitude',unit:'m'},ov)):'';
+  const arspChart=spdArr.length>2?binChart(d.arsp.v,d.arsp.t,'var(--text)',80,Object.assign({label:'Airspeed',unit:'m/s'},ov)):'';
+  const ovKey='<div style="font-size:11px;color:var(--muted);margin:-12px 0 18px">Top strip and bands: flight-mode timeline (<span style="color:var(--green)">VTOL</span> · <span style="color:var(--accent)">fixed-wing</span>). Dashed markers: '+ovN+' transition / failsafe / battery event'+(ovN===1?'':'s')+' (<span style="color:var(--amber)">transition</span> · <span style="color:var(--red)">failsafe / battery</span>) — tap one for its message.</div>';
 
   function sc(title,color,rows){
     return '<div style="background:var(--surface);border:1px solid var(--border2);border-left:3px solid '+color+';padding:16px 18px">'
@@ -1966,7 +1929,7 @@ function renderBinResult(d, filename) {
           row(lbl('Avg sats',avgSat),lbl('Min',minSat))+'\n'+row(lbl('Max HDOP',maxHDop)))
     +'</div>'
 
-    +(voltChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">BATTERY VOLTAGE (V) · FIRST BATTERY MONITOR</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+voltChart+'</div>':'')
+    +(voltChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">BATTERY VOLTAGE (V) · FIRST BATTERY MONITOR</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+voltChart+'</div>'+ovKey:'')
     +(altChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">'+altLabel+'</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+altChart+'</div>':'')
     +(arspChart?'<div style="font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">AIRSPEED (m/s)</div><div style="border:1px solid var(--border2);margin-bottom:18px">'+arspChart+'</div>':'')
 
@@ -2354,24 +2317,9 @@ function renderParams() {
     + '<p style="font-size:12px">Expected values come from the plan (§13.1, §6.1.5) and the manual. TODO: the table moves into the shared content file (data/content.js).</p>';
 }
 
-// ── WIND COMPASS SVG ──
-function windCompassSVG(dir, speed, c) {
-  const cx = 55, cy = 55, r = 44, al = 36;
-  // Arrow rotated by `dir` degrees: tail (FROM direction) at top, tip (TO direction) at bottom
-  return '<svg viewBox="0 0 110 110" style="width:110px;height:110px;flex-shrink:0">'
-    + '<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+c+'" fill-opacity="0.13" stroke="'+c+'" stroke-opacity="0.27" stroke-width="1.5"/>'
-    + '<text x="'+cx+'" y="'+(cy-r-3)+'" fill="#777" font-size="9" text-anchor="middle" font-family="Oswald,sans-serif">N</text>'
-    + '<text x="'+cx+'" y="'+(cy+r+12)+'" fill="#777" font-size="9" text-anchor="middle" font-family="Oswald,sans-serif">S</text>'
-    + '<text x="'+(cx+r+6)+'" y="'+(cy+4)+'" fill="#777" font-size="8" font-family="Oswald,sans-serif">E</text>'
-    + '<text x="'+(cx-r-10)+'" y="'+(cy+4)+'" fill="#777" font-size="8" font-family="Oswald,sans-serif">W</text>'
-    + '<g transform="rotate('+dir+' '+cx+' '+cy+')">'
-    + '<line x1="'+cx+'" y1="'+(cy-al+8)+'" x2="'+cx+'" y2="'+(cy+al)+'" stroke="'+c+'" stroke-width="3" stroke-linecap="round"/>'
-    + '<polygon points="'+cx+','+(cy+al)+' '+(cx-7)+','+(cy+al-12)+' '+(cx+7)+','+(cy+al-12)+'" fill="'+c+'"/>'
-    + '<circle cx="'+cx+'" cy="'+(cy-al)+'" r="4" fill="'+c+'" opacity="0.8"/>'
-    + '</g>'
-    + '<text x="'+cx+'" y="'+(cy+5)+'" fill="'+c+'" font-size="12" font-weight="bold" text-anchor="middle" font-family="Oswald,sans-serif">'+speed.toFixed(1)+'</text>'
-    + '<text x="'+cx+'" y="'+(cy+17)+'" fill="#888" font-size="8" text-anchor="middle">m/s</text>'
-    + '</svg>';
+// ── WIND COMPASS SVG ── (generator: VtolDiagrams.windCompass)
+function windCompassSVG(dir, speed, c, gust) {
+  return VtolDiagrams.windCompass(dir, speed, gust, c, wxLimits());
 }
 
 // ── WEATHER ──
@@ -2592,7 +2540,7 @@ function wxRender(data, geoData, lat, lon) {
           '<div style="font-family:var(--head);font-size:18px;color:var(--text);margin-top:8px">' + wind.toFixed(1) + ' m/s &nbsp;G' + gusts.toFixed(1) + '</div>' +
           '<div style="font-size:13px;color:var(--muted);margin-top:4px">' + compass(dir) + ' ' + dir + '° &nbsp;·&nbsp; ' + temp.toFixed(1) + '°C &nbsp;·&nbsp; RH ' + rh + '%</div>' +
         '</div>' +
-        windCompassSVG(dir, wind, wS.c) +
+        windCompassSVG(dir, wind, wS.c, gusts) +
       '</div>' +
       '<div style="background:' + pS.bg + ';border:2px solid ' + pS.c + ';padding:20px">' +
         '<div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">PRECIPITATION</div>' +
@@ -2654,8 +2602,11 @@ function renderAirspace() {
 }
 
 // ── SWIPE TAB NAVIGATION ── (not while the emergency modal is open, nor from inside horizontally scrollable content)
+// Swipe order = the nav buttons' order (one source of truth: a hard-coded copy went stale when tabs were added).
+function navTabOrder() {
+  return Array.from(document.querySelectorAll('nav button[onclick^="switchTab"]'), b => (b.getAttribute('onclick').match(/^switchTab\('([\w-]+)'/) || [])[1]).filter(Boolean);
+}
 (function() {
-  const TABS = ['preflight','turnaround','postflight','link','battlog','tlog','flights','params','weather','profiles'];   // = nav order
   let x0 = 0, y0 = 0, ignore = false;
   function inHScroll(el) {
     for (; el && el.nodeType === 1 && el !== document.body; el = el.parentElement) {
@@ -2677,7 +2628,9 @@ function renderAirspace() {
     const dx = e.changedTouches[0].clientX - x0;
     const dy = e.changedTouches[0].clientY - y0;
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    const cur = localStorage.getItem('vtol_active_tab') || 'preflight';
+    const TABS = navTabOrder();
+    let cur = 'preflight';
+    try { cur = localStorage.getItem('vtol_active_tab') || 'preflight'; } catch (err) { /* storage blocked */ }
     const idx = TABS.indexOf(cur);
     const next = dx < 0 ? idx + 1 : idx - 1;
     if (next < 0 || next >= TABS.length) return;
