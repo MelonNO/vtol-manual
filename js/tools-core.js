@@ -626,15 +626,25 @@
   const FAILSAFE_REASONS = [3, 5, 6, 10, 11, 19, 23, 24, 25, 50, 51];
   const BATTERY_REASONS = [4];
 
-  // MSG text → event kinds. Texts per ArduPlane source: "Alt assist …", "Angle assist …" (VTOL_Assist.cpp);
-  // "Transition started …", "Transition airspeed reached …", "Transition done", "Transition failed, exceeded time limit".
+  // MSG text → event kinds, matched to ArduPilot's own texts (master, read 2026-10-16):
+  // - assist: "Alt assist %.1fm", "Angle assist r=%d p=%d" (ArduPlane/VTOL_Assist.cpp)
+  // - transition: "Transition started …", "… airspeed reached …", "Transition (FW )done", "Transition failed, exceeded
+  //   time limit" (ArduPlane/quadplane.cpp); the last one is the Q_TRANS_FAIL action, so it also counts as failsafe
+  // - failsafe: "RC Short Failsafe On", "%s Failsafe On: switched to %s", "… Failsafe Cleared" (ArduPlane/events.cpp)
+  // - battery: "Battery %d is low|critical|missing, last: …" (AP_BattMonitor.cpp) — not PreArm / arming texts
+  // - warning: other error-like texts ("Calibration failed", "Lost GPS lock", "PreArm: …") — shown, never as failsafe
   const MSG_KINDS = [
-    ['assist', /\bassist\b/i],
-    ['transition', /transition/i],
-    ['failsafe', /fail\s*-?safe|\bfailed\b|\blost\b/i],
-    ['battery', /\bbatt|battery|low voltage|voltage low/i]
+    ['assist', /\b(alt|angle) assist\b/i],
+    ['transition', /^transition\b/i],
+    ['failsafe', /fail\s*-?safe|^transition failed/i],
+    ['battery', /^battery \d+ is (low|critical|missing)/i]
   ];
-  function msgKinds(text) { return MSG_KINDS.filter(([, re]) => re.test(text)).map(([k]) => k); }
+  const MSG_WARN = /error|fail|\blost\b|unhealthy|\bbad\b|prearm|denied|unable|crash|glitch|critical|low\b/i;
+  function msgKinds(text) {
+    const kinds = MSG_KINDS.filter(([, re]) => re.test(text)).map(([k]) => k);
+    if (!kinds.includes('failsafe') && !kinds.includes('battery') && MSG_WARN.test(text)) kinds.push('warning');
+    return kinds;
+  }
 
   // Analysis of a parseBin() result. opts.airspeedMin (m/s): AIRSPEED_MIN for the transition time (param file or
   // documented value). Times: µs log time; tSec = seconds since the log start.

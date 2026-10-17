@@ -101,6 +101,20 @@ test('events from MSG text and failsafe / battery mode reasons', () => {
   assert.deepEqual(T.msgKinds('Arming checks passed'), []);
 });
 
+test('MSG classification follows ArduPilot failsafe / battery texts; other errors are warnings, not failsafes', () => {
+  const k = T.msgKinds;
+  assert.deepEqual(k('RC Short Failsafe On'), ['failsafe']);
+  assert.deepEqual(k('GCS Failsafe On: switched to RTL'), ['failsafe']);
+  assert.deepEqual(k('GCS Failsafe Cleared'), ['failsafe']);
+  assert.deepEqual(k('Battery 1 is low 22.80V used 5200 mAh'), ['battery']);
+  assert.deepEqual(k('Battery 1 is critical 22.10V used 6100 mAh'), ['battery']);
+  assert.deepEqual(k('Alt assist 24.0m'), ['assist']);
+  assert.deepEqual(k('Transition done'), ['transition']);
+  for (const t of ['Calibration failed', 'Mode change to QLAND failed: requires position', 'Airspeed sensor 1 failed', 'Lost GPS lock',
+    'PreArm: Battery 1 below minimum arming voltage', 'EKF variance error']) assert.deepEqual(k(t), ['warning'], t);
+  assert.deepEqual(k('VTOL transition only in AUTO'), []);
+});
+
 test('max current per phase: VTOL / transition / FW', () => {
   const an = T.binAnalyze(T.parseBin(flightLog()), { airspeedMin: 11 });
   assert.equal(an.phases.vtol.maxA, 48);         // QHOVER 1–10 s (max 42) and QLAND/QHOVER 40–50 s (48 at 41 s)

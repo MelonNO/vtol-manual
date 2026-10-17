@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>LATENCY CLOCK — RELAY TEST 2</title>
-<!-- Offline-safe: no external fonts or scripts. Only ../js/tools-core.js (same origin). -->
+<!-- Offline-safe: no external fonts or scripts. Only ../js/common.js and ../js/tools-core.js (same origin). -->
 <style>
 :root {
   --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2a2a2a; --border2:#333;
@@ -90,6 +90,7 @@ body.hidepanel .card,body.hidepanel .row.stats{display:none;}
     <table id="st-table"></table>
   </div>
 </div>
+<script src="../js/common.js"></script>
 <script src="../js/tools-core.js"></script>
 <script>
 'use strict';
@@ -144,9 +145,8 @@ function resultText() {
 }
 function copyResult() {
   const text = resultText(), msg = document.getElementById('sample-msg');
-  const done = ok => { msg.textContent = ok ? '✓ Copied: ' + text : 'Copy blocked — ' + text; };
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => done(true), () => done(false));
-  else done(false);
+  // Shared helper (contract C4): Clipboard API with the execCommand fallback. When both fail the text is shown to copy by hand.
+  VtolCommon.copyToClipboard(text).then(ok => { msg.textContent = ok ? '✓ Copied: ' + text : 'Copy blocked — select and copy: ' + text; });
 }
 function togglePanel(btn) { const on = document.body.classList.toggle('hidepanel'); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.textContent = on ? 'SHOW PANELS' : 'CLOCK ONLY'; }
 function toggleFull() {

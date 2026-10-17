@@ -45,14 +45,26 @@ test('import: newer paramFile wins, older or invalid one is ignored; export roun
   assert.equal(out.paramFile.name, 'new.param');
 });
 
+test('import: paramFile times compare as dates (non-ISO strings cannot win by string order)', () => {
+  fresh(Object.assign(VtolStore.defaults(), { paramFile: PF('local.param', '2026-10-16T08:00:00.000Z', { A: 1 }) }));
+  VtolStore.importJSON(JSON.stringify({ paramFile: PF('rfc.param', 'Fri, 01 Jan 2000 00:00:00 GMT', { A: 2 }) }));
+  assert.equal(VtolStore.load().paramFile.name, 'local.param', '"F…" > "2…" as strings, but 2000 is older');
+  VtolStore.importJSON(JSON.stringify({ paramFile: PF('rfc-new.param', 'Sat, 17 Oct 2026 08:00:00 GMT', { A: 3 }) }));
+  const pf = VtolStore.load().paramFile;
+  assert.equal(pf.name, 'rfc-new.param');
+  assert.equal(pf.importedAt, '2026-10-17T08:00:00.000Z', 'normalised to ISO');
+  VtolStore.importJSON(JSON.stringify({ paramFile: PF('nodate.param', 'tomorrow', { A: 4 }) }));
+  assert.equal(VtolStore.load().paramFile.name, 'rfc-new.param', 'an invalid date never wins');
+});
+
 test('flights and maintenance merge by id and are validated', () => {
   fresh(null);
   VtolStore.load();
   VtolStore.importJSON(JSON.stringify({
-    flights: [{ id: 'f1', date: '2026-10-16', label: 'S1', archiveId: 'arc', battIds: ['b1', 5, 'b2'],
-      logSummary: { kind: 'bin', file: 'x.bin', maxA: { vtol: 40, fw: Infinity, deep: { no: 1 } }, list: [1] }, gcsSummary: 'nope' }],
+    flights: [{ id: 'f1', date: '2026-10-16', label: 'S1', archiveId: 'arc', battIds: ['b1', 'b2'],
+      logSummary: { kind: 'bin', file: 'x.bin', maxA: { vtol: 40, fw: null, deep: { no: 1 } }, list: [1] } }],
     maintenance: [{ id: 'm1', taskId: 'carrier-5', doneDate: '2026-10-16', markedAt: '2026-10-16T10:00:00Z' },
-      { id: 'm2', taskId: 'carrier-5', doneDate: '16.10.2026' }, { id: 'm3', doneDate: '2026-10-16' }]
+      { id: 'm2', taskId: 'carrier-5', doneDate: '16.10.2026' }, { id: 'm3', doneDate: '2026-10-16' }, { id: 'm4', taskId: 'carrier-5', doneDate: '2026-02-30' }]
   }));
   const s = VtolStore.load();
   const f = VtolStore.find(s, 'flights', 'f1');
@@ -60,7 +72,21 @@ test('flights and maintenance merge by id and are validated', () => {
   assert.deepEqual(f.logSummary, { kind: 'bin', file: 'x.bin', maxA: { vtol: 40, fw: null } });
   assert.equal(f.gcsSummary, null);
   assert.deepEqual(VtolStore.live(s.maintenance).map(m => m.id), ['m1']);
-  assert.equal(VtolStore.importJSON.lastStats.issues.filter(t => /Maintenance record/.test(t)).length, 2);
+  assert.equal(VtolStore.importJSON.lastStats.issues.filter(t => /Maintenance record/.test(t)).length, 3);
+});
+
+test('a malformed incoming flight record never replaces a valid local one (C1.4)', () => {
+  const good = { id: 'f1', date: '2026-10-16', label: 'S1', archiveId: '', battIds: ['b1'], notes: '', updatedAt: '2026-10-16T10:00:00Z' };
+  fresh(Object.assign(VtolStore.defaults(), { flights: [good] }));
+  const newer = '2026-10-17T10:00:00Z';
+  for (const bad of [{ date: 'yesterday' }, { date: '2026-13-01' }, { battIds: 'b1' }, { battIds: ['b1', 5] }, { label: { x: 1 } }, { gcsSummary: 'nope' }, { logSummary: [1] }]) {
+    VtolStore.importJSON(JSON.stringify({ flights: [Object.assign({}, good, { updatedAt: newer }, bad)] }));
+    assert.match(VtolStore.importJSON.lastStats.issues.join(' '), /Flight record .* dropped: invalid/, JSON.stringify(bad));
+    const f = VtolStore.find(VtolStore.load(), 'flights', 'f1');
+    assert.deepEqual([f.date, f.label, f.battIds, f.updatedAt], ['2026-10-16', 'S1', ['b1'], good.updatedAt], JSON.stringify(bad));
+  }
+  VtolStore.importJSON(JSON.stringify({ flights: [Object.assign({}, good, { label: 'S1 edited', updatedAt: newer })] }));
+  assert.equal(VtolStore.find(VtolStore.load(), 'flights', 'f1').label, 'S1 edited', 'a valid newer record still wins');
 });
 
 test('battLog usedMah: kept when valid, null when invalid, absent otherwise', () => {

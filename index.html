@@ -38,7 +38,7 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
 @keyframes pulseFab{0%,100%{box-shadow:0 4px 20px rgba(239,68,68,.4);}50%{box-shadow:0 4px 32px rgba(239,68,68,.8),0 0 0 6px rgba(239,68,68,.15);}}
 @keyframes goNogoBanner{from{opacity:0;transform:scaleX(.95);}to{opacity:1;transform:scaleX(1);}}
 @keyframes pulseGoBorder{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}50%{box-shadow:0 0 0 8px rgba(34,197,94,.18);}}
-#emerg-fab{position:fixed;bottom:20px;right:20px;z-index:900;background:var(--red);color:#fff;border:none;font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px 22px;cursor:pointer;border-radius:4px;box-shadow:0 4px 20px rgba(239,68,68,.4);transition:background .15s,transform .1s;display:flex;align-items:center;gap:8px;animation:pulseFab 2.5s ease-in-out infinite;}
+#emerg-fab{position:fixed;bottom:20px;right:20px;z-index:1050;background:var(--red);color:#fff;border:none;font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px 22px;cursor:pointer;border-radius:4px;box-shadow:0 4px 20px rgba(239,68,68,.4);transition:background .15s,transform .1s;display:flex;align-items:center;gap:8px;animation:pulseFab 2.5s ease-in-out infinite;}
 #emerg-fab:hover{background:#dc2626;animation:none;box-shadow:0 4px 28px rgba(239,68,68,.7);}
 #emerg-fab:active{transform:scale(.96);}
 .section-title{font-family:var(--head);font-size:15px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border2);padding-bottom:6px;margin:28px 0 14px;}
@@ -244,7 +244,7 @@ tr:last-child td{border-bottom:none;}
 /* challenge–response mode */
 #cr-modal{display:none;position:fixed;inset:0;background:var(--bg);z-index:1000;overflow-y:auto;}
 #cr-modal.open{display:block;}
-.cr-wrap{max-width:860px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;min-height:100%;}
+.cr-wrap{max-width:860px;margin:0 auto;padding:20px 16px 96px;display:flex;flex-direction:column;min-height:100%;}
 .cr-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-bottom:2px solid var(--accent);padding-bottom:10px;margin-bottom:18px;}
 .cr-title{font-family:var(--head);font-size:16px;font-weight:700;letter-spacing:3px;color:var(--accent);flex:1;}
 .cr-sec{font-family:var(--head);font-size:14px;letter-spacing:3px;color:var(--muted);margin-bottom:8px;}
@@ -256,7 +256,7 @@ tr:last-child td{border-bottom:none;}
 .cr-btns .cr-check{border-color:var(--green);color:var(--green);}
 .cr-btns .cr-skip{border-color:var(--amber);color:var(--amber);}
 .cr-btns button:disabled{opacity:.35;cursor:default;}
-@media(max-width:600px){ .cr-item{font-size:30px;} .cr-btns button{font-size:18px;min-height:64px;} }
+@media(max-width:600px){ .cr-wrap{padding-bottom:140px;} .cr-item{font-size:30px;} .cr-btns button{font-size:18px;min-height:64px;} }
 footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:40px;}
 @media(max-width:600px){
   .hdr-badge{writing-mode:horizontal-tb;padding:6px 12px;font-size:10px;}
@@ -331,7 +331,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   </div>
 </div>
 
-<div id="emerg-modal" role="dialog" aria-modal="true" aria-label="Emergency procedures" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999;overflow-y:auto">
+<div id="emerg-modal" role="dialog" aria-modal="true" aria-label="Emergency procedures" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1100;overflow-y:auto">
   <div style="max-width:860px;margin:0 auto;padding:24px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-bottom:2px solid var(--red);padding-bottom:12px">
       <span style="font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:3px;color:var(--red)">⚠ EMERGENCY PROCEDURES</span>
@@ -564,7 +564,8 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <div class="card amber">
     <p style="margin-bottom:8px">Check airspace, drone zones and NOTAMs in the official sources before every flight (links open the live services; they need internet).</p>
     <div id="wx-airspace"></div>
-    <div style="font-size:13px;margin-top:10px">Operational authorisation reference: <span class="warn-val">TBD — confirm that remote piloting through the relay is covered by the operational authorisation (Luftfartstilsynet); open question in the relay design</span></div>
+    <div style="font-size:13px;margin-top:10px;color:var(--text)">Remote piloting through the relay is covered by the operator's authorisation (Luftfartstilsynet) — owner decision, plan §1.1. Radio-spectrum rules (Nkom) are a separate question.</div>
+    <div style="font-size:13px;margin-top:4px">Authorisation reference: <span class="warn-val">TBD — authorisation reference / document number (plan §10.5)</span></div>
   </div>
 </div>
 
@@ -637,9 +638,9 @@ function switchTab(name, btn) {
   localStorage.setItem('vtol_active_tab', name);
 }
 function openEmerg() { document.getElementById('emerg-modal').style.display='block'; document.body.style.overflow='hidden'; }
-function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow=''; }
+function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow = cr ? 'hidden' : ''; }
 function emergIsOpen() { return document.getElementById('emerg-modal').style.display !== 'none'; }
-document.addEventListener('keydown', e => { if(e.key==='Escape') { if (cr) crClose(); else closeEmerg(); } });
+document.addEventListener('keydown', e => { if(e.key==='Escape') { if (emergIsOpen()) closeEmerg(); else if (cr) crClose(); } });
 // Keyboard for non-button clickable elements (checklist rows, detail toggles, copy blocks): Enter / Space = click.
 document.addEventListener('keydown', e => {
   const el = e.target;
@@ -1872,8 +1873,8 @@ function renderBinResult(d, filename) {
 
   // Duration
   const durSec=(d.lastT-d.firstT)/1e6;
-  const durStr=durSec>0?Math.floor(durSec/60)+'m '+(Math.round(durSec)%60)+'s':'—';
-  const tFmt=s=>Math.floor(s/60)+'m '+(''+(Math.round(s)%60)).padStart(2,'0')+'s';
+  const durStr=durSec>0?Math.floor(Math.round(durSec)/60)+'m '+(Math.round(durSec)%60)+'s':'—';
+  const tFmt=s=>{const r=Math.round(s);return Math.floor(r/60)+'m '+(''+(r%60)).padStart(2,'0')+'s';};
 
   // Battery (first BAT instance, plausible window for the selected pack)
   const bs=ToolsCore.binBatterySeries(d,pack), vv=bs.v, vt=bs.t;
@@ -1986,7 +1987,7 @@ function renderBinResult(d, filename) {
       +'<div style="background:var(--surface);border:1px solid var(--border2);max-height:340px;overflow-y:auto;margin-bottom:16px">'
       +uniqMsgs.map(m=>{
         const sec=(m.t-d.firstT)/1e6;
-        const ts=Math.floor(sec/60)+':'+(''+(Math.round(sec)%60)).padStart(2,'0');
+        const ts=fmtS(sec);
         const warn=m.text.match(/error|fail|warn|critical|unsafe|bad\s|low\s|unable|disarm|no\s|lost|denied/i);
         return '<div style="display:flex;gap:12px;padding:7px 12px;border-bottom:1px solid var(--border);align-items:baseline">'
           +'<span style="font-family:var(--mono);font-size:11px;color:var(--muted);flex-shrink:0;min-width:44px">'+ts+'</span>'
@@ -2002,8 +2003,9 @@ function renderBinResult(d, filename) {
 // .BIN FLIGHT ANALYSIS (plan §10.4): transitions, events, current per phase, battery entry, flight record
 // ══════════════════════════════════════
 let binLast = null;   // { d: parseBin result, filename }
-const fmtS = s => s == null ? '—' : Math.floor(s / 60) + ':' + String(Math.round(s) % 60).padStart(2, '0');
-function packOptions(selId, role) {
+// m:ss — rounded to whole seconds first, so 59.6 s is 1:00 (not 0:00).
+const fmtS = s => { if (s == null || !isFinite(s)) return '—'; const r = Math.round(s); return Math.floor(r / 60) + ':' + String(r % 60).padStart(2, '0'); };
+function packOptions(selId) {
   const packs = VtolStore.live(store.packs);
   return packs.map(p => '<option value="' + escH(p.id) + '"' + (p.id === selId ? ' selected' : '') + '>' + escH(p.label) + ' — ' + escH(p.cells) + 'S · ' + escH(p.role) + '</option>').join('');
 }
@@ -2024,8 +2026,8 @@ function binExtrasHTML() {
     else tt = '<span style="color:var(--muted)">no airspeed data' + (t.endBy === 'msg' ? ' ("Transition done" at ' + fmtS((t.endT - d.firstT) / 1e6) + ')' : '') + '</span>';
     return '<tr><td>' + fmtS(t.tSec) + '</td><td>' + (t.dir === 'forward' ? 'FORWARD (VTOL → FW)' : 'BACK (FW → VTOL)') + '</td><td>' + escH(t.from) + ' → ' + escH(t.to) + '</td><td>' + escH(t.reason || '—') + '</td><td>' + tt + '</td></tr>';
   }).join('');
-  const KIND = { assist: 'ASSIST', transition: 'TRANSITION', failsafe: '⚠ FAILSAFE', battery: '⚠ BATTERY' };
-  const evRows = an.events.map(e => '<tr><td>' + fmtS(e.tSec) + '</td><td>' + e.kinds.map(k => '<span class="st' + (k === 'failsafe' || k === 'battery' ? ' warn' : '') + '">' + KIND[k] + '</span>').join(' ') + '</td><td>' + e.source + '</td><td>' + escH(e.text) + '</td></tr>').join('');
+  const KIND = { assist: 'ASSIST', transition: 'TRANSITION', failsafe: '✖ FAILSAFE', battery: '✖ BATTERY', warning: '⚠ ERROR / WARNING' };
+  const evRows = an.events.map(e => '<tr><td>' + fmtS(e.tSec) + '</td><td>' + e.kinds.map(k => '<span class="st' + (k === 'failsafe' || k === 'battery' ? ' crit' : k === 'warning' ? ' warn' : '') + '">' + KIND[k] + '</span>').join(' ') + '</td><td>' + e.source + '</td><td>' + escH(e.text) + '</td></tr>').join('');
   const ph = an.phases, cur = p => p.maxA === null ? '<span style="color:var(--muted)">—</span>' : p.maxA.toFixed(1) + ' A';
   const carrier = blActivePack();
   return '<div class="section-title">Flight Phases &amp; Events</div>'
@@ -2038,7 +2040,7 @@ function binExtrasHTML() {
     + '<tr><td>Transition</td><td>' + cur(ph.transition) + '</td><td>' + ph.transition.n + '</td></tr>'
     + '<tr><td>FW</td><td>' + cur(ph.fw) + '</td><td>' + ph.fw.n + '</td></tr></table>'
     + (an.transitionUnknown ? '<div class="alert alert-warn">' + an.transitionUnknown + ' forward transition(s) without airspeed data or "Transition done" message: their current counts as FW.</div>' : '') + '</div>'
-    + '<div class="chart-lbl">VTOL ASSIST · TRANSITION · FAILSAFE · BATTERY EVENTS (' + an.events.length + ')</div>'
+    + '<div class="chart-lbl">VTOL ASSIST · TRANSITION · FAILSAFE · BATTERY EVENTS, OTHER ERRORS / WARNINGS (' + an.events.length + ')</div>'
     + '<div class="tbl-wrap"><table><tr><th>T+</th><th>Kind</th><th>Source</th><th>Text</th></tr>'
     + (evRows || '<tr><td colspan="4" style="color:var(--muted)">No assist, transition, failsafe or battery events found.</td></tr>') + '</table></div>'
     + '<div class="card accent"><div class="card-title">Create battery-log entry from this .bin</div>'
@@ -2215,8 +2217,8 @@ function renderFlightForm() {
   const d = flEdit.draft, opt = (v, l, sel) => '<option value="' + escH(v) + '"' + (sel ? ' selected' : '') + '>' + escH(l) + '</option>';
   const arch = VtolStore.live(store.archive).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
   const entries = VtolStore.live(store.battLog).slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
-  const battSel = (n, role) => {
-    const cur = d.battIds.find(id => { const e = VtolStore.find(store, 'battLog', id), p = e && VtolStore.find(store, 'packs', e.packId); return p ? p.role === role : (role === 'carrier' && n === 0); }) || '';
+  const battSel = role => {
+    const cur = d.battIds.find(id => { const e = VtolStore.find(store, 'battLog', id), p = e && VtolStore.find(store, 'packs', e.packId); return p ? p.role === role : role === 'carrier'; }) || '';
     return '<select id="fl-batt-' + role + '" class="bl-input cfg-input">' + opt('', '— none —', !cur) + entries.filter(e => { const p = VtolStore.find(store, 'packs', e.packId); return !p || p.role === role; })
       .map(e => { const p = VtolStore.find(store, 'packs', e.packId); return opt(e.id, e.date + ' · ' + (p ? p.label : '?') + ' · ' + e.start + '/' + e.min + '/' + e.rest + ' V' + (e.flight ? ' · ' + e.flight : ''), e.id === cur); }).join('') + '</select>';
   };
@@ -2225,8 +2227,8 @@ function renderFlightForm() {
     + '<div><label class="bl-label" for="fl-label">LABEL</label><input type="text" id="fl-label" class="bl-input" value="' + escH(d.label) + '" placeholder="e.g. sortie 3"></div>'
     + '<div class="wide"><label class="bl-label" for="fl-archive">PREFLIGHT ARCHIVE SESSION</label><select id="fl-archive" class="bl-input">' + opt('', '— none —', !d.archiveId)
     + arch.map(a => opt(a.id, fmtTime(a.date, { date: true }) + ' · ' + a.status + ' · ' + a.duration, a.id === d.archiveId)).join('') + '</select></div>'
-    + '<div class="wide"><label class="bl-label" for="fl-batt-carrier">CARRIER BATTERY ENTRY</label>' + battSel(0, 'carrier') + '</div>'
-    + '<div class="wide"><label class="bl-label" for="fl-batt-client">CLIENT BATTERY ENTRY</label>' + battSel(1, 'client') + '</div>'
+    + '<div class="wide"><label class="bl-label" for="fl-batt-carrier">CARRIER BATTERY ENTRY</label>' + battSel('carrier') + '</div>'
+    + '<div class="wide"><label class="bl-label" for="fl-batt-client">CLIENT BATTERY ENTRY</label>' + battSel('client') + '</div>'
     + (d.logSummary ? '<label class="prof-check wide"><input type="checkbox" id="fl-keep-log" checked style="width:20px;height:20px"> KEEP LOG SUMMARY: ' + escH(flSummaryText(d.logSummary)) + '</label>' : '')
     + (d.gcsSummary ? '<label class="prof-check wide"><input type="checkbox" id="fl-keep-gcs" checked style="width:20px;height:20px"> KEEP GCS SUMMARY: ' + escH(flSummaryText(d.gcsSummary)) + '</label>' : '')
     + '<div class="wide"><label class="bl-label" for="fl-notes">NOTES</label><input type="text" id="fl-notes" class="bl-input" value="' + escH(d.notes) + '"></div></div>'
@@ -2338,7 +2340,7 @@ function renderParams() {
     return '<tr><td><code>' + escH(r.name) + '</code></td><td>' + val(r.expected, r.name) + (r.unit ? ' ' + escH(r.unit) : '') + '</td>'
       + '<td>' + (pf ? (r.actual === null ? '—' : val(r.actual, r.name)) : '<span style="color:var(--muted)">no file</span>') + '</td>'
       + '<td>' + (pf ? '<span class="st ' + cls + '">' + txt + '</span>' : '—') + '</td>'
-      + '<td style="font-size:12px">' + (r.meaning.startsWith('TBD') ? '<span class="warn-val">' + escH(r.meaning) + '</span>' : escH(r.meaning)) + '<div style="color:var(--muted);font-size:11px">source: ' + escH(r.source) + '</div></td></tr>';
+      + '<td style="font-size:12px">' + (r.meaning.startsWith('TBD') ? '<span class="warn-val">' + escH(r.meaning) + '</span>' : escH(r.meaning).replace(/(VERIFY[^)]*)/, '<span class="warn-val">$1</span>')) + '<div style="color:var(--muted);font-size:11px">source: ' + escH(r.source) + '</div></td></tr>';
   }).join('');
   const s = res.summary;
   el.innerHTML = (pf

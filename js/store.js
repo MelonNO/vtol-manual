@@ -276,13 +276,27 @@
     });
     return out;
   }
-  function cleanFlight(r) {
-    return Object.assign({}, r, { id: str(r.id), date: str(r.date), label: str(r.label), notes: str(r.notes), archiveId: str(r.archiveId),
-      battIds: Array.isArray(r.battIds) ? r.battIds.filter(x => typeof x === 'string').slice(0, 20) : [],
-      logSummary: cleanSummary(r.logSummary), gcsSummary: cleanSummary(r.gcsSummary) });
+  // 'YYYY-MM-DD' that is a real calendar date.
+  function isDay(v) {
+    if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    const d = new Date(v + 'T00:00:00Z');
+    return isFinite(d.getTime()) && d.toISOString().slice(0, 10) === v;
+  }
+  // A malformed flight record is dropped (load and import), so it can never replace a valid local record (C1.4).
+  function cleanFlight(r, issues) {
+    const textOk = v => v === undefined || v === null || typeof v === 'string' || typeof v === 'number';
+    const sumOk = v => v === undefined || v === null || (typeof v === 'object' && !Array.isArray(v));
+    const bad = [];
+    if (!isDay(r.date)) bad.push('date');
+    if (!(r.battIds === undefined || (Array.isArray(r.battIds) && r.battIds.every(x => typeof x === 'string')))) bad.push('battIds');
+    ['label', 'notes', 'archiveId'].forEach(k => { if (!textOk(r[k])) bad.push(k); });
+    ['logSummary', 'gcsSummary'].forEach(k => { if (!sumOk(r[k])) bad.push(k); });
+    if (bad.length) { issues.push(`Flight record ${short(r.date || r.id)} dropped: invalid ${bad.join(', ')}`); return null; }
+    return Object.assign({}, r, { id: str(r.id), date: r.date, label: str(r.label), notes: str(r.notes), archiveId: str(r.archiveId),
+      battIds: (r.battIds || []).slice(0, 20), logSummary: cleanSummary(r.logSummary), gcsSummary: cleanSummary(r.gcsSummary) });
   }
   function cleanMaint(r, issues) {
-    if (typeof r.taskId !== 'string' || !r.taskId || !/^\d{4}-\d{2}-\d{2}$/.test(str(r.doneDate))) {
+    if (typeof r.taskId !== 'string' || !r.taskId || !isDay(r.doneDate)) {
       issues.push(`Maintenance record ${short(r.taskId)} dropped: invalid task or date`); return null;
     }
     return Object.assign({}, r, { id: str(r.id), taskId: r.taskId, doneDate: str(r.doneDate), markedAt: str(r.markedAt), notes: str(r.notes) });
@@ -298,7 +312,7 @@
       if (!PARAM_NAME.test(k) || typeof v !== 'number' || !isFinite(v)) return null;
       params[k] = v;
     }
-    return { name: pf.name.slice(0, 200), importedAt: String(pf.importedAt), params };
+    return { name: pf.name.slice(0, 200), importedAt: new Date(Date.parse(pf.importedAt)).toISOString(), params };   // normalised to ISO
   }
 
   const CLEAN = { packs: cleanPack, flights: cleanFlight, maintenance: cleanMaint, battLog: cleanBatt, archive: cleanArchive, weatherFavorites: cleanFavorite,
@@ -511,7 +525,9 @@
       stats.settings = true;
     }
     // The param file is one record: the incoming one wins only when it was imported later (WP11 extension).
-    if (inc.paramFile && inc.paramFile.importedAt > ((local.paramFile && local.paramFile.importedAt) || '')) {
+    // Times are compared as parsed dates; an invalid incoming date never wins (cleanParamFile rejects it).
+    const localAt = local.paramFile ? Date.parse(local.paramFile.importedAt) : NaN;
+    if (inc.paramFile && (!isFinite(localAt) || Date.parse(inc.paramFile.importedAt) > localAt)) {
       local.paramFile = inc.paramFile;
       stats.paramFile = true;
     }
