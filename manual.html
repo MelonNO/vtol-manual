@@ -265,8 +265,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
     <span><strong>FW</strong> ArduPlane / QuadPlane</span>
     <span><strong>BATT</strong> 6S 7000mAh</span>
-    <span><strong>LOW VOLT</strong> <span data-tok="settings.battLowVolt">22.0</span>V auto RTL</span>
-    <span><strong>CRIT VOLT</strong> <span data-tok="settings.battCrtVolt">21.0</span>V QLand here</span>
+    <span><strong>LOW VOLT</strong> <span data-fs="battLowVolt"><span data-tok="settings.battLowVolt">22.0</span>V auto RTL</span></span>
+    <span><strong>CRIT VOLT</strong> <span data-fs="battCrtVolt"><span data-tok="settings.battCrtVolt">21.0</span>V QLand here</span></span>
     <span><strong>RTL ALT</strong> 120m REL</span>
     <span><strong>CRUISE</strong> 12 m/s</span>
     <span><strong>CLIENT</strong> <span id="hdr-client">Reference client #1</span></span>
@@ -356,9 +356,9 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="stat-box"><div class="stat-label">Cruise speed</div><div class="stat-val">12 m/s (43.2 km/h)</div></div>
     <div class="stat-box"><div class="stat-label">Min airspeed (stall prevent)</div><div class="stat-val warn">10 m/s</div></div>
     <div class="stat-box"><div class="stat-label">Max airspeed</div><div class="stat-val">22 m/s</div></div>
-    <div class="stat-box"><div class="stat-label">Arming minimum (BATT_ARM_VOLT)</div><div class="stat-val"><span data-tok="settings.battArmVolt">24.6</span>V</div></div>
-    <div class="stat-box"><div class="stat-label">Low battery → automatic RTL</div><div class="stat-val warn"><span data-tok="settings.battLowVolt">22.0</span>V</div></div>
-    <div class="stat-box"><div class="stat-label">Critical battery → QLand here</div><div class="stat-val crit"><span data-tok="settings.battCrtVolt">21.0</span>V</div></div>
+    <div class="stat-box"><div class="stat-label">Arming minimum (BATT_ARM_VOLT)</div><div class="stat-val"><span data-fs="battArmVolt"><span data-tok="settings.battArmVolt">24.6</span>V</span></div></div>
+    <div class="stat-box"><div class="stat-label">Low battery failsafe (BATT_LOW_VOLT)</div><div class="stat-val warn"><span data-fs="battLowVolt"><span data-tok="settings.battLowVolt">22.0</span>V auto RTL</span></div></div>
+    <div class="stat-box"><div class="stat-label">Critical battery failsafe (BATT_CRT_VOLT)</div><div class="stat-val crit"><span data-fs="battCrtVolt"><span data-tok="settings.battCrtVolt">21.0</span>V QLand here</span></div></div>
     <div class="stat-box"><div class="stat-label">RTL altitude (fixed-wing)</div><div class="stat-val">120m REL</div></div>
     <div class="stat-box"><div class="stat-label">VTOL RTL altitude (QRTL)</div><div class="stat-val">50m REL</div></div>
     <div class="stat-box"><div class="stat-label">Hover thrust (learned, drifts)</div><div class="stat-val">≈35% (0.35)</div></div>
@@ -384,7 +384,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </table></div>
   <div class="alert alert-info">Both pilots co-located — direct verbal comms. The bridge forwards the client's CRSF telemetry, so the GCS app can show client link quality, battery, GPS and flight mode — <strong>if the client sends telemetry</strong> (telemetry enabled on the client FC, non-zero ELRS telemetry ratio). Keep the verbal callouts as the primary method until the telemetry path is proven.</div>
 
-  <div class="alert alert-warn"><strong>Battery failsafes:</strong> at <span data-tok="settings.battLowVolt">22.0</span>V (<code>BATT_LOW_VOLT</code>) the carrier starts an <strong>automatic RTL</strong>; at <span data-tok="settings.battCrtVolt">21.0</span>V (<code>BATT_CRT_VOLT</code>) it does Loiter → <strong>QLand at the current position</strong>, not home. The pilot calls RTL earlier, at <span data-tok="settings.manualRtlVolt">23.0</span>V on the OSD. Every RTL ends with an <strong>automatic VTOL landing at home</strong> — keep the home landing zone clear for the whole flight. Ladder: Aircraft → Battery &amp; Power.</div>
+  <div class="alert alert-warn"><strong>Battery failsafes:</strong> <span data-fs="battLowVolt">at <span data-tok="settings.battLowVolt">22.0</span>V (<code>BATT_LOW_VOLT</code>) the carrier starts an <strong>automatic RTL</strong></span>; <span data-fs="battCrtVolt">at <span data-tok="settings.battCrtVolt">21.0</span>V (<code>BATT_CRT_VOLT</code>) it does Loiter → <strong>QLand at the current position</strong>, not home</span>. The pilot calls RTL earlier, at <span data-tok="settings.manualRtlVolt">23.0</span>V on the OSD. Every RTL ends with an <strong>automatic VTOL landing at home</strong> — keep the home landing zone clear for the whole flight. Ladder: Aircraft → Battery &amp; Power.</div>
 
 </div>
 
@@ -591,7 +591,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <p><strong>Keep the home landing zone clear for the whole flight</strong> — every RTL ends there.</p>
     <p>The 915 MHz Nomad is used only within close range. The carrier camera is forced off with the GCS stream and does not help to watch the client return.</p>
   </div>
-  <div class="alert alert-danger" id="battery-failsafe"><strong>Battery failsafes.</strong> Initiate manual RTL at <span data-tok="settings.manualRtlVolt">23.0</span>V (OSD). Hard limit: RTL in progress before <span data-tok="settings.hardLimitVolt">22.5</span>V. At <span data-tok="settings.battLowVolt">22.0</span>V (<code>BATT_LOW_VOLT</code>, 10 s below) the carrier starts an <strong>automatic RTL</strong> (home at 120 m, automatic VTOL landing at home). At <span data-tok="settings.battCrtVolt">21.0</span>V (<code>BATT_CRT_VOLT</code>) it does Loiter → QLand at the current position — <strong>only at this critical stage does the aircraft NOT return home</strong>. The failsafes read the sag-compensated voltage (<code>BATT_FS_VOLTSRC</code> = 1); the OSD and MP show raw voltage, lower under load, so the pilot's 23.0V call comes well before the automatic 22.0V. If the low-battery RTL fires during a <strong>manual QHOVER landing</strong>, reselect QHOVER on the Nomad switch to finish the landing; it does not interrupt QLAND, QRTL or an AUTO VTOL landing.</div>
+  <div class="alert alert-danger" id="battery-failsafe"><strong>Battery failsafes.</strong> Initiate manual RTL at <span data-tok="settings.manualRtlVolt">23.0</span>V (OSD). Hard limit: RTL in progress before <span data-tok="settings.hardLimitVolt">22.5</span>V. <span data-fs="battLowVolt">At <span data-tok="settings.battLowVolt">22.0</span>V (<code>BATT_LOW_VOLT</code>, 10 s below) the carrier starts an <strong>automatic RTL</strong> (home at 120 m, automatic VTOL landing at home)</span>. <span data-fs="battCrtVolt">At <span data-tok="settings.battCrtVolt">21.0</span>V (<code>BATT_CRT_VOLT</code>) it does Loiter → QLand at the current position — <strong>only at this critical stage does the aircraft NOT return home</strong></span>. The failsafes read the sag-compensated voltage (<code>BATT_FS_VOLTSRC</code> = 1); the OSD and MP show raw voltage, lower under load, so the pilot's 23.0V call comes well before the automatic 22.0V. If the low-battery RTL fires during a <strong>manual QHOVER landing</strong>, reselect QHOVER on the Nomad switch to finish the landing; it does not interrupt QLAND, QRTL or an AUTO VTOL landing.</div>
 
   <div class="section-title" id="gcs-heartbeat">Mission Planner Is the Heartbeat (S-02a, S-02b, S-02c)</div>
   <div class="card amber">
@@ -994,7 +994,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="section-title">Takeoff — VTOL Phase</div>
   <div class="card accent">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Mode: <span class="mbadge m-qhov">QHOVER</span></strong><p>Nomad switch position 1. Confirm in Mission Planner HUD.</p></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Arm</strong><p>Stick arm (Nomad) or GCS arm. All 3 motors (M1, M2, M4) spool to min arm thrust. Confirm no pre-arm messages. Arming is refused below <span data-tok="settings.battArmVolt">24.6</span>V (<code>BATT_ARM_VOLT</code>) — fit a fully charged pack.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Arm</strong><p>Stick arm (Nomad) or GCS arm. All 3 motors (M1, M2, M4) spool to min arm thrust. Confirm no pre-arm messages. <span data-fs="battArmVolt">Arming is refused below <span data-tok="settings.battArmVolt">24.6</span>V (<code>BATT_ARM_VOLT</code>) — fit a fully charged pack</span>.</p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Hover check at 2–3m</strong><p>Confirm stable hover, no oscillation. Confirm SIYI link (MP telemetry live) and 915 RSSI acceptable. Co-pilot confirms telemetry nominal in MP.</p></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Climb to transition altitude</strong><p>Climb in QHOVER to ≥25m REL. Wind vane active — aircraft weathervanes into wind automatically.</p></div></div>
   </div>
@@ -1013,7 +1013,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Loiter established — client handover</strong><p>Carrier in AUTO loiter. Bridge RUN, client video in the viewer, client LQ shown in the app (if telemetry is enabled). FPV Pilot takes the EdgeTX radio and flies the client.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>GCS app status bar — FPV Pilot duty</strong><p>Watch the app status bar: <strong>RTT, client LQ, bridge state, camera state</strong>. Call <strong>"RC LINK DEGRADED"</strong> at the alarm thresholds (RTT threshold <span class="warn-val">TBD — inactive until the HM30 RTT is measured</span>; LQ &lt; 70 %). Every app alarm has a callout (Pre-Arm Ref → Relay &amp; GCS app).</p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Carrier Pilot: orbit management</strong><p>Primary duty — keep the client inside the relay coverage. Orbit around the client's operating area with the client on the near side. If the client approaches the coverage edge: call "RELAY EDGE" and vector the carrier in via GUIDED mode.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Battery discipline</strong><p>Target RTL at <span class="warn-val"><span data-tok="settings.manualRtlVolt">23.0</span>V</span> (OSD raw voltage). Hard limit: RTL in progress before <span class="crit-val"><span data-tok="settings.hardLimitVolt">22.5</span>V</span>. At <span data-tok="settings.battLowVolt">22.0</span>V: automatic RTL (failsafe, sag-compensated). At <span data-tok="settings.battCrtVolt">21.0</span>V: automatic Loiter→QLand at the current position.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Battery discipline</strong><p>Target RTL at <span class="warn-val"><span data-tok="settings.manualRtlVolt">23.0</span>V</span> (OSD raw voltage). Hard limit: RTL in progress before <span class="crit-val"><span data-tok="settings.hardLimitVolt">22.5</span>V</span>. <span data-fs="battLowVolt">At <span data-tok="settings.battLowVolt">22.0</span>V: automatic RTL (failsafe, sag-compensated)</span>. <span data-fs="battCrtVolt">At <span data-tok="settings.battCrtVolt">21.0</span>V: automatic Loiter→QLand at the current position</span>.</p></div></div>
   </div>
   <div class="alert alert-warn">Verbal callouts stay the primary source of client status until the telemetry path is proven. Establish a call cadence: battery level, position, issues — every 2–3 minutes minimum.</div>
 
@@ -1065,7 +1065,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="step"><div class="step-n">4</div><div class="step-body"><strong>VTOL land</strong><p>Final descent at Q_LAND_FINAL_SPD = 0.5 m/s. Confirm landing zone clear. Disarm on touchdown.</p></div></div>
     <div class="step"><div class="step-n">5</div><div class="step-body"><strong>After landing</strong><p>Save the GCS app session log (RC out, status, telemetry, alarms) for the debrief.</p></div></div>
   </div>
-  <div class="alert alert-warn" id="lowbatt-qhover-landing"><strong>Low-battery RTL during a manual QHOVER landing:</strong> if <code>BATT_LOW_VOLT</code> (<span data-tok="settings.battLowVolt">22.0</span>V) fires while you land manually in QHOVER, the aircraft switches to RTL — a fixed-wing return and a climb to 120 m. <strong>Reselect QHOVER on the Nomad switch</strong> to finish the landing. The failsafe does not interrupt QLAND, QRTL or an AUTO VTOL landing.</div>
+  <div class="alert alert-warn" id="lowbatt-qhover-landing"><strong>Low-battery RTL during a manual QHOVER landing:</strong> if <code>BATT_LOW_VOLT</code> (<span data-fs="battLowVolt"><span data-tok="settings.battLowVolt">22.0</span>V</span>) fires while you land manually in QHOVER, the aircraft switches to RTL — a fixed-wing return and a climb to 120 m. <strong>Reselect QHOVER on the Nomad switch</strong> to finish the landing. The failsafe does not interrupt QLAND, QRTL or an AUTO VTOL landing.</div>
 
   <div class="section-title" id="compass-cal">Compass Calibration</div>
   <div class="card amber">
@@ -1212,7 +1212,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>MAVLink Mirror</code></td><td>Mission Planner feature (Ctrl+F)</td><td>Copies MP's MAVLink stream to another program. The GCS app reads the carrier position this way, with "Write access" unticked.</td></tr>
     <tr><td><code>PID</code></td><td>Proportional Integral Derivative</td><td>Control algorithm. ArduPilot uses PID controllers for attitude stabilisation — P reacts to current error, I accumulates over time, D damps rapid changes.</td></tr>
     <tr><td><code>QuadPlane</code></td><td>Multirotor + Plane hybrid</td><td>ArduPilot firmware mode for VTOL fixed-wing aircraft. Combines multirotor VTOL capability with fixed-wing cruise. Parameters prefixed with Q_. This aircraft is a tri tilt-rotor (Q_FRAME_CLASS 7).</td></tr>
-    <tr><td><code>FS</code></td><td>Failsafe</td><td>Automated response to a loss of signal or low battery. On this carrier: the only <strong>link</strong> failsafe is SIYI / GCS loss (after 5 s: RTL in fixed-wing modes, QRTL in VTOL modes) — never the 915 MHz link. <strong>Battery</strong> failsafes: low 22.0V (BATT_LOW_VOLT) → automatic RTL; critical 21.0V (BATT_CRT_VOLT) → QLand at the current position. A transition timeout (8 s) QRTLs home.</td></tr>
+    <tr><td><code>FS</code></td><td>Failsafe</td><td>Automated response to a loss of signal or low battery. On this carrier: the only <strong>link</strong> failsafe is SIYI / GCS loss (after 5 s: RTL in fixed-wing modes, QRTL in VTOL modes) — never the 915 MHz link. <strong>Battery</strong> failsafes: <span data-fs="battLowVolt">low 22.0V (BATT_LOW_VOLT) → automatic RTL</span>; <span data-fs="battCrtVolt">critical 21.0V (BATT_CRT_VOLT) → QLand at the current position</span>. A transition timeout (8 s) QRTLs home.</td></tr>
     <tr><td><code>HDOP</code></td><td>Horizontal Dilution of Precision</td><td>Measure of GPS positional accuracy based on satellite geometry. Lower is better. The arming limit is a param-file value (<span class="warn-val">VERIFY</span>).</td></tr>
     <tr><td><code>SITL</code></td><td>Software In The Loop</td><td>Simulation mode where ArduPilot runs on a PC without real hardware, for testing and development (e.g. the S-01a and Q-mode RTL tests).</td></tr>
     <tr><td><code>SBUS</code></td><td>Serial Bus</td><td>Futaba RC protocol for connecting receivers to flight controllers. Inverted UART at 100kbps.</td></tr>
@@ -1382,7 +1382,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <tr><td>Fixed-wing RC</td><td>Comfortable manual flight of a fixed-wing aircraft — can hold level flight, turn, and land without assistance. Simulator hours accepted: 50h+ fixed-wing recommended.</td></tr>
       <tr><td>VTOL operations</td><td>5 independent VTOL flights with full transition cycle (QHOVER → FBWB → cruise → back-transition → VTOL_LAND) before first relay sortie.</td></tr>
       <tr><td>Mission Planner</td><td>Can load, verify and edit a mission. Can send GCS mode commands. Can read all key telemetry: airspeed, altitude, battery voltage, RSSI, flight mode. Knows MP is the carrier's heartbeat: never closes MP in flight, laptop sleep disabled (S-02a).</td></tr>
-      <tr><td>Failsafe intent</td><td>Can explain: the only link failsafe is SIYI / GCS loss (after 5 s in any mode: RTL in fixed-wing modes, QRTL in VTOL modes; RTL ends with an automatic VTOL landing at home); the battery failsafes: low 22.0V → automatic RTL, critical 21.0V → QLand here; a transition timeout (8 s) QRTLs home; losing the 915 MHz backup beyond close range is expected and needs no action.</td></tr>
+      <tr><td>Failsafe intent</td><td>Can explain: the only link failsafe is SIYI / GCS loss (after 5 s in any mode: RTL in fixed-wing modes, QRTL in VTOL modes; RTL ends with an automatic VTOL landing at home); the battery failsafes: <span data-fs="battLowVolt">low 22.0V → automatic RTL</span>, <span data-fs="battCrtVolt">critical 21.0V → QLand here</span>; a transition timeout (8 s) QRTLs home; losing the 915 MHz backup beyond close range is expected and needs no action.</td></tr>
       <tr><td>Emergency procedures</td><td>All emergency cards on the Emergency tab known without reference to this manual. Can identify a transition failure within 3 seconds.</td></tr>
       <tr><td>Carrier controller</td><td>Familiar with the 3-position switch assignment (QHOVER / FBWB / AUTO) and left-button RTL, and that both work only within close range.</td></tr>
       </tbody>
@@ -2021,12 +2021,27 @@ function pipelines() {
     + '</div>';
 }
 
+// A phrase that promises a battery failsafe (data-fs="battLowVolt" …) is replaced as a whole when the imported param
+// file DISABLES that failsafe — never a bare "auto RTL" next to a disabled value (WP14 rework F9). The original markup is
+// kept on the element, so it comes back when the file is cleared or changed.
+var FS_PHRASE = { battLowVolt: ['LOW-BATT FAILSAFE', 'V auto RTL'], battCrtVolt: ['CRIT-BATT FAILSAFE', 'V QLand here'], battArmVolt: ['ARMING-VOLTAGE CHECK', 'V arming minimum'] };
+function fillFailsafePhrases() {
+  var dis = (manCtx.settings && manCtx.settings.fsDisabled) || {};
+  document.querySelectorAll('[data-fs]').forEach(function (el) {
+    if (el.__orig === undefined) el.__orig = el.innerHTML;
+    var k = el.getAttribute('data-fs'), d = dis[k], ph = FS_PHRASE[k];
+    if (d && ph) {
+      el.textContent = ph[0] + ': DISABLED (' + (d.file || 'imported param file') + '; reference ' + (d.ref === null ? 'TBD' : d.ref.toFixed(1)) + ph[1] + ')';
+      el.classList.add('crit-val');
+    } else { el.innerHTML = el.__orig; el.classList.remove('crit-val'); }
+  });
+}
 function fillTokens() {
+  fillFailsafePhrases();
   document.querySelectorAll('[data-tok]').forEach(function (el) {
     var tok = el.getAttribute('data-tok'), d = (manCtx.settings.fsDisabled || {})[tok.replace(/^settings\./, '')];
-    // a failsafe the imported file disables: the prose describes the reference configuration, so show the reference value
-    // with an explicit marker (the red banner at the top says what the imported file does)
-    if (d && /^settings\./.test(tok)) { el.textContent = (d.ref === null ? 'TBD' : d.ref.toFixed(1)) + ' [reference — DISABLED in ' + (d.file || 'param file') + ']'; el.classList.add('warn-val'); return; }
+    // fallback for a token outside a data-fs phrase (none today): say DISABLED, never the value as if active
+    if (d && /^settings\./.test(tok)) { el.textContent = 'DISABLED (' + (d.file || 'param file') + '; reference ' + (d.ref === null ? 'TBD' : d.ref.toFixed(1)) + ')'; el.classList.add('warn-val'); return; }
     var v = VtolRender.tokenValue(tok, manCtx);
     el.textContent = v === null ? 'TBD' : v;
     el.classList.toggle('warn-val', v === null);
@@ -2333,6 +2348,13 @@ function manualInit() {
 }
 // Profiles edited in the Tools page (another tab or window) update the manual.
 window.addEventListener('storage', function (e) { if (e.key === VtolStore.KEY) renderManual(); });
+// … and a store write in this tab (VtolStore.save fires 'vtol-store-changed'): the same re-render (WP14 rework F8).
+var manRefreshing = false;
+window.addEventListener('vtol-store-changed', function () {
+  if (manRefreshing) return;
+  manRefreshing = true;
+  try { renderManual(); } finally { manRefreshing = false; }
+});
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', manualInit);
 else manualInit();
 // Service worker registration and the update toast: js/field.js (WP09).

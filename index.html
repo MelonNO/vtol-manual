@@ -1562,6 +1562,17 @@ window.addEventListener('vtol-store-changed', () => {
 });
 // Another tab changed the store.
 window.addEventListener('storage', e => { if (e.key === VtolStore.KEY) vtolRefreshAll(); });
+// THIS tab changed the store: VtolStore.save() fires 'vtol-store-changed' for every write (param import / clear, settings,
+// profiles, battery log, JSON import, migration …). One central refresh re-renders everything that depends on the store and
+// the effective settings — header, failsafe banner, emergency modal / kneeboard / emergency-only, checklists, battery
+// analysis, gauge, Params — so no handler can leave a stale safety value on screen (WP14 rework F8). The guard stops
+// re-entry (vtolRefreshAll's own load() may save a repair).
+let vtolRefreshing = false;
+window.addEventListener('vtol-store-changed', () => {
+  if (vtolRefreshing) return;
+  vtolRefreshing = true;
+  try { vtolRefreshAll(); } finally { vtolRefreshing = false; }
+});
 
 // Merge the linked file into the store (merge by id — local records are never replaced wholesale).
 async function vtolMergeFromFile(handle) {

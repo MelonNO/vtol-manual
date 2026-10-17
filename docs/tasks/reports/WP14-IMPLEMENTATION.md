@@ -186,3 +186,30 @@ jsdom smoke S\wp14tools\smoke.js                      → 72 pass, 0 fail (12 ne
 ```
 
 **For `02-CONTRACTS.md`** (additive to §5.1): `ToolsCore.FS_ACT_PARAMS` and `ToolsCore.contentForFailsafes(content, eff)`; `effectiveSettings(settings, paramFile, ref?)` now also returns `fsDisabled` / `fsActDiffers`, and a disabled value is `null`. `importJSON.lastStats.notice` is set when an imported pre-Rev C backup is migrated.
+
+## Rework round 2
+
+This round answers `S\verify\WP14\VERIFY-round2.md` (REJECTED: F8 MAJOR; F9 MINOR).
+
+| Finding | Sev | Fix | Evidence |
+|---|---|---|---|
+| **F8** In-session param import / clear left stale safety values in Tools | MAJOR | **One central refresh path, driven by the store event.** `VtolStore.save()` already fires `vtol-store-changed` on every write in this tab: param import, param clear, settings edits, active pack / client changes, profile edits, the battery log, JSON import / link file and the migration. `index.html` now listens for it and runs `vtolRefreshAll()`, with a re-entry guard because the refresh's own `load()` may save a repair. `vtolRefreshAll` re-renders the header, the failsafe banner, the content (`CONTENT` → emergency modal, kneeboard, emergency-only mode, checklists, post-flight), the battery analysis / gauge / trend, the Params view and its header, the settings inputs with the reference-difference line, profiles, maintenance, flights and airspace. No handler can forget a surface. The manual (`renderManual`) and the map (`applySimSpeedLimits`) listen to the same event. The `storage` event (other tabs) is unchanged. | `index.html` listener after the `storage` listener; `manual.html` and `relay/map.html` listeners |
+| | | **Test** `test/pwa/wp14-refresh.test.js` (jsdom; skipped without `VTOL_JSDOM`, like the WP09 style check). It loads the real page with its scripts inlined, chooses `sample.param` in `#pf-file` and clicks **IMPORT** (`paramImport`), calling no render function. It then asserts that the header (`DISABLED in sample.param (BATT_LOW_VOLT = 0)` / `22.2V QLand here`), the red banner, the emergency card (`LOW-BATT FAILSAFE DISABLED — NO AUTO RTL`, `22.2V → AUTO QLAND HERE`, no `AUTO RTL (FAILSAFE)`), the checklists, the modal / kneeboard list and the battery analysis all updated at once. **CLEAR PARAM FILE** restores 22.0 / 21.0, hides the banner and brings the cards back. A settings edit through its input updates the card. A second test checks that a store write in the manual's tab re-renders the manual. | |
+| F9 | MINOR | **Manual phrases:** every phrase that promises a battery failsafe is wrapped in `data-fs="battLowVolt"` / `battCrtVolt` / `battArmVolt` (header, Overview stat boxes and alert, Flight Modes alert, Procedures arm step and battery discipline, the low-battery QHOVER landing note, the glossary "Failsafe" row and the crew-training row). When the imported file disables that failsafe, the whole phrase becomes e.g. "LOW-BATT FAILSAFE: DISABLED (sample.param; reference 22.0V auto RTL)" in red. The original markup is kept on the element, so it comes back when the file is cleared. **Stat labels** are now neutral ("Low battery failsafe (BATT_LOW_VOLT)"), with the value "22.0V auto RTL". **Fallback:** a token outside such a phrase would read "DISABLED (file; reference …)". **Tools:** the header and the content were already explicit. | `manual.html` `fillFailsafePhrases()`; test above (no "22.0 V … automatic RTL" and no "[reference — DISABLED" anywhere in the visible manual text with the file imported) |
+
+**Reference tables kept on purpose:** the Aircraft parameter table and the voltage-ladder card are labelled as the reference param file (2026-10-17). They keep the reference values while a different file is imported; the red banner above the content states what the imported file does.
+
+### Tests (rework round 2)
+
+```
+export PATH="/c/Program Files/nodejs:$PATH"
+node --test test/                                     → tests 293, pass 290, fail 0, skipped 3 (jsdom: WP09 style check + 2 new refresh tests)
+VTOL_JSDOM=S/jsenv/node_modules/jsdom node --test test/  → tests 293, pass 293, fail 0
+node scripts/diagrams/build.js --check                → up to date (16 SVG files, manual slots and inline SVGs)
+node scripts/gen-precache.mjs --check                 → up to date (57 assets)
+node scripts/gen-params-reference.mjs --check         → up to date (1663 parameters)
+html-validate: index 127 / manual 0 / map 40 (unchanged)
+jsdom smoke S\wp14tools\smoke.js                      → 72 pass, 0 fail
+```
+
+The earlier WP09 verifier smoke now differs only in its version-line string, which expects `PARAM FILE TBD`; F5 changed that line on purpose.

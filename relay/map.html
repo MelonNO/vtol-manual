@@ -2220,6 +2220,13 @@ function toggleSb() {
 // ─── Start-up: restore the last session, never a built-in site (MAP-09) ──────
 loadProfiles();
 applySimSpeedLimits();
+// a store write in this tab (VtolStore.save fires 'vtol-store-changed'): the sim speeds follow (WP14 rework F8)
+let simSpeedRefreshing = false;
+window.addEventListener('vtol-store-changed', () => {
+  if (simSpeedRefreshing) return;
+  simSpeedRefreshing = true;
+  try { applySimSpeedLimits(); } finally { simSpeedRefreshing = false; }
+});
 vtxFromProfiles();
 renderProfileUi();
 $('md-k').value = model.k; $('md-mrg').value = model.marginM; $('md-tree').value = model.treeH;
