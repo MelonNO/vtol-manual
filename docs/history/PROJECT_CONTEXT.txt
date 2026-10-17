@@ -1,4 +1,39 @@
 ================================================================
+HISTORICAL NOTE (added in release 2.0.0, 2026-10-17) — READ FIRST
+================================================================
+This file is a historical working note from the first version of
+the project. It is kept unchanged as a record. It is NOT a source
+of current values, and parts of it are wrong for the aircraft as
+configured today.
+
+Authoritative sources, in this order:
+  1. docs/reference/carrier-params-2026-10-17.param
+     (the carrier's parameter export; docs/reference/README.md)
+  2. docs/SOFTWARE-IMPROVEMENT-PLAN.md, section 15 (Rev C):
+     parameter values, failsafe behaviour, voltage ladder
+  3. CLAUDE.md (current architecture and conventions)
+
+Out of date below (do not use):
+  - "KEY PARAMETERS": AIRSPEED_CRUISE is 12 m/s, AIRSPEED_MIN
+    10 m/s, Q_TRANSITION_MS 3500, Q_TRANS_FAIL 8 s with
+    Q_TRANS_FAIL_ACT 1 (QRTL home, never QHOVER),
+    Q_BACKTRANS_MS 8000, Q_M_THST_HOVER 0.35 (learned),
+    Q_TILT_RATE_UP/DN 45, TRIM_THROTTLE 30 %, Q_RTL_ALT 50 m,
+    BATT_CRT_VOLT 21.0 V, BATT_LOW_VOLT 22.0 V (automatic RTL),
+    BATT_ARM_VOLT 24.6 V; FS_GCS_ENABL 2 is active in ALL modes;
+    FS_SHORT/LONG are not an RC-loss timeline here
+    (THR_FAILSAFE 2: RC loss triggers no action); FLTMODE2 = 11
+    is RTL (not QLOITER).
+  - "KNOWN ISSUES" 1 and 2: BATT_LOW_VOLT is now set (22.0 V),
+    and there is NO geofence (FENCE_ENABLE/TYPE/TOTAL = 0).
+    Issue 3 (critical battery lands at the current position)
+    still stands.
+  - The relay chain (Nomad 868 -> DBR4 -> Nomad 2.4, HDMI/SIYI
+    encoder), the 4-motor wording, the Flask app and the Gist
+    sync were all removed or replaced (see CHANGELOG.md 2.0.0).
+================================================================
+
+================================================================
 PROJECT CONTEXT — HEEWING T2 VTOL RELAY CARRIER
 ================================================================
 This file gives you complete context about this project.
