@@ -96,6 +96,17 @@ Consumers must treat `null` as **unknown**: show "TBD" and do not compute with i
 - **Extra `VtolStore` helpers:** `live`, `find`, `upsert`, `remove`, `mergeStores`, `IDS` (the default profile ids — **consumers must use these ids; WP02's fallback must match them**), `importJSON.lastStats`, `takeIssues`, and `_setStorage` (tests only). `save()` returns true/false.
 - **Validation:** every record and setting is validated and coerced on load and import. Invalid incoming records must **not** overwrite a valid local record. WP05 must fix the remaining case where an invalid incoming default-pack record resets local fields, and must add validation for client and link profiles when it builds their UI.
 
+### C1.6 Rev C carrier-parameter update (normative from WP14; plan §15)
+
+- **`settings` defaults change:**
+  - `battCrtVolt` **21.0** (was 22.2)
+  - new `battLowVolt` **22.0** (automatic RTL failsafe)
+  - new `battArmVolt` **24.6**
+  - `manualRtlVolt` 23.0 and `hardLimitVolt` 22.5 unchanged
+- **Migration:** in stored settings that were never user-edited (no `settings.updatedAt`), replace the old default `battCrtVolt` 22.2 with 21.0 and add the new keys, with a one-time notice. If the user edited them, keep the values but show a "differs from reference param file" notice.
+- When `store.paramFile` is present, its `BATT_CRT_VOLT` / `BATT_LOW_VOLT` / `BATT_ARM_VOLT` take precedence for display and analysis, with the source shown.
+- **Reference parameter file:** `docs/reference/carrier-params-2026-10-17.param` (verbatim copy) and a generated `data/params-reference.js` (global `VtolParamsRef = { source, savedDate, params: {NAME: number} }`). Pages use it as the default baseline for the Params comparison and the manual's parameter reference.
+
 ### C1.5 Extensions accepted with WP11 (normative)
 
 - `paramFile = { name, importedAt (ISO), params: { NAME: number } }`: a single record. Newer `importedAt` (parsed date) wins on import; invalid dates never win. Clearing it does not propagate through import (known limitation).

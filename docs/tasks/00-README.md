@@ -56,6 +56,7 @@ The PM updates this table.
 | WP08a | done (1 rework) | APPROVED (round 2) | yes |
 | WP08b | done | APPROVED (round 1) | yes |
 | WP13 | in progress (GCS hardening follow-up) | | |
+| WP14 | waiting for WP09 (carrier params Rev C + param reference) | | |
 | WP09 | in progress | | |
 | WP10 | | | |
 | WP11 | done (1 rework) | APPROVED (round 2) | yes |
