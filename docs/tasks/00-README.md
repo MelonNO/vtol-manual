@@ -54,8 +54,8 @@ The PM updates this table.
 | WP06 | done | APPROVED (round 1) | yes |
 | WP07 | | | |
 | WP08a | done (1 rework) | APPROVED (round 2) | yes |
-| WP08b | in progress | | |
+| WP08b | done | in verification | |
 | WP09 | | | |
 | WP10 | | | |
-| WP11 | in progress | | |
+| WP11 | done (rework 1) | in verification round 2 | |
 | WP12 | done (hotfix) | APPROVED (round 1) | yes |
