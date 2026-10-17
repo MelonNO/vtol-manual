@@ -971,6 +971,7 @@ Source: ArduPilot `ArduPlane/Parameters.cpp` (master), read 2026-10-16.
 | `FS_SHORT_ACTN` | 0 | **0 CIRCLE / no change if in AUTO, GUIDED, LOITER** · 1 CIRCLE · 2 FBWA at zero throttle · 3 Disable · 4 FBWB |
 | `FS_LONG_ACTN` | 1 | 0 Continue · **1 ReturnToLaunch** · 2 Glide · 3 Deploy Parachute · 4 Auto · 5 AUTOLAND |
 | `RTL_ALTITUDE` | 120 | Target altitude **above home** for RTL |
+| `Q_TILT_MAX` | 80 | Tilt angle held **during the forward transition** until airspeed is reached; in fixed-wing flight the tilt motors go fully forward (ArduPilot tilt-rotor guide). The plan's earlier wording "0° → 80° (cruise)" is **corrected** here. Verify against the firmware docs. |
 | `Q_TRANS_FAIL_ACT` | 0 | **-1 Warn only · 0 QLand · 1 QRTL** (`ArduPlane/quadplane.cpp`, master, read during implementation). The old manual's "0 = QHOVER" is **wrong** for current firmware. Verify against the firmware version in use. |
 
 Not re-verified here (check against the param file and docs before publishing): `BATT_FS_CRT_ACT = 6` (documented as Loiter→QLand), `Q_FRAME_CLASS = 7` (Tri), `Q_TRANS_FAIL`, `Q_RTL_MODE`/`Q_OPTIONS` behaviour on RTL from a Q-mode.
