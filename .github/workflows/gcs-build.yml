@@ -1,0 +1,87 @@
+# Windows build of the GCS companion app (WP10 R2): tests, PyInstaller build (gcs/packaging/build.ps1), artifact.
+# On a tag v* the zip is also attached to the GitHub Release of that tag (created if it does not exist yet).
+name: GCS build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'gcs/**'
+      - 'protocol/**'
+      - '.github/workflows/gcs-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gcs-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build vtol-gcs (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 40
+    outputs:
+      zip: ${{ steps.zip.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build and test dependencies
+        run: python -m pip install pytest pygame-ce "pyinstaller>=6"
+
+      - name: Tests (the 5-run stability check is in ci.yml)
+        run: python -m pytest gcs protocol -q -p no:cacheprovider
+
+      - name: Build with gcs/packaging/build.ps1
+        shell: pwsh
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File gcs\packaging\build.ps1 -Python python -SkipInstall -Clean
+
+      - name: Zip the build folder
+        id: zip
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') { $ver = $env:GITHUB_REF_NAME } else { $ver = "build-$($env:GITHUB_SHA.Substring(0, 8))" }
+          $name = "vtol-gcs-$ver-windows-x64.zip"
+          Compress-Archive -Path gcs\dist\vtol-gcs -DestinationPath $name
+          "name=$name" >> $env:GITHUB_OUTPUT
+          Get-Item $name | Format-List Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vtol-gcs-windows
+          path: ${{ steps.zip.outputs.name }}
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Attach the zip to the GitHub Release
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vtol-gcs-windows
+
+      - name: Create the release if needed, then upload (replaces an earlier upload of the same file)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          ZIP: ${{ needs.build.outputs.zip }}
+        run: |
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --title "$TAG" \
+              --notes "Release $TAG. What changed: see CHANGELOG.md. The Windows GCS app is attached as $ZIP."
+          fi
+          gh release upload "$TAG" "$ZIP" --clobber
