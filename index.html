@@ -291,8 +291,8 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
     <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
     <span><strong>CLIENT</strong> <span id="hdr-client"></span></span>
     <span><strong>BATT</strong> 6S 7000mAh</span>
-    <span><strong>LOW VOLT</strong> <span id="hdr-low">22.0</span>V auto RTL</span>
-    <span><strong>CRIT VOLT</strong> <span id="hdr-crit">21.0</span>V QLand here</span>
+    <span><strong>LOW VOLT</strong> <span id="hdr-low">22.0V auto RTL</span></span>
+    <span><strong>CRIT VOLT</strong> <span id="hdr-crit">21.0V QLand here</span></span>
     <span><strong>RTL ALT</strong> 120m REL (above home)</span>
     <span><strong>CRUISE</strong> 12 m/s</span>
     <span><strong>VERSION</strong> <span class="ver-app"></span> · CONTENT <span class="ver-content"></span></span>
@@ -363,6 +363,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 <div class="content vf-zoom">
 <div id="store-notice" class="alert alert-warn" role="status" style="display:none"></div>
 <div id="info-notice" class="alert alert-warn" role="status" style="display:none"></div>
+<div id="fs-alert" class="alert alert-danger" role="alert" hidden></div>
 
 <!-- PRE-FLIGHT -->
 <div id="tab-preflight" class="tab-panel">
@@ -727,9 +728,22 @@ function renderRefDiff() {
     + (d.length ? ' <span class="warn-val">⚠ Your settings differ from the reference param file: ' + d.map(x => escH(x.param) + ' ' + f1(x.setting) + ' V (reference ' + f1(x.ref) + ' V)').join(', ') + '.</span>' : '')
     + (fromFile.length ? ' In use from the imported param file "' + escH(es.voltFile) + '": ' + escH(fromFile.join(', ')) + '.' : '');
   document.querySelectorAll('.ref-diff').forEach(el => { el.innerHTML = html; });
-  const h = document.getElementById('hdr-low'), c = document.getElementById('hdr-crit');
-  if (h) h.textContent = typeof es.battLowVolt === 'number' ? es.battLowVolt.toFixed(1) : 'TBD';
-  if (c) c.textContent = typeof es.battCrtVolt === 'number' ? es.battCrtVolt.toFixed(1) : 'TBD';
+  // Header: a failsafe DISABLED by the imported param file says so — never the default voltage (WP14 rework F2).
+  const dis = es.fsDisabled || {};
+  [['hdr-low', 'battLowVolt', 'V auto RTL'], ['hdr-crit', 'battCrtVolt', 'V QLand here']].forEach(([id, k, what]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.textContent = dis[k] ? 'DISABLED in ' + (es.voltFile || 'param file') + ' (' + (dis[k].value !== null && dis[k].value <= 0 ? dis[k].param + ' = ' + dis[k].value : dis[k].actParam + ' = 0') + ')'
+      : typeof es[k] === 'number' ? es[k].toFixed(1) + what : 'TBD';
+    el.classList.toggle('crit-val', !!dis[k]);
+  });
+  // Prominent banner on every tab while the imported file disables a failsafe or changes its action.
+  const fa = document.getElementById('fs-alert');
+  if (fa) {
+    const lines = Object.keys(dis).map(k => '⚠ ' + escH(dis[k].text))
+      .concat(Object.keys(es.fsActDiffers || {}).map(k => '⚠ ' + escH(es.fsActDiffers[k].actParam + ' = ' + es.fsActDiffers[k].act + ' in imported file ' + es.voltFile + ' — differs from reference ' + es.fsActDiffers[k].ref)));
+    fa.hidden = !lines.length;
+    fa.innerHTML = lines.join('<br>') + (lines.length ? '<br>Fly by the pilot thresholds; check the aircraft against the reference (PARAMS tab).' : '');
+  }
 }
 // One-time information notices from the store (the Rev C threshold migration), shown until dismissed.
 function renderInfoNotices() {
@@ -830,15 +844,21 @@ function buildChecklist(name) {
 // ── SHARED CONTENT ── header, checklists, post-flight and emergency modal from VtolContent + active profile.
 const effStore = () => Object.assign({}, store, { settings: effSettings() });
 let contentCtx = VtolRender.ctxFrom(effStore());
+// The shared content adapted to the effective settings: a failsafe the imported param file disables is stated as
+// DISABLED in every card, row and checklist line (ToolsCore.contentForFailsafes; the original VtolContent is unchanged).
+let CONTENT = ToolsCore.contentForFailsafes(VtolContent, contentCtx.settings);
 function renderContent() {
   contentCtx = VtolRender.ctxFrom(effStore());
+  CONTENT = ToolsCore.contentForFailsafes(VtolContent, contentCtx.settings);
+  CHECKLISTS.preflight.list = CONTENT.checklists.preflight; CHECKLISTS.turnaround.list = CONTENT.checklists.turnaround;
   document.getElementById('hdr-doc-id').textContent = VtolRender.headerDocId(contentCtx);
   document.getElementById('hdr-client').textContent = contentCtx.client ? contentCtx.client.name : 'TBD — no active client';
   Object.keys(CHECKLISTS).forEach(n => { if (clState[n]) buildChecklist(n); });
-  document.getElementById('postflight-body').innerHTML = VtolRender.postflight(VtolContent.postflight, contentCtx);
-  document.getElementById('emerg-pills').innerHTML = VtolRender.emergencyPills(VtolContent.emergencies, VtolContent.emergencyNotes);
-  document.getElementById('emerg-list').innerHTML = VtolRender.designIntent(VtolContent.designIntent, contentCtx)
-    + VtolRender.emergencies(VtolContent.emergencies, VtolContent.emergencyNotes, contentCtx, { compact: true });
+  document.getElementById('postflight-body').innerHTML = VtolRender.postflight(CONTENT.postflight, contentCtx);
+  document.getElementById('emerg-pills').innerHTML = VtolRender.emergencyPills(CONTENT.emergencies, CONTENT.emergencyNotes);
+  document.getElementById('emerg-list').innerHTML = VtolRender.designIntent(CONTENT.designIntent, contentCtx)
+    + VtolRender.emergencies(CONTENT.emergencies, CONTENT.emergencyNotes, contentCtx, { compact: true });
+  renderRefDiff();
   linkRender();
 }
 
@@ -1132,14 +1152,16 @@ function renderBattLog() {
     ? `<tr><td>Storage target</td><td style="color:var(--green)">${v1(th.storageV)}V</td><td style="color:var(--green)">${v2(settings.storageVoltPerCell)}V</td><td style="color:var(--muted)">Optimal SoC for storage ≥48h (40–60% capacity)</td></tr>`
     : `<tr><td>Storage target</td><td colspan="3"><span class="warn-val">TBD — storage voltage for ${escH(chem.name)} not set (the storage setting is a LiPo value)</span></td></tr>`;
   const vs = k => settings.voltSource && settings.voltSource[k] === 'file' ? 'param file' : 'settings';
-  const vv = v => typeof v === 'number' ? v1(v) + 'V' : '<span class="warn-val">TBD</span>', vc = v => typeof v === 'number' ? v2(v / cells) + 'V' : '—';
+  const dis = settings.fsDisabled || {};
+  const dv = k => '<span class="crit-val">DISABLED in ' + escH(settings.voltFile || 'param file') + ' (reference ' + (dis[k].ref === null ? 'TBD' : v1(dis[k].ref) + 'V') + ')</span>';
+  const vv = (v, k) => k && dis[k] ? dv(k) : typeof v === 'number' ? v1(v) + 'V' : '<span class="warn-val">TBD</span>', vc = v => typeof v === 'number' ? v2(v / cells) + 'V' : '—';
   const carrierRows = th.carrier
     ? `<tr><th colspan="4" style="padding-top:10px;color:var(--muted)">CARRIER THRESHOLDS — PILOT (SETTINGS) AND CONFIGURED FAILSAFES</th></tr>
       <tr><td>Manual RTL (pilot, OSD raw)</td><td style="color:var(--accent)">${v1(th.rtlV)}V</td><td>${v2(th.rtlV/cells)}V</td><td style="color:var(--muted)">Pilot starts RTL — also the floor of the suggested trigger below</td></tr>
       <tr><td>RTL must be active</td><td style="color:var(--amber)">${v1(th.hardV)}V</td><td>${v2(th.hardV/cells)}V</td><td style="color:var(--muted)">Landing below this is flagged red</td></tr>
-      <tr><td>BATT_LOW_VOLT</td><td style="color:var(--red)">${vv(th.battLowV)}</td><td>${vc(th.battLowV)}</td><td style="color:var(--muted)">Configured failsafe (${vs('battLowVolt')}): automatic RTL, sag-compensated voltage</td></tr>
-      <tr><td>BATT_CRT_VOLT</td><td style="color:var(--red)">${vv(th.crtV)}</td><td>${vc(th.crtV)}</td><td style="color:var(--muted)">Configured failsafe (${vs('battCrtVolt')}): Loiter → QLand at the current position</td></tr>
-      <tr><td>BATT_ARM_VOLT</td><td>${vv(th.armV)}</td><td>${vc(th.armV)}</td><td style="color:var(--muted)">Arming refused below (${vs('battArmVolt')})</td></tr>`
+      <tr><td>BATT_LOW_VOLT</td><td style="color:var(--red)">${vv(th.battLowV, 'battLowVolt')}</td><td>${vc(th.battLowV)}</td><td style="color:var(--muted)">Configured failsafe (${vs('battLowVolt')}): automatic RTL, sag-compensated voltage</td></tr>
+      <tr><td>BATT_CRT_VOLT</td><td style="color:var(--red)">${vv(th.crtV, 'battCrtVolt')}</td><td>${vc(th.crtV)}</td><td style="color:var(--muted)">Configured failsafe (${vs('battCrtVolt')}): Loiter → QLand at the current position</td></tr>
+      <tr><td>BATT_ARM_VOLT</td><td>${vv(th.armV, 'battArmVolt')}</td><td>${vc(th.armV)}</td><td style="color:var(--muted)">Arming refused below (${vs('battArmVolt')})</td></tr>`
     : '';
   const recCard = rec ? `
   <div class="card accent" style="margin-bottom:14px">
@@ -1148,7 +1170,7 @@ function renderBattLog() {
     <div style="font-size:14px;color:var(--text);margin-bottom:6px">${v2(rec.perCellV)}V/cell${rec.lowV !== null ? ` &nbsp;·&nbsp; <span class="${rec.marginToLowV <= 0 ? 'crit-val' : 'warn-val'}">${v1(rec.marginToLowV)}V above the automatic RTL (BATT_LOW_VOLT ${v1(rec.lowV)}V)</span>` : ''}</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Avg landing (${v1(rec.avgMin)}V) + ${ToolsCore.RETURN_MARGIN_V}V return margin${rec.flooredByRtl ? `, never below the manual RTL setting (${v1(rec.rtlFloorV)}V)` : ''}. This is the pilot's call on the OSD (raw voltage, lower under load)${rec.raisesManualRtl ? ` — above the current manual RTL setting (${v1(rec.rtlFloorV)}V): consider raising the manual RTL call` : ` — the current manual RTL setting (${v1(rec.rtlFloorV)}V) already covers it`}.</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Chemistry hard floor (separate, not an operating margin): ${v1(rec.chemFloorV)}V (${chem.critical}V/cell ${escH(chem.name)}).</div>
-    <div class="alert alert-info" style="margin:0"><strong>Configured failsafes — not changed from this log:</strong> BATT_LOW_VOLT ${rec.lowV !== null ? v1(rec.lowV) + 'V' : 'TBD'} → automatic RTL · BATT_CRT_VOLT ${rec.crtV !== null ? v1(rec.crtV) + 'V' : 'TBD'} → QLand at the current position. They read the sag-compensated voltage (BATT_FS_VOLTSRC = 1), the OSD reads raw voltage.</div>
+    <div class="alert alert-info" style="margin:0"><strong>Configured failsafes — not changed from this log:</strong> BATT_LOW_VOLT ${dis.battLowVolt ? dv('battLowVolt') + ' — NO automatic RTL' : (rec.lowV !== null ? v1(rec.lowV) + 'V' : 'TBD') + ' → automatic RTL'} · BATT_CRT_VOLT ${dis.battCrtVolt ? dv('battCrtVolt') + ' — NO automatic QLand' : (rec.crtV !== null ? v1(rec.crtV) + 'V' : 'TBD') + ' → QLand at the current position'}. They read the sag-compensated voltage (BATT_FS_VOLTSRC = 1), the OSD reads raw voltage.</div>
   </div>` : `
   <div class="card" style="margin-bottom:14px">
     <div class="card-title">Manual RTL suggestion</div>
@@ -1494,7 +1516,7 @@ setInterval(clRecheck, 60000);   // a page left open in the foreground expires t
 
 // ── EMERGENCY-ONLY MODE (plan F-7): index.html#emergency-only — immediate actions only (js/emergency-only.js)
 const eoMode = VtolEmergOnly.mount({
-  el: document.getElementById('eo-view'), content: VtolContent,
+  el: document.getElementById('eo-view'), content: { get emergencies() { return CONTENT.emergencies; }, get emergencyNotes() { return CONTENT.emergencyNotes; } },
   fmt: t => VtolRender.fmt(t, contentCtx),
   onChange: on => { if (on) { if (emergIsOpen()) closeEmerg(); if (cr) crClose(); } wakeSync(); }
 });
@@ -2406,7 +2428,9 @@ function renderParams() {
       + (d.onlyFile.length ? '<p style="font-size:12px;margin:0">Only in the imported file: ' + list(d.onlyFile, n => '<code>' + escH(n) + '</code>') + '</p>' : '')
       + '</div>';
   }
-  el.innerHTML = (pf
+  const es = effSettings(), dis = es.fsDisabled || {};
+  const disHtml = Object.keys(dis).map(k => '<div class="alert alert-danger">⚠ ' + escH(dis[k].text) + '.</div>').join('');
+  el.innerHTML = disHtml + (pf
     ? '<div class="card ' + (s.differs ? 'danger' : s.missing ? 'amber' : 'accent') + '"><div class="card-title">' + escH(ToolsCore.paramFileLabel(pf)) + '</div>'
       + '<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="st ok">✓ ' + s.match + ' MATCH</span><span class="st crit">✖ ' + s.differs + ' DIFFER</span><span class="st warn">? ' + s.missing + ' MISSING</span><span class="st">~ ' + s.learned + ' LEARNED</span><span class="st">i ' + s.undocumented + ' NO REFERENCE VALUE</span>'
       + '<span class="st">' + Object.keys(pf.params).length + ' PARAMS IN FILE</span></div>'

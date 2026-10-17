@@ -36,9 +36,10 @@
   // The storage target uses settings.storageVoltPerCell, which is a LiPo figure: null (TBD) for other chemistries.
   // lowV is the chemistry longevity floor; battLowV is BATT_LOW_VOLT (automatic RTL), armV is BATT_ARM_VOLT (plan §15.3).
   // Pass ToolsCore.effectiveSettings(...) so that an imported param file takes precedence (contract C1.6).
+  // A failsafe voltage ≤ 0 (ArduPilot: that failsafe / check is DISABLED) gives null: no marker, no threshold line.
   function packThresholds(pack, settings) {
     const cells = pack.cells, chem = chemOf(pack), carrier = pack.role === 'carrier';
-    const n = v => (typeof v === 'number' && isFinite(v) ? v : null);
+    const n = v => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null);
     return {
       cells, chem, carrier,
       fullV: chem.full * cells, lowV: chem.low * cells, critV: chem.critical * cells,
@@ -61,18 +62,109 @@
     return null;
   }
   const FS_VOLT_PARAMS = { battCrtVolt: 'BATT_CRT_VOLT', battLowVolt: 'BATT_LOW_VOLT', battArmVolt: 'BATT_ARM_VOLT' };
-  // settings with BATT_CRT_VOLT / BATT_LOW_VOLT / BATT_ARM_VOLT taken from an imported param file when it has them.
-  // → copy of settings + voltSource { battCrtVolt: 'file'|'settings', … } + voltFile (file name or null).
-  function effectiveSettings(settings, paramFile) {
-    const out = Object.assign({}, settings || {}), src = {};
+  // The failsafe action parameters (0 = None: the failsafe is disabled) and their reference meaning.
+  const FS_ACT_PARAMS = { battLowVolt: 'BATT_FS_LOW_ACT', battCrtVolt: 'BATT_FS_CRT_ACT' };
+  const FS_LABEL = { battLowVolt: 'LOW-BATTERY FAILSAFE', battCrtVolt: 'CRITICAL-BATTERY FAILSAFE', battArmVolt: 'ARMING-VOLTAGE CHECK' };
+  // settings with BATT_CRT_VOLT / BATT_LOW_VOLT / BATT_ARM_VOLT taken from an imported param file whenever it has them
+  // (contract C1.6, PM decision WP14 rework F2: ANY finite file value takes precedence, 0 included — never a silent
+  // fallback to the settings). In ArduPilot a voltage of 0, or an action (BATT_FS_LOW_ACT / BATT_FS_CRT_ACT) of 0, DISABLES
+  // that failsafe; an arming voltage of 0 disables the arming-voltage check. A disabled entry becomes null (never drawn or
+  // computed as a voltage) and is described in fsDisabled.
+  // → copy of settings + voltSource { key: 'file'|'settings' } + voltFile (file name or null)
+  //   + fsDisabled { key: { param, value, act, actParam, file, ref, label, text } } + fsActDiffers { key: { actParam, act, ref } }.
+  function effectiveSettings(settings, paramFile, ref) {
+    const out = Object.assign({}, settings || {}), src = {}, disabled = {}, actDiffers = {};
     const pf = paramFile && paramFile.params ? paramFile.params : null;
+    const file = pf && paramFile.name ? String(paramFile.name) : null;
+    const rp = (ref || refParams() || {}).params || {};
+    const num = v => typeof v === 'number' && isFinite(v);
     Object.keys(FS_VOLT_PARAMS).forEach(k => {
-      const v = pf ? pf[FS_VOLT_PARAMS[k]] : undefined;
-      if (typeof v === 'number' && isFinite(v) && v > 0) { out[k] = v; src[k] = 'file'; } else src[k] = 'settings';
+      const P = FS_VOLT_PARAMS[k], v = pf ? pf[P] : undefined;
+      const AP = FS_ACT_PARAMS[k], act = pf && AP ? pf[AP] : undefined;
+      src[k] = num(v) ? 'file' : 'settings';
+      if (num(v)) out[k] = v;
+      const off = (num(v) && v <= 0) || (num(act) && act === 0);
+      if (off) {
+        const refV = num(rp[P]) ? rp[P] : null;
+        const why = num(v) && v <= 0 ? P + ' = ' + v : AP + ' = 0';
+        disabled[k] = { param: P, value: num(v) ? v : null, actParam: AP || null, act: num(act) ? act : null, file, ref: refV, label: FS_LABEL[k],
+          text: FS_LABEL[k] + ' DISABLED in imported file ' + (file || '') + ' (' + why + ') — differs from reference ' + (refV === null ? 'TBD' : refV.toFixed(1) + ' V') };
+        out[k] = null;
+      } else if (AP && num(act) && num(rp[AP]) && !paramEq(act, rp[AP])) {
+        actDiffers[k] = { actParam: AP, act, ref: rp[AP] };
+      }
     });
     out.voltSource = src;
-    out.voltFile = pf && paramFile.name ? String(paramFile.name) : null;
+    out.voltFile = file;
+    out.fsDisabled = disabled;
+    out.fsActDiffers = actDiffers;
     return out;
+  }
+
+  // Shared content (VtolContent) adapted to the effective settings: when an imported param file DISABLES a battery
+  // failsafe or the arming-voltage check, every step / row / sentence that promises it is replaced by an explicit
+  // amber "DISABLED in imported file" statement (never the default voltage). Returns the original object when nothing
+  // is disabled or different; otherwise a deep copy (the original is never changed).
+  function contentForFailsafes(C, eff) {
+    const dis = (eff && eff.fsDisabled) || {}, dif = (eff && eff.fsActDiffers) || {};
+    if (!C || (!Object.keys(dis).length && !Object.keys(dif).length)) return C;
+    const c = JSON.parse(JSON.stringify(C));
+    const f = (eff && eff.voltFile) || 'the imported param file';
+    const refTxt = k => dis[k] && dis[k].ref !== null ? dis[k].ref.toFixed(1) + ' V' : 'TBD';
+    const DIS = {
+      battLowVolt: '[[LOW-BATTERY FAILSAFE DISABLED in ' + f + ' — NO automatic RTL (reference ' + refTxt('battLowVolt') + ')]]',
+      battCrtVolt: '[[CRITICAL-BATTERY FAILSAFE DISABLED in ' + f + ' — NO automatic QLand (reference ' + refTxt('battCrtVolt') + ')]]',
+      battArmVolt: '[[ARMING-VOLTAGE CHECK DISABLED in ' + f + ' — any pack can be armed (reference ' + refTxt('battArmVolt') + ')]]'
+    };
+    const IMM = { battLowVolt: '[[LOW-BATT FAILSAFE DISABLED — NO AUTO RTL]]', battCrtVolt: '[[CRIT-BATT FAILSAFE DISABLED — NO QLAND]]' };
+    const ACT = k => '[[' + dif[k].actParam + ' = ' + dif[k].act + ' in ' + f + ' — differs from reference ' + dif[k].ref + ']]';
+    const card = (c.emergencies || []).find(e => e.id === 'emerg-batt');
+    if (card) {
+      card.immediate = card.immediate.map(st => {
+        for (const k of ['battLowVolt', 'battCrtVolt']) if (dis[k] && st.indexOf('{settings.' + k + '}') >= 0) return IMM[k];
+        for (const k of ['battLowVolt', 'battCrtVolt']) if (dif[k] && st.indexOf('{settings.' + k + '}') >= 0) return st + ' ' + ACT(k);
+        return st;
+      });
+      if (dis.battLowVolt || dis.battCrtVolt) {
+        const low = dis.battLowVolt ? DIS.battLowVolt : '**BATT_LOW_VOLT {settings.battLowVolt} V → automatic RTL** (10 s below)';
+        const crt = dis.battCrtVolt ? DIS.battCrtVolt : '**BATT_CRT_VOLT {settings.battCrtVolt} V → Loiter → QLand at the current position, not home**';
+        card.summary = 'Battery failsafes in the imported param file: ' + low + '; ' + crt + '. The failsafes read the sag-compensated voltage (BATT_FS_VOLTSRC = 1); the OSD shows raw voltage, lower under load.';
+        if (dis.battLowVolt) {
+          card.cleanup = [DIS.battLowVolt + ' Start the RTL manually at {settings.manualRtlVolt} V (OSD) — nothing automatic follows.']
+            .concat(card.cleanup.filter(x => !/^Low-battery RTL during|^The automatic RTL ends/.test(x))
+              .map(x => /^The failsafes read the sag-compensated/.test(x) ? 'The failsafes read the sag-compensated voltage (BATT_FS_VOLTSRC = 1); the OSD reads raw voltage, lower under load.' : x));
+        }
+      }
+      Object.keys(dif).forEach(k => { card.summary = ACT(k) + ' ' + card.summary; });
+    }
+    const rows = (c.failsafeTable && c.failsafeTable.rows) || [];
+    const row = (id, k, ev) => {
+      const r = rows.find(x => x.id === id);
+      if (!r) return;
+      if (dis[k]) { r.event = ev; r.detection = '`' + dis[k].param + '` / `' + dis[k].actParam + '` in ' + f; r.action = DIS[k]; r.pilot = 'Manual RTL at {settings.manualRtlVolt} V — nothing automatic follows'; }
+      else if (dif[k]) r.action = ACT(k) + ' ' + r.action;
+    };
+    row('fs-batt-low', 'battLowVolt', 'Battery low');
+    row('fs-batt-crit', 'battCrtVolt', 'Battery critical');
+    if (c.designIntent) {
+      if (dis.battLowVolt) c.designIntent.text = c.designIntent.text.replace('low {settings.battLowVolt} V → automatic RTL', 'low battery ' + DIS.battLowVolt);
+      if (dis.battCrtVolt) c.designIntent.text = c.designIntent.text.replace('critical {settings.battCrtVolt} V → QLand at the current position', 'critical battery ' + DIS.battCrtVolt);
+    }
+    // Arming minimum sentences in the checklist notes
+    if (dis.battArmVolt) {
+      const walkArm = o => { if (o && typeof o === 'object') Object.keys(o).forEach(key => {
+        if (typeof o[key] === 'string') o[key] = o[key].replace(/Arming is refused below \{settings\.battArmVolt\} V \(`BATT_ARM_VOLT`\)(: [^.]*)?/g, DIS.battArmVolt);
+        else walkArm(o[key]);
+      }); };
+      walkArm(c);
+    }
+    // Any token left for a disabled value: an explicit marker, never a number or "TBD".
+    const walk = o => { if (o && typeof o === 'object') Object.keys(o).forEach(key => {
+      if (typeof o[key] === 'string') Object.keys(dis).forEach(k => { o[key] = o[key].split('{settings.' + k + '} V').join(DIS[k]).split('{settings.' + k + '}V').join(DIS[k]).split('{settings.' + k + '}').join(DIS[k]); });
+      else walk(o[key]);
+    }); };
+    walk(c);
+    return c;
   }
   // Settings that differ from the reference param file → [{ key, param, setting, ref }] (empty when they agree or no ref).
   function settingsVsReference(settings, ref) {
@@ -109,8 +201,8 @@
     if (!st) return null;
     const raw = st.avgMin + RETURN_MARGIN_V;
     const recV = Math.max(raw, settings.manualRtlVolt);
-    const lowV = typeof settings.battLowVolt === 'number' ? settings.battLowVolt : null;
-    const crtV = typeof settings.battCrtVolt === 'number' ? settings.battCrtVolt : null;
+    const pos = v => (typeof v === 'number' && isFinite(v) && v > 0 ? v : null);   // ≤ 0 / null: failsafe disabled (fsDisabled)
+    const lowV = pos(settings.battLowVolt), crtV = pos(settings.battCrtVolt);
     return {
       recV, perCellV: recV / pack.cells,
       lowV, marginToLowV: lowV === null ? null : recV - lowV,
@@ -1034,7 +1126,7 @@
   return {
     localDateStr, fmtHMAtOffset,
     BATT_CHEM, RETURN_MARGIN_V, chemOf, packThresholds, voltRange, battStats, suggestManualRtl,
-    refParams, FS_VOLT_PARAMS, effectiveSettings, settingsVsReference,
+    refParams, FS_VOLT_PARAMS, FS_ACT_PARAMS, effectiveSettings, contentForFailsafes, settingsVsReference,
     minVoltLevel, sagLevel, healthClass,
     parseTlog, mavFrame,
     GPS_UTC_LEAP_SECONDS, gpsToUnixMs, binRecord, parseBin, binStartUnixMs, binBatterySeries, chartXFractions,

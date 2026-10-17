@@ -5,7 +5,7 @@
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const S = {
-  D1: ['d01-system-overview', 'System overview — ground station, HM30, carrier and client with all four links. The carrier fails safe only on SIYI / GCS loss.',
+  D1: ['d01-system-overview', 'System overview — ground station, HM30, carrier and client with all four links. The carrier’s only link failsafe is SIYI / GCS loss (never the 915 MHz backup); battery low → RTL, critical → QLand here.',
     'Diagram D1: the Windows ground station (EdgeTX radio as USB joystick, GCS app sending rc_up to UDP 5770, Mission Planner UDPCI, video viewer on UDP 5601 and MP HUD on 5602) reaches the carrier only over the HM30 IP link. On the carrier the HM30 air unit feeds the FC (MAVLink) and relay switch port P1; P2 net/RC board drives the ELRS TX module over CRSF, P5 video board takes CVBS from the VRX, P3 is the IP camera, P4 spare. Client RC on ELRS 868/915/2.4 GHz; client video analog, band per client. The 915 MHz Nomad is close-range backup only.'],
   D2: ['d02-relay-electronics', 'Relay PCB — net/RC board (KSZ8795, W5500, STM32G030), video board (decoder, STM32N657), ports P1–P5, VLAN map, power, LEDs.',
     'Diagram D2: VIN 6–26 V through fuse, reverse FET and TVS; 3.3V_RC and VBAT_TX bucks; KSZ8795 switch with P1 HM30, P2 W5500 (capacitor-coupled), P3 IP camera and P4 spare on JST-GH 4-pin, P5 RMII to the N6; G0 talks SPI to the W5500 and the switch (CAM_ENABLE) and drives CRSF at 400 kbaud to the ELRS TX module; VLANs keep P3/P4 away from P2; P1 egress priority RC, video, camera; video board CVBS → TVP5150/TW9900 → BT.656 → N6 H.264 → RTP 5600; LEDs PG8, PG10, PG0.'],

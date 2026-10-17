@@ -2,7 +2,8 @@
  *
  * One source for the Tools page (index.html) and the manual (manual.html, WP06). Written for the new relay
  * (two-board relay PCB, GCS companion app) and the owner's carrier failsafe intent (plan §1.1, §4):
- * the carrier fails safe ONLY on SIYI / GCS link loss; the 915 MHz link is close-range backup.
+ * the carrier's only LINK failsafe is SIYI / GCS loss (never the 915 MHz close-range backup); since Rev C the battery
+ * failsafes also act (low → RTL, critical → QLand here).
  * Sources: docs/SOFTWARE-IMPROVEMENT-PLAN.md (Rev B) §3.3, §4, §6.1.5, §6.1.6, §6.1.8, §6.1.9, §6.2, §7.4, §14.2,
  * the relay design document, and the previous manual / Tools content. Unknown values are TBD — never invent numbers.
  * Rev C (plan §15, WP14): carrier parameter values, failsafe behaviour and the battery ladder follow the reference
@@ -196,7 +197,7 @@
         'CALL "CARRIER RTL" · "FPV FAILSAFE"'
       ],
       cleanup: [
-        'Causes (S-02a): Mission Planner closed or crashed, laptop asleep or hibernating, Ethernet cable pulled, or HM30 link lost. Each one stops the GCS heartbeat → RTL after FS_LONG_TIMEOUT (5 s), in every mode.',
+        'Causes (S-02a): Mission Planner closed or crashed, laptop asleep or hibernating, Ethernet cable pulled, or HM30 link lost. Each one stops the GCS heartbeat → after FS_LONG_TIMEOUT (5 s), in every mode: RTL in fixed-wing modes, QRTL in VTOL modes.',
         'Fixed-wing modes (incl. AUTO / GUIDED): **RTL** — home in fixed-wing at RTL_ALTITUDE (120m REL, above home), loiter down, airbrake approach and an **automatic VTOL landing at home** (Q_RTL_MODE = 2). VTOL modes: **QRTL** (Q_OPTIONS bit 5) — hover return home at Q_RTL_ALT (50m REL), vertical landing at home. [[VERIFY — confirm the Q-mode case in SITL (S-02)]]. Keep the home landing zone clear.',
         'Check the Ethernet cable mast → laptop and reseat both ends. Check the HM30 ground unit LED (blue = linked). Check mast battery voltage — below 21.0V the HM30 may brown out.',
         'Restart the MP UDPCI connection: IP `192.168.144.12` / Port `19856`. Do not re-enter AUTO until GCS telemetry is stable for 30+ seconds.',
@@ -322,6 +323,7 @@
       ],
       cleanup: [
         'Call "CARRIER BATT — RTL SOON" so the FPV pilot brings the client back first; the relay ends when the carrier leaves.',
+        'The failsafes read the sag-compensated voltage (BATT_FS_VOLTSRC = 1); the OSD reads raw voltage, lower under load — the pilot\'s {settings.manualRtlVolt} V call comes well before the automatic RTL.',
         'Low-battery RTL during a **manual QHOVER landing**: the aircraft switches to RTL (fixed-wing return, climb to 120 m). **Reselect QHOVER on the Nomad switch** to finish the landing. The failsafe does not interrupt QLAND, QRTL or an AUTO VTOL landing.',
         'The automatic RTL ends with an automatic VTOL landing at home (Q_RTL_MODE = 2): keep the home landing zone clear. Only the critical stage ({settings.battCrtVolt} V) lands where the aircraft is.',
         'Log landing voltage in battery log — note start voltage and any anomalies.',

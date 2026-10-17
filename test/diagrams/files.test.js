@@ -69,7 +69,7 @@ test('R1 content: D1 four links, D3 every port, D4 stage latencies', () => {
   const d1 = visible(svg('D1'));
   assert.match(d1, /HM30 IP LINK/); assert.match(d1, /CLIENT RC ELRS 868 \/ 915 \/ 2\.4 or Gemini/); assert.match(d1, /CLIENT VIDEO analog, band per client/); assert.match(d1, /ELRS 915 MHz close range/);
   assert.match(d1, /P1/); assert.match(d1, /P2/); assert.match(d1, /P3/); assert.match(d1, /P4/); assert.match(d1, /P5/);
-  assert.match(d1, /Carrier failsafe: SIYI \/ GCS loss only/);
+  assert.match(d1, /Link failsafe: SIYI \/ GCS loss only/); assert.match(d1, /Battery: low → RTL, critical → QLand/);   // WP14 rework F1
   const d3 = visible(svg('D3'));
   for (const p of ['5600', '5601', '5602', '5770', '19856', '47800', '8554', '192.168.144.12', '.11', '.26']) assert.ok(d3.includes(p), 'D3 ' + p);
   assert.match(d3, /IP TBD \(e\.g\. \.20\)/); assert.match(d3, /IP TBD \(e\.g\. \.21\)/); assert.match(d3, /only while CAM_ENABLE = 1/);

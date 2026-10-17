@@ -63,7 +63,7 @@ test('R9: fitText picks the largest font size that fits without scrolling (binar
 test('R9: the Tools page mounts the mode, hides everything else and links to it from the emergency modal and the footer', () => {
   const html = readText('index.html'), css = readText('css/base.css');
   assert.match(html, /<div id="eo-view" class="eo-view" role="dialog" aria-modal="true" aria-labelledby="eo-title">/);
-  assert.match(html, /VtolEmergOnly\.mount\(\{\s*el: document\.getElementById\('eo-view'\), content: VtolContent,\s*fmt: t => VtolRender\.fmt\(t, contentCtx\)/);
+  assert.match(html, /VtolEmergOnly\.mount\(\{\s*el: document\.getElementById\('eo-view'\), content: \{ get emergencies\(\) \{ return CONTENT\.emergencies; \}, get emergencyNotes\(\) \{ return CONTENT\.emergencyNotes; \} \},\s*fmt: t => VtolRender\.fmt\(t, contentCtx\)/);
   assert.ok((html.match(/href="#emergency-only"/g) || []).length >= 2);
   assert.match(css, /:root\.vf-eo body>\*:not\(\.eo-view\):not\(\.vf-toast\)\{display:none !important;\}/);
   assert.match(css, /\.eo-list\{flex:1;display:grid;grid-auto-rows:1fr;/);

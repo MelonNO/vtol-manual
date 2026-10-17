@@ -57,8 +57,10 @@ test('C1.6: effectiveSettings — an imported param file\'s BATT_CRT/LOW/ARM_VOL
   const pf = { name: 'carrier.param', importedAt: '2026-10-17T10:00:00Z', params: { BATT_CRT_VOLT: 20.8, BATT_LOW_VOLT: 0 } };
   const e = T.effectiveSettings(settings, pf);
   assert.equal(e.battCrtVolt, 20.8); assert.equal(e.voltSource.battCrtVolt, 'file');
-  assert.equal(e.battLowVolt, 22.0, 'a 0 (not set) value in the file does not replace the setting');
-  assert.equal(e.voltSource.battLowVolt, 'settings'); assert.equal(e.voltFile, 'carrier.param');
+  // rework F2: a 0 in the file takes precedence too — it DISABLES the failsafe (never a silent fallback to the setting)
+  assert.equal(e.battLowVolt, null, 'disabled, not the default 22.0');
+  assert.equal(e.voltSource.battLowVolt, 'file'); assert.equal(e.voltFile, 'carrier.param');
+  assert.match(e.fsDisabled.battLowVolt.text, /LOW-BATTERY FAILSAFE DISABLED in imported file carrier\.param \(BATT_LOW_VOLT = 0\) — differs from reference 22\.0 V/);
   assert.equal(settings.battCrtVolt, 21.0, 'the stored settings are not mutated');
   assert.deepEqual(T.settingsVsReference(settings), []);
   assert.deepEqual(T.settingsVsReference(Object.assign({}, settings, { battCrtVolt: 22.2 })).map(d => [d.param, d.setting, d.ref]), [['BATT_CRT_VOLT', 22.2, 21]]);

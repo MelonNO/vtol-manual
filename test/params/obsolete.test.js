@@ -60,6 +60,38 @@ test('R3: the scan really catches the old wording (regression guard of the regex
   for (const s of NEW) assert.ok(!OBSOLETE.some(([, re]) => re.test(s)), 'false positive: ' + s);
 });
 
+// WP14 rework F1: pre-Rev C failsafe STATEMENTS (plan §15.2 / §15.3). Checked per sentence (a line split at ". "), because
+// the wording varies: the qualifier that makes a statement correct may sit anywhere in the same sentence.
+//   - "SIYI is the only failsafe" without saying it is the only LINK failsafe (battery failsafes exist since Rev C);
+//   - RTL "in any / every / all mode(s)" without the QRTL of the VTOL modes;
+//   - a list of what triggers a failsafe / an action that names the critical battery but not the low-battery RTL.
+const FAILSAFE_STATEMENTS = [
+  ['SIYI as the only failsafe (no "link" qualifier)', s => /\bonly\b/i.test(s) && /SIYI|GCS loss/.test(s) && /fail ?safe|fails safe|trigger/i.test(s) && !/\blink\b/i.test(s)],
+  ['RTL in any / every mode without QRTL', s => /\bRTLs?\b/.test(s) && /\b(any|every|all) modes?\b/i.test(s) && !/QRTL/.test(s)],
+  ['failsafe list with the critical but not the low battery', s => /\bonly\b/i.test(s) && /(battery critical|critical battery|BATT_CRT)/i.test(s) && /(fail ?safe|trigger|action)/i.test(s) && !/\b(low|BATT_LOW)/i.test(s)]
+];
+const sentences = text => text.split('\n').flatMap(l => l.split(/(?<!\b(?:incl|e\.g|i\.e|approx|vs)\.)(?<=[.!?])\s+(?=[A-Z(])/));
+
+test('R3 / rework F1: no pre-Rev C failsafe statement (SIYI as the only failsafe, RTL in every mode, no low-battery RTL)', () => {
+  const hits = [];
+  for (const f of FILES) {
+    sentences(plain(readText(f))).forEach(s => { for (const [d, fn] of FAILSAFE_STATEMENTS) if (fn(s)) hits.push(f + ' [' + d + '] ' + s.trim().slice(0, 160)); });
+  }
+  assert.deepEqual(hits, []);
+});
+
+test('rework F1: the statement checks catch the old wording and pass the Rev C wording', () => {
+  const OLD = ['On this carrier only SIYI / GCS loss (RTL after 5 s) and battery critical trigger an action.',
+    'Can explain: only SIYI / GCS loss triggers a carrier failsafe (RTL after 5 s, any mode); losing the 915 MHz backup is expected.',
+    'Each one stops the GCS heartbeat → RTL after FS_LONG_TIMEOUT (5 s), in every mode.',
+    'The carrier fails safe only on SIYI / GCS loss.', 'Carrier failsafe: SIYI / GCS loss only.'];
+  for (const s of OLD) assert.ok(sentences(s).some(x => FAILSAFE_STATEMENTS.some(([, fn]) => fn(x))), 'not caught: ' + s);
+  const NEW = ['The only link failsafe is SIYI / GCS loss (after 5 s in any mode: RTL in fixed-wing modes, QRTL in VTOL modes).',
+    'The SIYI HM30 link is the only link whose loss triggers a carrier failsafe: RTL in fixed-wing modes, QRTL in VTOL modes.',
+    'Battery failsafes: low 22.0V → automatic RTL; critical 21.0V → QLand at the current position.', 'Link failsafe: SIYI / GCS loss only.'];
+  for (const s of NEW) assert.ok(!sentences(s).some(x => FAILSAFE_STATEMENTS.some(([, fn]) => fn(x))), 'false positive: ' + s);
+});
+
 // "NAME = value", "NAME value" and table cells "<code>NAME</code></td><td>value" for every parameter of the reference.
 test('R3: every parameter value written in the pages, content, scripts and diagrams equals the reference param file', () => {
   const bad = [];

@@ -103,13 +103,13 @@ D['d06-client-failsafe'] = () => {
     b.push(t(374, yy + 18, 'TBD — test 6', { anchor: 'end', fill: P.amber, weight: 'bold' }));
   });
   y += 8 + causes.length * 30 + 22;
-  b.push(lines(18, y, [{ s: 'Only T_hold is designed; measure the', o: { fill: P.muted } }, { s: 'total per cause (relay-design test 6).', o: { fill: P.muted } }, { s: 'HM30 loss: the carrier also RTLs', o: {} }, { s: 'after 5 s and the camera is forced off.', o: {} }, { s: 'No default sticks at boot: 5 valid', o: { fill: P.muted } }, { s: 'packets before any CRSF.', o: { fill: P.muted } }], { maxw: 364 }));
+  b.push(lines(18, y, [{ s: 'Only T_hold is designed; measure the', o: { fill: P.muted } }, { s: 'total per cause (relay-design test 6).', o: { fill: P.muted } }, { s: 'HM30 loss: after 5 s the carrier also', o: {} }, { s: 'RTLs (FW) / QRTLs (VTOL); camera off.', o: {} }, { s: 'No default sticks at boot: 5 valid', o: { fill: P.muted } }, { s: 'packets before any CRSF.', o: { fill: P.muted } }], { maxw: 364 }));
   y += 6 * 18;
   return { h: y + 12, heading: 'D6 · CLIENT FAILSAFE TIMELINE', sub: 'GCS stream stops → client failsafe',
     title: 'D6 — Client failsafe timeline through the relay, with the time of each stage and the measured total per cause',
     desc: 'Cause at t = 0: the GCS app stops or crashes, the controller is unplugged, the HM30 link is lost, or the bridge watchdog fires / the G0 resets. The bridge goes silent after T_hold (start value 250 ms): FAILSAFE, no more CRSF. '
       + 'The ELRS TX module reacts to the silent handset (time TBD, measure in relay-design test 6). Client receiver failsafe (timeout TBD per client). Client FC failsafe per profile, e.g. Betaflight stage 1 then GPS Rescue; Reference client #1: delay 2.5 s (1.5 s + 1 s). The client returns or lands per its failsafe type. '
-      + 'Total time per cause: TBD (test 6). On HM30 loss the carrier also RTLs after 5 s and the camera is forced off. The bridge sends no CRSF until it has 5 consecutive valid packets.',
+      + 'Total time per cause: TBD (test 6). On HM30 loss the carrier also fails safe after 5 s (RTL in fixed-wing modes, QRTL in VTOL modes) and the camera is forced off. The bridge sends no CRSF until it has 5 consecutive valid packets.',
     source: 'Sources: plan §6.1.5 client failsafe chain, §9.3 draft D6; relay design "Bandwidth and failsafe", "Boot behaviour", test 6; data/content.js clientFailsafeChain; client profile default (C1.3) and BF dump failsafe_delay.', body: b };
 };
 
@@ -126,7 +126,7 @@ D['d07-carrier-failsafe'] = () => {
     b.push(box(18, y, 364, h, { align: 'left', top: 21, lines: items, lh: 19, stroke: o.c, sw: o.primary ? 2.5 : 1 }));
     y += h + 10;
   };
-  card({ primary: true, c: P.red, event: 'SIYI / MP LINK LOST — PRIMARY', detect: ['no GCS heartbeat 5 s', '(FS_LONG_TIMEOUT), all modes', '(FS_GCS_ENABL = 2)'], act: ['FW modes: RTL (FS_LONG_ACTN)', 'VTOL modes: QRTL (Q_OPTIONS', 'bit 5) — VERIFY in SITL', 'RTL ends: auto VTOL landing', 'at home (Q_RTL_MODE = 2)'], ac: P.red, pilot: ['keep the home LZ clear;', 'Nomad only if close range'] });
+  card({ primary: true, c: P.red, event: 'SIYI / MP LINK LOST — PRIMARY', detect: ['no GCS heartbeat 5 s', '(FS_LONG_TIMEOUT), all modes', '(FS_GCS_ENABL = 2)'], act: ['FW modes: RTL (FS_LONG_ACTN)', 'VTOL modes: QRTL (Q_OPTIONS', 'bit 5) — VERIFY in SITL', 'RTL ends: auto VTOL landing', 'at home (Q_RTL_MODE = 2)'], ac: P.red, pilot: ['keep the home LZ clear,', 'Nomad only if close range'] });
   card({ c: P.muted, event: '915 MHz BACKUP LOST', detect: ['ELRS RX failsafe'], act: ['NONE — RC ignored', '(THR_FAILSAFE = 2); QHOVER', 'holds, drifts with the wind'], pilot: ['none beyond close range;', 'close-in: take over in MP', '(QLOITER / QLAND)'] });
   card({ c: P.amber, event: 'BATTERY LOW 22.0 V', detect: ['BATT_LOW_VOLT, 10 s below', '(sag-compensated voltage)'], act: ['RTL (BATT_FS_LOW_ACT = 1),', 'auto VTOL landing at home'], ac: P.amber, pilot: ['manual RTL at 23.0 V first;', 'in a manual QHOVER landing:', 'reselect QHOVER'] });
   card({ c: P.red, event: 'BATTERY CRITICAL 21.0 V', detect: ['BATT_CRT_VOLT'], act: ['Loiter → QLand HERE', '(BATT_FS_CRT_ACT = 6),', 'not home'], ac: P.red, pilot: ['clear the area below'] });

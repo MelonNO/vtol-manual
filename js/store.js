@@ -576,7 +576,11 @@
     // Incoming settings replace local ones only when they carry a stamp newer than the local stamp: settings that
     // were never edited on the other device never overwrite edited local thresholds. Invalid values keep the local value.
     if (inc.settings && typeof inc.settings.updatedAt === 'string' && inc.settings.updatedAt > ((local.settings && local.settings.updatedAt) || '')) {
-      local.settings = cleanSettings(inc.settings, local.settings, issues);
+      // A pre-Rev C backup (no battLowVolt): the same rule and notice as the load-time migration (C1.6, rework F4).
+      const wrap = { settings: Object.assign({}, inc.settings) };
+      const revC = migrateRevC(wrap);
+      if (revC) stats.notice = revC;
+      local.settings = cleanSettings(wrap.settings, local.settings, issues);
       stats.settings = true;
     }
     // The param file is one record: the incoming one wins only when it was imported later (WP11 extension).
@@ -598,6 +602,7 @@
     const obj = JSON.parse(text);
     const res = mergeStores(load(), obj);
     importJSON.lastStats = res.stats;
+    if (res.stats.notice) addNotice(res.stats.notice.id, 'Import: ' + res.stats.notice.text);
     if (!save(res.store)) throw new Error('the merged data could not be saved (browser storage full or blocked) — nothing was imported');
     return res.store;
   }

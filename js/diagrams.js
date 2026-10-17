@@ -94,15 +94,19 @@
 
     // Zones (left to right). Carrier: the operating zone ends at the manual RTL voltage (MAN-14: "normal" no longer starts at it).
     let zones;
-    if (th.carrier && isNum(th.rtlV) && isNum(th.hardV) && isNum(th.crtV)) {
-      const lowEdge = low !== null && low > th.crtV && low < th.hardV ? low : null;
-      zones = [
+    // An imported param file can DISABLE a failsafe (settings.fsDisabled, ToolsCore.effectiveSettings): no marker, no
+    // automatic-action zone, and a red note naming the file — never the default voltage.
+    const dis = (th.carrier && settings && settings.fsDisabled) || {};
+    if (th.carrier && isNum(th.rtlV) && isNum(th.hardV) && (isNum(th.crtV) || dis.battCrtVolt)) {
+      const crtE = isNum(th.crtV) ? th.crtV : lo;
+      const lowEdge = low !== null && low > crtE && low < th.hardV ? low : null;
+      zones = (isNum(th.crtV) ? [
         { a: lo, b: th.crtV, fill: 'var(--red)', op: 0.45, name: 'Below BATT_CRT — automatic QLand here' }
-      ].concat(lowEdge !== null ? [
-        { a: th.crtV, b: lowEdge, fill: 'var(--red)', op: 0.32, name: 'Below BATT_LOW — automatic RTL' },
+      ] : []).concat(lowEdge !== null ? [
+        { a: crtE, b: lowEdge, fill: 'var(--red)', op: 0.32, name: 'Below BATT_LOW — automatic RTL' },
         { a: lowEdge, b: th.hardV, fill: 'var(--red)', op: 0.2, name: 'Past the hard limit — RTL must already be active' }
       ] : [
-        { a: th.crtV, b: th.hardV, fill: 'var(--red)', op: 0.22, name: 'Past the hard limit — RTL must already be active' }
+        { a: crtE, b: th.hardV, fill: 'var(--red)', op: 0.22, name: 'Past the hard limit — RTL must already be active' }
       ]).concat([
         { a: th.hardV, b: th.rtlV, fill: 'var(--amber)', op: 0.3, name: 'RTL now' },
         { a: th.rtlV, b: hi, fill: 'var(--green)', op: 0.2, name: 'Operate — RTL at ' + f1(th.rtlV) + ' V' }
@@ -136,9 +140,10 @@
     byX.forEach(k => { const x = X(k.v); lvl = x - lastX < 2 * R + 3 ? (lvl + 1) % 3 : 0; k.lvl = lvl; lastX = x; });
 
     const notes = [];
-    if (th.carrier && low === null) notes.push({ c: 'var(--amber)', t: 'BATT_LOW_VOLT: TBD in the settings' });
+    Object.keys(dis).forEach(k => notes.push({ c: 'var(--red)', t: '⚠ ' + dis[k].text + '.' }));
+    if (th.carrier && low === null && !dis.battLowVolt) notes.push({ c: 'var(--amber)', t: 'BATT_LOW_VOLT: TBD in the settings' });
     if (th.carrier) notes.push({ c: 'var(--muted)', t: 'Failsafes read the sag-compensated voltage (BATT_FS_VOLTSRC = 1); the OSD shows raw voltage, lower under load.' });
-    if (th.carrier && !(isNum(th.rtlV) && isNum(th.hardV) && isNum(th.crtV))) notes.push({ c: 'var(--amber)', t: 'Carrier thresholds: TBD in the settings' });
+    if (th.carrier && !(isNum(th.rtlV) && isNum(th.hardV) && (isNum(th.crtV) || dis.battCrtVolt))) notes.push({ c: 'var(--amber)', t: 'Carrier thresholds: TBD in the settings' });
     if (!isNum(th.storageV)) notes.push({ c: 'var(--amber)', t: 'Storage voltage for ' + chem.name + ': TBD (the setting is a LiPo value)' });
 
     // Layout, top → bottom: label, badges, bar, scale ends, zone legend, marker rows, notes, scale footnote.
