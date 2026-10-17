@@ -33,7 +33,7 @@ from ..crsf_menu import (NOT_SUPPORTED, CrsfMenu, MenuError, NotSupported, VrxFo
 from ..mp_output import MpOutput
 from ..testtools import (FAILSAFE_CAUSES, CameraTest, CameraTestIO, FailsafeTimer, InterfaceCounter, Results,
                          RttTest, g2g_text)
-from ..video import (GST_INSTALL_HELP, FanoutProcess, choose_standard, find_gst, launch_viewer, mp_hud_pipeline,
+from ..video import (GST_INSTALL_HELP, FanoutProcess, GstLocator, choose_standard, launch_viewer, mp_hud_pipeline,
                      viewer_pipeline, write_sdp)
 from . import view
 from .hotkey import GlobalHotkey
@@ -114,6 +114,7 @@ class App:
         self.profile: ClientChoice | None = None
         self.std_override: str | None = None
         self.fanout: FanoutProcess | None = None
+        self.gst = GstLocator(self.cfg.video.gst_launch_path)        # cached: not a PATH scan per redraw (WP13 R6)
         self.mp: MpOutput | None = None
         self.mp_error: str | None = None
         self.results = Results()
@@ -432,7 +433,7 @@ class App:
                 t = self.txt_pipes[name]
                 t.delete("1.0", "end")
                 t.insert("1.0", fn(std, port, self.cfg.video.decoder) if std else "(choose the video standard)")
-        gst = find_gst(self.cfg.video.gst_launch_path)
+        gst = self.gst.get()
         self.lbl_gst.config(text=f"GStreamer: {gst}" if gst else "GStreamer: NOT FOUND - see 'Launch viewer' for help",
                             fg=view.TEXT if gst else view.AMBER)
         if self.fanout is not None:
@@ -458,7 +459,7 @@ class App:
             self.fanout.stop()
 
     def launch_viewer(self) -> None:
-        gst = find_gst(self.cfg.video.gst_launch_path)
+        gst = self.gst.get(refresh=True)                   # on demand: picks up a new installation at once
         std, _ = self._standard()
         if gst is None:
             messagebox.showinfo("GStreamer", GST_INSTALL_HELP)
@@ -688,10 +689,13 @@ class App:
         self.bg(lambda: self.vtx.apply(vals.get("band"), vals.get("channel"), vals.get("power")), done)
 
     def revert_vtx(self) -> None:
-        prev = self.follow.previous or {}
-        self.follow.state = "reverted"
-        self.bg(lambda: self.vtx.apply(prev.get("band"), prev.get("channel"), prev.get("power")),
-                lambda r: self._menu_done("revert", r))
+        follow = self.follow
+        prev = follow.begin_revert()                       # label "reverting..." until the outcome is known
+
+        def done(res: Any) -> None:
+            follow.revert_done((str(res) or type(res).__name__) if isinstance(res, Exception) else None)
+            self._menu_done("revert", res)
+        self.bg(lambda: self.vtx.apply(prev.get("band"), prev.get("channel"), prev.get("power")), done)
 
     # ------------------------------------------------------------------ Tests tab
     def _tab_tests(self, f: ttk.Frame) -> None:

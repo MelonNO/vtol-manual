@@ -246,6 +246,9 @@ Other protections:
   delays packets** (verifier measurement: 2 busy threads → 200 Hz and 14 ms lateness). Anything heavy
   (UI rendering, video, file parsing) belongs in another process or in code that releases the GIL; if
   that is not enough, move the RC loop into a small native helper (plan §7.2). See the WP08a report.
+  The control channel bounds its own share (one request at a time, 50 commands/s per connection, 150
+  messages/s in total; "Control channel" below), so even a client flooding with the token does not push
+  packets beyond the normal jitter (WP13 report).
 - **Sleep:** while streaming the sender thread holds `SetThreadExecutionState(ES_CONTINUOUS |
   ES_SYSTEM_REQUIRED)`. This does **not** cover closing the lid: set the laptop's lid action to "Do nothing"
   and use a mains power plan (plan S-02a).
@@ -545,6 +548,31 @@ start", ...).
   tests) via `multiprocessing.connection`, authenticated with an HMAC challenge on a random **32-byte token**
   that is new for every sender start. Browsers cannot open named pipes and nothing here speaks HTTP: the channel
   is not reachable from web pages (no CORS). The C2 API stays read-only.
+- **Hardening (WP13):**
+  - **Pipe ACL:** every pipe instance is created with an explicit, protected DACL that grants the current user
+    (only) full access: no Everyone/Anonymous read, no Administrators/SYSTEM entry. `PIPE_REJECT_REMOTE_CLIENTS`
+    refuses SMB clients (`\\<host>\pipe\...`), so the pipe is local-only even with file sharing on.
+  - **Handshake:** the accept thread only accepts; each new connection authenticates in its own thread with a
+    **2 s deadline** (`HANDSHAKE_TIMEOUT_S`). A client that connects and stalls is closed after 2 s and never
+    blocks a UI re-attach. At most 8 handshakes and 8 authenticated connections at a time.
+  - **Rate limit:** at most **50 commands/s per connection** (token bucket, bursts of 50). The excess is
+    **refused, not queued**: the reply is `{"ok": false, "error": "rate limit: ..."}` with the request's `id`,
+    the sender logs a warning (at most one per second per connection) and pauses reading that connection for at
+    least one token interval (20 ms), so a flooding connection costs at most 100 messages/s. A connection's
+    requests are read and answered one at a time; unread ones wait in the pipe's fixed-size buffer (the client
+    then blocks), so nothing queues up inside the sender.
+  - **Bounded work in the sender process:** requests of all connections are processed one at a time (waiting
+    for a request and sending the reply happen outside that lock), and the server reads at most **150
+    messages/s** in total (`SERVER_MSGS_PER_S`; above it a connection waits, the request stays in its pipe).
+    Reason (WP13 measurement): the GIL hand-over between several busy connection threads, not the commands
+    themselves (about 10 µs each), is what delayed RC packets. With 8 flooding connections the old code fell
+    to about 104 Hz with 11 ms p99 deviation; now the stream stays at 250 Hz with the idle jitter.
+    The UI's own load is below 30/s (inputs 10/s on the Controller tab, ping 1/s, status 5/s only when SSE
+    fails, ELRS menu at most 25/s).
+  - **Stop is final:** once a `stop` is accepted, the sender refuses every later start (normal, RESUME,
+    carrier-only) in the same locked step that checked the stream (`Sender.begin_stop`), and the channel refuses
+    every state-changing command except `request_mode idle` and a repeated `stop`. A RESUME that was prepared,
+    queued or in flight on another connection can therefore not start a stream that then ends without `STOP`.
 - **Control file:** `control.json` next to the config file (default `%APPDATA%\vtol-gcs\control.json`):
   `app`, `control_version` (1), `family`, `address`, `token`, `pid`, `api` (the C2 base URL), `version`. It is
   created with an ACL that gives the current user (only) access, and deleted when the sender stops.
@@ -563,7 +591,7 @@ start", ...).
 | `prepare_carrier_only` | — | preview: `token`, `ok`, `problems`, `text`, `client_heard_s`, `needs_landed_confirm` (sends nothing) |
 | `confirm_carrier_only` | `token`, `typed` (must be `NOCLIENT`), `landed_typed` (`LANDED` after an FPV stream) | mode result |
 | `set_camera` | `on` | refused while the client may be armed (camera interlock) |
-| `stop` | `typed` (`STOP` while streaming) | stops the sender process |
+| `stop` | `typed` (`STOP` while streaming) | stops the sender process; afterwards nothing can be started or changed |
 | `inputs` | — | controller snapshot, raw axes/buttons, device names |
 | `rtt_samples` | `since` | `t`, `samples` `[[t, ms], ...]` of the last 30 s |
 | `crsf_send` | `frame` (hex) | `crsf_pass` to the bridge: ping / parameter read / write from 0xEA to 0xEE only; only while streaming; writes refused while the client may be armed; at most 50 frames/s |
@@ -582,7 +610,10 @@ The **fan-out** is its own process (`vtol-gcs-sender.exe --video-fanout` / `pyth
 UDP 5600 and re-sends every datagram to `127.0.0.1:5601` (viewer) and `127.0.0.1:5602` (Mission Planner HUD),
 contract C3. It prints one stats line per second (packets, kbps, packets/s, largest gap) and reports `rx_kbps`
 to the RC sender (C2 `video.rx_kbps`). **It keeps forwarding if the UI dies** (the pilot keeps the picture);
-closing the UI normally asks whether to stop it.
+closing the UI normally asks whether to stop it. A new UI cannot stop or adopt such an orphaned fan-out: its
+*Start fan-out* reports `cannot listen on UDP 5600`. End the orphan in Task Manager (`vtol-gcs-sender.exe` /
+`python` with `--video-fanout`), then start the fan-out again. The GStreamer lookup is cached (re-checked every
+30 s, and at once when *Launch viewer* is pressed).
 
 **Pipelines** (identical to `data/content.js`; no `rtpjitterbuffer`): PAL fields are scaled to 768x576, NTSC
 to 640x480. The standard comes from the bridge status flag when the firmware reports it (C2 `video.standard`),
@@ -616,7 +647,9 @@ RC stream, and writes are refused while the client may be armed.
 **VTX Admin** panel: the module's *VTX Administrator* folder (Band, Channel, Pwr Lvl, Send VTx). After *Apply*
 the tab shows **"VRX follow: via backpack (automatic if fitted) / via N6 (firmware TBD)"**. When the bridge
 reports decoder lock (status bit 3, needs `video.status_bits_min_fw_ver`), it waits for the lock and offers
-*Revert* after `crsf_menu.vrx_lock_timeout_s` (10 s, app default) without it.
+*Revert* after `crsf_menu.vrx_lock_timeout_s` (10 s, app default) without it. The label shows `reverting...`
+until the revert writes finish, then `reverted`, or `revert FAILED (<reason>)` with *Revert* offered again (for
+example when the write is refused because the client may be armed).
 
 The simulator has a matching tree: `bridge_sim.py --crsf-pass --module elrs [--report-video PAL
 --no-vrx-follow]`.

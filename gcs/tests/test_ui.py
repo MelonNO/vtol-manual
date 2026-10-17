@@ -194,3 +194,38 @@ def test_ui_smoke_with_spawned_sender(tmp_path: Path) -> None:
         assert smoke["last_bridge_state"] == "RUN" and smoke["camera_reported_on"] and smoke["link_state"] == "up"
     finally:
         sim.stop()
+
+
+def test_revert_label_follows_the_revert_outcome() -> None:
+    """WP13 R5, the UI handler itself: the label says "reverting..." until the result is known."""
+    from types import SimpleNamespace
+    from vtolgcs.crsf_menu import MenuError, VrxFollow
+    from vtolgcs.ui.app import App
+    for outcome in ("refused", "ok"):
+        follow = VrxFollow(0.0)
+        follow.start({"band": 5, "channel": 4})
+        assert follow.update(False) == "no_lock"
+        jobs: list = []
+        shown: list = []
+
+        def apply(band, channel, power, outcome=outcome):
+            assert (band, channel) == (5, 4)
+            if outcome == "refused":
+                raise MenuError("write refused: the client may be armed")
+            return {}
+        fake = SimpleNamespace(follow=follow, vtx=SimpleNamespace(apply=apply),
+                               bg=lambda fn, done: jobs.append((fn, done)),
+                               _menu_done=lambda what, res: shown.append((what, res)))
+        App.revert_vtx(fake)                                          # type: ignore[arg-type]
+        assert follow.state == "reverting" and "reverted" not in follow.text()
+        fn, done = jobs.pop()
+        try:
+            res = fn()
+        except Exception as exc:                                      # what App.bg hands to done()
+            res = exc
+        done(res)
+        if outcome == "refused":
+            assert follow.state == "revert_failed" and "may be armed" in follow.text() and follow.offer_revert
+            assert isinstance(shown[0][1], MenuError)
+        else:
+            assert follow.state == "reverted" and not follow.offer_revert

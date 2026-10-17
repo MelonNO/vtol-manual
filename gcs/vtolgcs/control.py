@@ -9,6 +9,13 @@ Transport
     systems, for the tests) through :mod:`multiprocessing.connection`, with an HMAC challenge on the
     random per-session **token** (``authkey``).  Browsers cannot open a named pipe, and nothing here
     speaks HTTP, so the channel is not reachable from web pages (no CORS).
+    Hardening (WP13): every pipe instance has an explicit protected DACL (current user only) and
+    ``PIPE_REJECT_REMOTE_CLIENTS``; each handshake runs in its own thread with a
+    :data:`HANDSHAKE_TIMEOUT_S` deadline, so a stalled client cannot block the next one; a
+    connection may run at most :data:`RATE_LIMIT_PER_S` commands per second (the excess is refused
+    with an error reply and a logged warning, never queued); requests of all connections are processed
+    one at a time and at most :data:`SERVER_MSGS_PER_S` per second, so the RC thread competes with at
+    most one control thread for the GIL.
 
 Control file
     ``control.json`` next to the config file (default ``%APPDATA%\\vtol-gcs\\control.json``):
@@ -27,8 +34,10 @@ Safety
     The channel adds **no** way around a guard.  It calls the same runtime methods as the console:
     RESUME, NOCLIENT, LANDED and THROTTLE confirmations are typed in the UI and forwarded
     **verbatim**; the runtime compares them with the exact words and the sender re-checks every
-    interlock.  ``stop`` while streaming needs the typed word ``STOP``.  Work done here is small
-    (JSON, queue puts) so the RC thread is not delayed.
+    interlock.  ``stop`` while streaming needs the typed word ``STOP``; once a stop is accepted the
+    sender refuses every later start (atomically, :meth:`Sender.begin_stop`) and this channel refuses
+    every state-changing command.  Work done here is small (JSON, queue puts) so the RC thread is not
+    delayed.
 """
 
 from __future__ import annotations
@@ -42,7 +51,8 @@ import sys
 import threading
 import time
 from dataclasses import dataclass
-from multiprocessing.connection import Client, Connection, Listener
+from multiprocessing.connection import (AuthenticationError, Client, Connection, SocketListener,
+                                        answer_challenge, deliver_challenge)
 from pathlib import Path
 from typing import Any, Callable
 
@@ -54,7 +64,25 @@ CONTROL_VERSION = 1
 CONTROL_FILE_NAME = "control.json"
 MAX_MESSAGE = 65536
 MAX_CONNECTIONS = 8
+#: Connections still in the authentication handshake (each in its own thread, WP13 R2).
+MAX_PENDING = MAX_CONNECTIONS
+#: A new connection must finish the HMAC handshake within this time, or it is closed (WP13 R2).
+HANDSHAKE_TIMEOUT_S = 2.0
+#: Commands per second per connection (token bucket; the excess is refused, not queued: WP13 R3).
+#: The UI's own load is below 30/s (inputs 10/s, ping 1/s, status 5/s fallback, ELRS menu <= 25/s).
+RATE_LIMIT_PER_S = 50.0
+RATE_BURST = 50
+#: Messages per second the server reads at most, all connections together (executed + refused).  Above it
+#: a connection waits before its next request is read (back-pressure through the pipe), so the work in the
+#: RC sender's process stays bounded however many connections flood (WP13 R3 measurement).
+SERVER_MSGS_PER_S = 150.0
+SERVER_MSGS_BURST = 100
 EVENT_QUEUE_MAX = 2000
+#: ``CreateNamedPipe`` pipe-mode flag: remote (SMB) clients cannot open the pipe (WP13 R1).
+PIPE_REJECT_REMOTE_CLIENTS = 0x00000008
+#: Commands that change state; all but ``request_mode idle`` are refused once a stop was accepted (WP13 R4).
+STATE_COMMANDS = frozenset({"request_mode", "prepare_resume", "confirm_resume", "prepare_carrier_only",
+                            "confirm_carrier_only", "set_camera", "crsf_send", "stop"})
 
 #: Exact words the operator types (the runtime compares them after stripping whitespace).
 WORD_RESUME, WORD_THROTTLE, WORD_NOCLIENT, WORD_LANDED, WORD_STOP = "RESUME", "THROTTLE", "NOCLIENT", "LANDED", "STOP"
@@ -72,11 +100,8 @@ def default_control_file(config_path: Path | None) -> Path:
     return Path(config_path or default_config_path()).parent / CONTROL_FILE_NAME
 
 
-def _restrict_to_user(path: Path) -> None:
-    """Give the current user (only) full access to ``path``."""
-    if sys.platform != "win32":
-        os.chmod(path, 0o600)
-        return
+def _win_api() -> tuple[Any, Any]:
+    """advapi32 / kernel32 with the prototypes used here (Windows only)."""
     import ctypes
     from ctypes import wintypes
     advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
@@ -87,10 +112,18 @@ def _restrict_to_user(path: Path) -> None:
                                              ctypes.POINTER(wintypes.DWORD)]
     advapi32.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_wchar_p)]
     advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW.argtypes = [
-        ctypes.c_wchar_p, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p]
+        ctypes.c_wchar_p, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.DWORD)]
     advapi32.SetFileSecurityW.argtypes = [ctypes.c_wchar_p, wintypes.DWORD, ctypes.c_void_p]
     kernel32.LocalFree.argtypes = [ctypes.c_void_p]
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    return advapi32, kernel32
+
+
+def current_user_sid() -> str:
+    """The string SID of the user this process runs as (Windows only)."""
+    import ctypes
+    from ctypes import wintypes
+    advapi32, kernel32 = _win_api()
     token = wintypes.HANDLE()
     if not advapi32.OpenProcessToken(kernel32.GetCurrentProcess(), 0x0008, ctypes.byref(token)):  # TOKEN_QUERY
         raise OSError(ctypes.get_last_error(), "OpenProcessToken failed")
@@ -108,16 +141,42 @@ def _restrict_to_user(path: Path) -> None:
         kernel32.LocalFree(ctypes.cast(sid_str, ctypes.c_void_p))
     finally:
         kernel32.CloseHandle(token)
-    sd = ctypes.c_void_p()
-    # D:P = protected DACL (no inherited entries); one entry: full access for this user only.
-    if not advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(f"D:P(A;;FA;;;{sid})", 1,
-                                                                         ctypes.byref(sd), None):
+    assert sid
+    return sid
+
+
+def user_only_sddl() -> str:
+    """D:P = protected DACL (no inherited entries); one entry: full access for the current user only."""
+    return f"D:P(A;;FA;;;{current_user_sid()})"
+
+
+def _security_descriptor(sddl: str) -> Any:
+    """A self-relative security descriptor in a Python-owned buffer (no LocalFree needed later)."""
+    import ctypes
+    from ctypes import wintypes
+    advapi32, kernel32 = _win_api()
+    sd, size = ctypes.c_void_p(), wintypes.DWORD(0)
+    if not advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, 1, ctypes.byref(sd),
+                                                                         ctypes.byref(size)):
         raise OSError(ctypes.get_last_error(), "ConvertStringSecurityDescriptorToSecurityDescriptorW failed")
     try:
-        if not advapi32.SetFileSecurityW(str(path), 0x00000004, sd):                       # DACL_SECURITY_INFORMATION
-            raise OSError(ctypes.get_last_error(), "SetFileSecurityW failed")
+        buf = ctypes.create_string_buffer(size.value)
+        ctypes.memmove(buf, sd, size.value)
     finally:
         kernel32.LocalFree(sd)
+    return buf
+
+
+def _restrict_to_user(path: Path) -> None:
+    """Give the current user (only) full access to ``path``."""
+    if sys.platform != "win32":
+        os.chmod(path, 0o600)
+        return
+    import ctypes
+    advapi32, _ = _win_api()
+    sd = _security_descriptor(user_only_sddl())
+    if not advapi32.SetFileSecurityW(str(path), 0x00000004, ctypes.addressof(sd)):           # DACL_SECURITY_INFORMATION
+        raise OSError(ctypes.get_last_error(), "SetFileSecurityW failed")
 
 
 def write_private_file(path: Path, text: str) -> None:
@@ -175,6 +234,100 @@ def _close(conn: Connection | None) -> None:
         pass
 
 
+def _make_listener(family: str, address: Any) -> Any:
+    """A raw listener (no handshake in ``accept``): user-only, local-only named pipe on Windows."""
+    if family != "AF_PIPE":
+        return SocketListener(address, family)
+    import ctypes
+    import _winapi
+    from ctypes import wintypes
+    from multiprocessing.connection import BUFSIZE, PipeListener
+
+    class _SecurityAttributes(ctypes.Structure):
+        _fields_ = [("nLength", wintypes.DWORD), ("lpSecurityDescriptor", ctypes.c_void_p),
+                    ("bInheritHandle", wintypes.BOOL)]
+
+    class SecurePipeListener(PipeListener):
+        """:class:`multiprocessing.connection.PipeListener` whose pipe instances carry an explicit
+        user-only DACL and refuse remote clients (the stdlib uses the default DACL, which gives
+        Everyone and Anonymous read access, and accepts SMB clients)."""
+
+        def __init__(self, address: str) -> None:
+            self._sd = _security_descriptor(user_only_sddl())
+            self._sa = _SecurityAttributes(ctypes.sizeof(_SecurityAttributes), ctypes.addressof(self._sd), False)
+            super().__init__(address)
+
+        def _new_handle(self, first: bool = False) -> int:
+            flags = _winapi.PIPE_ACCESS_DUPLEX | _winapi.FILE_FLAG_OVERLAPPED
+            if first:
+                flags |= _winapi.FILE_FLAG_FIRST_PIPE_INSTANCE
+            return _winapi.CreateNamedPipe(
+                self._address, flags,
+                _winapi.PIPE_TYPE_MESSAGE | _winapi.PIPE_READMODE_MESSAGE | _winapi.PIPE_WAIT
+                | PIPE_REJECT_REMOTE_CLIENTS,
+                _winapi.PIPE_UNLIMITED_INSTANCES, BUFSIZE, BUFSIZE, _winapi.NMPWAIT_WAIT_FOREVER,
+                ctypes.addressof(self._sa))
+
+    return SecurePipeListener(address)
+
+
+class _Deadline:
+    """Connection wrapper for the handshake: every receive must arrive before one common deadline."""
+
+    def __init__(self, conn: Connection, timeout: float) -> None:
+        self._conn = conn
+        self._end = time.monotonic() + timeout
+
+    def send_bytes(self, data: bytes) -> None:
+        self._conn.send_bytes(data)
+
+    def recv_bytes(self, maxlength: int | None = None) -> bytes:
+        if not self._conn.poll(max(0.0, self._end - time.monotonic())):
+            raise TimeoutError("authentication handshake timed out")
+        return self._conn.recv_bytes(maxlength)
+
+
+def server_handshake(conn: Connection, authkey: bytes, timeout: float) -> None:
+    """The server side of the :mod:`multiprocessing.connection` HMAC handshake, with a deadline.
+
+    Raises :class:`AuthenticationError` (wrong token), :class:`TimeoutError`, ``EOFError`` or ``OSError``.
+    """
+    d = _Deadline(conn, timeout)
+    deliver_challenge(d, authkey)                  # type: ignore[arg-type]
+    answer_challenge(d, authkey)                   # type: ignore[arg-type]
+
+
+class RateLimit:
+    """Token bucket: ``rate`` commands per second, bursts up to ``burst``.
+
+    The clock is ``perf_counter``: ``time.monotonic`` ticks in about 15.6 ms steps on Windows, too coarse
+    for a 20 ms token interval.
+    """
+
+    def __init__(self, rate: float = RATE_LIMIT_PER_S, burst: int = RATE_BURST,
+                 clock: Callable[[], float] = time.perf_counter) -> None:
+        self.rate, self.burst, self._clock = rate, float(burst), clock
+        self._tokens, self._last = float(burst), clock()
+
+    def _refill(self) -> None:
+        now = self._clock()
+        self._tokens = min(self.burst, self._tokens + (now - self._last) * self.rate)
+        self._last = now
+
+    def take(self) -> bool:
+        """Use one token; False when the bucket is empty (the command is then refused)."""
+        self._refill()
+        if self._tokens >= 1.0:
+            self._tokens -= 1.0
+            return True
+        return False
+
+    def wait_s(self) -> float:
+        """Seconds until the next token."""
+        self._refill()
+        return max(0.0, (1.0 - self._tokens) / self.rate)
+
+
 #: Command name -> one-line description (documented in gcs/README.md).
 COMMANDS = {
     "hello": "app, version, pid, runtime time, API URL",
@@ -225,18 +378,29 @@ class ControlServer:
     """
 
     def __init__(self, rt: Any, control_file: Path, *, on_stop: Callable[[], None] | None = None,
-                 family: str | None = None) -> None:
+                 family: str | None = None, handshake_timeout_s: float = HANDSHAKE_TIMEOUT_S,
+                 rate_per_s: float = RATE_LIMIT_PER_S, rate_burst: int = RATE_BURST,
+                 server_msgs_per_s: float = SERVER_MSGS_PER_S) -> None:
         self.rt = rt
         self.control_file = Path(control_file)
         self.on_stop = on_stop
         self.family = family or ("AF_PIPE" if sys.platform == "win32" else "AF_INET")
         self.token = secrets.token_hex(32)
-        self._listener: Listener | None = None
+        self.handshake_timeout_s = handshake_timeout_s
+        self.rate_per_s, self.rate_burst = rate_per_s, rate_burst
+        self._listener: Any = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
+        self._work_lock = threading.Lock()         # one request processed at a time, all connections (R3)
+        self._budget = RateLimit(server_msgs_per_s, SERVER_MSGS_BURST)   # used under _work_lock only
+        self._cmd_lock = threading.Lock()          # state-changing commands run one at a time (R4)
+        self._stopping = False                     # a stop was accepted: refuse every later state change
         self._conns: list[Connection] = []
+        self._pending = 0
         self._subs: list[queue.Queue] = []
         self.dropped_events = 0
+        self.rate_limited = 0                      # commands refused by the rate limit (all connections)
+        self.handshake_failures = 0
         self.info: ControlInfo | None = None
         self._thread: threading.Thread | None = None
 
@@ -246,8 +410,8 @@ class ControlServer:
             address: Any = r"\\.\pipe\vtol-gcs-ctl-" + secrets.token_hex(8)
         else:
             address = ("127.0.0.1", 0)
-        self._listener = Listener(address, family=self.family, authkey=self.token.encode())
-        addr = self._listener.address
+        self._listener = _make_listener(self.family, address)
+        addr = self._listener._address
         api = self.rt.api.base_url if getattr(self.rt, "api", None) is not None else None
         self.info = ControlInfo(self.family, addr, self.token, os.getpid(), api)
         write_private_file(self.control_file, self.info.to_json())
@@ -269,7 +433,7 @@ class ControlServer:
             pass
         if self._listener is not None and self.info is not None:
             try:                                   # unblock accept(): a pipe accept cannot be interrupted
-                Client(self.info.address, family=self.family, authkey=self.token.encode()).close()
+                Client(self.info.address, family=self.family).close()      # no handshake: closed at once
             except Exception:
                 pass
             try:
@@ -305,45 +469,79 @@ class ControlServer:
 
     # -- connections
     def _accept_loop(self) -> None:
+        """Accept raw connections only; the handshake runs in the connection's own thread (R2)."""
         assert self._listener is not None
         while not self._stop.is_set():
             try:
                 conn = self._listener.accept()
-            except Exception as exc:               # bad token, client gone, listener closed
+            except Exception as exc:               # client gone before the connect completed, listener closed
                 if self._stop.is_set():
                     break
-                log.warning("control channel: connection refused (%s)", type(exc).__name__)
+                log.warning("control channel: accept failed (%s)", type(exc).__name__)
+                time.sleep(0.05)
                 continue
             if self._stop.is_set():
-                conn.close()
+                _close(conn)
                 break
             with self._lock:
-                if len(self._conns) >= MAX_CONNECTIONS:
-                    conn.close()
-                    continue
+                if self._pending >= MAX_PENDING:
+                    full = True
+                else:
+                    full = False
+                    self._pending += 1
+            if full:
+                log.warning("control channel: %d handshakes pending, connection closed", MAX_PENDING)
+                _close(conn)
+                continue
+            threading.Thread(target=self._admit, args=(conn,), name="control-auth", daemon=True).start()
+
+    def _admit(self, conn: Connection) -> None:
+        """Handshake with a deadline, then serve the connection (one thread per connection)."""
+        try:
+            try:
+                server_handshake(conn, self.token.encode(), self.handshake_timeout_s)
+            except (AuthenticationError, TimeoutError, EOFError, OSError) as exc:
+                with self._lock:
+                    self.handshake_failures += 1
+                log.warning("control channel: connection refused (%s)", type(exc).__name__)
+                _close(conn)
+                return
+        finally:
+            with self._lock:
+                self._pending -= 1
+        with self._lock:
+            refuse = self._stop.is_set() or len(self._conns) >= MAX_CONNECTIONS
+            if not refuse:
                 self._conns.append(conn)
-            threading.Thread(target=self._serve, args=(conn,), name="control-conn", daemon=True).start()
+        if refuse:
+            _close(conn)
+            return
+        self._serve(conn)
 
     def _serve(self, conn: Connection) -> None:
+        """One connection's request loop.
+
+        Waiting for a request and sending the reply happen outside :attr:`_work_lock`; reading, parsing
+        and running the command happen inside it, so across all connections at most one control thread
+        competes with the RC thread for the interpreter lock (WP13 R3: with eight busy connection threads
+        the GIL hand-over alone delayed packets by many ms, at a fraction of one thread's command rate).
+        """
+        bucket = RateLimit(self.rate_per_s, self.rate_burst)
+        stats = {"refused": 0, "warned_at": -1e9}
         try:
             while not self._stop.is_set():
-                try:
-                    raw = conn.recv_bytes(MAX_MESSAGE)
-                except (EOFError, OSError):
+                conn.poll(None)                    # blocks in the kernel (no GIL) until a request or EOF
+                with self._work_lock:
+                    while not self._budget.take():  # server-wide budget: wait (the request stays in the pipe)
+                        time.sleep(self._budget.wait_s())
+                    out, subscribe, pause = self._process(conn.recv_bytes(MAX_MESSAGE), bucket, stats)
+                if out is not None:
+                    conn.send_bytes(out)
+                if subscribe is not None:
+                    self._stream(conn, subscribe.get("id"))
                     return
-                try:
-                    req = json.loads(raw.decode("utf-8"))
-                    if not isinstance(req, dict):
-                        raise ValueError("request must be a JSON object")
-                except (ValueError, UnicodeDecodeError) as exc:
-                    conn.send_bytes(json.dumps({"id": None, "ok": False, "error": f"bad request: {exc}"}).encode())
-                    continue
-                if req.get("cmd") == "subscribe":
-                    self._stream(conn, req.get("id"))
-                    return
-                reply = self.handle(req)
-                reply["id"] = req.get("id")
-                conn.send_bytes(json.dumps(reply, default=str).encode("utf-8"))
+                if pause:
+                    time.sleep(pause)
         except (EOFError, OSError):
             pass
         finally:
@@ -351,6 +549,35 @@ class ControlServer:
                 if conn in self._conns:
                     self._conns.remove(conn)
             _close(conn)
+
+    def _process(self, raw: bytes, bucket: RateLimit, stats: dict) -> tuple[bytes | None, dict | None, float]:
+        """One request -> (reply bytes, the subscribe request if it is one, pause before the next read)."""
+        limited = not bucket.take()
+        try:
+            req = json.loads(raw.decode("utf-8"))
+            if not isinstance(req, dict):
+                raise ValueError("request must be a JSON object")
+        except (ValueError, UnicodeDecodeError) as exc:
+            return (json.dumps({"id": None, "ok": False, "error": f"bad request: {exc}"}).encode(), None,
+                    1.0 / self.rate_per_s if limited else 0.0)
+        if limited:                                # refused, never queued or executed later
+            stats["refused"] += 1
+            with self._lock:
+                self.rate_limited += 1
+            if time.monotonic() - stats["warned_at"] >= 1.0:
+                log.warning("control channel: more than %.0f commands/s on one connection; %d refused so far",
+                            self.rate_per_s, stats["refused"])
+                stats["warned_at"] = time.monotonic()
+            out = json.dumps({"id": req.get("id"), "ok": False, "error": f"rate limit: more than "
+                              f"{self.rate_per_s:.0f} commands/s: not executed"}).encode()
+            # Pause at least one token interval: refusals are then also capped at the rate, so a
+            # flooding connection costs at most 2 x rate messages per second.
+            return out, None, max(bucket.wait_s(), 1.0 / self.rate_per_s)
+        if req.get("cmd") == "subscribe":
+            return None, req, 0.0
+        reply = self.handle(req)
+        reply["id"] = req.get("id")
+        return json.dumps(reply, default=str).encode("utf-8"), None, 0.0
 
     def _stream(self, conn: Connection, req_id: Any) -> None:
         q: queue.Queue = queue.Queue(maxsize=EVENT_QUEUE_MAX)
@@ -380,6 +607,15 @@ class ControlServer:
         fn = getattr(self, f"_cmd_{cmd}", None) if isinstance(cmd, str) and cmd in COMMANDS else None
         if fn is None:
             return {"ok": False, "error": f"unknown command {cmd!r}"}
+        if cmd not in STATE_COMMANDS:
+            return self._run(cmd, fn, req)
+        with self._cmd_lock:                       # evaluated one at a time, against the state after the last
+            if self._stopping and not (cmd == "stop" or (cmd == "request_mode" and req.get("mode") == "idle")):
+                return self._refused(cmd, ["a stop was accepted: the RC sender is stopping, nothing is started "
+                                           "or changed"])
+            return self._run(cmd, fn, req)
+
+    def _run(self, cmd: str, fn: Callable[[dict], dict], req: dict) -> dict:
         try:
             return fn(req)
         except (ValueError, TypeError) as exc:
@@ -444,12 +680,16 @@ class ControlServer:
         return {"ok": r.ok, "result": {"requested": r.requested}, "reasons": list(r.reasons)}
 
     def _cmd_stop(self, req: dict) -> dict:
-        if self.rt.sender.state().streaming and _words(req.get("typed")) != WORD_STOP:
-            return self._refused("stop", [f"the RC stream is running: stopping the sender ends it (client "
-                                          f"failsafe); type {WORD_STOP} to confirm"])
-        self.rt._log("control_stop", streaming=self.rt.sender.state().streaming)
+        if self._stopping:
+            return {"ok": True, "result": {"already": True}}
         if self.on_stop is None:
             return {"ok": False, "error": "stop is not available in this process"}
+        # Atomic in the sender: the streaming check and the "no later start" gate are one step (R4).
+        if not self.rt.sender.begin_stop(stream_stop_confirmed=_words(req.get("typed")) == WORD_STOP):
+            return self._refused("stop", [f"the RC stream is running: stopping the sender ends it (client "
+                                          f"failsafe); type {WORD_STOP} to confirm"])
+        self._stopping = True
+        self.rt._log("control_stop", streaming=self.rt.sender.state().streaming)
         self.on_stop()
         return {"ok": True, "result": {}}
 
@@ -593,5 +833,7 @@ def wait_for_control_file(path: Path, timeout: float, not_pid: int | None = None
 
 
 __all__ = ["COMMANDS", "CONTROL_FILE_NAME", "CONTROL_VERSION", "ControlClient", "ControlError", "ControlInfo",
-           "ControlServer", "EventStream", "WORD_LANDED", "WORD_NOCLIENT", "WORD_RESUME", "WORD_STOP",
-           "WORD_THROTTLE", "default_control_file", "wait_for_control_file", "write_private_file"]
+           "ControlServer", "EventStream", "HANDSHAKE_TIMEOUT_S", "RATE_BURST", "RATE_LIMIT_PER_S", "RateLimit",
+           "SERVER_MSGS_PER_S", "STATE_COMMANDS", "WORD_LANDED", "WORD_NOCLIENT", "WORD_RESUME", "WORD_STOP",
+           "WORD_THROTTLE", "current_user_sid", "default_control_file", "server_handshake", "user_only_sddl", "wait_for_control_file",
+           "write_private_file"]

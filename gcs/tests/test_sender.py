@@ -585,3 +585,70 @@ def test_late_count_in_stats(rig) -> None:
         w.record(late)
     stats = w.roll(1.0)
     assert stats.late_count == 2 and stats.max_ms == 5.0
+
+
+# --------------------------------------------------------------------------- stop gate (WP13 R4)
+
+def test_begin_stop_refused_while_streaming_unless_confirmed(rig) -> None:
+    assert rig.sender.request_mode(Mode.FPV).ok
+    assert not rig.sender.begin_stop(stream_stop_confirmed=False)
+    assert not rig.sender.stopping and rig.sender.state().streaming
+    assert rig.sender.begin_stop(stream_stop_confirmed=True) and rig.sender.stopping
+
+
+def test_no_start_of_any_kind_after_an_accepted_stop(rig) -> None:
+    """The verifier's race: a RESUME prepared before the stop must not execute after it."""
+    airborne(rig)
+    preview = rig.sender.prepare_resume()
+    assert preview.ok
+    assert rig.sender.begin_stop(stream_stop_confirmed=False)                # idle: no word needed
+    res = rig.sender.confirm_resume(preview.token)
+    assert not res.ok and "stop was accepted" in res.reasons[0]
+    assert "stop was accepted" in " ".join(rig.sender.prepare_resume().problems)
+    rig.ctl.set_channel_us(5, 1000)
+    rig.ctl.set_channel_us(3, 988)
+    res = rig.sender.request_mode(Mode.FPV)
+    assert not res.ok and "stop was accepted" in res.reasons[0]
+    co = rig.sender.prepare_carrier_only()
+    assert not co.ok and not rig.sender.confirm_carrier_only(co.token, no_client_confirmed=True).ok
+    assert rig.sender.request_mode(Mode.IDLE).ok                             # stopping is always allowed
+    assert rig.slot(5) == [None] * 5 and rig.sent == []
+
+
+def test_stop_and_resume_race_never_both_succeed() -> None:
+    """Concurrent stop (no word) and RESUME confirmation: exactly one wins, never both (R4)."""
+    import threading
+    for _ in range(200):
+        cfg = Config()
+        ctl = FakeController()
+        ctl.set_channel_us(5, 2000)
+        ctl.set_channel_us(3, 1400)
+        sender = Sender(cfg, ctl, lambda data: None)
+        preview = sender.prepare_resume()
+        assert preview.ok
+        go = threading.Barrier(2)
+        out: dict[str, bool] = {}
+
+        def resume() -> None:
+            go.wait()
+            out["resume"] = sender.confirm_resume(preview.token).ok
+
+        def stop() -> None:
+            go.wait()
+            out["stop"] = sender.begin_stop(stream_stop_confirmed=False)
+        threads = [threading.Thread(target=resume), threading.Thread(target=stop)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(5)
+        assert out["resume"] != out["stop"], out
+        assert sender.state().streaming == out["resume"]
+
+
+def test_accepted_seq_is_taken_at_the_accept(rig) -> None:
+    """start_timing counts packets from the accept, even if one is sent before the mode callback runs."""
+    rig.slot(1)
+    seq0 = rig.sender.state().seq
+    assert rig.sender.request_mode(Mode.FPV).ok and rig.sender.accepted_seq() == seq0
+    rig.slot(3)
+    assert rig.sender.accepted_seq() == seq0 and rig.sender.state().seq == seq0 + 3
