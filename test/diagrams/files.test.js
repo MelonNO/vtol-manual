@@ -69,7 +69,7 @@ test('R1 content: D1 four links, D3 every port, D4 stage latencies', () => {
   const d1 = visible(svg('D1'));
   assert.match(d1, /HM30 IP LINK/); assert.match(d1, /CLIENT RC ELRS 868 \/ 915 \/ 2\.4 or Gemini/); assert.match(d1, /CLIENT VIDEO analog, band per client/); assert.match(d1, /ELRS 915 MHz close range/);
   assert.match(d1, /P1/); assert.match(d1, /P2/); assert.match(d1, /P3/); assert.match(d1, /P4/); assert.match(d1, /P5/);
-  assert.match(d1, /Carrier failsafe: SIYI \/ GCS loss only/);
+  assert.match(d1, /Link failsafe: SIYI \/ GCS loss only/); assert.match(d1, /Battery: low → RTL, critical → QLand/);   // WP14 rework F1
   const d3 = visible(svg('D3'));
   for (const p of ['5600', '5601', '5602', '5770', '19856', '47800', '8554', '192.168.144.12', '.11', '.26']) assert.ok(d3.includes(p), 'D3 ' + p);
   assert.match(d3, /IP TBD \(e\.g\. \.20\)/); assert.match(d3, /IP TBD \(e\.g\. \.21\)/); assert.match(d3, /only while CAM_ENABLE = 1/);
@@ -87,17 +87,19 @@ test('R1 content: D5 bridge state machine (relay design state table)', () => {
   assert.equal((t.match(/LED pattern: TBD \(firmware\)/g) || []).length, 5, 'LED pattern TBD per state');
 });
 
-test('R1 content: D6 client failsafe chain with TBD times; D7 carrier failsafe per plan §4 (QLand, no RC-loss action)', () => {
+test('R1 content: D6 client failsafe chain with TBD times; D7 carrier failsafe per plan §15.2 (Rev C: QRTL, battery failsafes, no RC-loss action)', () => {
   const d6 = visible(svg('D6'));
   assert.match(d6, /T_hold: start value 250 ms/); assert.match(d6, /TBD — measure \(test 6\)/); assert.match(d6, /RX timeout: TBD per client/);
   assert.equal((d6.match(/TBD — test 6/g) || []).length, 4, 'total per cause TBD');
   const d7 = visible(svg('D7'));
-  assert.match(d7, /SIYI \/ MP LINK LOST — PRIMARY/); assert.match(d7, /no GCS heartbeat 5 s/); assert.match(d7, /FS_GCS_ENABL = 2/); assert.match(d7, /RTL \(FS_LONG_ACTN = 1\)/);
-  assert.match(d7, /915 MHz BACKUP LOST/); assert.match(d7, /NONE — RC ignored/); assert.match(d7, /THR_FAILSAFE = 2/);
-  assert.match(d7, /BATTERY CRITICAL 22\.2 V/); assert.match(d7, /Loiter → QLand/);
-  assert.match(d7, /BATT_LOW_VOLT = 0 \(not set\)/); assert.match(d7, /manual RTL at 23\.0 V/);
-  assert.match(d7, /Q_TRANS_FAIL 4 s/); assert.match(d7, /QLand at the current position \(Q_TRANS_FAIL_ACT = 0\) — VERIFY/);
-  assert.match(d7, /0 s GCS heartbeat lost/); assert.match(d7, /5 s RTL in any mode/); assert.match(d7, /120 m REL/); assert.match(d7, /Q-mode RTL behaviour: TBD/);
+  assert.match(d7, /SIYI \/ MP LINK LOST — PRIMARY/); assert.match(d7, /no GCS heartbeat 5 s/); assert.match(d7, /FS_GCS_ENABL = 2/); assert.match(d7, /FW modes: RTL \(FS_LONG_ACTN\)/);
+  assert.match(d7, /VTOL modes: QRTL \(Q_OPTIONS/); assert.match(d7, /auto VTOL landing/); assert.match(d7, /keep the home LZ clear/);
+  assert.match(d7, /915 MHz BACKUP LOST/); assert.match(d7, /NONE — RC ignored/); assert.match(d7, /THR_FAILSAFE = 2/); assert.match(d7, /drifts with the wind/);
+  assert.match(d7, /BATTERY LOW 22\.0 V/); assert.match(d7, /RTL \(BATT_FS_LOW_ACT = 1\)/); assert.match(d7, /manual RTL at 23\.0 V first/); assert.match(d7, /reselect QHOVER/);
+  assert.match(d7, /BATTERY CRITICAL 21\.0 V/); assert.match(d7, /Loiter → QLand HERE/); assert.match(d7, /not home/);
+  assert.match(d7, /Q_TRANS_FAIL 8 s/); assert.match(d7, /QRTL home \(Q_TRANS_FAIL_ACT/); assert.match(d7, /keep WP2 → home clear/);
+  assert.match(d7, /0 s GCS heartbeat lost/); assert.match(d7, /QRTL in VTOL modes/); assert.match(d7, /120 m REL/);
+  assert.doesNotMatch(d7, /22\.2 V|BATT_LOW_VOLT = 0|not set|Q_TRANS_FAIL 4 s|Q_TRANS_FAIL_ACT = 0|TBD/, 'Rev C: no obsolete value, nothing left TBD');
   assert.doesNotMatch(d7, /FBWA|1\.5 s|QHOVER\s*\(Q_TRANS|→ QHOVER \(auto/i, 'no RC failsafe cascade, transition fail is not an automatic QHOVER');
 });
 
@@ -174,7 +176,8 @@ test('R3: manual inline SVGs use CSS variables, role/title/desc, readable text w
   assert.ok(html.includes('<!-- Q_TILT_MAX: ArduPilot Plane docs, Tilt Rotor Planes (https://ardupilot.org/plane/docs/guide-tilt-rotor.html)'));
   assert.doesNotMatch(html, /Maximum forward tilt angle/); assert.match(html, /CW \/ CCW: TBD/); assert.match(html, /TILT — SIDE VIEW/); assert.match(html, /80° Q_TILT_MAX/);
   assert.doesNotMatch(html, /pusher motor/i, 'F5');
-  assert.match(html, /corridor clear to 60 m/); assert.match(html, /ABORT: no airspeed in 3 s → QHOVER/); assert.match(html, /back-transition glide ≈100–130 m \(10 s\)/); assert.match(html, />REL m</);
+  assert.match(html, /corridor clear to 60 m/); assert.match(html, /ABORT: no airspeed in 3 s → QHOVER/); assert.match(html, /back-transition glide ≈100 m \(8 s\)/); assert.match(html, />REL m</);
+  assert.match(html, /\(8 s: automatic QRTL home\)/); assert.match(html, /keep WP2 → home clear/); assert.match(html, />45°\/s</);   // WP14 R9
   assert.match(html, /1st Fresnel radius/); assert.match(html, /HM30 · MAVLink · RC · video/); assert.match(html, /patch beam/); assert.match(html, /ALWAYS/); assert.match(html, /BODY SHADOW/);
   assert.doesNotMatch(html, /868MHz RC · SIYI video|2\.4GHz · 5\.8GHz/, 'obsolete orbit labels gone');
   // generated: gauge (R4) and GPS Rescue (R3) containers, rendered from the profiles
@@ -187,8 +190,10 @@ test('R3: manual inline SVGs use CSS variables, role/title/desc, readable text w
 test('R5: Tools charts come from js/diagrams.js with profile thresholds, overlays and the wind hints', () => {
   const html = readText('index.html');
   assert.ok(html.indexOf('<script src="js/diagrams.js">') > html.indexOf('<script src="js/tools-core.js">'));
-  assert.match(html, /VtolDiagrams\.battTrend\(entries, pack, store\.settings\)/);
-  assert.match(html, /VtolDiagrams\.battSparkline\(e, pack, store\.settings\)/);
+  // WP14 (C1.6): the charts get the effective settings — an imported param file's BATT_* failsafe voltages take precedence
+  assert.match(html, /VtolDiagrams\.battTrend\(entries, pack, effSettings\(\)\)/);
+  assert.match(html, /VtolDiagrams\.battSparkline\(e, pack, effSettings\(\)\)/);
+  assert.match(html, /function effSettings\(\) \{ return ToolsCore\.effectiveSettings\(store\.settings, store\.paramFile\); \}/);
   assert.match(html, /VtolDiagrams\.windCompass\(dir, speed, gust, c, wxLimits\(\)\)/);
   assert.match(html, /windCompassSVG\(dir, wind, wS\.c, gusts\)/);
   assert.match(html, /VtolDiagrams\.timeChart\(values, times/);

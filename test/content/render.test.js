@@ -47,7 +47,8 @@ test('tokens resolve from the profile and settings, with formatting', () => {
   assert.equal(R.plain('{client.vtx.band}{client.vtx.channel} {client.vtx.freqMHz} MHz', c), 'R5 5806 MHz');
   assert.equal(R.plain('{client.elrs.band}', c), '2.4 GHz');
   assert.equal(R.plain('{client.failsafe.type}', c), 'GPS Rescue');
-  assert.equal(R.plain('{settings.battCrtVolt} / {settings.manualRtlVolt}', c), '22.2 / 23.0');
+  assert.equal(R.plain('{settings.battCrtVolt} / {settings.manualRtlVolt}', c), '21.0 / 23.0');   // WP14 Rev C defaults
+  assert.equal(R.plain('{settings.battLowVolt} / {settings.battArmVolt}', c), '22.0 / 24.6');
   assert.equal(R.plain('{client.name}', c), 'Reference client #1');
 });
 
@@ -89,7 +90,7 @@ test('checklist rows keep the WP01 engine structure (ids, data-list, detail, cop
   assert.match(h, /id="csp-A"/);
   assert.match(h, /class="ci-note copy-val" onclick="copyVal\(this,event\)">THR_FAILSAFE = 2/);
   assert.match(h, /<span class="ci-auto" data-auto="bridge-run" hidden><\/span>/);
-  assert.match(h, /BATT_CRT_VOLT = 22\.2 {2}\(critical voltage, V\)/, 'settings token in a copy block');
+  assert.match(h, /BATT_CRT_VOLT = 21\.0 {2}\(critical -&gt; Loiter to QLand HERE\)/, 'owner\'s copy block (escaped)');
   const n = (h.match(/class="ci( |")/g) || []).length;
   assert.equal(n, R.checklistItemIds(C.checklists.preflight).length);
 });

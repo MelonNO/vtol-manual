@@ -71,8 +71,9 @@ D['d01-system-overview'] = () => {
   b.push(line([[18, ly + 22], [52, ly + 22]], { c: P.accent, dash: '7,5', end: false })); b.push(t(60, ly + 27, 'client RC (ELRS)'));
   b.push(line([[18, ly + 44], [52, ly + 44]], { c: P.red, dash: '7,5', end: false })); b.push(t(60, ly + 49, 'client video (analog)'));
   b.push(line([[18, ly + 66], [52, ly + 66]], { c: P.muted, dash: '6,5', end: false })); b.push(t(60, ly + 71, 'carrier backup, close range only'));
-  b.push(t(18, ly + 98, 'Carrier failsafe: SIYI / GCS loss only.', { fill: P.muted, maxw: 364 }));
-  return { h: 1262, heading: 'D1 · SYSTEM OVERVIEW', sub: 'GCS ↔ HM30 ↔ carrier ↔ client',
+  b.push(t(18, ly + 98, 'Link failsafe: SIYI / GCS loss only.', { fill: P.muted, maxw: 364 }));
+  b.push(t(18, ly + 118, 'Battery: low → RTL, critical → QLand.', { fill: P.muted, maxw: 364 }));
+  return { h: 1282, heading: 'D1 · SYSTEM OVERVIEW', sub: 'GCS ↔ HM30 ↔ carrier ↔ client',
     title: 'D1 — System overview: ground station, carrier and client with all four links',
     desc: 'Windows laptop with the EdgeTX radio (USB joystick, RF off), the GCS companion app (rc_up on UDP 5770), Mission Planner (UDPCI 192.168.144.12:19856) and the video viewer (UDP 5601, MP HUD 5602), Ethernet to the HM30 ground unit on the mast. '
       + 'The HM30 IP link is the only GCS link and carries MAVLink, RC UDP, client video RTP and the camera stream. A 915 MHz Nomad is the carrier\'s close-range backup to an ELRS RX on the ArduPlane FC. '

@@ -21,6 +21,7 @@
   --text:#e8e8e8; --muted:#666; --accent:#f97316; --amber:#facc15; --red:#ef4444;
   --green:#22c55e; --dim:#444; --mono:'Share Tech Mono',monospace; --head:'Oswald',sans-serif;
   --paper:#fff; --ink:#000;   /* print and the QR code: black on white */
+  --shadow:rgba(0,0,0,.6);    /* drop shadow of floating elements (toast) */
   --vf-zoom:1;                /* text scale of the .vf-zoom content containers (sunlight mode) */
 }
 
@@ -64,7 +65,7 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:15
 
 /* "New version available — RELOAD" toast (SW-04 / F-3). */
 .vf-toast{position:fixed;top:10px;left:0;right:0;margin:0 auto;width:max-content;z-index:3000;display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;justify-content:center;
-  max-width:calc(100vw - 24px);padding:10px 14px;background:var(--surface);border:2px solid var(--accent);color:var(--text);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;box-shadow:0 6px 24px rgba(0,0,0,.6);}
+  max-width:calc(100vw - 24px);padding:10px 14px;background:var(--surface);border:2px solid var(--accent);color:var(--text);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;box-shadow:0 6px 24px var(--shadow);}
 .vf-toast[hidden]{display:none;}
 .vf-toast button{min-height:44px;padding:8px 16px;font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--ink);}
 .vf-toast button.vf-later{background:none;color:var(--muted);border-color:var(--border2);}

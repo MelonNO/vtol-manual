@@ -55,7 +55,10 @@ img { max-width:100% !important; }
 
 /* ══ KNEEBOARD (html.vf-kb) — Tools page only ══ */
 :root.vf-kb .tab-panel { display:none !important; }
-:root.vf-kb #tab-preflight, :root.vf-kb #tab-turnaround { display:block !important; break-after:page; }
+:root.vf-kb #tab-preflight, :root.vf-kb #tab-turnaround { display:block !important; }
+:root.vf-kb #tab-preflight { break-after:page; }   /* turnaround is the last block: no page break after it, so the
+                                                     footer prints under it instead of on a page of its own */
+:root.vf-kb footer { break-before:avoid; break-inside:avoid; }
 :root.vf-kb #tab-preflight > :not(.cl-hdr):not(#cl-container),
 :root.vf-kb #tab-turnaround > :not(.cl-hdr):not(#cl-container2) { display:none !important; }
 :root.vf-kb .cl-hdr { display:block !important; padding:0 0 1.5mm !important; margin:0 0 2mm !important; }
@@ -75,7 +78,7 @@ img { max-width:100% !important; }
 :root.vf-kb .ci-warn-dot, :root.vf-kb .ci.done .ci-warn-dot { display:inline-flex !important; border:1pt solid var(--ink) !important; }
 :root.vf-kb .ci-detail { display:none !important; }
 :root.vf-kb .go-nogo { display:none !important; }
-/* emergency cards from the (closed) modal: static, after the checklists */
+/* emergency cards from the (closed) modal: static, printed FIRST (before the checklists), then a page break */
 :root.vf-kb #emerg-modal { display:block !important; position:static !important; inset:auto !important; overflow:visible !important; z-index:auto !important; break-after:page; }
 :root.vf-kb #emerg-modal > div { max-width:none !important; padding:0 !important; }
 :root.vf-kb .emerg-modal-hdr { margin-bottom:3mm !important; padding-bottom:1.5mm !important; border-bottom:1.5pt solid var(--ink) !important; }

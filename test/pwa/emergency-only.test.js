@@ -40,7 +40,9 @@ test('R9: a scenario screen shows the IMMEDIATE actions only (no clean-up text),
   }
   const batt = EO.cardHTML(EO.scenarios(C).find(s => s.item.id === 'emerg-batt'), fmt);
   assert.match(batt, /23\.0V → <span class="mbadge m-rtl">RTL<\/span> NOW/);
-  assert.match(batt, /22\.2V → AUTOLAND HERE/);
+  assert.match(batt, /22\.0V → AUTO <span class="mbadge m-rtl">RTL<\/span> \(FAILSAFE\)/);   // WP14 Rev C ladder
+  assert.match(batt, /21\.0V → AUTO <span class="mbadge m-rtl">QLAND<\/span> HERE — not home/);
+  assert.doesNotMatch(batt, /22\.2V/);
   const note = EO.cardHTML(EO.scenarios(C).find(s => s.kind === 'note'), fmt);
   assert.match(note, /expected, no action/);
   assert.match(note, /TAKE OVER IN MP/);
@@ -61,7 +63,7 @@ test('R9: fitText picks the largest font size that fits without scrolling (binar
 test('R9: the Tools page mounts the mode, hides everything else and links to it from the emergency modal and the footer', () => {
   const html = readText('index.html'), css = readText('css/base.css');
   assert.match(html, /<div id="eo-view" class="eo-view" role="dialog" aria-modal="true" aria-labelledby="eo-title">/);
-  assert.match(html, /VtolEmergOnly\.mount\(\{\s*el: document\.getElementById\('eo-view'\), content: VtolContent,\s*fmt: t => VtolRender\.fmt\(t, contentCtx\)/);
+  assert.match(html, /VtolEmergOnly\.mount\(\{\s*el: document\.getElementById\('eo-view'\), content: \{ get emergencies\(\) \{ return CONTENT\.emergencies; \}, get emergencyNotes\(\) \{ return CONTENT\.emergencyNotes; \} \},\s*fmt: t => VtolRender\.fmt\(t, contentCtx\)/);
   assert.ok((html.match(/href="#emergency-only"/g) || []).length >= 2);
   assert.match(css, /:root\.vf-eo body>\*:not\(\.eo-view\):not\(\.vf-toast\)\{display:none !important;\}/);
   assert.match(css, /\.eo-list\{flex:1;display:grid;grid-auto-rows:1fr;/);

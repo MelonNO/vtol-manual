@@ -73,10 +73,11 @@
     return lines.length ? lines : [''];
   }
 
-  // ══════════════ BATTERY GAUGE (plan §9.2, MAN-14) ══════════════
-  // From the pack profile (carrier, mast or client) and the store settings. opts.battLowVolt: BATT_LOW_VOLT from the
-  // param file when known (0 / null = not set). Carrier markers: BATT_LOW (if set), manual RTL, hard limit, BATT_CRT,
-  // storage; other packs: storage and the chemistry longevity floor. Scale: chemistry hard floor → full charge.
+  // ══════════════ BATTERY GAUGE (plan §9.2, MAN-14, §15.3) ══════════════
+  // From the pack profile (carrier, mast or client) and the settings — pass ToolsCore.effectiveSettings(…) so an imported
+  // param file takes precedence (C1.6). opts.battLowVolt overrides settings.battLowVolt. Carrier markers (plan §15.3):
+  // BATT_ARM_VOLT, manual RTL, hard limit, BATT_LOW_VOLT (automatic RTL), BATT_CRT_VOLT (QLand here), storage; other
+  // packs: storage and the chemistry longevity floor. Scale: chemistry hard floor → full charge.
   // 360 units wide, every text ≥ 14 units and wrapped to the width (no clipping): at a 360 px viewport the gauge is
   // 315–330 px wide (with / without a scrollbar), i.e. ≥ 12.2 px text; the page caps the width on desktop.
   // Zone names are visible text (a legend under the bar), not only tooltips.
@@ -88,17 +89,28 @@
     const lo = th.critV, hi = th.fullV, W = 360, x0 = 18, x1 = 342, FS = 14;
     const X = v => x0 + (clamp(v, lo, hi) - lo) / (hi - lo || 1) * (x1 - x0);
     const pc = v => f2(v / cells) + ' V/cell';
-    const low = isNum(opts.battLowVolt) && opts.battLowVolt > 0 ? opts.battLowVolt : null;
+    const lowIn = opts.battLowVolt !== undefined ? opts.battLowVolt : th.battLowV;
+    const low = th.carrier && isNum(lowIn) && lowIn > 0 ? lowIn : null;
 
     // Zones (left to right). Carrier: the operating zone ends at the manual RTL voltage (MAN-14: "normal" no longer starts at it).
     let zones;
-    if (th.carrier && isNum(th.rtlV) && isNum(th.hardV) && isNum(th.crtV)) {
-      zones = [
-        { a: lo, b: th.crtV, fill: 'var(--red)', op: 0.45, name: 'Below BATT_CRT — failsafe QLand' },
-        { a: th.crtV, b: th.hardV, fill: 'var(--red)', op: 0.22, name: 'Past the hard limit — RTL must already be active' },
+    // An imported param file can DISABLE a failsafe (settings.fsDisabled, ToolsCore.effectiveSettings): no marker, no
+    // automatic-action zone, and a red note naming the file — never the default voltage.
+    const dis = (th.carrier && settings && settings.fsDisabled) || {};
+    if (th.carrier && isNum(th.rtlV) && isNum(th.hardV) && (isNum(th.crtV) || dis.battCrtVolt)) {
+      const crtE = isNum(th.crtV) ? th.crtV : lo;
+      const lowEdge = low !== null && low > crtE && low < th.hardV ? low : null;
+      zones = (isNum(th.crtV) ? [
+        { a: lo, b: th.crtV, fill: 'var(--red)', op: 0.45, name: 'Below BATT_CRT — automatic QLand here' }
+      ] : []).concat(lowEdge !== null ? [
+        { a: crtE, b: lowEdge, fill: 'var(--red)', op: 0.32, name: 'Below BATT_LOW — automatic RTL' },
+        { a: lowEdge, b: th.hardV, fill: 'var(--red)', op: 0.2, name: 'Past the hard limit — RTL must already be active' }
+      ] : [
+        { a: crtE, b: th.hardV, fill: 'var(--red)', op: 0.22, name: 'Past the hard limit — RTL must already be active' }
+      ]).concat([
         { a: th.hardV, b: th.rtlV, fill: 'var(--amber)', op: 0.3, name: 'RTL now' },
         { a: th.rtlV, b: hi, fill: 'var(--green)', op: 0.2, name: 'Operate — RTL at ' + f1(th.rtlV) + ' V' }
-      ];
+      ]);
     } else {
       zones = [
         { a: lo, b: th.lowV, fill: 'var(--red)', op: 0.3, name: 'Below the longevity floor' },
@@ -109,10 +121,11 @@
     // Markers, highest voltage first (numbered in that order).
     const m = [];
     if (th.carrier) {
-      if (low !== null) m.push({ v: low, c: 'var(--amber)', l: 'BATT_LOW_VOLT — low-battery warning' });
-      if (isNum(th.rtlV)) m.push({ v: th.rtlV, c: 'var(--accent)', l: 'MANUAL RTL — start the return' });
+      if (isNum(th.armV)) m.push({ v: th.armV, c: 'var(--muted)', l: 'BATT_ARM_VOLT — arming refused below' });
+      if (isNum(th.rtlV)) m.push({ v: th.rtlV, c: 'var(--accent)', l: 'MANUAL RTL — pilot starts the return (OSD raw voltage)' });
       if (isNum(th.hardV)) m.push({ v: th.hardV, c: 'var(--amber)', l: 'HARD LIMIT — RTL must be active' });
-      if (isNum(th.crtV)) m.push({ v: th.crtV, c: 'var(--red)', l: 'BATT_CRT_VOLT — Loiter → QLand here' });
+      if (low !== null) m.push({ v: low, c: 'var(--red)', l: 'BATT_LOW_VOLT — AUTOMATIC RTL (10 s below, sag-compensated)' });
+      if (isNum(th.crtV)) m.push({ v: th.crtV, c: 'var(--red)', l: 'BATT_CRT_VOLT — Loiter → QLand HERE, not home' });
     } else {
       m.push({ v: th.lowV, c: 'var(--amber)', l: 'LONGEVITY FLOOR (' + chem.low + ' V/cell)' });
     }
@@ -127,8 +140,10 @@
     byX.forEach(k => { const x = X(k.v); lvl = x - lastX < 2 * R + 3 ? (lvl + 1) % 3 : 0; k.lvl = lvl; lastX = x; });
 
     const notes = [];
-    if (th.carrier && low === null) notes.push({ c: 'var(--amber)', t: 'BATT_LOW_VOLT not set (0): no warning before BATT_CRT_VOLT' });
-    if (th.carrier && !(isNum(th.rtlV) && isNum(th.hardV) && isNum(th.crtV))) notes.push({ c: 'var(--amber)', t: 'Carrier thresholds: TBD in the settings' });
+    Object.keys(dis).forEach(k => notes.push({ c: 'var(--red)', t: '⚠ ' + dis[k].text + '.' }));
+    if (th.carrier && low === null && !dis.battLowVolt) notes.push({ c: 'var(--amber)', t: 'BATT_LOW_VOLT: TBD in the settings' });
+    if (th.carrier) notes.push({ c: 'var(--muted)', t: 'Failsafes read the sag-compensated voltage (BATT_FS_VOLTSRC = 1); the OSD shows raw voltage, lower under load.' });
+    if (th.carrier && !(isNum(th.rtlV) && isNum(th.hardV) && (isNum(th.crtV) || dis.battCrtVolt))) notes.push({ c: 'var(--amber)', t: 'Carrier thresholds: TBD in the settings' });
     if (!isNum(th.storageV)) notes.push({ c: 'var(--amber)', t: 'Storage voltage for ' + chem.name + ': TBD (the setting is a LiPo value)' });
 
     // Layout, top → bottom: label, badges, bar, scale ends, zone legend, marker rows, notes, scale footnote.
@@ -164,7 +179,7 @@
         + '<circle cx="' + x + '" cy="' + cy + '" r="' + R + '" fill="var(--surface)" stroke="' + k.c + '" stroke-width="1.5"/>'
         + txt(x, cy + 5, String(k.n), { size: FS, fill: k.c, anchor: 'middle', weight: 'bold' });
     });
-    s += txt(x0, barY + barH + 18, f1(lo) + ' V', { size: FS, fill: 'var(--muted)' })
+    s += txt(x0, barY + barH + 18, f1(lo) + ' V floor', { size: FS, fill: 'var(--muted)' })
       + txt(x1, barY + barH + 18, f1(hi) + ' V full', { size: FS, fill: 'var(--muted)', anchor: 'end' });
     legend.forEach(({ z, lines, top }) => {
       s += '<rect x="' + x0 + '" y="' + top + '" width="14" height="14" fill="' + z.fill + '" fill-opacity="' + Math.min(0.9, z.op * 2.5).toFixed(2) + '" stroke="' + z.fill + '"/>';
@@ -191,7 +206,8 @@
     const TC = core(), th = TC.packThresholds(pack, settings || {});
     const n = Math.min(list.length, opts.max || 12), recent = list.slice(0, n).reverse();
     const lines = th.carrier
-      ? [{ v: th.rtlV, c: 'var(--accent)', l: 'MANUAL RTL' }, { v: th.hardV, c: 'var(--amber)', l: 'HARD LIMIT' }, { v: th.crtV, c: 'var(--red)', l: 'BATT_CRT' }]
+      ? [{ v: th.rtlV, c: 'var(--accent)', l: 'MANUAL RTL' }, { v: th.hardV, c: 'var(--amber)', l: 'HARD LIMIT' },
+        { v: th.battLowV, c: 'var(--red)', l: 'BATT_LOW RTL' }, { v: th.crtV, c: 'var(--red)', l: 'BATT_CRT QLAND' }]
       : [{ v: th.lowV, c: 'var(--amber)', l: 'LONGEVITY FLOOR' }, { v: th.critV, c: 'var(--red)', l: 'HARD FLOOR' }];
     const vals = recent.map(e => +e.min).concat(lines.filter(L => isNum(L.v)).map(L => L.v));
     let lo = Math.min(th.critV, ...vals), hi = Math.max(th.fullV, ...vals);

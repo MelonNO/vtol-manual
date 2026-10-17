@@ -18,7 +18,7 @@ function blocks() {
     const mx = [60, 196, 332];
     let s = '<svg viewBox="0 0 640 384" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-560" role="img" aria-labelledby="svg-motors-t svg-motors-d">'
       + '<title id="svg-motors-t">Heewing T2 Cruza motor configuration — top view and tilt side view</title>'
-      + '<desc id="svg-motors-d">Three motors: M1 and M2 on the wings tilt about the spanwise tilt axis from 0° (vertical lift) forward; M4 on the tail gives VTOL lift only and stops after the transition. Propeller rotation directions: TBD, confirm on the airframe; the front pair must turn in opposite directions. Side view: 0° in VTOL, 80° = Q_TILT_MAX during the transition until airspeed, fully forward in fixed-wing flight; tilt rate 40°/s.</desc>'
+      + '<desc id="svg-motors-d">Three motors: M1 and M2 on the wings tilt about the spanwise tilt axis from 0° (vertical lift) forward; M4 on the tail gives VTOL lift only and stops after the transition. Propeller rotation directions: TBD, confirm on the airframe; the front pair must turn in opposite directions. Side view: 0° in VTOL, 80° = Q_TILT_MAX during the transition until airspeed, fully forward in fixed-wing flight; tilt rate 45°/s (Q_TILT_RATE_UP / DN).</desc>'
       + '<defs>' + marker('mot-ah-amber', 'var(--amber)') + marker('mot-ah-text', 'var(--text)') + marker('mot-ah-green', 'var(--green)') + marker('mot-ah-accent', 'var(--accent)') + '</defs>'
       + T(16, 22, 'MOTORS — TOP VIEW', { size: 14, fill: 'var(--muted)', ls: 2 })
       + '<line x1="' + mx[1] + '" y1="44" x2="' + mx[1] + '" y2="30" stroke="var(--muted)" marker-end="url(#mot-ah-text)"/>' + T(mx[1] + 10, 40, 'FWD', { fill: 'var(--muted)' })
@@ -42,9 +42,9 @@ function blocks() {
       + T(500, 170, '80° Q_TILT_MAX', { fill: 'var(--amber)', weight: 'bold' }) + T(500, 154, 'transition:', { fill: 'var(--amber)' })
       + '<line x1="470" y1="214" x2="590" y2="214" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#mot-ah-accent)"/>'
       + T(500, 268, 'FW: fully forward', { fill: 'var(--accent)' })
-      + T(410, 128, 'rate', { fill: 'var(--muted)' }) + T(410, 144, '40°/s', { fill: 'var(--muted)' })
+      + T(410, 128, 'rate', { fill: 'var(--muted)' }) + T(410, 144, '45°/s', { fill: 'var(--muted)' })
       + T(16, 316, 'M1/M2 wing motors: VTOL lift (0°) and fixed-wing thrust.') + T(16, 334, 'M4 tail: VTOL lift only, stops when the transition is complete.')
-      + T(16, 352, 'Q_TILT_MAX = tilt held during the transition until airspeed', { fill: 'var(--muted)' }) + T(16, 370, '(ArduPilot tilt-rotor guide) — VERIFY against the param file.', { fill: 'var(--amber)' })
+      + T(16, 352, 'Q_TILT_MAX = tilt held during the transition until airspeed', { fill: 'var(--muted)' }) + T(16, 370, '(ArduPilot tilt-rotor guide) — VERIFY meaning vs firmware.', { fill: 'var(--amber)' })
       + '</svg>';
     B.motors = wrap(s, 'Tri tilt-rotor (<code>Q_FRAME_CLASS</code> 7): M1/M2 tilt, M4 lift only. Prop directions: <span class="warn-val">TBD — confirm on the airframe</span> (ArduPilot: the front pair must turn in opposite directions, or roll and pitch inputs cause adverse yaw).');
   }
@@ -58,8 +58,8 @@ function blocks() {
     const rangeBar = (x, a, b) => '<line x1="' + x + '" y1="' + r(Y(a)) + '" x2="' + x + '" y2="' + r(Y(b)) + '" stroke="var(--amber)" stroke-width="4"/>';
     let s = '<svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-780" role="img" aria-labelledby="svg-mission-t svg-mission-d">'
       + '<title id="svg-mission-t">7-waypoint mission altitude profile (REL m), with distances, transition corridor, abort branch and back-transition</title>'
-      + '<desc id="svg-mission-d">Altitude scale 0–150 m REL. WP1 VTOL_TAKEOFF 20–30 m at the launch point. Transition corridor WP1 to WP2, 100–200 m into wind, clear of obstacles to 60 m; WP2 WAYPOINT 50–80 m, 300 m or more clear beyond. Abort: no airspeed within 3 s → QHOVER; Q_TRANS_FAIL 4 s → automatic QLand (verify). WP3 LOITER_TO_ALT climbs to the relay altitude (60–140 m, per site); WP4 sortie-specific orbit centre at relay altitude; WP5 LOITER_TO_ALT 30–40 m, 400 m or more upwind of the landing zone; WP6 WAYPOINT 20–25 m; back-transition glide about 100–130 m (10 s); WP7 VTOL_LAND. Horizontal distances not to scale.</desc>'
-      + '<defs>' + marker('mis-ah-red', 'var(--red)') + marker('mis-ah-muted', 'var(--muted)') + '</defs>';
+      + '<desc id="svg-mission-d">Altitude scale 0–150 m REL. WP1 VTOL_TAKEOFF 20–30 m at the launch point. Transition corridor WP1 to WP2, 100–200 m into wind, clear of obstacles to 60 m; WP2 WAYPOINT 50–80 m, 300 m or more clear beyond. Abort: no airspeed within 3 s → QHOVER; Q_TRANS_FAIL 8 s → automatic QRTL: hover back to home at 50 m and land vertically there, so the route WP2 → home is the QRTL path and must be clear. WP3 LOITER_TO_ALT climbs to the relay altitude (60–140 m, per site); WP4 sortie-specific orbit centre at relay altitude; WP5 LOITER_TO_ALT 30–40 m, 400 m or more upwind of the landing zone; WP6 WAYPOINT 20–25 m; back-transition glide about 100 m (8 s at 12 m/s); WP7 VTOL_LAND. Horizontal distances not to scale.</desc>'
+      + '<defs>' + marker('mis-ah-red', 'var(--red)') + marker('mis-ah-muted', 'var(--muted)') + marker('mis-ah-amber', 'var(--amber)') + '</defs>';
     [0, 25, 50, 75, 100, 125, 150].forEach(m => { s += '<line x1="70" y1="' + Y(m) + '" x2="890" y2="' + Y(m) + '" stroke="var(--border2)" stroke-width="' + (m ? 0.5 : 1.5) + '"' + (m ? ' stroke-dasharray="3,6"' : '') + '/>' + T(62, Y(m) + 4, String(m), { fill: 'var(--muted)', anchor: 'end' }); });
     s += T(62, 40, 'REL m', { fill: 'var(--muted)', anchor: 'end' });
     // corridor and relay band
@@ -77,7 +77,10 @@ function blocks() {
     // abort branch
     const ax = 190, ay = Y(25 + (65 - 25) * (190 - 110) / 150);
     s += '<polyline points="' + ax + ',' + r(ay) + ' 180,92" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#mis-ah-red)"/>'
-      + T(84, 64, 'ABORT: no airspeed in 3 s → QHOVER', { fill: 'var(--red)', weight: 'bold' }) + T(84, 82, '(4 s: automatic QLand — VERIFY)', { fill: 'var(--amber)' });
+      + T(84, 64, 'ABORT: no airspeed in 3 s → QHOVER', { fill: 'var(--red)', weight: 'bold' }) + T(84, 82, '(8 s: automatic QRTL home)', { fill: 'var(--amber)' });
+    // QRTL path after a transition timeout: hover back to home at Q_RTL_ALT 50 m, vertical landing at home
+    s += '<polyline points="' + X[1] + ',' + Y(50) + ' ' + X[0] + ',' + Y(50) + ' ' + X[0] + ',' + (G - 4) + '" fill="none" stroke="var(--amber)" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#mis-ah-amber)"/>'
+      + T(204, 110, 'amber: QRTL home at 50 m', { fill: 'var(--amber)' }) + T(204, 128, 'keep WP2 → home clear', { fill: 'var(--amber)' });
     // WP labels
     const names = ['VTOL_TAKEOFF', 'WAYPOINT', 'LOITER_TO_ALT', 'WAYPOINT', 'LOITER_TO_ALT', 'WAYPOINT', 'VTOL_LAND'];
     const alts = ['20–30 m', '50–80 m', 'relay alt', 'relay alt', '30–40 m', '20–25 m', '0 m'];
@@ -92,7 +95,7 @@ function blocks() {
     // distances
     const dist = (a, b, y, label) => '<line x1="' + a + '" y1="' + y + '" x2="' + b + '" y2="' + y + '" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/>' + T((a + b) / 2, y + 16, label, { fill: 'var(--muted)', anchor: 'middle' });
     s += dist(X[0], X[1], 352, '100–200 m into wind') + dist(X[1], X[1] + 120, 380, '300 m+ clear beyond')
-      + dist(X[4], X[6], 352, '400 m+ upwind of LZ') + '<line x1="' + X[5] + '" y1="380" x2="' + X[6] + '" y2="380" stroke="var(--accent)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/>' + T(X[6] + 20, 400, 'back-transition glide ≈100–130 m (10 s)', { fill: 'var(--accent)', anchor: 'end' });
+      + dist(X[4], X[6], 352, '400 m+ upwind of LZ') + '<line x1="' + X[5] + '" y1="380" x2="' + X[6] + '" y2="380" stroke="var(--accent)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/>' + T(X[6] + 20, 400, 'back-transition glide ≈100 m (8 s)', { fill: 'var(--accent)', anchor: 'end' });
     s += T(890, 26, 'horizontal: not to scale', { fill: 'var(--muted)', anchor: 'end' })
       + '</svg>';
     B.mission = wrap(s, 'Altitudes from the 7-WP template (Mission Planning). Relay altitude per site (relay-altitude table). Scroll sideways on a phone.');

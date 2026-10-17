@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const T = require('../../js/tools-core.js');
 const VtolStore = require('../../js/store.js');
 
-const settings = VtolStore.defaults().settings;   // battCrtVolt 22.2, manualRtlVolt 23.0, hardLimitVolt 22.5, storage 3.80
+const settings = VtolStore.defaults().settings;   // Rev C: battCrtVolt 21.0, battLowVolt 22.0, battArmVolt 24.6, manualRtlVolt 23.0, hardLimitVolt 22.5, storage 3.80
 const carrier = { id: 'c', role: 'carrier', cells: 6, chem: 'lipo' };
 const client = { id: 'k', role: 'client', cells: 6, chem: 'lipo' };
 const client4sLife = { id: 'l', role: 'client', cells: 4, chem: 'life' };
@@ -18,28 +18,52 @@ test('battStats averages and extremes', () => {
   assert.equal(T.battStats([]), null);
 });
 
-test('S-05/IDX-01: BATT_LOW margin is measured to BATT_CRT_VOLT (22.2 V), not the chemistry floor', () => {
-  // avg landing 22.0 V → raw 22.8 → floored to manual RTL 23.0 → 0.8 V above 22.2 (old code said 4.4 V above 18.6 V)
-  const rec = T.recommendBattLow([entry(25, 22.0, 23)], carrier, settings);
+// WP14 R6 (plan §15.4): the output is a suggested MANUAL RTL trigger (pilot, OSD raw voltage); BATT_LOW_VOLT 22.0 /
+// BATT_CRT_VOLT 21.0 are configured failsafes that are shown, never recommended or changed.
+test('R6: suggested manual RTL trigger = avg landing + 0.8 V, never below the manual RTL setting; failsafes shown, not recommended', () => {
+  assert.equal(T.recommendBattLow, undefined, 'the BATT_LOW_VOLT recommendation is gone');
+  // avg landing 22.0 V → raw 22.8 → floored to manual RTL 23.0
+  const rec = T.suggestManualRtl([entry(25, 22.0, 23)], carrier, settings);
   near(rec.recV, 23.0);
-  near(rec.marginToCrtV, 0.8, 1e-9);
-  assert.equal(rec.crtV, 22.2);
-  assert.equal(rec.flooredByRtl, true);
+  assert.equal(rec.flooredByRtl, true); assert.equal(rec.raisesManualRtl, false);
+  assert.equal(rec.lowV, 22.0); near(rec.marginToLowV, 1.0, 1e-9);
+  assert.equal(rec.crtV, 21.0); near(rec.marginToCrtV, 2.0, 1e-9);
   near(rec.chemFloorV, 18.6, 1e-9);
   near(rec.perCellV, 23.0 / 6);
-  // above the floor: avg landing + 0.8
-  const rec2 = T.recommendBattLow([entry(25, 23.0, 23.6)], carrier, settings);
-  near(rec2.recV, 23.8); near(rec2.marginToCrtV, 1.6, 1e-9); assert.equal(rec2.flooredByRtl, false);
+  // above the floor: avg landing + 0.8 → suggests raising the pilot's call, never a parameter
+  const rec2 = T.suggestManualRtl([entry(25, 23.0, 23.6)], carrier, settings);
+  near(rec2.recV, 23.8); assert.equal(rec2.flooredByRtl, false); assert.equal(rec2.raisesManualRtl, true);
+  assert.equal(rec2.lowV, 22.0, 'BATT_LOW_VOLT unchanged by the log');
 });
 
-test('recommendation follows the settings thresholds', () => {
-  const s = Object.assign({}, settings, { battCrtVolt: 21.6, manualRtlVolt: 22.4 });
-  const rec = T.recommendBattLow([entry(25, 21.0, 22)], carrier, s);
-  near(rec.recV, 22.4); near(rec.marginToCrtV, 0.8, 1e-9);
+test('suggestion follows the settings thresholds (effective settings: param file values take precedence)', () => {
+  const s = Object.assign({}, settings, { manualRtlVolt: 22.4 });
+  const rec = T.suggestManualRtl([entry(25, 21.0, 22)], carrier, s);
+  near(rec.recV, 22.4);
+  const eff = T.effectiveSettings(settings, { name: 'x.param', importedAt: '2026-10-17T10:00:00Z', params: { BATT_LOW_VOLT: 22.2, BATT_CRT_VOLT: 21.2 } });
+  const r2 = T.suggestManualRtl([entry(25, 22.0, 23)], carrier, eff);
+  assert.equal(r2.lowV, 22.2); assert.equal(r2.crtV, 21.2);
 });
 
-test('no ArduPilot recommendation for non-carrier packs', () => {
-  assert.equal(T.recommendBattLow([entry(25, 22, 23)], client, settings), null);
+test('no manual RTL suggestion for non-carrier packs', () => {
+  assert.equal(T.suggestManualRtl([entry(25, 22, 23)], client, settings), null);
+});
+
+test('C1.6: effectiveSettings — an imported param file\'s BATT_CRT/LOW/ARM_VOLT take precedence, with the source', () => {
+  const none = T.effectiveSettings(settings, null);
+  assert.deepEqual([none.battCrtVolt, none.battLowVolt, none.battArmVolt], [21.0, 22.0, 24.6]);
+  assert.deepEqual(none.voltSource, { battCrtVolt: 'settings', battLowVolt: 'settings', battArmVolt: 'settings' });
+  assert.equal(none.voltFile, null);
+  const pf = { name: 'carrier.param', importedAt: '2026-10-17T10:00:00Z', params: { BATT_CRT_VOLT: 20.8, BATT_LOW_VOLT: 0 } };
+  const e = T.effectiveSettings(settings, pf);
+  assert.equal(e.battCrtVolt, 20.8); assert.equal(e.voltSource.battCrtVolt, 'file');
+  // rework F2: a 0 in the file takes precedence too — it DISABLES the failsafe (never a silent fallback to the setting)
+  assert.equal(e.battLowVolt, null, 'disabled, not the default 22.0');
+  assert.equal(e.voltSource.battLowVolt, 'file'); assert.equal(e.voltFile, 'carrier.param');
+  assert.match(e.fsDisabled.battLowVolt.text, /LOW-BATTERY FAILSAFE DISABLED in imported file carrier\.param \(BATT_LOW_VOLT = 0\) — differs from reference 22\.0 V/);
+  assert.equal(settings.battCrtVolt, 21.0, 'the stored settings are not mutated');
+  assert.deepEqual(T.settingsVsReference(settings), []);
+  assert.deepEqual(T.settingsVsReference(Object.assign({}, settings, { battCrtVolt: 22.2 })).map(d => [d.param, d.setting, d.ref]), [['BATT_CRT_VOLT', 22.2, 21]]);
 });
 
 test('minVoltLevel: carrier uses hardLimitVolt/manualRtlVolt, other packs per-cell chemistry', () => {
@@ -56,11 +80,11 @@ test('minVoltLevel: carrier uses hardLimitVolt/manualRtlVolt, other packs per-ce
 test('packThresholds: chemistry × cells, storage from storageVoltPerCell (LiPo only), carrier-only operational values', () => {
   const th = T.packThresholds(carrier, settings);
   near(th.fullV, 25.2); near(th.lowV, 20.1); near(th.critV, 18.6); near(th.storageV, 22.8);
-  assert.deepEqual([th.crtV, th.rtlV, th.hardV], [22.2, 23.0, 22.5]);
+  assert.deepEqual([th.armV, th.rtlV, th.hardV, th.battLowV, th.crtV], [24.6, 23.0, 22.5, 22.0, 21.0]);   // plan §15.3 ladder
   const tl = T.packThresholds(client4sLife, settings);
   near(tl.fullV, 14.6); near(tl.critV, 10.8);
   assert.equal(tl.storageV, null);                    // TBD — no LiFe storage value in the sources
-  assert.deepEqual([tl.crtV, tl.rtlV, tl.hardV], [null, null, null]);
+  assert.deepEqual([tl.crtV, tl.rtlV, tl.hardV, tl.battLowV, tl.armV], [null, null, null, null, null]);
 });
 
 test('voltRange derives the plausible log window from cells × chemistry', () => {
