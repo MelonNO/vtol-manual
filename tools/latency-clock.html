@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<title>LATENCY CLOCK — RELAY TEST 2</title>
+<!-- Offline-safe: no external fonts or scripts. Only ../js/common.js and ../js/tools-core.js (same origin). -->
+<style>
+:root {
+  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2a2a2a; --border2:#333;
+  --text:#e8e8e8; --muted:#666; --accent:#f97316; --amber:#facc15; --red:#ef4444; --green:#22c55e;
+  --clock-bg:#000; --clock-fg:#fff;   /* maximum contrast for the camera (high-contrast mode, WP09, may override) */
+  --mono:'Share Tech Mono',ui-monospace,Consolas,monospace; --head:'Oswald','Arial Narrow',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;}
+a{color:var(--accent);}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.wrap{max-width:1100px;margin:0 auto;padding:16px;}
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:2px solid var(--accent);padding-bottom:10px;margin-bottom:16px;}
+.title{font-family:var(--head);font-weight:700;letter-spacing:3px;color:var(--accent);font-size:16px;flex:1;}
+.btn{min-height:44px;padding:8px 16px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;}
+.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:bold;}
+#clock{font-size:min(15vw,180px);font-weight:bold;letter-spacing:2px;text-align:center;color:var(--clock-fg);background:var(--clock-bg);border:2px solid var(--border2);padding:12px 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;}
+.box{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border2);padding:10px 14px;}
+.k{font-size:11px;color:var(--muted);letter-spacing:2px;}
+.v{font-size:min(8vw,56px);font-weight:bold;color:var(--clock-fg);font-variant-numeric:tabular-nums;}
+#bar{position:relative;height:28px;background:var(--clock-bg);border:1px solid var(--border2);margin:8px 0 4px;}
+#bar-mark{position:absolute;top:0;bottom:0;width:4px;background:var(--clock-fg);left:0;}
+.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);}
+.card{background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--accent);padding:14px 16px;margin:16px 0;}
+.card h2{font-family:var(--head);font-size:13px;letter-spacing:2px;color:var(--accent);margin-bottom:8px;}
+p,li{color:var(--muted);font-size:14px;margin-bottom:6px;}
+ol{margin-left:20px;}
+label{display:block;font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
+input[type=number]{min-height:44px;width:160px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;}
+td,th{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;}
+th{font-size:11px;color:var(--muted);letter-spacing:2px;}
+.warn{color:var(--amber);}
+body.hidepanel .card,body.hidepanel .row.stats{display:none;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="title">LATENCY CLOCK · RELAY-DESIGN TEST 2 (GLASS-TO-GLASS)</div>
+    <button type="button" class="btn" id="btn-panel" aria-pressed="false" onclick="togglePanel(this)">CLOCK ONLY</button>
+    <button type="button" class="btn" onclick="toggleFull()">FULL SCREEN</button>
+    <a class="btn" href="../index.html">◀ TOOLS</a>
+  </div>
+
+  <div id="clock" role="timer" aria-live="off">--:--:--.---</div>
+  <div id="bar" aria-hidden="true"><div id="bar-mark"></div></div>
+  <div class="ticks" aria-hidden="true"><span>.000</span><span>.250</span><span>.500</span><span>.750</span><span>1.000</span></div>
+  <div class="row">
+    <div class="box"><div class="k">FRAME</div><div class="v" id="frame">0</div></div>
+    <div class="box"><div class="k">FRAME INTERVAL (ms, avg)</div><div class="v" id="interval">—</div></div>
+    <div class="box"><div class="k">DISPLAY RATE (Hz, avg)</div><div class="v" id="fps">—</div></div>
+  </div>
+
+  <div class="card">
+    <h2>PROCEDURE</h2>
+    <ol>
+      <li>Show this clock on a screen in front of the <strong>client camera</strong>, so it goes through VTX → VRX → relay → HM30 → GCS.</li>
+      <li>Put the GCS screen showing the relayed video next to this clock.</li>
+      <li>Film both together at <strong>240 fps</strong>. In single frames of the recording, read this clock and the clock shown in the GCS video.</li>
+      <li>Latency sample = this clock − clock in the GCS video (ms). Record <strong>20 samples</strong>; report the <strong>mean and worst case</strong> (relay design, test 2).</li>
+      <li>The display's own frame interval (above) limits the resolution of one reading.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>SAMPLES</h2>
+    <label for="sample">LATENCY SAMPLE (ms)</label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="number" id="sample" min="0" step="1" inputmode="numeric" placeholder="e.g. 180" onkeydown="if(event.key==='Enter')addSample()">
+      <button type="button" class="btn primary" onclick="addSample()">ADD</button>
+      <button type="button" class="btn" onclick="copyResult()">COPY RESULT</button>
+      <button type="button" class="btn" onclick="clearSamples()">CLEAR</button>
+    </div>
+    <div id="sample-msg" role="status" style="font-size:13px;margin-top:6px"></div>
+    <div class="row stats">
+      <div class="box"><div class="k">SAMPLES</div><div class="v" id="st-n">0 / 20</div></div>
+      <div class="box"><div class="k">MEAN (ms)</div><div class="v" id="st-mean">—</div></div>
+      <div class="box"><div class="k">WORST (ms)</div><div class="v" id="st-worst">—</div></div>
+    </div>
+    <table id="st-table"></table>
+  </div>
+</div>
+<script src="../js/common.js"></script>
+<script src="../js/tools-core.js"></script>
+<script>
+'use strict';
+const KEY = 'vtol_latency_samples';   // this browser only (a convenience; copy the result into the test record)
+let samples = [];
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(s)) samples = s.filter(x => typeof x === 'number' && isFinite(x) && x >= 0); } catch (e) { samples = []; }
+
+// Clock: redrawn on every display frame; frame counter and average frame interval over the last 120 frames.
+const elClock = document.getElementById('clock'), elFrame = document.getElementById('frame'), elInt = document.getElementById('interval'),
+  elFps = document.getElementById('fps'), elMark = document.getElementById('bar-mark');
+let frame = 0, lastT = null;
+const intervals = [];
+function tick(t) {
+  const now = Date.now();
+  frame++;
+  elClock.textContent = ToolsCore.fmtClockMs(now);
+  elFrame.textContent = frame;
+  elMark.style.left = 'calc(' + ((now % 1000) / 10).toFixed(1) + '% - 2px)';
+  if (lastT !== null) { intervals.push(t - lastT); if (intervals.length > 120) intervals.shift(); }
+  lastT = t;
+  if (frame % 15 === 0 && intervals.length) {
+    const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+    elInt.textContent = avg.toFixed(1); elFps.textContent = (1000 / avg).toFixed(0);
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(samples)); } catch (e) { /* storage blocked: samples stay in this page */ } }
+function render() {
+  const st = ToolsCore.latencyStats(samples), N = ToolsCore.LATENCY_SAMPLES;
+  document.getElementById('st-n').textContent = st.n + ' / ' + N;
+  document.getElementById('st-mean').textContent = st.mean === null ? '—' : st.mean.toFixed(0);
+  document.getElementById('st-worst').textContent = st.worst === null ? '—' : st.worst.toFixed(0);
+  const t = document.getElementById('st-table');
+  t.innerHTML = samples.length ? '<tr><th>#</th><th>ms</th><th></th></tr>' + samples.map((v, i) =>
+    '<tr><td>' + (i + 1) + '</td><td>' + v + '</td><td><button type="button" class="btn" data-i="' + i + '" aria-label="Remove sample ' + (i + 1) + '" onclick="removeSample(+this.dataset.i)">✕</button></td></tr>').join('') : '';
+}
+function addSample() {
+  const el = document.getElementById('sample'), v = Number(el.value), msg = document.getElementById('sample-msg');
+  if (el.value.trim() === '' || !isFinite(v) || v < 0) { msg.innerHTML = '<span class="warn">⚠ Enter a latency in ms (0 or more).</span>'; return; }
+  samples.push(v); save(); render();
+  el.value = ''; el.focus();
+  msg.textContent = samples.length >= ToolsCore.LATENCY_SAMPLES ? '✓ ' + samples.length + ' samples — test 2 asks for 20.' : (ToolsCore.LATENCY_SAMPLES - samples.length) + ' more for 20 samples.';
+}
+function removeSample(i) { samples.splice(i, 1); save(); render(); }
+function clearSamples() { if (samples.length && confirm('Clear all ' + samples.length + ' samples?')) { samples = []; save(); render(); } }
+function resultText() {
+  const st = ToolsCore.latencyStats(samples);
+  return 'Relay-design test 2 (glass-to-glass) ' + new Date().toISOString().slice(0, 10) + ': n=' + st.n
+    + (st.n ? ', mean ' + st.mean.toFixed(0) + ' ms, worst ' + st.worst.toFixed(0) + ' ms, best ' + st.best.toFixed(0) + ' ms; samples ' + samples.join(', ') : '');
+}
+function copyResult() {
+  const text = resultText(), msg = document.getElementById('sample-msg');
+  // Shared helper (contract C4): Clipboard API with the execCommand fallback. When both fail the text is shown to copy by hand.
+  VtolCommon.copyToClipboard(text).then(ok => { msg.textContent = ok ? '✓ Copied: ' + text : 'Copy blocked — select and copy: ' + text; });
+}
+function togglePanel(btn) { const on = document.body.classList.toggle('hidepanel'); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.textContent = on ? 'SHOW PANELS' : 'CLOCK ONLY'; }
+function toggleFull() {
+  try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* not supported */ }
+}
+render();
+</script>
+</body>
+</html>
