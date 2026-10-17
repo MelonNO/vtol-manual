@@ -54,6 +54,8 @@ jobs:
         # running test live; a hanging test is dumped ("+++ TIMEOUT [time] <id>") and failed by the per-test
         # watchdog; a hang with the GIL held ends the run through faulthandler ("Timeout (h:mm:ss)!" + stacks): the
         # annotated id is the last START line before it, or an interpreter-exit hang after "END of session".
+        # WP18: each failure's full text is in the log (and pytest-logs/pytest-failures.txt) as soon as the test
+        # fails; every failed id is annotated; leaked threads fail their test (pytest-logs/pytest-leaks.txt).
         # The step timeout is below the job timeout, so the log upload below still runs after a hang.
         shell: pwsh
         timeout-minutes: 15
@@ -65,14 +67,23 @@ jobs:
           python -u -m pytest gcs protocol -m "not interactive_desktop" -v -p no:cacheprovider -rfEs --tb=long --durations=10 2>&1 |
             Tee-Object -FilePath pytest-logs/build-tests.txt
           $code = $LASTEXITCODE
-          $summary = Select-String -Path pytest-logs/build-tests.txt -Pattern '^=+ .*\b\d+ (failed|errors?)\b'
+          $log = 'pytest-logs/build-tests.txt'
+          $summary = Select-String -Path $log -Pattern '^=+ .*\b\d+ (failed|errors?)\b'
           if ($code -ne 0 -or $summary) {
-            foreach ($m in (Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '^(FAILED|ERROR|\+\+\+ TIMEOUT \[[0-9:]+\]) ((gcs|protocol)/\S+)' | Select-Object -First 9)) {
-              Write-Host "::error::$($m.Matches[0].Groups[2].Value) failed"
-            }
-            $hang = Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '(^|\s)Timeout \([0-9:]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
+            # WP18: every failed test id, from the conftest's "+++ FAILED|ERROR [time] <id> (<phase>)" lines (written
+            # when the test fails, so they survive a session that dies later), else from pytest's summary lines,
+            # plus the watchdog's timeouts. GitHub shows at most 10 annotations per step: 7 ids, then the rest in one.
+            $ids = [System.Collections.Generic.List[string]]::new()
+            $found = @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ (FAILED|ERROR) \[[0-9:]+\] (.+) \((setup|call|teardown)\)$' | ForEach-Object { $_.Matches[0].Groups[2].Value })
+            if (-not $found.Count) { $found = @(Select-String -CaseSensitive -Path $log -Pattern '^(FAILED|ERROR) (\S+::\S+)' | ForEach-Object { $_.Matches[0].Groups[2].Value }) }
+            $found += @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ TIMEOUT \[[0-9:]+\] (.+) still running after' | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            foreach ($id in $found) { $id = $id -replace '\\', '/'; if (-not $ids.Contains($id)) { $ids.Add($id) } }
+            $n = 0
+            foreach ($id in $ids) { if ($n -lt 7) { Write-Host "::error::$id failed" }; $n++ }
+            if ($n -gt 7) { Write-Host "::error::$($n - 7) more failed test(s): $(($ids | Select-Object -Skip 7) -join ', ')" }
+            $hang = Select-String -CaseSensitive -Path $log -Pattern 'Timeout \([0-9:.]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
             if ($hang) {
-              $last = Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '^\[[0-9:]+\] (START ((gcs|protocol)/\S+)|END of session)' |
+              $last = Select-String -CaseSensitive -Path $log -Pattern '^\[[0-9:]+\] (START (\S.*)|END of session)' |
                 Where-Object { $_.LineNumber -lt $hang.LineNumber } | Select-Object -Last 1
               $id = if ($last -and $last.Matches[0].Groups[2].Success) { $last.Matches[0].Groups[2].Value } else { '(hang at interpreter exit)' }
               Write-Host "::error::$id hung (stack dump in the log: $($hang.Matches[0].Value.Trim()))"

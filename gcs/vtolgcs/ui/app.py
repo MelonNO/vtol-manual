@@ -177,7 +177,7 @@ class App:
                 res = exc
             if done is not None:
                 self.q.put(("call", lambda: done(res)))
-        threading.Thread(target=run, daemon=True).start()
+        threading.Thread(target=run, name=f"ui-bg-{getattr(fn, '__name__', 'task')}", daemon=True).start()
 
     def _poll(self) -> None:
         try:

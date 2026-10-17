@@ -159,12 +159,14 @@ def test_listener_never_sends_with_recording_socket() -> None:
     RecordingSocket.instances.clear()
     carrier = M.CarrierPosition(MavlinkConfig())
     ro = M.MavlinkReadOnly(MavlinkConfig(), carrier, socket_factory=RecordingSocket).start()
-    sock = RecordingSocket.instances[0]
-    sock.inbox += [frame_v2(0, heartbeat()), frame_v2(33, gpi())]
-    deadline = time.time() + 3
-    while carrier.to_c2()["source"] is None and time.time() < deadline:
-        time.sleep(0.01)
-    ro.stop()
+    try:                                                     # WP18 R1: the listener thread stops whatever fails
+        sock = RecordingSocket.instances[0]
+        sock.inbox += [frame_v2(0, heartbeat()), frame_v2(33, gpi())]
+        deadline = time.time() + 3
+        while carrier.to_c2()["source"] is None and time.time() < deadline:
+            time.sleep(0.01)
+    finally:
+        ro.stop()
     assert carrier.to_c2()["source"] == "mavlink-readonly"
     assert not [c for c in sock.calls if c.startswith("send") or c.startswith("connect")]
     assert set(sock.calls) <= {"bind", "settimeout", "recvfrom", "close", "getsockname"}

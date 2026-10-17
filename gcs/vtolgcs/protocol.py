@@ -100,16 +100,29 @@ class FieldError(ProtocolError):
 
 # --------------------------------------------------------------------------- CRC
 
-def crc16_ccitt_false(data: bytes | bytearray | memoryview, init: int = 0xFFFF) -> int:
-    """CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, no reflection, xorout 0.
-
-    Check value: ``crc16_ccitt_false(b"123456789") == 0x29B1``.
-    """
+def _crc16_bitwise(data: bytes | bytearray | memoryview, init: int = 0xFFFF) -> int:
+    """The bit-by-bit definition (reference for :data:`_CRC16_TABLE` and the tests)."""
     crc = init
     for byte in bytes(data):
         crc ^= byte << 8
         for _ in range(8):
             crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
+    return crc
+
+
+#: One entry per byte value: the CRC register after shifting that byte in (WP18: table-driven, about 6x faster
+#: per packet than bit by bit; same results).
+_CRC16_TABLE = tuple(_crc16_bitwise(bytes((i,)), 0) for i in range(256))
+
+
+def crc16_ccitt_false(data: bytes | bytearray | memoryview, init: int = 0xFFFF) -> int:
+    """CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, no reflection, xorout 0.
+
+    Check value: ``crc16_ccitt_false(b"123456789") == 0x29B1``.
+    """
+    crc, table = init, _CRC16_TABLE
+    for byte in bytes(data):
+        crc = ((crc << 8) & 0xFF00) ^ table[(crc >> 8) ^ byte]
     return crc
 
 

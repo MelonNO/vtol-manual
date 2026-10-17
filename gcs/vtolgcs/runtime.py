@@ -60,7 +60,12 @@ SAMPLE_PERIOD_S = 0.2          # brief R11: status samples at 5 Hz
 POWER_PERIOD_S = 5.0
 #: The RC thread must get the GIL back quickly when its timer fires; CPython's default
 #: switch interval (5 ms) would let any busy thread delay a packet by a whole period.
-GIL_SWITCH_INTERVAL_S = 0.0005
+#: WP18: 1 ms, not less.  On Windows CPython waits for the GIL in whole milliseconds, so anything
+#: below 1 ms becomes a 0 ms wait: every thread that wants the GIL forces a switch at once and the
+#: waiters poll in a tight loop.  On 2-4 logical CPUs (a small laptop, a CI runner) that convoy
+#: starved the RC thread itself (0.5 ms: 131-222 Hz, p99 29-44 ms; 0.999 ms: the same; 1 ms: 250 Hz,
+#: p99 0.6 ms; WP18 report).  On many CPUs 1 ms keeps the benefit (250 Hz, p99 0.6 ms idle).
+GIL_SWITCH_INTERVAL_S = 0.001
 #: API and SSE reuse a status object up to this old, so many clients cost one build.
 STATUS_CACHE_S = 0.1
 #: A video fan-out report older than this no longer fills C2 ``video.rx_kbps``.

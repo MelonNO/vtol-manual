@@ -9,6 +9,7 @@ import uuid
 import pytest
 
 from _c2 import assert_c2_status
+from conftest import THREADS
 from vtolgcs import __version__
 from vtolgcs.api import ApiServer, EventHub, origin_allowed
 from vtolgcs.config import Config
@@ -25,9 +26,12 @@ def runtime():
     cfg.mavlink.listen_port = 0
     cfg.log.enabled = False
     rt = Runtime(cfg, FakeController(), instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}")
-    rt.start()
-    yield rt
-    rt.stop()
+    try:
+        with THREADS.keep_started():                   # WP18: its threads live for the whole module on purpose
+            rt.start()
+        yield rt
+    finally:
+        rt.stop()
 
 
 def request(rt: Runtime, method: str, path: str, headers: dict | None = None,

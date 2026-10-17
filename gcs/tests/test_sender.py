@@ -439,15 +439,17 @@ def test_dead_sender_thread_is_detected() -> None:
                     on_event=lambda k, d: events.append((k, d)))
     assert sender.request_mode(Mode.FPV).ok
     sender.start()
-    deadline = time.time() + 2
-    while not sender.state().thread_dead and time.time() < deadline:
-        time.sleep(0.01)
-    st = sender.state()
-    assert st.thread_dead and not st.streaming and st.suspended == SUSPEND_THREAD
-    assert any(k == "suspended" and d["reason"] == SUSPEND_THREAD for k, d in events)
-    assert not sender.request_mode(Mode.FPV).ok           # nothing can start any more
-    assert not sender.check_alive()
-    sender.stop()
+    try:                                                  # WP18 R1: the thread is stopped whatever fails
+        deadline = time.time() + 2
+        while not sender.state().thread_dead and time.time() < deadline:
+            time.sleep(0.01)
+        st = sender.state()
+        assert st.thread_dead and not st.streaming and st.suspended == SUSPEND_THREAD
+        assert any(k == "suspended" and d["reason"] == SUSPEND_THREAD for k, d in events)
+        assert not sender.request_mode(Mode.FPV).ok       # nothing can start any more
+        assert not sender.check_alive()
+    finally:
+        sender.stop()
 
 
 # --------------------------------------------------------------------------- camera flag, errors
