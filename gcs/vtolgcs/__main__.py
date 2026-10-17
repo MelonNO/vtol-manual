@@ -28,9 +28,16 @@ mode or the camera.**  Such a key only asks for a typed word + Enter (anything e
 
   f  FPV, normal start (interlock): START   c  carrier-only: NOCLIENT (+ LANDED)   i  idle: STOP
   r  normal restart of the stopped mode: START   R  RESUME (client airborne): RESUME (+ THROTTLE)
-  k  camera request on/off: CAMERA         q / Ctrl+C  quit: STOP while streaming (else at once)
+  k  camera request on/off: CAMERA         q / Ctrl+C / Ctrl+Break  quit: STOP while streaming (else at once)
   --sim only:  a  fake arm switch: ARM / SAFE   d  fake controller: UNPLUG / PLUG
   s  print the status line   h / ?  help   (the only keys that act at once)
+
+Ctrl+Break is handled like Ctrl+C (WP16 R3).  Closing the console window, logging off and shutting down
+cannot be caught or refused (Windows ends the process; the bridge goes to FAILSAFE after T_hold).
+
+A prompt never blocks the main loop (WP16 R1): the action runs in a worker thread and the main loop
+collects the typed characters, so a stop through the control channel takes effect at once and events
+keep printing.  A pending prompt is cancelled when the sender's state changes underneath it.
 
 ``--no-keys`` (the UI passes it to the sender it starts): no key or typed input is read at all.
 """
@@ -133,7 +140,8 @@ WORD_SIM_ARM, WORD_SIM_SAFE, WORD_SIM_UNPLUG, WORD_SIM_PLUG = "ARM", "SAFE", "UN
 
 KEYS_HELP = ("keys (each asks for a typed word + Enter; anything else cancels): f FPV start (START) | "
              "c carrier-only (NOCLIENT) | i idle (STOP) | r restart (START) | R RESUME client airborne (RESUME) | "
-             "k camera (CAMERA) | q / Ctrl+C quit (STOP while streaming) | s status | h help")
+             "k camera (CAMERA) | q / Ctrl+C / Ctrl+Break quit (STOP while streaming) | s status | h help | "
+             "Esc cancels a prompt")
 KEYS_HELP_SIM = " | sim: a fake arm switch (ARM / SAFE), d fake controller (UNPLUG / PLUG)"
 
 
@@ -154,6 +162,7 @@ class Console:
         self.read_line = read_line or (sys.stdin.readline if sys.stdin is not None else (lambda: ""))
         self._lock = threading.Lock()
         self._last_len = 0
+        self._typed: str | None = None          # the answer being typed at a prompt (WP16 R1), else None
         self._events: queue.SimpleQueue = queue.SimpleQueue()
         rt.add_listener(lambda kind, data: self._events.put((kind, data)))   # never print on the caller's thread
 
@@ -171,8 +180,41 @@ class Console:
             if self.tty and self._last_len:
                 sys.stdout.write("\r" + " " * self._last_len + "\r")
                 self._last_len = 0
+            typing = self.tty and self._typed is not None
+            if typing:                             # keep a half-typed answer below the new line
+                sys.stdout.write("\r" + " " * len(self._typed or "") + "\r")
             sys.stdout.write(text + "\n")
+            if typing:
+                sys.stdout.write(self._typed or "")
             sys.stdout.flush()
+
+    def feed(self, ch: str) -> str | None:
+        """Main loop, while a prompt waits: one typed character.  Returns the answer on Enter (Esc and a
+        Ctrl+C character give an empty answer, which cancels), else None.  Echoes on a console."""
+        with self._lock:
+            typed, out, line = self._typed or "", "", None
+            if ch in ("\r", "\n"):
+                line, out = typed, "\n"
+            elif ch in ("\x1b", "\x03"):
+                line, out = "", "\n"
+            elif ch == "\b":
+                if typed:
+                    typed, out = typed[:-1], "\b \b"
+            elif ch.isprintable():
+                typed, out = typed + ch, ch
+            self._typed = None if line is not None else typed
+            if self.tty and out:
+                sys.stdout.write(out)
+                sys.stdout.flush()
+            return line
+
+    def end_input(self) -> None:
+        """The prompt is over (answered or cancelled): drop a half-typed answer from the screen."""
+        with self._lock:
+            if self._typed is not None and self.tty:
+                sys.stdout.write("\r" + " " * len(self._typed) + "\r")
+                sys.stdout.flush()
+            self._typed = None
 
     def status(self) -> None:
         line = status_line(self.rt.status())
@@ -233,6 +275,18 @@ class Console:
     def help(self) -> None:
         self.print_line(KEYS_HELP + (KEYS_HELP_SIM if self.fake is not None else ""))
 
+    def signature(self) -> dict[str, Any]:
+        """What a pending prompt depends on: it is cancelled when any of this changes (WP16 R1)."""
+        st = self.rt.sender.state()
+        sig: dict[str, Any] = {"mode": st.mode.value, "streaming": st.streaming, "camera": st.camera_requested,
+                               "stopping": self.rt.sender.stopping, "sender thread dead": st.thread_dead}
+        if self.fake is not None:
+            il = self.rt.cfg.interlock
+            snap = self.fake.snapshot()
+            sig["sim controller connected"] = snap.connected
+            sig["sim arm switch"] = "ARMED" if snap.channel_us(il.arm_channel) > il.arm_safe_max_us else "safe"
+        return sig
+
     def key(self, ch: str) -> bool:
         """Handle one key. Returns False to quit."""
         rt = self.rt
@@ -285,6 +339,112 @@ class Console:
 
 
 NOT_INTERACTIVE = "needs a typed confirmation on an interactive console; piped or redirected input is refused"
+
+
+class PromptCancelled(Exception):
+    """A pending console prompt was cancelled before anything was done (WP16 R1)."""
+
+
+class PromptRunner:
+    """Runs one console action at a time **off the main loop** (WP16 R1).
+
+    A key's action (and the launch RESUME / carrier-only dialog) runs in a worker thread.  Its
+    ``read_line`` waits for an answer that the main loop collects character by character
+    (:meth:`submit`), so the main loop never blocks on a prompt: a stop through the control channel ends
+    the process at once, and alarms and events keep printing.  Every action reads all its typed words
+    first and acts only after the last one, so a cancelled prompt has done nothing.  A prompt is
+    cancelled when the state it was opened in (:meth:`Console.signature`) changes while it waits, when
+    the process stops, or on Ctrl+C / Ctrl+Break.
+
+    ``read_source`` (not Windows): a blocking line reader called in the worker instead.
+    """
+
+    def __init__(self, signature: Callable[[], dict[str, Any]], out: Callable[[str], None],
+                 read_source: Callable[[], str] | None = None) -> None:
+        self.signature = signature
+        self.out = out
+        self.read_source = read_source
+        self.name = ""
+        self._thread: threading.Thread | None = None
+        self._lines: queue.SimpleQueue = queue.SimpleQueue()
+        self._waiting = threading.Event()
+        self._opened: dict[str, Any] = {}
+        self._result: Any = None
+        self._note = ""
+
+    @property
+    def busy(self) -> bool:
+        return self._thread is not None
+
+    @property
+    def waiting(self) -> bool:
+        """The action waits for a typed answer (the main loop reads characters only then)."""
+        return self._waiting.is_set()
+
+    def start(self, name: str, fn: Callable[[], Any]) -> None:
+        """Run ``fn`` in the worker; the state it depends on is taken now."""
+        if self._thread is not None:
+            raise RuntimeError("a console prompt is already pending")
+        self.name, self._opened, self._result, self._note = name, self.signature(), None, ""
+        self._lines = queue.SimpleQueue()
+        self._thread = threading.Thread(target=self._run, args=(fn,), name=f"console-{name}", daemon=True)
+        self._thread.start()
+
+    def _run(self, fn: Callable[[], Any]) -> None:
+        try:
+            self._result = fn()
+        except PromptCancelled as exc:
+            self.out(f"prompt cancelled: {exc} - nothing changed{self._note}")
+        except Exception:                           # never take the main loop down
+            logging.getLogger("vtolgcs.console").exception("console action %r failed", self.name)
+        finally:
+            self._waiting.clear()
+
+    def changes(self) -> str:
+        """The state changes since the prompt opened ('' = none)."""
+        now = self.signature()
+        return ", ".join(f"{k} {self._opened.get(k)} -> {v}" for k, v in now.items() if v != self._opened.get(k))
+
+    def read_line(self) -> str:
+        """The action's ``read_line`` (worker thread): the next answer, or :class:`PromptCancelled`."""
+        if self.read_source is not None:
+            item: Any = self.read_source()
+        else:
+            lines = self._lines
+            self._waiting.set()
+            item = lines.get()
+        if isinstance(item, PromptCancelled):
+            raise item
+        changed = self.changes()
+        if changed:                                 # changed between the Enter and this check
+            raise PromptCancelled(f"the state changed while it waited ({changed})")
+        return item
+
+    def submit(self, line: str) -> None:
+        """Main loop: the operator pressed Enter."""
+        self._waiting.clear()
+        self._lines.put(line)
+
+    def cancel(self, reason: str, note: str = "") -> None:
+        """Main loop: cancel the pending prompt (also one the action has not reached yet); ``note`` is
+        added to the message."""
+        if self._thread is not None:
+            self._note = note
+            self._waiting.clear()
+            self._lines.put(PromptCancelled(reason))
+
+    def poll(self) -> tuple[bool, Any]:
+        """``(True, result)`` once, when the action has ended; else ``(False, None)``."""
+        t = self._thread
+        if t is None or t.is_alive():
+            return False, None
+        t.join()
+        self._thread = None
+        return True, self._result
+
+    def join(self, timeout: float) -> None:
+        if self._thread is not None:
+            self._thread.join(timeout)
 
 
 def resume_dialog(rt: Runtime, out: Callable[[str], None], read_line: Callable[[], str],
@@ -426,6 +586,23 @@ def _read_key() -> str | None:
     return None
 
 
+def _read_chars(limit: int = 64) -> list[str]:
+    """The characters typed so far, up to and including the first Enter (Windows console)."""
+    if sys.platform != "win32":
+        return []
+    import msvcrt
+    out: list[str] = []
+    while len(out) < limit and msvcrt.kbhit():
+        ch = msvcrt.getwch()
+        if ch in ("\x00", "\xe0"):           # function / arrow key prefix
+            msvcrt.getwch()
+            continue
+        out.append(ch)
+        if ch in ("\r", "\n"):
+            break
+    return out
+
+
 def setup_logging(verbose: bool) -> logging.handlers.QueueListener:
     """Log through a queue: a frozen console (e.g. QuickEdit selection) must never block the RC thread."""
     handler = logging.StreamHandler()
@@ -518,6 +695,11 @@ def _main(argv: Sequence[str] | None) -> int:
     tty = sys.stdout.isatty()                          # display style only
     read_keys, interactive = console_input(args)
     console = Console(rt, fake, tty, interactive)
+    # WP16 R1: an action with a prompt runs in a worker; the main loop collects the typed answer itself
+    # (Windows console), so it never blocks.  Elsewhere the worker reads stdin itself.
+    runner = PromptRunner(console.signature, console.print_line,
+                          None if sys.platform == "win32" else console.read_line)
+    console.read_line = runner.read_line
     console.print_line(f"vtol-gcs {__version__} headless - bridge {cfg.bridge.ip}:{cfg.bridge.port}"
                        + (f", API {rt.api.base_url}" if rt.api else ", API off")
                        + (f", log {rt.session.path}" if rt.session else "")
@@ -527,48 +709,98 @@ def _main(argv: Sequence[str] | None) -> int:
         console.print_line("console keys off (--no-keys): control this sender through the UI")
     elif read_keys:
         console.help()
-    # Ctrl+C is handled like the key q (typed STOP while streaming), never as an immediate exit (WP15 R2).
+    # Ctrl+C and Ctrl+Break are handled like the key q (typed STOP while streaming), never as an immediate
+    # exit (WP15 R2, WP16 R3).  Closing the console window cannot be caught (Windows ends the process).
     interrupted = threading.Event()
-    old_sigint: Any = signal.getsignal(signal.SIGINT)
-    try:
-        signal.signal(signal.SIGINT, lambda signum, frame: interrupted.set())
-    except ValueError:                                 # not the main thread (in-process callers)
-        old_sigint = None
+    old_handlers: dict[int, Any] = {}
+    for signum in (signal.SIGINT, getattr(signal, "SIGBREAK", None)):
+        if signum is None:
+            continue
+        try:
+            old_handlers[signum] = signal.signal(signum, lambda signum, frame: interrupted.set())
+        except ValueError:                             # not the main thread (in-process callers)
+            pass
     if args.camera:
         rt.set_camera(args.camera == "on")
     start = initial_start(args, cfg)
     console.drain()
     if start == "resume":
-        resume_dialog(rt, console.print_line, console.read_line, interactive)
+        runner.start("resume", lambda: resume_dialog(rt, console.print_line, console.read_line, interactive))
     elif start == "carrier_only":
-        carrier_only_dialog(rt, console.print_line, console.read_line, interactive)
+        runner.start("carrier_only",
+                     lambda: carrier_only_dialog(rt, console.print_line, console.read_line, interactive))
     elif start == "fpv":
         rt.request_mode(Mode.FPV)
     end = time.monotonic() + args.run_seconds if args.run_seconds else None
     next_line = 0.0
+    quit_next = False                                  # Ctrl+C / Ctrl+Break: open the quit prompt next
+    discard = False                                    # after a cancel: the typed line up to Enter is ignored
+
+    def cancel(reason: str) -> None:
+        nonlocal discard
+        if interactive and sys.platform == "win32":    # the word being typed must not become key presses
+            discard = True
+            runner.cancel(reason, "; what is typed up to the next Enter is ignored")
+        else:
+            runner.cancel(reason)
     try:
         while (end is None or time.monotonic() < end) and not stop_requested.is_set():
-            ch = _read_key() if read_keys else None
+            finished, result = runner.poll()
+            if finished:
+                console.end_input()
+                if result is False:                    # q / Ctrl+C: quit (confirmed, or nothing streamed)
+                    break
             if interrupted.is_set():
                 interrupted.clear()
-                ch = "q"
-            if ch is not None and not console.key(ch):
-                break
+                if runner.busy and runner.name == "q":
+                    console.print_line("the QUIT prompt is open: type STOP + Enter to quit, anything else cancels")
+                else:
+                    if runner.busy:
+                        cancel("Ctrl+C / Ctrl+Break")
+                    quit_next = True
+            if runner.busy:
+                if runner.waiting:
+                    changed = runner.changes()
+                    if changed:
+                        cancel(f"the state changed while it waited ({changed})")
+                    else:
+                        for ch in _read_chars():
+                            line = console.feed(ch)
+                            if line is not None:
+                                runner.submit(line)
+                                break
+            elif quit_next:
+                quit_next = discard = False            # the quit prompt takes the rest of the line
+                runner.start("q", lambda: console.key("q"))
+            elif discard:
+                for ch in _read_chars():
+                    if console.feed(ch) is not None:
+                        discard = False
+                        break
+            elif read_keys:
+                ch = _read_key()
+                if ch is not None:
+                    runner.start(ch, lambda ch=ch: console.key(ch))
             console.drain()
-            if time.monotonic() >= next_line:
+            if not runner.busy and time.monotonic() >= next_line:     # paused while a prompt is open
                 next_line = time.monotonic() + (0.5 if tty else 1.0)
                 console.status()
-            time.sleep(0.05)
+            stop_requested.wait(0.02 if runner.busy else 0.05)        # wakes at once on a control stop
     except KeyboardInterrupt:
         pass
     finally:
-        if old_sigint is not None:
-            signal.signal(signal.SIGINT, old_sigint)   # (this process exits next)
+        for signum, old in old_handlers.items():
+            signal.signal(signum, old)                 # (this process exits next)
         if stop_requested.is_set():
             console.print_line("stop requested through the control channel")
+        if rt.sender is not None:
+            rt.sender.stop()                           # the RC stream ends first, at once (WP16 R1)
+        runner.cancel("the sender is stopping")
         if control is not None:
             control.stop()
         rt.stop()
+        runner.join(1.0)
+        console.end_input()
         console.drain()
         console.print_line("stopped (RC stream off; the bridge goes to FAILSAFE after T_hold)")
     return EXIT_OK

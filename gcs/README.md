@@ -66,10 +66,15 @@ one).
 (a stray keystroke cannot reach it). Every operator action goes through the UI and its typed confirmations;
 `--resume` or `--mode carrier_only` given to the UI are therefore refused by that sender (it needs a typed
 confirmation on an interactive console; nothing is sent): use the UI's RESUME / CARRIER-ONLY buttons.
+The UI shows that refusal, with its reason, under *Events* (WP16; it reads the sender's answer from its
+output for up to 20 s), and says so when it attached to a running sender instead (the flags are then ignored).
 Its output (start-up line, status line every second, events, errors such as `CONFIG ERROR`) is appended
 to **`sender-YYYYMMDDTHHMMSSZ.log` in the log folder** (`--log-dir`, else `log.dir`, else
 `%APPDATA%\vtol-gcs\logs`); Flight tab → *Sender output* opens it, and when that sender exits the UI shows
-its exit code and last lines under *Events*. Closing the UI leaves the sender running in the background
+its exit code and last lines under *Events*. Each start of a sender by the UI also deletes old output files:
+it keeps the newest `log.sender_output_keep` (20) and deletes older ones while all of them together exceed
+`log.sender_output_max_mb` (100 MB); the current file, files still open and every other file in the folder are
+never deleted (WP16). Closing the UI leaves the sender running in the background
 (the UI says so and asks first); a new UI attaches to it. It is listed in Task Manager as
 `vtol-gcs-sender.exe` (`python` for source runs).
 
@@ -112,6 +117,21 @@ nothing changes. The words are case-sensitive, as on the control channel. Typed 
 console: with piped or redirected input (or `--no-keys`) these keys are refused. While a key waits for its
 word the RC stream keeps running unchanged; the status line pauses.
 
+**A prompt never blocks the sender (WP16).** The key's action waits for its word in a worker thread; the main
+loop goes on collecting the typed characters (echoed; Backspace works, Esc cancels). So, while a prompt is
+open:
+
+- a STOP or any other command from the UI (control channel) takes effect at once: a stop ends the RC stream
+  within a few milliseconds (measured: at most 1 packet after the request);
+- alarms, refusals and state changes keep printing (the half-typed answer moves below them);
+- the prompt is **cancelled** (`prompt cancelled: the state changed while it waited (mode fpv -> idle) -
+  nothing changed`) when the mode, streaming, the camera request, the stop gate or (`--sim`) the fake
+  controller changes underneath it, also when the change comes between the Enter and the action. Whatever is
+  typed after that, up to the next Enter, is ignored, so the rest of a word never becomes key presses;
+- Ctrl+C / Ctrl+Break cancels it and opens the QUIT prompt.
+
+The `--resume` and `--mode carrier_only` dialogs at launch work the same way.
+
 | Key | Typed word | Action |
 |---|---|---|
 | `s` | — | print the status line (acts at once) |
@@ -122,12 +142,19 @@ word the RC stream keeps running unchanged; the status line pauses.
 | `c` | `NOCLIENT` (+ `LANDED`) | carrier-only: shows what it sends first |
 | `i` | `STOP` | idle: stop streaming (the bridge goes to FAILSAFE after T_hold) |
 | `k` | `CAMERA` | switch the carrier camera request on or off (the camera interlock still applies) |
-| `q`, Ctrl+C | `STOP` while streaming | quit; while nothing is streaming it quits at once. The stop is final, as on the control channel (`begin_stop`: no later start) |
+| `q`, Ctrl+C, Ctrl+Break | `STOP` while streaming | quit; while nothing is streaming it quits at once. The stop is final, as on the control channel (`begin_stop`: no later start) |
 | `a` | `ARM` / `SAFE` | `--sim` with a loopback bridge only: move the fake arm switch |
 | `d` | `UNPLUG` / `PLUG` | `--sim` with a loopback bridge only: fake controller disconnect / reconnect |
 
-Ctrl+Break and closing the console window still end the process at once (deliberate hard exits, like
-ending it in Task Manager; a closed window cannot be refused); the bridge then goes to FAILSAFE after T_hold.
+**Ctrl+Break is handled like Ctrl+C (WP16):** the QUIT prompt, `STOP` while streaming. What **cannot** be
+caught or refused: closing the console window (the X, or ending the terminal tab), logging off and shutting
+Windows down (Windows ends the process; Python offers no handler for these console events and a close
+handler could only delay it for a few seconds), and ending the process in Task Manager. These end the RC
+stream at once; the bridge then goes to FAILSAFE after T_hold and the client to its own failsafe. The sender
+the UI starts has no console window, so only Task Manager (or a logoff/shutdown) can end it this way; it
+never receives Ctrl+C (its process group ignores Ctrl+C). A Ctrl+Break sent to its hidden console by another
+program acts like `q`: while it streams it only prints the refused QUIT (`--no-keys`: no typed `STOP`); while
+nothing streams it quits, as before.
 
 ## Configuration
 
@@ -163,6 +190,7 @@ every problem and exits with code 2. Keys missing from the file take the default
 | `mavlink.stale_s` | `5` | app default: older carrier position is reported as unknown |
 | `api.enabled`, `api.port` | `true`, `47800` | contract C2 |
 | `log.enabled`, `log.dir` | `true`, `null` | `null` = `%APPDATA%\vtol-gcs\logs` |
+| `log.sender_output_keep`, `log.sender_output_max_mb` | `20`, `100` | app defaults: `sender-*.log` files kept when the UI starts a sender (the newest N, and in total at most this size; the current file always stays) |
 | `video.status_bits_min_fw_ver` | `null` | **TBD** — firmware version from which status bits 3/4 (decoder lock, NTSC) are valid; until then C2 `video.standard`/`decoder_lock` are `null` |
 | `video.listen_port`, `video.fanout_ports` | `5600`, `[5601, 5602]` | contract C3: N6 video in; fan-out to the viewer (5601) and the Mission Planner HUD (5602) |
 | `video.gst_launch_path` | `null` | `gst-launch-1.0.exe`; `null` = PATH, `GSTREAMER_1_0_ROOT_MSVC_X86_64`, the usual install folders |
@@ -428,6 +456,15 @@ console of a hand-started `--headless --sim` sender while it streams (nothing ch
 words (`CAMERA`, `STOP`, `START`, `ARM`, `STOP` to quit); `test_runtime_e2e.py` checks every key against the
 real runtime, interactive and piped. The keys are typed with `WriteConsoleInputW` into a console that has no
 window (`tests/_console.py`), so these tests open nothing on the desktop.
+
+WP16 tests: the hand-started sender runs with its inherited "ignore Ctrl+C" flag cleared
+(`_console.vtolgcs_command`), so Ctrl+C and Ctrl+Break are delivered for real, and the tests read its screen
+buffer to see the QUIT prompt; a UI `STOP` with a prompt open must end the stream within 100 ms (it prints the
+measured time; `-s`); an alarm prints while a prompt is open; a state change cancels the prompt and the rest of
+the typed line is ignored; the `--resume` dialog at launch does not block a control stop. `test_ui.py`: the
+spawned sender ignores Ctrl+C and refuses QUIT on a real Ctrl+Break, the refusal of `--resume` /
+`--mode carrier_only` reaches *Events* (and, with `VTOLGCS_UI_SMOKE=1`, in the windowed UI), and the
+`sender-*.log` clean-up.
 
 ---
 

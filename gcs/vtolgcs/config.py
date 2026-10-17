@@ -176,6 +176,11 @@ class LogConfig:
     enabled: bool = True
     #: Log folder; null = ``%APPDATA%\\vtol-gcs\\logs``.
     dir: str | None = None
+    #: Output files of the senders the UI starts (``sender-*.log``, WP16 R5): the UI keeps the newest
+    #: ``sender_output_keep`` files and also deletes the oldest while all of them together exceed
+    #: ``sender_output_max_mb`` (app defaults).  The current file is never deleted.
+    sender_output_keep: int = 20
+    sender_output_max_mb: float = 100.0
 
 
 @dataclass
@@ -452,6 +457,8 @@ def validate(cfg: Config) -> list[str]:
     positive("mavlink.stale_s", m.stale_s)
 
     rng("api.port", cfg.api.port, 0, 65535)
+    rng("log.sender_output_keep", cfg.log.sender_output_keep, 1, 1000)
+    positive("log.sender_output_max_mb", cfg.log.sender_output_max_mb)
     v = cfg.video
     if v.status_bits_min_fw_ver is not None:
         rng("video.status_bits_min_fw_ver", v.status_bits_min_fw_ver, 0, 0xFFFF)

@@ -17,6 +17,7 @@ import http.client
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -120,6 +121,64 @@ def spawn_sender(cmd: list[str], output: Path | None = None) -> subprocess.Popen
     finally:
         if sink is not None:
             sink.close()                          # the child has its own handle
+
+
+SENDER_OUTPUT_RE = re.compile(r"^sender-\d{8}T\d{6}Z\.log$")
+
+
+def prune_sender_outputs(log_dir: Path, current: Path | None, keep: int, max_bytes: float) -> list[Path]:
+    """WP16 R5: delete old sender output files (``sender-YYYYMMDDTHHMMSSZ.log``; nothing else) in
+    ``log_dir``.  Newest first, the files are kept while there are at most ``keep`` of them and they
+    total at most ``max_bytes``; from the first file over a limit on, every older one is deleted.
+    ``current`` always stays (and counts).  A file that cannot be deleted (still open) is left.
+    Returns the deleted files."""
+    files: list[tuple[float, str, int, Path]] = []
+    try:
+        for path in Path(log_dir).iterdir():
+            if SENDER_OUTPUT_RE.match(path.name):
+                st = path.stat()
+                files.append((st.st_mtime, path.name, st.st_size, path))
+    except OSError as exc:
+        log.warning("sender output files in %s: %s", log_dir, exc)
+        return []
+    cur = Path(current).name if current is not None else None
+    files.sort(key=lambda f: (f[1] == cur, f[0], f[1]), reverse=True)        # current first, then newest
+    kept, total, dropping, deleted = 0, 0, False, []
+    for _mtime, name, size, path in files:
+        if name == cur:
+            kept, total = kept + 1, total + size
+            continue
+        dropping = dropping or kept >= keep or total + size > max_bytes
+        if not dropping:
+            kept, total = kept + 1, total + size
+            continue
+        try:
+            path.unlink()
+            deleted.append(path)
+        except OSError as exc:                       # e.g. still written by a sender that runs on
+            log.info("sender output file %s not deleted: %s", path, exc)
+    return deleted
+
+
+#: WP16 R2: the launch dialogs a UI can pass on.  The sender the UI starts has no console, so it always
+#: refuses them; the UI shows that refusal (read from the sender's output) under *Events*.
+LAUNCH_DIALOGS = {"resume": ("RESUME", "--resume", "RESUME (client airborne)"),
+                  "carrier_only": ("CARRIER-ONLY", "--mode carrier_only", "CARRIER-ONLY")}
+
+
+def launch_dialog(args: Any) -> tuple[str, str, str] | None:
+    """``(output prefix, flag, button)`` when the UI's parsed arguments ask for a launch dialog."""
+    if getattr(args, "resume", False):
+        return LAUNCH_DIALOGS["resume"]
+    if getattr(args, "mode", None) == "carrier_only":
+        return LAUNCH_DIALOGS["carrier_only"]
+    return None
+
+
+def launch_refusals(lines: list[str], prefix: str) -> list[str]:
+    """The sender's answer to a launch dialog in its output lines (refused, not possible, cancelled)."""
+    return [x for x in lines if x.startswith(prefix + " ")
+            and any(w in x for w in ("nothing sent", "refused", "not possible", "cancelled"))]
 
 
 def tail_lines(path: Path | None, n: int = 5, max_bytes: int = 4096) -> list[str]:

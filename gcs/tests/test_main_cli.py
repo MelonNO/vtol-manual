@@ -279,65 +279,235 @@ def _wait_for(cond, timeout: float = 15.0):
     raise AssertionError("timed out")
 
 
+def test_prompt_runner_answer_cancel_and_state_change() -> None:
+    """WP16 R1: the worker that waits for a typed word; the main loop answers or cancels it."""
+    from vtolgcs.__main__ import PromptRunner
+    state = {"mode": "fpv", "camera": False}
+    out: list[str] = []
+    r = PromptRunner(lambda: dict(state), out.append)
+
+    def finish() -> tuple[bool, object]:
+        return _wait_for(lambda: (lambda res: res if res[0] else None)(r.poll()), 5)
+
+    r.start("k", r.read_line)
+    _wait_for(lambda: r.waiting, 5)
+    with pytest.raises(RuntimeError):
+        r.start("i", r.read_line)                                 # one prompt at a time
+    r.submit("CAMERA")
+    assert finish() == (True, "CAMERA") and not r.busy and out == []
+    r.start("k", r.read_line)                                     # cancelled by the main loop (Ctrl+C)
+    _wait_for(lambda: r.waiting, 5)
+    r.cancel("Ctrl+C / Ctrl+Break", "; what is typed up to the next Enter is ignored")
+    assert finish() == (True, None)
+    assert out[-1] == ("prompt cancelled: Ctrl+C / Ctrl+Break - nothing changed; what is typed up to the next "
+                       "Enter is ignored")
+    r.start("k", r.read_line)                                     # the state changes underneath
+    _wait_for(lambda: r.waiting, 5)
+    state["mode"] = "idle"
+    assert r.changes() == "mode fpv -> idle"
+    r.submit("CAMERA")                                            # the Enter came before the main loop saw it
+    assert finish() == (True, None) and "the state changed while it waited (mode fpv -> idle)" in out[-1]
+    r.start("q", lambda: False)                                   # an action that reads nothing
+    assert finish() == (True, False)
+    assert r.poll() == (False, None)
+
+
+class _HandSender:
+    """A hand-started ``--headless --sim`` sender on a real, windowless console, with Ctrl+C processing on
+    (WP16 R4: no inherited "ignore Ctrl+C" flag), against an in-process bridge_sim."""
+
+    def __init__(self, tmp_path: Path, *extra: str) -> None:
+        from _console import vtolgcs_command
+        self.tmp = tmp_path
+        self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1),
+                                             client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1), seed=1)).start()
+        env = dict(os.environ, PYTHONPATH=str(GCS_DIR), PYTHONIOENCODING="utf-8")
+        env[TEST_INSTANCE_ENV] = f"vtol-gcs-test-{uuid.uuid4().hex}"
+        cmd = vtolgcs_command("--headless", "--sim", "--bridge", f"127.0.0.1:{self.sim.address[1]}", "--no-api",
+                              "--mavlink-port", "0", "--config", str(tmp_path / "cfg.json"), "--log-dir",
+                              str(tmp_path), *extra)
+        self.proc = subprocess.Popen(cmd, env=env, cwd=GCS_DIR, creationflags=subprocess.CREATE_NO_WINDOW)
+        self.pid = self.proc.pid
+        self.client: ControlClient | None = None
+        try:
+            self.client = _wait_for(lambda: ControlClient.from_file(tmp_path / "control.json", timeout=2.0)
+                                    if (tmp_path / "control.json").exists() else None)
+        except BaseException:
+            self.close()
+            raise
+
+    def status(self) -> dict:
+        assert self.client is not None
+        return self.client.request("status")["result"]
+
+    def rx(self) -> int:
+        with self.sim.lock:
+            return self.sim.core.rx_ok
+
+    def count(self, text: str) -> int:
+        """Screen lines that contain ``text``."""
+        from _console import screen
+        return sum(text in line for line in screen(self.pid))
+
+    def wait_screen(self, text: str, n: int = 1, timeout: float = 10.0) -> None:
+        _wait_for(lambda: self.count(text) >= n, timeout)
+
+    def records(self) -> list[dict]:
+        return [json.loads(x) for x in next(self.tmp.glob("session-*.jsonl")).read_text(encoding="utf-8").splitlines()]
+
+    def close(self) -> None:
+        if self.client is not None:
+            self.client.close()
+        if self.proc.poll() is None:
+            self.proc.kill()
+            self.proc.wait()
+        self.sim.stop()
+
+
+QUIT_PROMPT = "QUIT: the RC stream is running"
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
 def test_real_console_single_keys_change_nothing_typed_words_work(tmp_path: Path) -> None:
-    """R2/R3 on a real (windowless) console: keys typed into the sender's own console input buffer."""
-    from _console import ctrl_c, type_keys
-    sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1),
-                                    client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1), seed=1)).start()
-    env = dict(os.environ, PYTHONPATH=str(GCS_DIR), PYTHONIOENCODING="utf-8")
-    env[TEST_INSTANCE_ENV] = f"vtol-gcs-test-{uuid.uuid4().hex}"
-    proc = subprocess.Popen([sys.executable, "-m", "vtolgcs", "--headless", "--sim", "--bridge",
-                             f"127.0.0.1:{sim.address[1]}", "--no-api", "--mavlink-port", "0",
-                             "--config", str(tmp_path / "cfg.json"), "--log-dir", str(tmp_path)],
-                            env=env, cwd=GCS_DIR, creationflags=subprocess.CREATE_NO_WINDOW)
-    client = None
+    """WP15 R2/R3 on a real (windowless) console: keys typed into the sender's own console input buffer.
+    WP16 R4: Ctrl+C and Ctrl+Break are delivered for real and must show the QUIT prompt."""
+    from _console import ctrl_break, ctrl_c, type_keys
+    h = _HandSender(tmp_path)
     try:
-        client = _wait_for(lambda: ControlClient.from_file(tmp_path / "control.json", timeout=2.0)
-                           if (tmp_path / "control.json").exists() else None)
-
-        def status() -> dict:
-            return client.request("status")["result"]
-
-        def rx() -> int:
-            with sim.lock:
-                return sim.core.rx_ok
-        _wait_for(lambda: status()["bridge"]["state"] == "RUN")
-        for key in ("q", "i", "a", "k", "d", "f", "r", "c", "R", "Ctrl+C"):
-            n = rx()
+        _wait_for(lambda: h.status()["bridge"]["state"] == "RUN")
+        for key in ("q", "i", "a", "k", "d", "f", "r", "c", "R", "Ctrl+C", "Ctrl+Break", "k+Ctrl+C"):
+            n, quits = h.rx(), h.count(QUIT_PROMPT)
             if key == "Ctrl+C":
-                ctrl_c(proc.pid)
+                ctrl_c(h.pid)
+            elif key == "Ctrl+Break":
+                ctrl_break(h.pid)
+            elif key == "k+Ctrl+C":                               # Ctrl+C on an open prompt: cancel it, then QUIT
+                type_keys(h.pid, "k")
+                h.wait_screen("CAMERA ON: switches")
+                ctrl_c(h.pid)
+                h.wait_screen("prompt cancelled: Ctrl+C / Ctrl+Break")
             else:
-                type_keys(proc.pid, key)                          # one stray keystroke
+                type_keys(h.pid, key)                             # one stray keystroke
+            if key in ("q", "Ctrl+C", "Ctrl+Break", "k+Ctrl+C"):
+                h.wait_screen(QUIT_PROMPT, quits + 1)             # the event really arrived: the QUIT prompt
             time.sleep(0.8)
-            s = status()
-            assert proc.poll() is None, key
+            s = h.status()
+            assert h.proc.poll() is None, key
             assert s["app"]["mode"] == "fpv" and s["app"]["streaming"] and s["bridge"]["state"] == "RUN", (key, s["app"])
             assert s["controller"]["connected"] and s["controller"]["arm_switch_safe"], key
             assert s["bridge"]["camera"]["requested"] is False, key
-            assert rx() - n > 100, key                              # still ~250 Hz
-            type_keys(proc.pid, "\r")                              # Enter: cancels the prompt
+            assert h.rx() - n > 100, key                          # still ~250 Hz
+            type_keys(h.pid, "\r")                                # Enter: cancels the prompt
             time.sleep(0.3)
         # the typed words still work
-        type_keys(proc.pid, "kCAMERA\r")
-        _wait_for(lambda: status()["bridge"]["camera"]["requested"] is True)
-        type_keys(proc.pid, "iSTOP\r")
-        _wait_for(lambda: status()["app"]["mode"] == "idle")
-        type_keys(proc.pid, "fSTART\r")
-        _wait_for(lambda: status()["app"]["streaming"])
-        type_keys(proc.pid, "aARM\r")
-        _wait_for(lambda: status()["controller"]["arm_switch_safe"] is False)
-        type_keys(proc.pid, "qSTOP\r")
-        assert proc.wait(15) == 0
+        type_keys(h.pid, "kCAMERA\r")
+        _wait_for(lambda: h.status()["bridge"]["camera"]["requested"] is True)
+        type_keys(h.pid, "iSTOP\r")
+        _wait_for(lambda: h.status()["app"]["mode"] == "idle")
+        type_keys(h.pid, "fSTART\r")
+        _wait_for(lambda: h.status()["app"]["streaming"])
+        type_keys(h.pid, "aARM\r")
+        _wait_for(lambda: h.status()["controller"]["arm_switch_safe"] is False)
+        quits = h.count(QUIT_PROMPT)
+        ctrl_c(h.pid)                                             # Ctrl+C + STOP quits
+        h.wait_screen(QUIT_PROMPT, quits + 1)
+        type_keys(h.pid, "STOP\r")
+        assert h.proc.wait(15) == 0
     finally:
-        if client is not None:
-            client.close()
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait()
-        sim.stop()
-    recs = [json.loads(line) for line in next(tmp_path.glob("session-*.jsonl")).read_text(encoding="utf-8").splitlines()]
+        h.close()
+    recs = h.records()
     assert [r["mode"] for r in recs if r["type"] == "mode"] == ["fpv", "idle", "fpv"]
     # k + CAMERA by the operator; the second FPV start switches it off again (camera rule 7)
     assert [(r["requested"], r["reason"]) for r in recs if r["type"] == "camera_reason"][0] == (True, "operator")
     assert [r["requested"] for r in recs if r["type"] == "camera"] == [True, False]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
+def test_open_console_prompt_does_not_delay_a_control_stop(tmp_path: Path) -> None:
+    """WP16 R1: with a console prompt open, a STOP from the control channel (the UI) ends the RC stream
+    within 100 ms."""
+    import threading
+    from _console import type_keys
+    h = _HandSender(tmp_path)
+    last_rx = [time.perf_counter()]
+    done = threading.Event()
+
+    def watch() -> None:                                          # time of the last rc_up the bridge counted
+        seen = h.rx()
+        while not done.is_set():
+            n = h.rx()
+            if n != seen:
+                seen, last_rx[0] = n, time.perf_counter()
+            time.sleep(0.001)
+    watcher = threading.Thread(target=watch, daemon=True)
+    try:
+        _wait_for(lambda: h.status()["bridge"]["state"] == "RUN")
+        watcher.start()
+        type_keys(h.pid, "i")
+        h.wait_screen("IDLE: stops the RC stream")                # the prompt is open and waits
+        n = h.rx()
+        time.sleep(0.5)
+        assert h.rx() - n > 80 and h.status()["app"]["streaming"]  # the prompt holds nothing up
+        assert h.client is not None
+        rx_stop, t_stop = h.rx(), time.perf_counter()
+        assert h.client.request("stop", typed="STOP")["ok"]
+        assert h.proc.wait(10) == 0
+        time.sleep(0.3)
+        after = h.rx() - rx_stop
+    finally:
+        done.set()
+        h.close()
+    stop_ms = (last_rx[0] - t_stop) * 1000
+    print(f"WP16 R1: last rc_up {stop_ms:.2f} ms after the control STOP was sent (prompt open); "
+          f"{after} packets after it")
+    assert stop_ms < 100 and after < 25, (stop_ms, after)       # 25 packets = 100 ms at 250 Hz
+    assert [r["mode"] for r in h.records() if r["type"] == "mode"] == ["fpv"]   # the prompt did nothing
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
+def test_console_prompt_cancelled_when_the_state_changes_events_keep_printing(tmp_path: Path) -> None:
+    """WP16 R1: alarms print while a prompt is open; a state change underneath cancels it, and the rest of
+    the typed line is ignored (it never becomes key presses)."""
+    from _console import screen, type_keys
+    h = _HandSender(tmp_path)
+    try:
+        _wait_for(lambda: h.status()["bridge"]["state"] == "RUN")
+        type_keys(h.pid, "k")
+        h.wait_screen("CAMERA ON: switches")
+        h.sim.stop()                                              # bridge silent: NO BRIDGE STATUS while it waits
+        h.wait_screen("ALARM RAISED: CRIT bridge_no_status")
+        lines = screen(h.pid)
+        prompt = max(i for i, x in enumerate(lines) if "CAMERA ON: switches" in x)
+        assert any("ALARM RAISED: CRIT bridge_no_status" in x for x in lines[prompt + 1:])
+        type_keys(h.pid, "CAMERA\r")                              # the prompt survived the alarm
+        _wait_for(lambda: h.status()["bridge"]["camera"]["requested"] is True)
+        type_keys(h.pid, "k")                                     # CAMERA OFF prompt ...
+        h.wait_screen("CAMERA OFF: switches")
+        assert h.client is not None
+        assert h.client.request("request_mode", mode="idle")["ok"]     # ... and the UI goes idle
+        h.wait_screen("prompt cancelled: the state changed while it waited (mode fpv -> idle")
+        type_keys(h.pid, "CAMERA\r")                              # typed too late: ignored, no R (RESUME) prompt
+        time.sleep(0.8)
+        assert h.status()["bridge"]["camera"]["requested"] is True
+        assert h.count("RESUME (client airborne) - live values") == 0
+        type_keys(h.pid, "s")                                     # keys work again after the Enter
+        _wait_for(lambda: any(x.startswith("IDLE ") for x in screen(h.pid)))
+        type_keys(h.pid, "q")                                     # idle: quits at once
+        assert h.proc.wait(15) == 0
+    finally:
+        h.close()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
+def test_launch_resume_prompt_does_not_block_the_control_channel(tmp_path: Path) -> None:
+    """WP16 R1: the --resume dialog at launch waits for its word off the main loop; a control stop works."""
+    h = _HandSender(tmp_path, "--sim-armed", "--resume")
+    try:
+        h.wait_screen("Type RESUME + Enter to start")
+        assert h.status()["app"]["mode"] == "idle"
+        assert h.client is not None
+        assert h.client.request("stop")["ok"]                     # nothing streams: no word needed
+        assert h.proc.wait(5) == 0
+    finally:
+        h.close()
+    assert [r["mode"] for r in h.records() if r["type"] == "mode"] == []
