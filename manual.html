@@ -795,7 +795,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tbody>
     <tr><td><code>Q_TILT_MASK</code></td><td class="val">3</td><td>Motors 1 &amp; 2 (wing motors) tilt</td></tr>
     <tr><td><code>Q_TILT_TYPE</code></td><td class="val">2</td><td>Tilt-rotor type</td></tr>
-    <tr><td><code>Q_TILT_MAX</code></td><td class="val">80°</td><td>Maximum forward tilt angle</td></tr>
+    <!-- Q_TILT_MAX: ArduPilot Plane docs, Tilt Rotor Planes (https://ardupilot.org/plane/docs/guide-tilt-rotor.html): the angle the rotors move to while waiting for the transition airspeed; in fixed-wing flight they tilt fully forward. -->
+    <tr><td><code>Q_TILT_MAX</code></td><td class="val">80°</td><td>Tilt angle held during the forward transition until the transition airspeed is reached; in fixed-wing flight the tilt motors go fully forward (ArduPilot tilt-rotor guide). <span class="warn-val">VERIFY — against the param file and firmware in use</span></td></tr>
     <tr><td><code>Q_TILT_RATE_UP/DN</code></td><td class="val">40 deg/s</td><td>Tilt rotation speed</td></tr>
     <tr><td><code>Q_FRAME_CLASS</code></td><td class="val">7</td><td><strong>7 = Tri</strong> (M1, M2, M4)</td></tr>
     <tr><td><code>Q_FRAME_TYPE</code></td><td class="val">1</td><td>Frame type as set — <span class="warn-val">VERIFY meaning for frame class 7 against the param file</span></td></tr>

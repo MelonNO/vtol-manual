@@ -168,7 +168,11 @@ test('R3: manual inline SVGs use CSS variables, role/title/desc, readable text w
   assert.ok((html.match(/<use href="#sym-quad"/g) || []).length >= 2, 'quad icon reused');
   assert.equal((html.match(/<circle cx="-8" cy="-8"/g) || []).length, 1, 'quad drawing defined once');
   // specific fixes
-  assert.match(html, /TILT AXIS/); assert.match(html, /CW \/ CCW: TBD/); assert.match(html, /TILT — SIDE VIEW/); assert.match(html, /80° Q_TILT_MAX/);
+  assert.match(html, /TILT AXIS/);
+  // PM follow-up: the Aircraft table explains Q_TILT_MAX like the diagram, with the source and a VERIFY marker.
+  assert.ok(html.includes('<td><code>Q_TILT_MAX</code></td><td class="val">80°</td><td>Tilt angle held during the forward transition until the transition airspeed is reached; in fixed-wing flight the tilt motors go fully forward (ArduPilot tilt-rotor guide). <span class="warn-val">VERIFY'));
+  assert.ok(html.includes('<!-- Q_TILT_MAX: ArduPilot Plane docs, Tilt Rotor Planes (https://ardupilot.org/plane/docs/guide-tilt-rotor.html)'));
+  assert.doesNotMatch(html, /Maximum forward tilt angle/); assert.match(html, /CW \/ CCW: TBD/); assert.match(html, /TILT — SIDE VIEW/); assert.match(html, /80° Q_TILT_MAX/);
   assert.doesNotMatch(html, /pusher motor/i, 'F5');
   assert.match(html, /corridor clear to 60 m/); assert.match(html, /ABORT: no airspeed in 3 s → QHOVER/); assert.match(html, /back-transition glide ≈100–130 m \(10 s\)/); assert.match(html, />REL m</);
   assert.match(html, /1st Fresnel radius/); assert.match(html, /HM30 · MAVLink · RC · video/); assert.match(html, /patch beam/); assert.match(html, /ALWAYS/); assert.match(html, /BODY SHADOW/);

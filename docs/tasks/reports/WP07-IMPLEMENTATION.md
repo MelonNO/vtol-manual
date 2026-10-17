@@ -150,3 +150,28 @@ Other checks:
   - **Battery Log:** at least 2 entries → trend with threshold lines and point tooltips; sparklines in the rows.
   - **Weather:** compass with ring and "INTO WIND".
   - **Telemetry:** `.bin` charts with the mode strip and event markers (the smoke script contains a synthetic overlay case).
+
+## PM follow-ups
+
+Done after the first hand-back, as the PM asked.
+
+| # | Request | Change | Evidence |
+|---|---|---|---|
+| 1 | Reword the `Q_TILT_MAX` Aircraft-table row | The row now reads: "Tilt angle held during the forward transition until the transition airspeed is reached; in fixed-wing flight the tilt motors go fully forward (ArduPilot tilt-rotor guide)". It carries an amber **VERIFY — against the param file and firmware in use**, matching the motor diagram. An HTML comment above the row cites `https://ardupilot.org/plane/docs/guide-tilt-rotor.html`. "Maximum forward tilt angle" is gone. | `manual.html` Aircraft → Tilt-Rotor Configuration; test in `test/diagrams/files.test.js` (R3 test) |
+| 2 | Generator in the repo, reproducible | `scripts/diagrams/` holds `lib.js`, `d1-3.js`, `d4-8.js`, `d9-15.js`, `inline.js`, `slots.js`, `build.js` and a `README.md`. They use plain Node with built-ins only (`fs`, `path`). `node scripts/diagrams/build.js` writes the 16 SVG files and updates the manual's diagram slots and four inline SVGs. `--check` compares only and exits 1 on any difference. `inline.js` and `slots.js` are now modules that rebuild the existing blocks in place: inline SVGs are found by their `aria-labelledby` ids, slots by `data-diagram`. | `node scripts/diagrams/build.js --check` → "diagrams up to date (16 SVG files, manual slots and inline SVGs)"; new `test/diagrams/regenerate.test.js` (3 tests: SVGs byte-for-byte, manual byte-for-byte, Node built-ins only). The comparison treats CRLF and LF alike. |
+| 3 | `img/README.md` section | New "Diagrams — `img/diagrams/`" section: how the files are generated and checked, the file rules (≤ 60 KB, title/desc/sources, TBD/VERIFY), the palette table (hex → token), and the readability rule (fit-to-width 400-unit viewBox with ≥ 14-unit text, or scroll with a min-width). | `img/README.md` |
+| 4 | Tools swipe-order regression | **Finding:** the hard-coded list in `index.html` already held all 10 tabs in nav order. The failing WP05 smoke check tested a stale literal (`'link','battlog','tlog','weather','profiles'`), which stopped matching when WP11 inserted `flights` and `params`. **Fix:** the swipe order is now read from the nav buttons by `navTabOrder()`, so it covers every tab in nav order and cannot drift again. `localStorage` access in the swipe handler is now wrapped in try/catch. The WP05 smoke script lives in the scratchpad, not the repo, and still checks for the literal; it should be updated or dropped. | `index.html` "SWIPE TAB NAVIGATION"; new `test/tools/swipe-order.test.js` (2 tests). The tests check that every tab panel has exactly one nav button, and they run the page's `navTabOrder()` against a stub DOM (no jsdom) to confirm it returns the nav order and that no literal list remains. |
+| 5 | Propeller directions | Still TBD; the owner will supply them. | — |
+
+Superseded statements in the report above:
+
+- **§5.5 (WP10):** the generator is now in the repo under `scripts/diagrams/`, so that note no longer applies. WP09 still needs to precache `js/diagrams.js` and `img/diagrams/*.svg`.
+- **§4:** the test count is now **220** (215 + 3 regenerate + 2 swipe order).
+
+```
+export PATH="/c/Program Files/nodejs:$PATH"; node --test test/
+ℹ tests 220  ℹ pass 220  ℹ fail 0
+node scripts/diagrams/build.js --check   → diagrams up to date
+npx --prefix S/jsenv html-validate manual.html → exit 0
+node S\wp07gen\smoke.js → 30 pass, 0 fail
+```

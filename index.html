@@ -2602,8 +2602,11 @@ function renderAirspace() {
 }
 
 // ── SWIPE TAB NAVIGATION ── (not while the emergency modal is open, nor from inside horizontally scrollable content)
+// Swipe order = the nav buttons' order (one source of truth: a hard-coded copy went stale when tabs were added).
+function navTabOrder() {
+  return Array.from(document.querySelectorAll('nav button[onclick^="switchTab"]'), b => (b.getAttribute('onclick').match(/^switchTab\('([\w-]+)'/) || [])[1]).filter(Boolean);
+}
 (function() {
-  const TABS = ['preflight','turnaround','postflight','link','battlog','tlog','flights','params','weather','profiles'];   // = nav order
   let x0 = 0, y0 = 0, ignore = false;
   function inHScroll(el) {
     for (; el && el.nodeType === 1 && el !== document.body; el = el.parentElement) {
@@ -2625,7 +2628,9 @@ function renderAirspace() {
     const dx = e.changedTouches[0].clientX - x0;
     const dy = e.changedTouches[0].clientY - y0;
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    const cur = localStorage.getItem('vtol_active_tab') || 'preflight';
+    const TABS = navTabOrder();
+    let cur = 'preflight';
+    try { cur = localStorage.getItem('vtol_active_tab') || 'preflight'; } catch (err) { /* storage blocked */ }
     const idx = TABS.indexOf(cur);
     const next = dx < 0 ? idx + 1 : idx - 1;
     if (next < 0 || next >= TABS.length) return;
