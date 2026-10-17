@@ -328,8 +328,9 @@ def fanout_main(argv: Sequence[str]) -> int:
 class FanoutProcess:
     """UI side: starts the fan-out helper process and reads its stats lines."""
 
-    def __init__(self, command: list[str]) -> None:
+    def __init__(self, command: list[str], env: dict[str, str] | None = None, cwd: str | None = None) -> None:
         self.command = command
+        self.env, self.cwd = env, cwd
         self.proc: subprocess.Popen | None = None
         self.latest: dict | None = None
         self.error: str | None = None
@@ -339,7 +340,8 @@ class FanoutProcess:
     def start(self) -> "FanoutProcess":
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         self.proc = subprocess.Popen(self.command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                     stdin=subprocess.DEVNULL, text=True, creationflags=flags)
+                                     stdin=subprocess.DEVNULL, text=True, creationflags=flags, env=self.env,
+                                     cwd=self.cwd)
         self._thread = threading.Thread(target=self._read, name="fanout-reader", daemon=True)
         self._thread.start()
         return self

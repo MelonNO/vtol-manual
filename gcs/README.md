@@ -508,7 +508,7 @@ else the app uses is loopback. Then set the HM30 adapter to Private (`Get-NetCon
 | ELRS tab: `Not supported by bridge firmware (Q7a)` | The bridge does not implement `crsf_pass` yet (future firmware feature). |
 | ELRS tab: `no RC stream` | The menu works only while streaming (the bridge answers the current GCS only). |
 | ELRS write refused "client may be armed" | Writes are refused while the client is or may be armed (`crsf_menu.allow_write_while_armed`). |
-| Video fan-out: `cannot listen on UDP 5600` | Another program (an old viewer, or a fan-out left running) holds 5600. Viewers must read 5601, MP 5602. |
+| Video fan-out: `cannot listen on UDP 5600` | Another program holds 5600. Often **Mission Planner itself**: its HUD video source defaults to `udpsrc port=5600` (seen on the WP08b test laptop). Set the HUD source to the *Mission Planner HUD* pipeline (port 5602), or stop MP video, then start the fan-out. Otherwise an old viewer or a fan-out left running. Viewers must read 5601, MP 5602. |
 | The client does not appear in Mission Planner | Second connection on UDP 14560; client telemetry must be arriving (FPV streaming); `mp_output.enabled`. |
 | F9 does nothing in the viewer | Another program took F9: set `ui.camera_hotkey` (F1-F24). |
 | Camera stays off | `CAMERA ON refused`: the client is or may be armed (`camera.refuse_on_while_armed`, plan Q13). |

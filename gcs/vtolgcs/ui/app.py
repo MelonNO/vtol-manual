@@ -37,7 +37,8 @@ from ..video import (GST_INSTALL_HELP, FanoutProcess, choose_standard, find_gst,
                      viewer_pipeline, write_sdp)
 from . import view
 from .hotkey import GlobalHotkey
-from .link import RuntimeLink, fanout_command, passthrough_args, sender_command, spawn_sender
+from .link import (RuntimeLink, child_env, fanout_command, frozen, package_root, passthrough_args, sender_command,
+                   spawn_sender)
 from .mapping import Calibration, apply_assignment, detect_moved, save_channel_map, update_config
 from .profiles import ClientChoice, ProfileError, load_profiles
 
@@ -449,7 +450,8 @@ class App:
         if self.fanout is not None and self.fanout.running:
             return
         v = self.cfg.video
-        self.fanout = FanoutProcess(fanout_command(v.listen_port, v.fanout_ports, self.control_file)).start()
+        self.fanout = FanoutProcess(fanout_command(v.listen_port, v.fanout_ports, self.control_file), env=child_env(),
+                                    cwd=None if frozen() else str(package_root())).start()
 
     def stop_fanout(self) -> None:
         if self.fanout is not None:

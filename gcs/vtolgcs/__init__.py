@@ -13,6 +13,10 @@ alarms, the read-only MAVLink input, the local API (contract C2) and the
 session log.  Run it with ``python -m vtolgcs --headless [--sim]``; see
 ``gcs/README.md``.
 
+UI and tools (WP08b), in a separate process from the RC sender: :mod:`vtolgcs.ui`
+(``python -m vtolgcs``), :mod:`vtolgcs.control` (local control channel),
+:mod:`vtolgcs.video`, :mod:`vtolgcs.mp_output`, :mod:`vtolgcs.crsf_menu`, :mod:`vtolgcs.testtools`.
+
 The protocol is a **PROPOSAL v1** that must be agreed with the G0 bridge
 firmware before flight; see ``protocol/README.md`` in the repository.
 """
