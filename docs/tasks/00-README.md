@@ -56,9 +56,9 @@ The PM updates this table.
 | WP08a | done (1 rework) | APPROVED (round 2) | yes |
 | WP08b | done | APPROVED (round 1) | yes |
 | WP13 | done | APPROVED (round 1) | yes |
-| WP15 | in progress (sender console safety) | | |
-| WP14 | waiting for WP09 (carrier params Rev C + param reference) | | |
-| WP09 | done | in verification | |
+| WP15 | done | in verification | |
+| WP14 | in progress (carrier params Rev C + param reference) | | |
+| WP09 | done | APPROVED (round 1) | yes |
 | WP10 | | | |
 | WP11 | done (1 rework) | APPROVED (round 2) | yes |
 | WP12 | done (hotfix) | APPROVED (round 1) | yes |
