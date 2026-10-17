@@ -63,7 +63,9 @@ one).
 
 **The RC sender the UI starts has no console (WP15).** It runs with `CREATE_NO_WINDOW`, stdin `NUL` and
 `--no-keys`: no window appears, it never takes the keyboard focus, and it reads no keys and no typed input
-(a stray keystroke cannot reach it). Every operator action goes through the UI and its typed confirmations.
+(a stray keystroke cannot reach it). Every operator action goes through the UI and its typed confirmations;
+`--resume` or `--mode carrier_only` given to the UI are therefore refused by that sender (it needs a typed
+confirmation on an interactive console; nothing is sent): use the UI's RESUME / CARRIER-ONLY buttons.
 Its output (start-up line, status line every second, events, errors such as `CONFIG ERROR`) is appended
 to **`sender-YYYYMMDDTHHMMSSZ.log` in the log folder** (`--log-dir`, else `log.dir`, else
 `%APPDATA%\vtol-gcs\logs`); Flight tab → *Sender output* opens it, and when that sender exits the UI shows
