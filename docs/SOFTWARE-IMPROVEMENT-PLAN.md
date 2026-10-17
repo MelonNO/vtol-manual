@@ -8,6 +8,7 @@
 | **Input** | *Analog Video to IP Relay with Drone TX Control — Technical Solution* (dated 2026-10-14, **latest revision received 2026-10-16**: KSZ8795 5-port switch, camera port P3, CAM_ENABLE, 6–26 V supply, any-band ELRS/VRX), called "the relay design" below |
 | **Status** | Review and proposal only. **No software has been changed.** |
 | **Rev B** (2026-10-16) | Owner answers incorporated: the carrier failsafe philosophy (§4), TX modules, controllers, PAL+NTSC, repo layout, camera gating. Relay-design fixes confirmed (§3.4). New research section on client telemetry (§14). |
+| **Rev C** (2026-10-17) | The carrier parameter set has changed (`params.param` saved 2026-10-17). **§15 supersedes every older parameter value, battery threshold and failsafe description in this plan**, including §4 and §13.1. |
 
 ---
 
@@ -27,6 +28,7 @@
 12. [Open questions](#12-open-questions)
 13. [Appendices](#13-appendices)
 14. [Research: new possibilities from the relay](#14-research-new-possibilities-from-the-relay)
+15. [Rev C: carrier parameter update (2026-10-17)](#15-rev-c-carrier-parameter-update-2026-10-17)
 
 ---
 
@@ -1158,3 +1160,85 @@ Hardware (retail specifications):
 
 ArduPilot:
 - [ArduPlane `Parameters.cpp` (THR_FAILSAFE, FS_GCS_ENABL, FS_SHORT/LONG_ACTN, RTL_ALTITUDE)](https://github.com/ArduPilot/ardupilot/blob/master/ArduPlane/Parameters.cpp)
+
+---
+
+## 15. Rev C: carrier parameter update (2026-10-17)
+
+**Sources:**
+- the owner's document *VTOL Manual: Changes Needed to Match Carrier Params* (2026-10-17)
+- the carrier parameter file `params.param` (saved 2026-10-17, 1663 parameters). It is stored in the repo as the reference: `docs/reference/carrier-params-2026-10-17.param` (WP14).
+
+The PM checked every value below against that file. **This section supersedes older values elsewhere in this plan** (§4, §6.1.5, §13.1). The design intent in §4 is unchanged: the carrier fails safe on SIYI/GCS loss and never on 915 MHz loss. Battery failsafes now also exist.
+
+### 15.1 Parameter values (current)
+
+| Parameter | Old value in docs | **Current** | Notes |
+|---|---|---|---|
+| `BATT_CRT_VOLT` | 22.2 V | **21.0 V** (3.50 V/cell) | `BATT_FS_CRT_ACT=6` → Loiter→QLand at the **current position** |
+| `BATT_LOW_VOLT` | 0 (not set) | **22.0 V** (3.67 V/cell) | `BATT_FS_LOW_ACT=1` → **RTL**; `BATT_LOW_TIMER=10` s |
+| `BATT_FS_VOLTSRC` | — | **1** | failsafes use the sag-compensated (resting) estimate; OSD/MP show raw voltage |
+| `BATT_ARM_VOLT` | — | **24.6 V** (4.10 V/cell) | arming refused below this |
+| `AIRSPEED_CRUISE` | 13 m/s | **12 m/s** (43.2 km/h) | |
+| `AIRSPEED_MIN` | 11 m/s | **10 m/s** | |
+| `Q_TRANSITION_MS` | 3000 | **3500 ms** | |
+| `Q_TRANS_FAIL` / `_ACT` | 4 s / 0 | **8 s / 1 → QRTL** | hover return to home at `Q_RTL_ALT`, vertical landing at home; never falls back to QHOVER |
+| `Q_BACKTRANS_MS` | 10000 | **8000 ms** | back-transition ≈ 8 s × 12 m/s ≈ 100 m |
+| `Q_RTL_ALT` | 70 m | **50 m** | `Q_RTL_ALT_MIN` 35 m unchanged |
+| `Q_RTL_MODE` | — | **2** | RTL flies home in FW at `RTL_ALTITUDE` 120 m, loiters down, then an **automatic VTOL landing at home** |
+| `Q_OPTIONS` | — | **426016** | bit 5: VTOL modes use QRTL for failsafe RTL; bit 19 cleared (transition-fail behaviour as above) |
+| `TRIM_THROTTLE` | 35 % | **30 %** | |
+| `Q_M_THST_HOVER` | 0.272 | **0.35** | learned (`Q_M_HOVER_LEARN=2`); will drift |
+| `Q_TILT_RATE_UP/DN` | 40 | **45 deg/s** | |
+| `Q_M_BAT_VOLT_MAX/MIN` | — | **25.2 / 19.8 V** | |
+| `FLTMODE2` | TBD | **11 (RTL)** | not reachable from the 3-position switch; the earlier "QLOITER" label was wrong |
+| Fence | "configured but disabled" | **no geofence**: `FENCE_ENABLE=0`, `FENCE_TYPE=0`, `FENCE_TOTAL=0` | leftover `FENCE_ALT_MAX=100` / `FENCE_RADIUS=300` do nothing. If a fence is ever enabled: ALT_MAX 100 < RTL_ALTITUDE 120 and RADIUS 300 < planning distances → document first |
+| Compass | not documented | **external IST8310 only** (DevID 658945, priority 1, `COMPASS_EXTERNAL=2`); internal AK09916 (DevID 590114) disabled (`COMPASS_USE2=0`); `COMPASS_CAL_FIT=16`; `COMPASS_AUTO_ROT=2` | no backup compass: no arm without the GPS-mast unit |
+
+Unchanged: `THR_FAILSAFE=2`, `THR_FS_VALUE=950`, `FS_SHORT_ACTN=0`, `FS_SHORT_TIMEOUT=1.5`, `FS_LONG_ACTN=1`, `FS_LONG_TIMEOUT=5`, `FS_GCS_ENABL=2`, `RTL_ALTITUDE=120`, `AIRSPEED_MAX=22`, `Q_ASSIST_SPEED=9`, `Q_ASSIST_ALT=25`, `Q_TILT_MAX=80`, `Q_FRAME_CLASS=7`, `Q_TILT_MASK=3`, `BATT_CAPACITY=7000`, `ARSPD_TYPE=4`.
+
+### 15.2 Failsafe behaviour (corrected)
+
+| Event | Behaviour |
+|---|---|
+| 915 MHz RC loss (short/long) | **No action** (`THR_FAILSAFE=2`). In QHOVER the aircraft holds with centred sticks and **drifts with the wind**. Pilot takes over in MP. |
+| SIYI/GCS loss | All modes, after 5 s without heartbeat (or HM30 `remrssi=0` if reported). FW modes incl. AUTO/GUIDED → **RTL**; VTOL modes → **QRTL** (`Q_OPTIONS` bit 5). |
+| Transition timeout | At **8 s** the transition is cancelled → **QRTL home** (hover at 50 m, vertical landing at home). The pilot may still select QHOVER manually at 2–3 s, as before (faster than the timer). Keep the route WP2 → home clear: it is the QRTL path. |
+| RTL (any trigger) | FW home at 120 m above home, loiter down, airbrake approach, **automatic VTOL landing at home** (`Q_RTL_MODE=2`). **The home landing zone must stay clear for the whole flight.** |
+| Battery low 22.0 V | **Automatic RTL** after 10 s below the threshold (sag-compensated voltage). If it fires during a **manual QHOVER landing**, the aircraft switches to RTL (FW return and climb to 120 m). The pilot reselects QHOVER on the Nomad switch to finish the landing. It does **not** interrupt QLAND, QRTL or an AUTO VTOL landing. |
+| Battery critical 21.0 V | Loiter → QLand **at the current position, not home**. |
+
+### 15.3 Carrier voltage ladder (6S 7000 mAh)
+
+| Threshold | Pack V | V/cell | What happens |
+|---|---|---|---|
+| Full charge | 25.2 | 4.20 | — |
+| Arming minimum (`BATT_ARM_VOLT`) | 24.6 | 4.10 | arming refused below |
+| Manual RTL trigger (pilot, OSD raw) | 23.0 | 3.83 | pilot initiates RTL |
+| Hard RTL limit (pilot discipline) | 22.5 | 3.75 | RTL must be active |
+| `BATT_LOW_VOLT` | 22.0 | 3.67 | **automatic RTL** (10 s, sag-compensated) |
+| `BATT_CRT_VOLT` | 21.0 | 3.50 | **automatic QLand here** |
+| Storage | 22.8 | 3.80 | — |
+| Hard floor | 18.6 | 3.10 | — |
+
+Note: the failsafes read a sag-compensated estimate (`BATT_FS_VOLTSRC=1`); the pilot reads raw voltage, which is lower under load. The pilot's 23.0 V trigger therefore comes well before the automatic 22.0 V.
+
+### 15.4 Tools battery-log recommendation
+
+The old "recommended BATT_LOW_VOLT" (avg landing + 0.8 V, floor 23.0 V) no longer fits. `BATT_LOW_VOLT` is now a deliberate 22.0 V failsafe on sag-compensated voltage. **Decision:** relabel the output as "Suggested manual RTL trigger (pilot, OSD raw voltage)". Show the configured `BATT_LOW_VOLT` 22.0 V / `BATT_CRT_VOLT` 21.0 V as fixed failsafes, and never recommend changing them.
+
+### 15.5 Compass procedure (replaces the old calibration step)
+
+1. Initial Setup → Mandatory Hardware → Compass. Confirm that the IST8310 is priority 1 and External, and that the internal compass is unticked.
+2. Outdoors, away from vehicles and metal, with the aircraft assembled as flown, start Onboard Mag Calibration.
+3. Rotate through all axes until it reports success, click Accept, then **reboot**.
+4. Four-direction check: point the nose N/E/S/W. The MP heading must match a phone compass within 5–10°.
+
+Also:
+- Pre-Arm row "Compass not found / not healthy": check the GPS-mast connector. There is no backup compass.
+- Maintenance: record the reference `COMPASS_OFS_X/Y/Z` after each calibration.
+- Never relax `COMPASS_CAL_FIT` to make a calibration pass.
+
+### 15.6 Implementation
+
+**WP14** applies §15 to every page, the shared data, the store defaults, the diagrams and the map. It also adds the parameter file as a browsable reference. **WP10** applies it to `CLAUDE.md` and `ai/` (now `docs/history/`).
