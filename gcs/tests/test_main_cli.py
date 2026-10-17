@@ -195,9 +195,36 @@ def test_config_error_exit_code(tmp_path: Path) -> None:
     assert proc.returncode == 2 and "sender.rate_hz" in proc.stderr
 
 
-def test_without_headless_is_a_usage_error() -> None:
-    proc = run_cli()
-    assert proc.returncode == 4 and "--headless" in proc.stderr
+def test_without_headless_starts_the_ui_process(monkeypatch) -> None:
+    """WP08b R0: no --headless = the UI process (it starts the sender separately); never the sender itself."""
+    import vtolgcs.ui.app as ui_app
+    from vtolgcs import __main__ as cli
+    seen = {}
+
+    def fake_ui(args, argv):
+        seen["args"], seen["argv"] = args, argv
+        return 0
+    monkeypatch.setattr(ui_app, "main", fake_ui)
+    monkeypatch.setattr(cli, "Runtime", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no sender in the UI")))
+    assert cli.main(["--sim", "--config", "x.json"]) == 0
+    assert seen["argv"] == ["--sim", "--config", "x.json"] and not seen["args"].headless
+
+
+def test_headless_serves_the_control_channel(tmp_path: Path) -> None:
+    """The sender writes control.json next to its config and removes it on exit."""
+    proc = run_cli("--headless", "--no-api", "--no-log", "--mavlink-port", "0", "--config", str(tmp_path / "c.json"),
+                   "--bridge", "127.0.0.1:9", "--run-seconds", "1")
+    assert proc.returncode == 0 and "control channel on" in proc.stdout, proc.stdout + proc.stderr
+    assert not (tmp_path / "control.json").exists()
+
+
+def test_old_config_is_migrated_with_a_notice(tmp_path: Path) -> None:
+    cfg = tmp_path / "c.json"
+    cfg.write_text(json.dumps({"alarms": {"jitter_p99_max_ms": 2.0}}))
+    proc = run_cli("--headless", "--no-api", "--no-log", "--mavlink-port", "0", "--config", str(cfg),
+                   "--bridge", "127.0.0.1:9", "--run-seconds", "0.5")
+    assert proc.returncode == 0 and "CONFIG MIGRATED" in proc.stderr, proc.stderr
+    assert "send_late_max_ms" in cfg.read_text()
 
 
 def test_instance_name_is_not_a_cli_flag() -> None:

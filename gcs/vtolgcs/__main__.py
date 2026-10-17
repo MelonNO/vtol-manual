@@ -91,6 +91,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="control channel file (default: control.json next to the config file)")
     p.add_argument("--no-control", action="store_true",
                    help="headless: do not serve the local control channel (no UI can attach)")
+    p.add_argument("--attach-only", action="store_true",
+                   help="UI: attach to a running RC sender, never start one")
+    p.add_argument("--ui-smoke-out", help=argparse.SUPPRESS)                   # tests: UI smoke summary file
     p.add_argument("--run-seconds", type=float, help=argparse.SUPPRESS)        # tests: stop after N s
     p.add_argument("-v", "--verbose", action="store_true", help="debug logging")
     return p
