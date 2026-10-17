@@ -115,8 +115,16 @@ jsdom and html-validate are never repository dependencies: install them outside 
   and their reasons in [`.htmlvalidate.cjs`](.htmlvalidate.cjs)), link check, image budget, colour lint, the
   protocol tests on Linux, and the full GCS suite five times on Windows.
 - [`.github/workflows/gcs-build.yml`](.github/workflows/gcs-build.yml) (pushes to `main`, `v*` tags, pull requests
-  touching `gcs/` or `protocol/`): tests, PyInstaller build on `windows-latest`, the zip as a workflow artifact, and
-  on a `v*` tag the zip attached to that GitHub Release.
+  touching `gcs/` or `protocol/`): the headless-safe tests (`-m "not interactive_desktop"`), PyInstaller build on
+  `windows-2025`, the zip as a workflow artifact, and on a `v*` tag the zip attached to that GitHub Release.
+- Runner images are pinned: `windows-2025` (what `windows-latest` is today) and `ubuntu-24.04` (`ubuntu-latest`
+  moves to Ubuntu 26.04 from 2026-10-19). An image change is then a deliberate, separately tested change, not a
+  silent one. The actions use their Node 24 majors (`checkout`, `setup-node`, `setup-python`, `upload-artifact`
+  v7, `download-artifact` v8); the workflow headers cite the release pages, and `test/ci/workflows.test.js` keeps
+  both from regressing.
+- Every GCS test has a hard timeout with a stack dump, and tests that need a real desktop skip themselves on the
+  runners; they are run on a desktop before each release (see [`gcs/README.md`](gcs/README.md#tests) and
+  [`docs/relay/OPEN-ITEMS.md`](docs/relay/OPEN-ITEMS.md) M-16).
 
 Content changes follow the review checklist in [`CONTRIBUTING.md`](CONTRIBUTING.md). Project conventions for
 contributors and AI assistants: [`CLAUDE.md`](CLAUDE.md). Changes per release: [`CHANGELOG.md`](CHANGELOG.md).

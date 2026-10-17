@@ -466,6 +466,34 @@ spawned sender ignores Ctrl+C and refuses QUIT on a real Ctrl+Break, the refusal
 `--mode carrier_only` reaches *Events* (and, with `VTOLGCS_UI_SMOKE=1`, in the windowed UI), and the
 `sender-*.log` clean-up.
 
+### Test guards and desktop-only tests (WP17)
+
+`gcs/conftest.py` keeps the suite from ever hanging a CI job silently:
+
+| Guard | Behaviour | Setting |
+|---|---|---|
+| Per-test timeout | After 120 s a watchdog prints `+++ TIMEOUT [time] <test id>` and the stacks of all threads, kills the processes the tests started, raises `TestTimeout` in the main thread and reports the test FAILED; the run goes on. If the main thread is still blocked (for example inside a C call) 20 s later, the stacks are dumped again and the run exits with status 1 | `VTOLGCS_TEST_TIMEOUT` (s), `@pytest.mark.timeout(s)` for a longer one, `VTOLGCS_TEST_GRACE` (s); `VTOLGCS_TEST_DUMP_DIR` also writes the dumps to `pytest-timeouts.txt` there (CI: the uploaded `pytest-logs`) |
+| No leftover processes | Every process started through `subprocess` is recorded; whatever of it (and its descendants) is still alive after its test is killed by PID (creation time checked, so a reused PID is never touched) and listed in the summary | — |
+| Exit guard | If the interpreter has not exited 60 s after the session ended (for example a leaked non-daemon thread), the stacks are dumped (`+++ EXIT GUARD`) and the process exits | — |
+| Live test names | On GitHub each test start is printed on its own line (`[time] START <id>`) | `VTOLGCS_LIVE_TEST_NAMES=1` locally |
+
+Tests marked **`interactive_desktop`** need a real interactive console or desktop: the four hand-started-sender
+console tests in `test_main_cli.py` (keys, Ctrl+C / Ctrl+Break, screen reads), the focus-and-keys test of the
+UI-spawned sender in `test_ui.py` (its headless part,
+`test_spawned_sender_streams_without_input_and_stops_only_through_the_control_channel`, runs everywhere), the real
+pygame/SDL test in `test_controller.py`, and the two windowed UI smoke tests. They are **skipped** where there is no
+interactive session: `GITHUB_ACTIONS` or `CI` set, session 0, or a window station that is not interactive. The
+pytest header says which applies (`vtolgcs: interactive_desktop tests RUN (…)` / `SKIPPED (…)`).
+`VTOLGCS_INTERACTIVE_TESTS=1` forces them on, `=0` off. The GCS build workflow runs `-m "not interactive_desktop"`.
+
+**Before each release, run them on a real desktop** (logged on, a normal PowerShell terminal, repository root;
+[OPEN-ITEMS](../docs/relay/OPEN-ITEMS.md) M-16), and record the result in `TEST-RESULTS.md`:
+
+```
+python -m pytest gcs protocol -p no:cacheprovider                       # header: interactive_desktop tests RUN
+$env:VTOLGCS_UI_SMOKE='1'; python -m pytest gcs -m interactive_desktop -v -p no:cacheprovider   # 8 passed, none skipped
+```
+
 ---
 
 ## User guide
