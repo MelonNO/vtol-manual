@@ -7,7 +7,8 @@ Branch `wp/18` (from `main` c11fff0) · Date 2026-10-17 · Contracts unchanged
 - **Root cause found and reproduced locally.** The runtime set the GIL switch interval to 0.5 ms. On Windows,
   CPython waits for the GIL in whole milliseconds, so any value below 1 ms becomes a 0 ms wait. Every thread that
   wants the GIL then forces a switch at once, and the waiters poll in a tight loop.
-  - On this 28-CPU PC nothing shows.
+  - On this 28-CPU PC an out-of-process sender shows nothing. With the bridge simulator in the same process and
+    one CPU-bound Python thread, however, the verifier measured 14–18 Hz at 0.5 ms on this PC too (round 2, F3).
   - On 2–4 CPUs (the `windows-2025` runner has 4) the process collapses. That holds even for **one** streaming
     runtime with nothing else running: 0.5 ms gives 131–222 Hz with p99 29–44 ms; 0.999 ms the same; **1.000 ms
     gives 250 Hz with p99 0.6 ms**.
@@ -17,6 +18,7 @@ Branch `wp/18` (from `main` c11fff0) · Date 2026-10-17 · Contracts unchanged
     runtimes kept the process busy past the step timeout.
   - `VTOLGCS_TEST_CPUS=4` plus a forced DACL failure reproduces this exactly on current `main`.
   - With WP18 the same reproduction runs the full suite in 117 s (2 CPUs: 118 s): 691 passed and 1 named failure.
+    These are round-1 counts; round 2 has more tests (§10).
 - **The PM hypothesis is partly confirmed and partly refuted** (§2).
 - **DACL test (R3).** The probable cause is SDDL aliasing. Windows prints the built-in Administrator account
   (RID 500) as `LA`, not as its SID. `runneradmin` is presumably that account. The pipe's DACL was right; the
@@ -248,7 +250,8 @@ New tests:
 5. **Not verifiable here:** the runner account's RID (R3); `pwsh` 7 (absent on this PC; the workflow tests ran
    under 5.1, as in WP17).
 6. **OPEN-ITEMS:**
-   - M-15: still open, not explained by WP18 (28-CPU PC); the close condition now relies on the immediate
+   - M-15: still open. WP18's cause may explain it too and is not ruled out (round 2, F3); the close condition
+     now relies on the immediate
      failure text.
    - M-16: no leak allowed.
    - M-17: CLOSED.
@@ -267,3 +270,30 @@ New tests:
   reported as STILL RUNNING.
 - I stopped only processes I started; the job objects of my runs and `Popen.terminate` on my own simulator
   children did that. No elevation, no system settings. Affinity was set only on my own test processes.
+
+## 10. Round 2: rework after verification round 1
+
+Verifier findings: `S\verify\WP18\VERIFY-round1.md`. The root cause, the 1 ms interval, R3, the CRC, R4, R7 and
+R8 are unchanged.
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 MAJOR** (R1/R5): a timeout that fired while pytest formatted a failure raised `TestTimeout` into the healthy teardown that followed. pytest's `teardown_exact` catches only `Exception`, so the remaining finalisers were skipped and the runtime survived. | A teardown is **never interrupted at once**. When the watchdog finds the main thread in a teardown after the timeout (fired before it or during it), the teardown gets its own budget `VTOLGCS_TEST_TEARDOWN_BUDGET` (30 s), counted from the later of its start and the timeout. Only a teardown still running after its budget gets `TestTimeout`. The hard exit moves to budget + grace, and so does the faulthandler backstop, which is re-armed from the watchdog. Setup and call are still interrupted at once, and pytest's own code never is. | `gcs/conftest.py` `_Watchdog` (class docstring and `_run`), `_PHASE["since"]`. Self-test `test_a_timeout_during_report_formatting_lets_a_normal_teardown_finish`: the verifier's `test_r5.py` scenario plus a second finaliser. Both finalisers run, no `TestTimeout`, no hard exit, no leak, the next test is clean. The stuck-teardown self-test now shows the budget message, then `TestTimeout … (teardown, still running after its 2 s budget)`, then a teardown ERROR, and the run goes on. The verifier's own probes, run on a copy with the round-2 conftest: `test_r5.py` gives `finaliser-ran.flag` present and `test_next_one PASSED`. |
+| **F2 MAJOR** (R2): the leak check was skipped when the teardown hook raised | `_in_phase(…, always=True)` for teardown: `_check_threads` runs after the hook whatever it did. Its `LeakedThreads` is chained to the finaliser's exception (`raise … from exc`), so the report shows both texts. | Self-test `test_a_leak_is_caught_even_when_a_finaliser_raises` (the verifier's `test_r2b.py` scenario): the leak is named for `test_leak_plus_teardown_error`, `Busy.stop()` is called, the ValueError text is kept, and `test_after` passes. The verifier's `test_r2b.py` on the copy: both leaks named and stopped, `test_after PASSED`. |
+| F3 MINOR: M-15 wording | The M-15 row now says WP18's cause may explain it too and is not ruled out (14–18 Hz at 0.5 ms on the 28-CPU PC with an in-process simulator and one CPU-bound thread). The report's §1 and §8 are corrected. My 28-CPU "under load" figure used an out-of-process simulator, as the verifier noted. | `docs/relay/OPEN-ITEMS.md` M-15 |
+| F4 MINOR: collection errors no longer annotated | The conftest writes `+++ ERROR [time] <path> (collect)` plus the text for a file that cannot be collected (`pytest_collectreport`). Both workflows accept the `collect` phase, and their fallback pattern is `^(FAILED|ERROR) (\S+)` (ids without `::`; captured log lines `ERROR    vtolgcs…` still do not match). | `workflows.test.js`: a collection error in the build step (immediate line → `gcs/tests/test_f.py failed`, exit code 2) and in the ×5 step without the conftest (summary fallback → `gcs/tests/test_f.py failed in run(s) 1, 2, 3, 4, 5 of 5`) |
+| Note: counts | The round-1 counts (691 + 1 forced; CI 692) were taken before the CRC test was added. The round-2 counts are below. | — |
+
+### 10.1 Round 2 regression
+
+| Run | Result |
+|---|---|
+| CI mode (`run.py ci`: real Python, `CI=true GITHUB_ACTIONS=true`, stdin NUL, gcs-build flags) | **695 passed, 7 deselected**, 129.6 s, exit 0, no leaks, no process left (`S\wp18\r2\ci.txt`) |
+| 4 CPUs + `VTOLGCS_TEST_FORCE_FAIL=test_pipe_dacl` (CI mode) | **1 failed (forced, `+++ FAILED` at once), 694 passed**, 128.5 s, exit 1 at once, no leaks (`S\wp18\r2\cpu4-forced.txt`) |
+| Normal desktop run (the one allowed; interactive tests RUN) | **700 passed, 2 skipped** (UI smoke), 153.0 s, exit 0, no leaks (`S\wp18\r2\desktop.txt`) |
+| `pytest gcs/tests/test_test_guards.py` | 15 passed (7 WP17 + 6 WP18 round 1 + 2 round 2) |
+| `VTOL_REQUIRE_WORKFLOW_TEST=1 node --test test/ci/workflows.test.js` | 7/7 (PowerShell 5.1) |
+| `VTOL_JSDOM=… node --test test/` | 310 pass, 0 fail, 0 skipped |
+| `gen-precache --check`, `diagrams/build.js --check`, `gen-params-reference --check`, `check-links`, `check-images`, `check-colours`, `gen_test_vectors.py --check`, `vtolgcs.protocol --selftest` | all OK |
+
+The total desktop runs in this WP were 2 (round 1: 1, round 2: 1). I stopped only processes I started.
