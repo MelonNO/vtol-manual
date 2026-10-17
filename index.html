@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org http://localhost:20199 http://127.0.0.1:47800; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://api.open-meteo.com https://nominatim.openstreetmap.org http://localhost:20199 http://127.0.0.1:47800; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>HEEWING T2 — FLIGHT TOOLS</title>
+<meta name="theme-color" content="#f97316">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/print.css" media="print">
+<script src="js/field.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
-:root {
-  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2a2a2a; --border2:#333;
-  --text:#e8e8e8; --muted:#666; --accent:#f97316; --amber:#facc15; --red:#ef4444;
-  --green:#22c55e; --dim:#444; --mono:'Share Tech Mono',monospace; --head:'Oswald',sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:15px;line-height:1.6;}
+/* tokens, fonts and base element styles: css/base.css */
 header{background:var(--surface);border-bottom:2px solid var(--accent);}
 .hdr-top{display:flex;align-items:stretch;border-bottom:1px solid var(--border2);}
 .hdr-badge{background:var(--accent);color:#000;font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:3px;writing-mode:vertical-rl;padding:12px 8px;display:flex;align-items:center;}
@@ -261,6 +261,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 @media(max-width:600px){
   .hdr-badge{writing-mode:horizontal-tb;padding:6px 12px;font-size:10px;}
   .hdr-title{font-size:15px;}
+  .hdr-main{padding-right:50px;}   /* room for the ☀ toggle (css/base.css puts it top-right) */
   .hdr-meta{padding:8px 12px;gap:8px 16px;font-size:9px;}
   .content{padding:16px 12px 140px;}
   nav{position:fixed;bottom:0;left:0;right:0;z-index:800;border-top:2px solid var(--border2);border-bottom:none;padding:0;}
@@ -283,6 +284,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
       <div class="hdr-title">RELAY CARRIER — FLIGHT TOOLS</div>
       <div class="hdr-sub">CHECKLISTS · EMERGENCY PROCEDURES · LINK · PROFILES · BATTERY LOG</div>
     </div>
+    <div class="vf-hdr-tools"><button type="button" class="vf-btn" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀<span class="vf-lbl" aria-hidden="true"> SUN</span></button></div>
   </div>
   <div class="hdr-meta">
     <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
@@ -315,7 +317,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 
 <!-- CHALLENGE–RESPONSE MODE (plan §10.8): one item at a time, same checklist state engine -->
 <div id="cr-modal" role="dialog" aria-modal="true" aria-labelledby="cr-title">
-  <div class="cr-wrap">
+  <div class="cr-wrap vf-zoom">
     <div class="cr-top">
       <div class="cr-title" id="cr-title">CHALLENGE–RESPONSE</div>
       <span id="cr-progress" class="st" aria-live="polite"></span>
@@ -332,10 +334,13 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 </div>
 
 <div id="emerg-modal" role="dialog" aria-modal="true" aria-label="Emergency procedures" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1100;overflow-y:auto">
-  <div style="max-width:860px;margin:0 auto;padding:24px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;border-bottom:2px solid var(--red);padding-bottom:12px">
+  <div class="vf-zoom" style="max-width:860px;margin:0 auto;padding:24px">
+    <div class="emerg-modal-hdr" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:20px;border-bottom:2px solid var(--red);padding-bottom:12px">
       <span style="font-family:var(--head);font-size:18px;font-weight:700;letter-spacing:3px;color:var(--red)">⚠ EMERGENCY PROCEDURES</span>
-      <button onclick="closeEmerg()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:6px 14px;cursor:pointer;letter-spacing:1px">CLOSE ✕</button>
+      <span class="vf-row">
+        <a class="vf-btn" href="#emergency-only" title="Immediate actions only, large buttons, one screen per scenario">EMERGENCY ONLY ▶</a>
+        <button onclick="closeEmerg()" style="background:none;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:12px;padding:6px 14px;cursor:pointer;letter-spacing:1px">CLOSE ✕</button>
+      </span>
     </div>
     <div class="alert alert-danger">Memorise the <strong>immediate actions</strong>. Perform them without reference. When stable, open the clean-up section.</div>
     <div id="emerg-pills" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px"></div>
@@ -343,7 +348,17 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   </div>
 </div>
 
-<div class="content">
+<!-- EMERGENCY-ONLY MODE (plan F-7, WP09): index.html#emergency-only — js/emergency-only.js; css/base.css hides everything else -->
+<div id="eo-view" class="eo-view" role="dialog" aria-modal="true" aria-labelledby="eo-title">
+  <div class="eo-top">
+    <div class="eo-title" id="eo-title">⚠ EMERGENCY — IMMEDIATE ACTIONS</div>
+    <button type="button" class="vf-btn" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀</button>
+    <button type="button" class="vf-btn eo-exit">EXIT ✕</button>
+  </div>
+  <div class="eo-body"></div>
+</div>
+
+<div class="content vf-zoom">
 <div id="store-notice" class="alert alert-warn" role="status" style="display:none"></div>
 
 <!-- PRE-FLIGHT -->
@@ -614,7 +629,22 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 
 </div><!-- /content -->
 
-<footer>HEEWING T2 VTOL RELAY CARRIER · FLIGHT TOOLS · ARDUPLANE · v<span class="ver-app"></span> · CONTENT <span class="ver-content"></span></footer>
+<footer>HEEWING T2 VTOL RELAY CARRIER · FLIGHT TOOLS · ARDUPLANE · <span data-vf-version>v<span class="ver-app"></span> · CONTENT <span class="ver-content"></span></span>
+  <details class="vf-share" data-vf-share>
+    <summary>SHARE / KNEEBOARD</summary>
+    <div class="vf-share-body">
+      <div class="vf-qr"></div>
+      <div class="vf-share-txt">
+        Scan to open the live suite: <code data-vf-site></code><br>
+        Open it once online on each phone: it then works offline (install it from the browser menu: "Add to Home screen").
+        <div class="vf-share-btns">
+          <button type="button" class="vf-btn" data-vf-print-kb title="Pre-flight and turnaround checklists and the emergency cards, black on white">PRINT KNEEBOARD</button>
+          <a class="vf-btn" href="#emergency-only">EMERGENCY ONLY</a>
+        </div>
+      </div>
+    </div>
+  </details>
+</footer>
 
 <script src="js/version.js"></script>
 <script src="js/common.js"></script>
@@ -624,6 +654,8 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 <script src="js/gcs-client.js"></script>
 <script src="data/content.js"></script>
 <script src="js/render-content.js"></script>
+<script src="js/emergency-only.js"></script>
+<script src="js/vendor/qrcode-generator/qrcode.js"></script>
 <script>
 const { escH, fmtTime } = VtolCommon;
 const toggleCleanup = VtolCommon.toggleCleanup;
@@ -637,9 +669,17 @@ function switchTab(name, btn) {
   document.getElementById('tab-' + name).classList.add('active');
   if (btn) { btn.classList.add('active'); btn.setAttribute('aria-current', 'page'); }
   localStorage.setItem('vtol_active_tab', name);
+  wakeSync();
 }
-function openEmerg() { document.getElementById('emerg-modal').style.display='block'; document.body.style.overflow='hidden'; }
-function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow = cr ? 'hidden' : ''; }
+function openEmerg() { document.getElementById('emerg-modal').style.display='block'; document.body.style.overflow='hidden'; wakeSync(); }
+function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow = cr ? 'hidden' : ''; wakeSync(); }
+// Screen wake lock (plan F-4, js/field.js): held while a checklist tab, challenge–response, the emergency modal or the
+// emergency-only mode is open; released otherwise (also when the page is hidden — re-taken when it is visible again).
+const WAKE_TABS = ['preflight', 'turnaround', 'postflight'];
+function wakeSync() {
+  const tab = document.querySelector('.tab-panel.active'), name = tab ? tab.id.replace(/^tab-/, '') : '';
+  VtolField.setWake(WAKE_TABS.includes(name) || emergIsOpen() || !!cr || document.documentElement.classList.contains('vf-eo'));
+}
 function emergIsOpen() { return document.getElementById('emerg-modal').style.display !== 'none'; }
 document.addEventListener('keydown', e => { if(e.key==='Escape') { if (emergIsOpen()) closeEmerg(); else if (cr) crClose(); } });
 // Keyboard for non-button clickable elements (checklist rows, detail toggles, copy blocks): Enter / Space = click.
@@ -890,6 +930,7 @@ function crOpen(name) {
   document.body.style.overflow = 'hidden';
   crRender();
   const b = document.querySelector('#cr-btns .cr-check'); if (b && b.focus) b.focus();
+  wakeSync();
 }
 function crClose() {
   if (!cr) return;
@@ -898,6 +939,7 @@ function crClose() {
   document.body.style.overflow = '';
   const opener = cr.opener; cr = null;
   if (opener && opener.focus) opener.focus();
+  wakeSync();
 }
 function crSpeechToggle(cb) {
   if (cb.checked && !('speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function')) {
@@ -1118,6 +1160,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('tab-preflight').classList.add('active');
     document.querySelector('nav button[onclick*="preflight"]').classList.add('active');
   }
+  wakeSync();
 });
 
 // ══════════════════════════════════════
@@ -1411,7 +1454,14 @@ GcsClient.start({ onStatus: linkOnStatus, onAlarm: linkOnAlarm, onConnection: li
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') clRecheck(); });
 setInterval(clRecheck, 60000);   // a page left open in the foreground expires too
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+// Service worker registration and the update toast: js/field.js (WP09).
+
+// ── EMERGENCY-ONLY MODE (plan F-7): index.html#emergency-only — immediate actions only (js/emergency-only.js)
+const eoMode = VtolEmergOnly.mount({
+  el: document.getElementById('eo-view'), content: VtolContent,
+  fmt: t => VtolRender.fmt(t, contentCtx),
+  onChange: on => { if (on) { if (emergIsOpen()) closeEmerg(); if (cr) crClose(); } wakeSync(); }
+});
 
 // ══════════════════════════════════════
 // DATA FILE (LINK FILE / EXPORT / IMPORT) — the whole store
@@ -2621,7 +2671,7 @@ function navTabOrder() {
     x0 = e.changedTouches[0].clientX;
     y0 = e.changedTouches[0].clientY;
     const t = e.target;
-    ignore = emergIsOpen() || inHScroll(t) || !!(t.closest && t.closest('input,select,textarea'));
+    ignore = emergIsOpen() || document.documentElement.classList.contains('vf-eo') || inHScroll(t) || !!(t.closest && t.closest('input,select,textarea'));
   }, { passive: true });
   document.addEventListener('touchend', e => {
     if (ignore || emergIsOpen()) return;

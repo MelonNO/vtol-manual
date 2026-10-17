@@ -3,24 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>LATENCY CLOCK — RELAY TEST 2</title>
-<!-- Offline-safe: no external fonts or scripts. Only ../js/common.js and ../js/tools-core.js (same origin). -->
+<!-- Offline-safe: no external fonts or scripts. Same-origin only: ../css/base.css (self-hosted fonts) and ../js/*.js. -->
+<meta name="theme-color" content="#f97316">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../css/base.css">
+<script src="../js/field.js"></script>
 <style>
+/* shared tokens, fonts and base element styles: ../css/base.css; page-only tokens below */
 :root {
-  --bg:#0f0f0f; --surface:#1a1a1a; --surface2:#222; --border:#2a2a2a; --border2:#333;
-  --text:#e8e8e8; --muted:#666; --accent:#f97316; --amber:#facc15; --red:#ef4444; --green:#22c55e;
-  --clock-bg:#000; --clock-fg:#fff;   /* maximum contrast for the camera (high-contrast mode, WP09, may override) */
-  --mono:'Share Tech Mono',ui-monospace,Consolas,monospace; --head:'Oswald','Arial Narrow',sans-serif;
+  --clock-bg:#000; --clock-fg:#fff;   /* maximum contrast for the camera (already black/white, so sunlight mode keeps it) */
+  --mono:'Share Tech Mono',ui-monospace,Consolas,monospace; --head:'Oswald','Arial Narrow',sans-serif;   /* system fallbacks for the clock */
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;}
+body{line-height:1.5;}
 a{color:var(--accent);}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .wrap{max-width:1100px;margin:0 auto;padding:16px;}
 .top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:2px solid var(--accent);padding-bottom:10px;margin-bottom:16px;}
 .title{font-family:var(--head);font-weight:700;letter-spacing:3px;color:var(--accent);font-size:16px;flex:1;}
 .btn{min-height:44px;padding:8px 16px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;}
+.btn[data-vf-sun][aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);}
 .btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:bold;}
 #clock{font-size:min(15vw,180px);font-weight:bold;letter-spacing:2px;text-align:center;color:var(--clock-fg);background:var(--clock-bg);border:2px solid var(--border2);padding:12px 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
 .row{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;}
@@ -40,7 +44,9 @@ table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;}
 td,th{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;}
 th{font-size:11px;color:var(--muted);letter-spacing:2px;}
 .warn{color:var(--amber);}
+.ver{text-align:center;margin-top:12px;}
 body.hidepanel .card,body.hidepanel .row.stats{display:none;}
+@media(max-width:600px){.title{flex-basis:100%;} #clock{font-size:12vw;}}   /* phone: title on its own line (WP09 added a button); the 12-character clock fits 360 px */
 </style>
 </head>
 <body>
@@ -49,6 +55,7 @@ body.hidepanel .card,body.hidepanel .row.stats{display:none;}
     <div class="title">LATENCY CLOCK · RELAY-DESIGN TEST 2 (GLASS-TO-GLASS)</div>
     <button type="button" class="btn" id="btn-panel" aria-pressed="false" onclick="togglePanel(this)">CLOCK ONLY</button>
     <button type="button" class="btn" onclick="toggleFull()">FULL SCREEN</button>
+    <button type="button" class="btn" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀&nbsp;SUN</button>
     <a class="btn" href="../index.html">◀ TOOLS</a>
   </div>
 
@@ -61,7 +68,7 @@ body.hidepanel .card,body.hidepanel .row.stats{display:none;}
     <div class="box"><div class="k">DISPLAY RATE (Hz, avg)</div><div class="v" id="fps">—</div></div>
   </div>
 
-  <div class="card">
+  <div class="card vf-zoom">
     <h2>PROCEDURE</h2>
     <ol>
       <li>Show this clock on a screen in front of the <strong>client camera</strong>, so it goes through VTX → VRX → relay → HM30 → GCS.</li>
@@ -72,7 +79,7 @@ body.hidepanel .card,body.hidepanel .row.stats{display:none;}
     </ol>
   </div>
 
-  <div class="card">
+  <div class="card vf-zoom">
     <h2>SAMPLES</h2>
     <label for="sample">LATENCY SAMPLE (ms)</label>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
@@ -89,7 +96,9 @@ body.hidepanel .card,body.hidepanel .row.stats{display:none;}
     </div>
     <table id="st-table"></table>
   </div>
+  <div class="k ver" data-vf-version></div>
 </div>
+<script src="../js/version.js"></script>
 <script src="../js/common.js"></script>
 <script src="../js/tools-core.js"></script>
 <script>

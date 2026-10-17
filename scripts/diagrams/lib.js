@@ -74,7 +74,7 @@ function markers() {
     '<marker id="ah-' + k + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="' + v + '"/></marker>').join('') + '</defs>';
 }
 
-const PALETTE_COMMENT = '<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.\n'
+const PALETTE_COMMENT = '<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css (muted: the manual value).\n'
   + '     Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):\n'
   + '     #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border\n'
   +'     #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->';

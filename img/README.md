@@ -30,7 +30,7 @@ The manual's diagrams D1–D15 (plus D8b) are standalone SVG files, `d01-system-
 
 **Palette**
 
-A standalone SVG cannot read the page CSS variables. It therefore uses the same hex values as `:root` in `manual.html` / `index.html`, and each file carries this mapping as a comment:
+A standalone SVG cannot read the page CSS variables. It therefore uses the same hex values as the `:root` tokens in `css/base.css` (`--muted` is the manual's own `#777`), and each file carries this mapping as a comment:
 
 | Hex | Token | Hex | Token |
 |---|---|---|---|
@@ -45,9 +45,9 @@ Inline SVG and the generated charts (`js/diagrams.js`) use `var(--…)` instead 
 
 **Readability rule (plan §9.2)**
 
-Text must be **≥ 11 CSS px when the page is 360 px wide** (332 px of content after the manual's padding). There are two ways to meet it:
+Text must be **≥ 11 CSS px when the page is 360 px wide**. The manual's content is 332 px wide there (14 px padding each side) and a figure's image 330 px (its 1 px border each side); about 315 px when a desktop-style scrollbar takes 15 px. There are two ways to meet it:
 
-- **Fit to width** (all `img/diagrams/` files): a viewBox 400 units wide with text ≥ 14 units gives 14 × 332 / 400 ≈ 11.6 px. Desktop caps the image at 560 px.
+- **Fit to width** (all `img/diagrams/` files): a viewBox 400 units wide with text ≥ 14 units gives 14 × 330 / 400 ≈ 11.55 px. Desktop caps the image at 560 px.
 - **Scroll** (the manual's inline SVGs and the Tools charts): text ≥ 13 units (charts ≥ 12) plus a `min-width` class (`.mw-560`, `.mw-600`, `.mw-780`) inside an `overflow-x:auto` frame, with min-width ≥ viewBox width × 11 / smallest font.
 
 ## Optimiser

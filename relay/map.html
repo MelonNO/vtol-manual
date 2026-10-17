@@ -3,24 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- CSP (WP09): tiles and terrain only from the layers listed in LAYERS / TERR_URL / VEG_SRCS below (update both when a layer is added); the GCS app API is local. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org https://server.arcgisonline.com https://*.basemaps.cartocdn.com https://cache.kartverket.no https://s3.amazonaws.com; connect-src 'self' http://127.0.0.1:47800 https://*.tile.openstreetmap.org https://*.tile.opentopomap.org https://server.arcgisonline.com https://*.basemaps.cartocdn.com https://cache.kartverket.no https://s3.amazonaws.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
 <title>HEEWING T2 — RELAY COVERAGE MAP</title>
+<meta name="theme-color" content="#f97316">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/apple-touch-icon.png">
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="../css/base.css">
+<script src="../js/field.js"></script>
 <script src="vendor/leaflet/leaflet.js"></script>
+<script src="../js/version.js"></script>
 <script src="../js/store.js"></script>
 <script src="../js/gcs-client.js"></script>
 <script src="rfmodel.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap');
+/* shared tokens, fonts and base element styles: ../css/base.css; page-only tokens below */
 :root{
-  --bg:#0f0f0f;--surface:#1a1a1a;--surface2:#222;--border:#2a2a2a;--border2:#333;
-  --text:#e8e8e8;--muted:#666;--accent:#f97316;--amber:#facc15;--red:#ef4444;
-  --green:#22c55e;--dim:#444;--mono:'Share Tech Mono',monospace;--head:'Oswald',sans-serif;
   /* map link colours (same hues as the Tools page section colours) */
   --blue:#60a5fa;--purple:#a78bfa;--rose:#f43f5e;--teal:#2dd4bf;--grey:#555;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:var(--mono);background:var(--bg);color:var(--text);
-     height:100vh;display:flex;flex-direction:column;overflow:hidden}
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden;
+     font-size:16px;line-height:normal}   /* the map keeps its previous (browser-default) body metrics */
 
 /* ── HEADER ── */
 #hdr{background:var(--surface);border-bottom:2px solid var(--accent);
@@ -52,6 +57,8 @@ body{font-family:var(--mono);background:var(--bg);color:var(--text);
          padding:0 16px;white-space:nowrap;text-transform:uppercase;
          transition:all .15s;display:flex;align-items:center}
 .nav-btn:hover{color:var(--accent);background:var(--surface2)}
+button.nav-btn{background:none;border:none;border-right:1px solid var(--border2);cursor:pointer;min-width:44px}
+button.nav-btn[aria-pressed="true"]{background:var(--text);color:var(--bg)}
 @media (max-width:600px){.hdr-title{white-space:normal;font-size:13px}.nav-btn{padding:0 10px}}
 
 /* Map */
@@ -242,6 +249,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     <div class="hs">GCS APP <b id="h-live">NOT RUNNING</b></div>
   </div>
   <div class="nav-btns">
+    <button type="button" class="nav-btn" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀<span class="vf-lbl" aria-hidden="true">&nbsp;SUN</span></button>
     <a href="../index.html" class="nav-btn">◀ TOOLS</a>
     <a href="../manual.html" class="nav-btn">MANUAL ▶</a>
   </div>
@@ -259,7 +267,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
 
 <div id="sb-wrap">
 <button type="button" id="sb-tog" onclick="toggleSb()" title="Toggle controls">◀</button>
-<div id="sb">
+<div id="sb" class="vf-zoom">
   <div class="pnl">
     <h2>Simulation</h2>
     <div class="fld">
@@ -558,6 +566,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     <div class="rng-row"><span>Patches face:</span><b id="r-dir">—</b></div>
     <div class="divider"></div>
     <div class="ter-txt" id="ter-st">Terrain: idle</div>
+    <div class="info-txt" data-vf-version></div>
   </div>
 </div>
 

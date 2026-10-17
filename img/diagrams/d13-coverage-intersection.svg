@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 878" width="400" height="878" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
 <title id="title">D13 — Coverage intersection: video polygon ∩ RC polygon = operating area; orbit-sweep inner zone</title>
 <desc id="desc">For one carrier position the client video coverage and the client RC coverage are separate polygons, each from its own band, power and antennas (client and link profiles); the operating area is their intersection. Over one full orbit the map accumulates the worst case (intersection: covered at every point of the orbit, the always-covered inner zone) and the best case (union: covered at some point only). Keep the client inside the inner zone and inside the orbit. Shapes are illustrative; use the coverage map for each site and client.</desc>
-<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css (muted: the manual value).
      Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
      #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
      #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->
