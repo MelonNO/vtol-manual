@@ -99,7 +99,7 @@ Consumers must treat `null` as **unknown**: show "TBD" and do not compute with i
 ### C1.5 Extensions accepted with WP11 (normative)
 
 - `paramFile = { name, importedAt (ISO), params: { NAME: number } }`: a single record. Newer `importedAt` (parsed date) wins on import; invalid dates never win. Clearing it does not propagate through import (known limitation).
-- `flights: [ { id, date (YYYY-MM-DD), archiveId, battIds: [id], binSummary {}, gcsSummary {}, notes, updatedAt } ]` and `maintenance: [ { id, item, date (YYYY-MM-DD), notes, updatedAt } ]`. Both are validated, merged by id, with tombstones.
+- `flights: [ { id, date (YYYY-MM-DD), label, archiveId, battIds: [id], logSummary {}, gcsSummary {}, notes, updatedAt } ]` and `maintenance: [ { id, taskId, doneDate (YYYY-MM-DD), markedAt, notes, updatedAt } ]`. Both are validated, merged by id, with tombstones. Field names were corrected to the implementation at the WP11 merge.
 - `battLog[].usedMah` (optional number).
 - Display helper: `ToolsCore.paramFileLabel(store.paramFile)` → "verified against param file <name> <date>".
 
