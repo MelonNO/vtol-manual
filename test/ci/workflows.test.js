@@ -205,10 +205,20 @@ function pythonWithPytest() {
   return null;
 }
 
+// GitHub runs `shell: pwsh` with PowerShell 7; use it when it is installed (the runners have it), else Windows
+// PowerShell 5.1 (WP17 verify F5: native-stderr and Tee-Object encoding details differ between the two).
+let psExe = null;
+function powershell(t) {
+  if (psExe === null) psExe = spawnSync('pwsh', ['-NoProfile', '-Command', 'exit 0']).status === 0 ? 'pwsh' : 'powershell';
+  if (psExe !== 'pwsh') t.diagnostic('pwsh (PowerShell 7) not installed: the step runs under Windows PowerShell 5.1');
+  return psExe;
+}
+
 test('pwsh step "pytest gcs protocol, five consecutive runs", verbatim as GitHub runs it: fails on a failing or hanging test, annotates only the test id', t => {
   if (process.platform !== 'win32') { notHere(t, 'Windows PowerShell step: checked by the python-windows CI job'); return; }
   const py = pythonWithPytest();
   if (!py) { notHere(t, 'no Python with pytest (set VTOL_PYTHON)'); return; }
+  const ps = powershell(t);
   const five = step('ci.yml', 'pytest gcs protocol, five consecutive runs');
   assert.equal(five.shell, 'pwsh');
   // GitHub's pwsh template: $ErrorActionPreference = 'stop' before, exit $LASTEXITCODE after the script
@@ -221,7 +231,7 @@ test('pwsh step "pytest gcs protocol, five consecutive runs", verbatim as GitHub
       fs.writeFileSync(path.join(bin, 'python.cmd'), '@"' + (path.isAbsolute(py) ? py : 'py') + '" %*\r\n');
       const env = { ...process.env, ...s.env, ...extraEnv,
         PATH: (path.isAbsolute(py) ? bin + path.delimiter : '') + process.env.PATH };
-      const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'ci-step.ps1'], { cwd: dir, encoding: 'utf8', env });
+      const r = spawnSync(ps, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'ci-step.ps1'], { cwd: dir, encoding: 'utf8', env });
       const logs = fs.readdirSync(path.join(dir, 'pytest-logs'));
       const dumps = logs.includes('pytest-timeouts.txt')
         ? fs.readFileSync(path.join(dir, 'pytest-logs', 'pytest-timeouts.txt'), 'utf8') : '';
@@ -239,18 +249,25 @@ test('pwsh step "pytest gcs protocol, five consecutive runs", verbatim as GitHub
     '::error::pytest failed in run(s) 1, 2, 3, 4, 5 of 5 (1 distinct failing test id(s)); full logs: artifact pytest-logs-windows'
   ], 'only the test id and the summary are annotated (no captured log lines):\n' + f.out);
   assert.match(f.out, /gcs[\\/]tests[\\/]test_f\.py::test_ok PASSED/, 'pytest -v names every test in the live log');
-  // WP17: a hanging test, with the real gcs/conftest.py (per-test watchdog) and a 2 s timeout instead of 120 s
-  const hanging = 'import time\n\ndef test_hangs():\n    while True:\n        time.sleep(0.05)\n\ndef test_after():\n    pass\n';
-  const h = run(hanging, { 'gcs/conftest.py': readText('gcs/conftest.py') }, { VTOLGCS_TEST_TIMEOUT: '2' });
+  // WP17: hanging tests, with the real gcs/conftest.py and short timeouts: one that releases the GIL (the Python
+  // watchdog fails it, the run goes on) and one in native code holding the GIL (faulthandler's backstop dumps and
+  // ends the run at 2 + 1 + 1 s; the step annotates the last START line before "Timeout (...)!")
+  const hanging = 'import ctypes, time\n\ndef test_hangs():\n    while True:\n        time.sleep(0.05)\n\n'
+    + 'def test_after():\n    pass\n\ndef test_native():\n    ctypes.PyDLL("kernel32").Sleep(600000)\n';
+  const h = run(hanging, { 'gcs/conftest.py': readText('gcs/conftest.py') }, { VTOLGCS_TEST_TIMEOUT: '2',
+    VTOLGCS_TEST_GRACE: '1', VTOLGCS_TEST_BACKSTOP_MARGIN: '1', VTOLGCS_LIVE_TEST_NAMES: '1' });
   assert.notEqual(h.status, 0, 'a hanging test must fail the step:\n' + h.out);
   assert.equal(h.logs, 5, 'all five runs keep their log');
   assert.deepEqual(annotations(h.out), [
     '::error::gcs/tests/test_f.py::test_hangs failed in run(s) 1, 2, 3, 4, 5 of 5',
-    '::error::pytest failed in run(s) 1, 2, 3, 4, 5 of 5 (1 distinct failing test id(s)); full logs: artifact pytest-logs-windows'
+    '::error::gcs/tests/test_f.py::test_native failed in run(s) 1, 2, 3, 4, 5 of 5',
+    '::error::pytest failed in run(s) 1, 2, 3, 4, 5 of 5 (2 distinct failing test id(s)); full logs: artifact pytest-logs-windows'
   ], h.out);
   assert.match(h.out, /\+\+\+ TIMEOUT \[[0-9:]+\] gcs\/tests\/test_f\.py::test_hangs still running after 2 s/);
   assert.match(h.out, /in test_hangs/, 'the stack dump shows where it hangs');
   assert.match(h.out, /test_f\.py::test_after PASSED/, 'the run goes on after the timeout');
+  assert.equal((h.out.match(/Timeout \(0:00:04\)!/g) || []).length, 5, 'the GIL hang: faulthandler in each run');
+  assert.match(h.out, /in test_native/, 'the stack dump shows the native hang');
   assert.equal((h.dumps.match(/\+\+\+ TIMEOUT \[/g) || []).length, 5, 'one dump per run in pytest-logs/pytest-timeouts.txt');
   const p = run('def test_ok():\n    pass\n');
   assert.equal(p.status, 0, p.out);
@@ -261,18 +278,19 @@ test('pwsh step "Tests, headless-safe suite" of gcs-build.yml, verbatim: fails o
   if (process.platform !== 'win32') { notHere(t, 'Windows PowerShell step: checked by the python-windows CI job'); return; }
   const py = pythonWithPytest();
   if (!py) { notHere(t, 'no Python with pytest (set VTOL_PYTHON)'); return; }
+  const ps = powershell(t);
   const s = step('gcs-build.yml', 'Tests, headless-safe suite');
   assert.equal(s.shell, 'pwsh');
   const script = "$ErrorActionPreference = 'stop'\n" + s.run + "if ((Test-Path -LiteralPath variable:\\LASTEXITCODE)) { exit $LASTEXITCODE }\n";
-  const run = testPy => {
+  const run = (testPy, extraEnv = {}) => {
     const dir = tmpTree({ 'gcs/tests/test_f.py': testPy, 'protocol/README.md': 'x\n', 'ci-step.ps1': script,
       'gcs/conftest.py': readText('gcs/conftest.py') });
     const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'vtol-py-'));
     try {
       fs.writeFileSync(path.join(bin, 'python.cmd'), '@"' + (path.isAbsolute(py) ? py : 'py') + '" %*\r\n');
       const env = { ...process.env, ...s.env, VTOLGCS_INTERACTIVE_TESTS: '1',     // would run here: -m must leave it out
-        PATH: (path.isAbsolute(py) ? bin + path.delimiter : '') + process.env.PATH };
-      const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'ci-step.ps1'], { cwd: dir, encoding: 'utf8', env });
+        ...extraEnv, PATH: (path.isAbsolute(py) ? bin + path.delimiter : '') + process.env.PATH };
+      const r = spawnSync(ps, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'ci-step.ps1'], { cwd: dir, encoding: 'utf8', env });
       return { status: r.status, out: (r.stdout || '') + (r.stderr || ''), log: fs.existsSync(path.join(dir, 'pytest-logs', 'build-tests.txt')) };
     } finally { fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(bin, { recursive: true, force: true }); }
   };
@@ -287,4 +305,12 @@ test('pwsh step "Tests, headless-safe suite" of gcs-build.yml, verbatim: fails o
   const p = run('def test_ok():\n    pass\n' + desktop);
   assert.equal(p.status, 0, p.out);
   assert.match(p.out, /1 passed, 1 deselected/);
+  // WP17 round 2: a native hang holding the GIL ends the run through faulthandler; the step names the test
+  const n = run('import ctypes\n\ndef test_native():\n    ctypes.PyDLL("kernel32").Sleep(600000)\n', { VTOLGCS_TEST_TIMEOUT: '2',
+    VTOLGCS_TEST_GRACE: '1', VTOLGCS_TEST_BACKSTOP_MARGIN: '1', VTOLGCS_LIVE_TEST_NAMES: '1' });
+  assert.notEqual(n.status, 0, n.out);
+  assert.deepEqual(n.out.split(/\r?\n/).filter(l => l.startsWith('::error::')), [
+    '::error::gcs/tests/test_f.py::test_native hung (stack dump in the log: Timeout (0:00:04)!)',
+    '::error::pytest failed (exit code 1); full log: artifact pytest-logs-build'
+  ], n.out);
 });

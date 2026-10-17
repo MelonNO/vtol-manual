@@ -52,7 +52,9 @@ jobs:
         # WP17: -m "not interactive_desktop" leaves out the tests that need a real console/desktop (they also skip
         # themselves on any runner: gcs/conftest.py). -v, unbuffered output and a START line per test name the
         # running test live; a hanging test is dumped ("+++ TIMEOUT [time] <id>") and failed by the per-test
-        # watchdog. The step timeout is below the job timeout, so the log upload below still runs after a hang.
+        # watchdog; a hang with the GIL held ends the run through faulthandler ("Timeout (h:mm:ss)!" + stacks): the
+        # annotated id is the last START line before it, or an interpreter-exit hang after "END of session".
+        # The step timeout is below the job timeout, so the log upload below still runs after a hang.
         shell: pwsh
         timeout-minutes: 15
         env:
@@ -67,6 +69,13 @@ jobs:
           if ($code -ne 0 -or $summary) {
             foreach ($m in (Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '^(FAILED|ERROR|\+\+\+ TIMEOUT \[[0-9:]+\]) ((gcs|protocol)/\S+)' | Select-Object -First 9)) {
               Write-Host "::error::$($m.Matches[0].Groups[2].Value) failed"
+            }
+            $hang = Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '(^|\s)Timeout \([0-9:]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
+            if ($hang) {
+              $last = Select-String -CaseSensitive -Path pytest-logs/build-tests.txt -Pattern '^\[[0-9:]+\] (START ((gcs|protocol)/\S+)|END of session)' |
+                Where-Object { $_.LineNumber -lt $hang.LineNumber } | Select-Object -Last 1
+              $id = if ($last -and $last.Matches[0].Groups[2].Success) { $last.Matches[0].Groups[2].Value } else { '(hang at interpreter exit)' }
+              Write-Host "::error::$id hung (stack dump in the log: $($hang.Matches[0].Value.Trim()))"
             }
             Write-Host "::error::pytest failed (exit code $code); full log: artifact pytest-logs-build"
             exit 1

@@ -178,14 +178,14 @@ def test_pygame_missing_reports_error() -> None:
     assert not ctl.snapshot().connected
 
 
-@pytest.mark.interactive_desktop
+@pytest.mark.timeout(60)
 def test_real_pygame_thread_starts_and_stops() -> None:
     """The real pygame-ce backend runs in its thread (no device needed), polls, and its thread ends on stop.
 
-    WP17: it loads SDL's video and joystick stack (display enumeration, HID / XInput / Windows.Gaming.Input), the
-    operator desktop's device stack, in a background thread; a hang there would also block the interpreter's exit
-    (pygame quits SDL at exit).  So it runs on a desktop only; the backend logic is covered with a fake module
-    above."""
+    WP17: it loads SDL's video and joystick stack in a background thread, and pygame quits SDL at interpreter exit,
+    both with the GIL held.  It runs everywhere, CI included (it passes in a non-interactive window station): a
+    hang in SDL is caught by the faulthandler backstop (in the test) or by the exit guards (at exit) of
+    gcs/conftest.py, with the stacks in the log."""
     import time
     ctl = PygameController(ControllerConfig())
     t0 = ctl.snapshot().t

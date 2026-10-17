@@ -147,6 +147,9 @@ jobs:
         # lines ("FAILED gcs/…::test", "ERROR gcs/…") match, never captured log lines ("ERROR    vtolgcs.…").
         # A test that hangs is named live (-v, unbuffered, a START line per test), dumped and failed by the per-test
         # watchdog ("+++ TIMEOUT [time] <id>", also annotated); dumps also go to pytest-logs/pytest-timeouts.txt.
+        # A hang with the GIL held ends the run through faulthandler ("Timeout (h:mm:ss)!" + stacks, exit 1): the
+        # annotated id is the last START line before it; after "END of session" (or "+++ EXIT GUARD/WATCHDOG")
+        # it is a hang at interpreter exit (gcs/conftest.py lists what each guard covers).
         # The step timeout (35 min) is below the job timeout (45 min), so the logs are uploaded even after a hang.
         # Proven by test/ci/workflows.test.js (runs this script on trees with failing / passing / hanging tests).
         shell: pwsh
@@ -169,6 +172,14 @@ jobs:
               $failed += $i
               foreach ($m in (Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '^(FAILED|ERROR|\+\+\+ TIMEOUT \[[0-9:]+\]) ((gcs|protocol)/\S+)')) {
                 $id = $m.Matches[0].Groups[2].Value
+                if (-not $tests.Contains($id)) { $tests[$id] = @() }
+                if (-not (@($tests[$id]) -contains $i)) { $tests[$id] = @($tests[$id]) + $i }
+              }
+              $hang = Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '(^|\s)Timeout \([0-9:]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
+              if ($hang) {
+                $last = Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '^\[[0-9:]+\] (START ((gcs|protocol)/\S+)|END of session)' |
+                  Where-Object { $_.LineNumber -lt $hang.LineNumber } | Select-Object -Last 1
+                $id = if ($last -and $last.Matches[0].Groups[2].Success) { $last.Matches[0].Groups[2].Value } else { '(hang at interpreter exit)' }
                 if (-not $tests.Contains($id)) { $tests[$id] = @() }
                 if (-not (@($tests[$id]) -contains $i)) { $tests[$id] = @($tests[$id]) + $i }
               }
