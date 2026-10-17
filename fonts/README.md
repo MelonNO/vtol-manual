@@ -22,4 +22,4 @@ Both families are licensed under the SIL Open Font License 1.1. The licence file
 - `OFL-Oswald.txt` — `https://raw.githubusercontent.com/google/fonts/main/ofl/oswald/OFL.txt` (Copyright 2016 The Oswald Project Authors)
 - `OFL-ShareTechMono.txt` — `https://raw.githubusercontent.com/google/fonts/main/ofl/sharetechmono/OFL.txt` (Copyright 2012 Carrois Type Design, Reserved Font Name "Share")
 
-The licence files are not precached by the service worker (they are not needed at run time).
+The licence texts are unmodified; the repository stores them with LF line endings (`.gitattributes`; the Oswald file was downloaded with CRLF). They are not precached by the service worker (not needed at run time).
