@@ -1190,9 +1190,8 @@ def main(args: Any, argv: list[str]) -> int:
         return 2
     if not args.attach_only and not _sender_reachable(control_file):
         app.start_sender_process()                                       # no console window (WP15 R1)
-    elif launch_dialog(args):
-        _prefix, flag, button = launch_dialog(args)                      # type: ignore[misc]
-        app.note(f"{flag} ignored: the UI attached to a running RC sender. Use Flight -> {button}.")
+    elif (dialog := launch_dialog(args)) is not None:                    # WP16 R2: say the flag did nothing
+        app.note(f"{dialog[1]} ignored: the UI attached to a running RC sender. Use Flight -> {dialog[2]}.")
     if getattr(args, "run_seconds", None):
         _smoke(app, args.run_seconds, getattr(args, "ui_smoke_out", None))
     root.mainloop()
