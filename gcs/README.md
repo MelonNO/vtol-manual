@@ -293,7 +293,7 @@ Other protections:
   A single late packet only adds latency (WP08a verification m2); every stall longer than two send periods
   skips slots and still raises the alarm at once.
 - **Timing limits (Python):** the RC thread shares the interpreter (GIL) with every other thread of the
-  process. The runtime keeps its own work small (switch interval 0.5 ms, status built at most every
+  process. The runtime keeps its own work small (switch interval 1 ms, status built at most every
   100 ms for the API, at most 4 event-stream clients), but **CPU-bound Python work in the same process
   delays packets** (verifier measurement: 2 busy threads → 200 Hz and 14 ms lateness). Anything heavy
   (UI rendering, video, file parsing) belongs in another process or in code that releases the GIL; if
@@ -472,16 +472,34 @@ spawned sender ignores Ctrl+C and refuses QUIT on a real Ctrl+Break, the refusal
 
 | Guard | What it covers | Behaviour | Setting |
 |---|---|---|---|
-| Per-test watchdog (a Python thread) | any hang that releases the GIL: sleeps, waits on locks, threads, processes, sockets, pipes, polling loops | after the timeout (120 s): `+++ TIMEOUT [time] <test id>` and the stacks of all threads; the processes the tests started are killed, `TestTimeout` is raised in the main thread and the test is reported FAILED; the run goes on. If the test is still running 20 s later (e.g. `time.sleep`, which no exception interrupts): the stacks again and exit status 1 | `VTOLGCS_TEST_TIMEOUT`, `@pytest.mark.timeout(s)` (the test's own value), `VTOLGCS_TEST_GRACE`; `VTOLGCS_TEST_DUMP_DIR` also writes these dumps to `pytest-timeouts.txt` there (CI: the uploaded `pytest-logs`) |
+| Per-test watchdog (a Python thread) | any hang that releases the GIL: sleeps, waits on locks, threads, processes, sockets, pipes, polling loops | after the timeout (120 s): `+++ TIMEOUT [time] <test id>` and the stacks of all threads; the processes the tests started are killed, `TestTimeout` is raised in the main thread and the test is reported FAILED; the run goes on. WP18: it is raised only while the main thread runs the test's own setup or call; while pytest itself is busy (e.g. formatting a failure) it waits for the test's next phase, because an exception there ended the session with `INTERNALERROR` and skipped every teardown. A teardown is never interrupted at once: it gets its own budget (30 s, `VTOLGCS_TEST_TEARDOWN_BUDGET`) so every finaliser runs; only a teardown still running after it gets `TestTimeout`, and the hard exit moves behind it. If the test is still running 20 s later (e.g. `time.sleep`, which no exception interrupts): the stacks again and exit status 1 | `VTOLGCS_TEST_TIMEOUT`, `@pytest.mark.timeout(s)` (the test's own value), `VTOLGCS_TEST_GRACE`; `VTOLGCS_TEST_DUMP_DIR` also writes these dumps to `pytest-timeouts.txt` there (CI: the uploaded `pytest-logs`) |
 | Per-test faulthandler backstop (a C thread, needs no GIL) | a hang in native code that **holds the GIL** (the Python watchdog cannot run then) | 10 s after the watchdog's hard exit: `Timeout (h:mm:ss)!` and the stacks of all threads on stdout (the CI log and its uploaded copy), exit status 1. The test is the last `START` line before it; CI annotates it | `VTOLGCS_TEST_BACKSTOP_MARGIN` |
 | Exit guard (Python thread) | the process not exiting after the session (a leaked non-daemon thread, a slow atexit handler) | 60 s after the session: `+++ EXIT GUARD` and the stacks, exit status (or 1) | `VTOLGCS_EXIT_GRACE` |
 | Exit backstop (faulthandler) | the same with the GIL held (Python atexit handlers, thread shutdown) | 10 s later: `Timeout (h:mm:ss)!` and the stacks, exit status 1 | — |
 | Exit watcher (a separate process) | a hang in the interpreter's last C-level exit hooks (`Py_AtExit`, e.g. pygame's SDL quit), which run after faulthandler is stopped | 20 s after the exit guard: `+++ EXIT WATCHDOG`, the test process is terminated with status 1 (no stacks: it is another process) | — |
-| Processes (Windows job object) | every process the tests start and their descendants, orphans included | after each test every one still alive is killed by PID and listed in the summary; when the test process ends, the job kills whatever is left. Without a job object (setup failed; the header says so) only processes started through `subprocess` and their live descendants are covered. A module- or session-scoped fixture that must keep a process across tests registers it with `CHILDREN.keep(pid)` | — |
+| Processes (Windows job object) | every process the tests start and their descendants, orphans included | after each test every one still alive is killed by PID (checked to be still in the job) and listed in the summary; when the test process ends, the job kills whatever is left. Without a job object (setup failed; the header says so) only processes started through `subprocess` and their live descendants are covered. A module- or session-scoped fixture that must keep a process across tests registers it with `CHILDREN.keep(pid)`, which keeps its descendants too | — |
+| Threads (WP18) | a runtime, sender, receiver, control server, session log or `bridge_sim` a test left running | every thread started during a test and still alive 2 s after its teardown (also when a finaliser raised): `+++ LEAKED THREADS` with each thread's name, target and stack (also `pytest-leaks.txt`), the test gets a teardown ERROR, and the threads' owners are stopped (`stop()`/`close()` of the object whose method the thread runs), so a leak cannot slow the tests after it. A module-scoped fixture whose threads must outlive a test starts them inside `with THREADS.keep_started():` (`from conftest import THREADS`) | `VTOLGCS_TEST_THREAD_GRACE` |
+| Failure text (WP18) | a session that dies before its summary (a hang, a hard exit) | each failed phase is written when it happens: `+++ FAILED [time] <id> (call)` (`ERROR` for setup/teardown) and the full text, on stdout and in `pytest-failures.txt`; CI annotates every failed id from these lines | — |
 | Live test names | — | on GitHub each test start is printed on its own line (`[time] START <id>`), and the end as `END of session` | `VTOLGCS_LIVE_TEST_NAMES=1` locally |
 
 Not covered: a hang during collection or pytest's own start-up (before the first test); the CI step timeout is the
 last resort there.
+
+**Writing tests that start things (WP18).** Every test or fixture that starts a `Runtime`, `Sender`, `Receiver`,
+`ControlServer`, `SessionLog` or `BridgeSim` registers its stop as soon as it exists, so a failure, an assertion
+half-way through a rig's constructor or a timeout still stops it: a fixture with `contextlib.ExitStack`
+(`stack.callback(obj.stop)`), or `try:`/`finally:` right after the start. Never put the `stop()` as the last line of
+the test body. A test that needs several runtimes in a loop closes each one before the next (six at once starved a
+4-CPU runner).
+
+**Reproducing a CI failure locally (WP18).** `VTOLGCS_TEST_CPUS=4` restricts the test process (and what it starts)
+to 4 logical CPUs, like the `windows-2025` runner; `VTOLGCS_TEST_FORCE_FAIL=<text>` makes every test whose id
+contains `<text>` fail after its body ran (fixtures live, as in a real failure), e.g.:
+
+```
+$env:CI='true'; $env:VTOLGCS_TEST_CPUS='4'; $env:VTOLGCS_TEST_FORCE_FAIL='test_pipe_dacl'
+python -u -m pytest gcs protocol -m "not interactive_desktop" -v -p no:cacheprovider -rfEs --tb=long
+```
 
 Tests marked **`interactive_desktop`** need a real interactive console or desktop: the four hand-started-sender
 console tests in `test_main_cli.py` (keys, Ctrl+C / Ctrl+Break, screen reads), the focus-and-keys test of the

@@ -10,6 +10,7 @@ Two layers:
 
 from __future__ import annotations
 
+import contextlib
 import ipaddress
 import socket
 import threading
@@ -419,7 +420,7 @@ class TestClient:
         self.seq = 0
         self.lock = threading.Lock()
         self._stop = threading.Event()
-        self._rx = threading.Thread(target=self._loop, daemon=True)
+        self._rx = threading.Thread(target=self._loop, name="test-client-rx", daemon=True)
         self._rx.start()
         self._tx: threading.Thread | None = None
         self.streaming = threading.Event()
@@ -453,7 +454,7 @@ class TestClient:
         def run() -> None:
             while self.streaming.is_set() and not self._stop.is_set():
                 self.send(1, 0.005)
-        self._tx = threading.Thread(target=run, daemon=True)
+        self._tx = threading.Thread(target=run, name="test-client-tx", daemon=True)
         self._tx.start()
 
     def stop_stream(self) -> None:
@@ -522,18 +523,17 @@ def _sim(**kw: object) -> BS.BridgeSim:
 
 @pytest.fixture
 def udp():
-    created: list[tuple[BS.BridgeSim, TestClient]] = []
+    with contextlib.ExitStack() as parts:             # WP18 R1: all stopped, also when a test fails or a stop raises
 
-    def make(**kw: object) -> tuple[BS.BridgeSim, TestClient]:
-        sim = _sim(**kw).start()
-        time.sleep(0.1)                               # past BOOT
-        cli = TestClient(sim.address, sim)
-        created.append((sim, cli))
-        return sim, cli
-    yield make
-    for sim, cli in created:
-        cli.close()
-        sim.stop()
+        def make(**kw: object) -> tuple[BS.BridgeSim, TestClient]:
+            sim = _sim(**kw)
+            parts.callback(sim.stop)
+            sim.start()
+            time.sleep(0.1)                           # past BOOT
+            cli = TestClient(sim.address, sim)
+            parts.callback(cli.close)
+            return sim, cli
+        yield make
 
 
 def test_udp_wait_gcs_to_run_and_failsafe(udp) -> None:

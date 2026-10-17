@@ -8,6 +8,7 @@ and print diagnostics on failure; no test depends on tight timing.
 
 from __future__ import annotations
 
+import contextlib
 import http.client
 import json
 import time
@@ -30,21 +31,29 @@ from vtolgcs.sender import SUSPEND_CONTROLLER, Mode
 
 class Harness:
     def __init__(self, tmp: Path, **sim_kw: object) -> None:
-        bridge = sim_kw.pop("bridge", BS.BridgeConfig(boot_s=0.05, seed=1))
-        client = BS.ClientConfig(gps_fix_delay_s=0.0, fs_delay_s=0.3, rth_delay_s=0.3, seed=1)
-        self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=bridge, client=client, seed=1, **sim_kw)).start()
-        time.sleep(0.1)
-        cfg = Config()
-        cfg.bridge.ip, cfg.bridge.port = self.sim.address
-        cfg.api.port = 0
-        cfg.mavlink.listen_port = 0
-        self.cfg = cfg
-        self.fake = FakeController()
-        self.events: list[tuple[str, dict]] = []
-        self.rt = Runtime(cfg, self.fake, instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}", log_dir=tmp)
-        self.rt.add_listener(lambda k, d: self.events.append((k, d)))
-        self.rt.start()
-        self.t0 = time.perf_counter()
+        self._parts = contextlib.ExitStack()           # WP18 R1: stop what was started, also after a failure
+        try:
+            bridge = sim_kw.pop("bridge", BS.BridgeConfig(boot_s=0.05, seed=1))
+            client = BS.ClientConfig(gps_fix_delay_s=0.0, fs_delay_s=0.3, rth_delay_s=0.3, seed=1)
+            self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=bridge, client=client, seed=1, **sim_kw))
+            self._parts.callback(self.sim.stop)
+            self.sim.start()
+            time.sleep(0.1)
+            cfg = Config()
+            cfg.bridge.ip, cfg.bridge.port = self.sim.address
+            cfg.api.port = 0
+            cfg.mavlink.listen_port = 0
+            self.cfg = cfg
+            self.fake = FakeController()
+            self.events: list[tuple[str, dict]] = []
+            self.rt = Runtime(cfg, self.fake, instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}", log_dir=tmp)
+            self.rt.add_listener(lambda k, d: self.events.append((k, d)))
+            self._parts.callback(self.rt.stop)
+            self.rt.start()
+            self.t0 = time.perf_counter()
+        except BaseException:
+            self.close()
+            raise
 
     def diagnostics(self) -> str:
         with self.sim.lock:
@@ -79,21 +88,18 @@ class Harness:
         return {a["id"] for a in self.rt.status()["alarms"]}
 
     def close(self) -> None:
-        self.rt.stop()
-        self.sim.stop()
+        self._parts.close()
 
 
 @pytest.fixture
 def harness(tmp_path: Path):
-    made: list[Harness] = []
+    with contextlib.ExitStack() as made:              # WP18 R1: every harness closed, also when a test fails
 
-    def make(**kw: object) -> Harness:
-        h = Harness(tmp_path, **kw)
-        made.append(h)
-        return h
-    yield make
-    for h in made:
-        h.close()
+        def make(**kw: object) -> Harness:
+            h = Harness(tmp_path, **kw)
+            made.callback(h.close)
+            return h
+        yield make
 
 
 def test_run_rtt_telemetry_camera_and_failsafe(harness) -> None:

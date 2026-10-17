@@ -8,6 +8,7 @@ and ignores keys (tested without any window, by typing into its windowless conso
 
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import os
@@ -137,14 +138,15 @@ class _UiSpawnedSender:
         from vtolgcs.ui.link import passthrough_args, sender_command, sender_output_path, spawn_sender
         monkeypatch.setenv(TEST_INSTANCE_ENV, f"vtol-gcs-test-{uuid.uuid4().hex}")
         self.tmp = tmp_path
-        self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1), seed=1)).start()
-        argv = ["--sim", "--bridge", f"127.0.0.1:{self.sim.address[1]}", "--config", str(tmp_path / "cfg.json"),
-                "--log-dir", str(tmp_path), "--api-port", "0", "--mavlink-port", "0", "--run-seconds", "30"]
-        self.out = sender_output_path(tmp_path)
-        self.proc = spawn_sender(sender_command(passthrough_args(argv)), self.out)
+        self.proc: subprocess.Popen | None = None
         self.client = None
-        self.pids, self.fg = {self.proc.pid}, set()
-        try:
+        self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1), seed=1)).start()
+        try:                                          # WP18 R1: a failure from here on still stops the sim
+            argv = ["--sim", "--bridge", f"127.0.0.1:{self.sim.address[1]}", "--config", str(tmp_path / "cfg.json"),
+                    "--log-dir", str(tmp_path), "--api-port", "0", "--mavlink-port", "0", "--run-seconds", "30"]
+            self.out = sender_output_path(tmp_path)
+            self.proc = spawn_sender(sender_command(passthrough_args(argv)), self.out)
+            self.pids, self.fg = {self.proc.pid}, set()
             end = time.monotonic() + 20
             while self.client is None and time.monotonic() < end:
                 if watch_foreground:
@@ -169,12 +171,14 @@ class _UiSpawnedSender:
         return self.out.read_text(encoding="utf-8", errors="replace") if self.out.exists() else ""
 
     def close(self) -> None:
-        if self.client is not None:
-            self.client.close()
-        if self.proc.poll() is None:
-            self.proc.kill()
-            self.proc.wait(10)
-        self.sim.stop()
+        try:
+            if self.client is not None:
+                self.client.close()
+            if self.proc is not None and self.proc.poll() is None:
+                self.proc.kill()
+                self.proc.wait(10)
+        finally:
+            self.sim.stop()
 
     def assert_streaming_unchanged(self) -> None:
         s = self.status()
@@ -324,21 +328,21 @@ def test_ui_shows_the_launch_dialog_refusal_in_events(tmp_path: Path, monkeypatc
     from vtolgcs.ui.link import launch_dialog, passthrough_args, sender_command, sender_output_path, spawn_sender
     monkeypatch.setenv(TEST_INSTANCE_ENV, f"vtol-gcs-test-{uuid.uuid4().hex}")
     sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1), seed=1)).start()
-    argv = ["--sim", "--bridge", f"127.0.0.1:{sim.address[1]}", "--config", str(tmp_path / "cfg.json"),
-            "--log-dir", str(tmp_path), "--no-api", "--mavlink-port", "0", *flags]
-    dialog = launch_dialog(build_parser().parse_args(argv))
-    assert dialog is not None and dialog[0] == prefix
-    out = sender_output_path(tmp_path)
-    proc = spawn_sender(sender_command(passthrough_args(argv)), out)
-    notes: list[str] = []
-    fake = SimpleNamespace(_launch_watch=(dialog, time.monotonic() + 20), sender_output=out, spawned=proc,
-                           note=notes.append)
+    client = proc = None
+    try:                                                              # WP18 R1: the sim stops whatever fails
+        argv = ["--sim", "--bridge", f"127.0.0.1:{sim.address[1]}", "--config", str(tmp_path / "cfg.json"),
+                "--log-dir", str(tmp_path), "--no-api", "--mavlink-port", "0", *flags]
+        dialog = launch_dialog(build_parser().parse_args(argv))
+        assert dialog is not None and dialog[0] == prefix
+        out = sender_output_path(tmp_path)
+        proc = spawn_sender(sender_command(passthrough_args(argv)), out)
+        notes: list[str] = []
+        fake = SimpleNamespace(_launch_watch=(dialog, time.monotonic() + 20), sender_output=out, spawned=proc,
+                               note=notes.append)
 
-    def answered() -> bool:
-        App._check_launch_dialog(fake)                                # type: ignore[arg-type]
-        return bool(notes)
-    client = None
-    try:
+        def answered() -> bool:
+            App._check_launch_dialog(fake)                            # type: ignore[arg-type]
+            return bool(notes)
         assert _wait(answered, 20), out.read_text(encoding="utf-8")
         assert fake._launch_watch is None
         assert notes[0].startswith(f"RC sender refused {dialog[1]} at launch: {prefix} needs a typed "
@@ -349,12 +353,14 @@ def test_ui_shows_the_launch_dialog_refusal_in_events(tmp_path: Path, monkeypatc
         assert client.request("stop")["ok"]
         assert proc.wait(15) == 0
     finally:
-        if client is not None:
-            client.close()
-        if proc.poll() is None:
-            proc.kill()
-            proc.wait()
-        sim.stop()
+        try:
+            if client is not None:
+                client.close()
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+                proc.wait(10)
+        finally:
+            sim.stop()
     with sim.lock:
         assert sim.core.rx_ok == 0                                    # nothing was sent
 
@@ -384,25 +390,33 @@ def test_hotkey_names_and_sse_parser() -> None:
 
 class _Sender:
     def __init__(self, tmp: Path) -> None:
-        self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1),
-                                             client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1), seed=1)).start()
-        cfg = Config()
-        cfg.bridge.ip, cfg.bridge.port = self.sim.address
-        cfg.api.port = 0
-        cfg.mavlink.enabled = False
-        self.rt = Runtime(cfg, FakeController(), instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}", log_dir=tmp)
-        self.rt.start()
-        self.file = tmp / "control.json"
-        self.server = ControlServer(self.rt, self.file).start()
+        self._parts = contextlib.ExitStack()           # WP18 R1: stop what was started, also after a failure
+        try:
+            self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1),
+                                                 client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1), seed=1))
+            self._parts.callback(self.sim.stop)
+            self.sim.start()
+            cfg = Config()
+            cfg.bridge.ip, cfg.bridge.port = self.sim.address
+            cfg.api.port = 0
+            cfg.mavlink.enabled = False
+            self.rt = Runtime(cfg, FakeController(), instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}", log_dir=tmp)
+            self._parts.callback(self.rt.stop)
+            self.rt.start()
+            self.file = tmp / "control.json"
+            self.server = ControlServer(self.rt, self.file)
+            self._parts.callback(self.server.stop)
+            self.server.start()
+        except BaseException:
+            self.close()
+            raise
 
     def rx_ok(self) -> int:
         with self.sim.lock:
             return self.sim.core.rx_ok
 
     def close(self) -> None:
-        self.server.stop()
-        self.rt.stop()
-        self.sim.stop()
+        self._parts.close()
 
 
 def _wait(cond, timeout: float = 8.0) -> bool:

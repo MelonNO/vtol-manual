@@ -9,6 +9,9 @@
 // headless-safe marker expression in the build), the job timeouts, pinned runner images and the action majors that
 // run on Node 24; and the pwsh step on a tree with a hanging test (the real gcs/conftest.py watchdog must name,
 // dump and fail it, and the step must annotate its id).
+// WP18: the trees carry the real gcs/pyproject.toml, so pytest's rootdir is gcs/ as on GitHub (test ids "tests/...":
+// the WP17 regexes expected "gcs/..." and annotated nothing on the real runner). Every failed id is annotated, also
+// when the session dies after the failure; a GIL hang in a fixture teardown is annotated (verify F-A).
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -224,7 +227,8 @@ test('pwsh step "pytest gcs protocol, five consecutive runs", verbatim as GitHub
   // GitHub's pwsh template: $ErrorActionPreference = 'stop' before, exit $LASTEXITCODE after the script
   const pwshScript = s => "$ErrorActionPreference = 'stop'\n" + s.run + "if ((Test-Path -LiteralPath variable:\\LASTEXITCODE)) { exit $LASTEXITCODE }\n";
   const run = (testPy, extraFiles = {}, extraEnv = {}, s = five) => {
-    const dir = tmpTree({ 'gcs/tests/test_f.py': testPy, 'protocol/README.md': 'x\n', 'ci-step.ps1': pwshScript(s), ...extraFiles });
+    const dir = tmpTree({ 'gcs/tests/test_f.py': testPy, 'gcs/pyproject.toml': readText('gcs/pyproject.toml'),
+      'protocol/README.md': 'x\n', 'ci-step.ps1': pwshScript(s), ...extraFiles });
     const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'vtol-py-'));
     try {
       // the step calls `python`: point it at the Python that has pytest; the step's env: block applies too
@@ -272,6 +276,13 @@ test('pwsh step "pytest gcs protocol, five consecutive runs", verbatim as GitHub
   const p = run('def test_ok():\n    pass\n');
   assert.equal(p.status, 0, p.out);
   assert.equal(p.logs, 5);
+  // WP18 round 2 (verify F4): a collection error without the conftest (pytest's summary line only) names the path
+  const c = run('import no_such_module_wp18\n\ndef test_x():\n    pass\n');
+  assert.notEqual(c.status, 0, c.out);
+  assert.deepEqual(annotations(c.out), [
+    '::error::gcs/tests/test_f.py failed in run(s) 1, 2, 3, 4, 5 of 5',
+    '::error::pytest failed in run(s) 1, 2, 3, 4, 5 of 5 (1 distinct failing test id(s)); full logs: artifact pytest-logs-windows'
+  ], c.out);
 });
 
 test('pwsh step "Tests, headless-safe suite" of gcs-build.yml, verbatim: fails on a failing test, leaves out interactive_desktop tests', t => {
@@ -284,7 +295,7 @@ test('pwsh step "Tests, headless-safe suite" of gcs-build.yml, verbatim: fails o
   const script = "$ErrorActionPreference = 'stop'\n" + s.run + "if ((Test-Path -LiteralPath variable:\\LASTEXITCODE)) { exit $LASTEXITCODE }\n";
   const run = (testPy, extraEnv = {}) => {
     const dir = tmpTree({ 'gcs/tests/test_f.py': testPy, 'protocol/README.md': 'x\n', 'ci-step.ps1': script,
-      'gcs/conftest.py': readText('gcs/conftest.py') });
+      'gcs/conftest.py': readText('gcs/conftest.py'), 'gcs/pyproject.toml': readText('gcs/pyproject.toml') });
     const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'vtol-py-'));
     try {
       fs.writeFileSync(path.join(bin, 'python.cmd'), '@"' + (path.isAbsolute(py) ? py : 'py') + '" %*\r\n');
@@ -313,4 +324,44 @@ test('pwsh step "Tests, headless-safe suite" of gcs-build.yml, verbatim: fails o
     '::error::gcs/tests/test_f.py::test_native hung (stack dump in the log: Timeout (0:00:04)!)',
     '::error::pytest failed (exit code 1); full log: artifact pytest-logs-build'
   ], n.out);
+  const fast = { VTOLGCS_TEST_TIMEOUT: '2', VTOLGCS_TEST_GRACE: '1', VTOLGCS_TEST_BACKSTOP_MARGIN: '1',
+    VTOLGCS_LIVE_TEST_NAMES: '1' };
+  const annotations = out => out.split(/\r?\n/).filter(l => l.startsWith('::error::'));
+  // WP17 verify F-A: a GIL hang in a fixture's teardown. After a passing test faulthandler's text follows "[100%]"
+  // with no space; after a failing test the re-armed backstop prints fractional seconds ("Timeout (0:00:03.98…)!").
+  const teardown = fail => 'import ctypes, pytest\n\n@pytest.fixture\ndef fx():\n    yield\n'
+    + '    ctypes.PyDLL("kernel32").Sleep(600000)\n\ndef test_teardown_hangs(fx):\n    assert ' + (fail ? 'False' : 'True') + '\n';
+  const tp = run(teardown(false), fast);
+  assert.match(tp.out, /PASSED\s+\[100%\]Timeout \(0:00:04\)!/, 'faulthandler output glued to the result line');
+  assert.deepEqual(annotations(tp.out), [
+    '::error::gcs/tests/test_f.py::test_teardown_hangs hung (stack dump in the log: Timeout (0:00:04)!)',
+    '::error::pytest failed (exit code 1); full log: artifact pytest-logs-build'
+  ], tp.out);
+  const tf = run(teardown(true), fast);
+  const tfa = annotations(tf.out);
+  assert.equal(tfa.length, 3, tf.out);
+  assert.equal(tfa[0], '::error::gcs/tests/test_f.py::test_teardown_hangs failed');
+  assert.match(tfa[1], /^::error::gcs\/tests\/test_f\.py::test_teardown_hangs hung \(stack dump in the log: Timeout \(0:00:0\d(\.\d+)?\)!\)$/);
+  // WP18 R4: a failure followed by a hang that kills the session (no summary): both ids are annotated, and the
+  // failure's text is in the log before the hang
+  const d = run('import ctypes\n\ndef test_fails_first():\n    assert 1 == 2, "kept text"\n\n'
+    + 'def test_native():\n    ctypes.PyDLL("kernel32").Sleep(600000)\n', fast);
+  assert.deepEqual(annotations(d.out), [
+    '::error::gcs/tests/test_f.py::test_fails_first failed',
+    '::error::gcs/tests/test_f.py::test_native hung (stack dump in the log: Timeout (0:00:04)!)',
+    '::error::pytest failed (exit code 1); full log: artifact pytest-logs-build'
+  ], d.out);
+  assert.match(d.out.split('Timeout (0:00:04)!')[0], /\+\+\+ FAILED \[[0-9:]+\] gcs\/tests\/test_f\.py::test_fails_first \(call\)[\s\S]*kept text/);
+  // WP18 R4: every failed id is named: 7 annotations, then the others in one line (GitHub shows 10 per step)
+  const many = Array.from({ length: 9 }, (_, i) => `def test_bad_${i}():\n    assert False\n`).join('\n');
+  assert.deepEqual(annotations(run(many).out), [
+    ...Array.from({ length: 7 }, (_, i) => `::error::gcs/tests/test_f.py::test_bad_${i} failed`),
+    '::error::2 more failed test(s): gcs/tests/test_f.py::test_bad_7, gcs/tests/test_f.py::test_bad_8',
+    '::error::pytest failed (exit code 1); full log: artifact pytest-logs-build'
+  ]);
+  // WP18 round 2 (verify F4): a file that cannot be collected is annotated by its path (an id without "::")
+  assert.deepEqual(annotations(run('import no_such_module_wp18\n\ndef test_x():\n    pass\n').out), [
+    '::error::gcs/tests/test_f.py failed',
+    '::error::pytest failed (exit code 2); full log: artifact pytest-logs-build'
+  ]);
 });

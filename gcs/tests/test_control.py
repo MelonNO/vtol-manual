@@ -8,6 +8,7 @@ is exercised through the channel.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
@@ -28,22 +29,37 @@ from vtolgcs.runtime import Runtime
 
 
 class Rig:
+    """bridge_sim + Runtime + ControlServer + a client.  WP18 R1: every part is registered for shutdown as soon as
+    it exists, so :meth:`close` (and a failure half-way through ``__init__``) stops exactly what was started, in
+    reverse order, even if one of the stops raises."""
+
     def __init__(self, tmp: Path, telemetry_hz: float = 10.0, crsf_pass: bool = False, **server_kw: object) -> None:
-        self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1),
-                                             client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1),
-                                             telemetry_hz=telemetry_hz, crsf_pass=crsf_pass, seed=1)).start()
-        cfg = Config()
-        cfg.bridge.ip, cfg.bridge.port = self.sim.address
-        cfg.api.enabled = False
-        cfg.mavlink.enabled = False
-        self.cfg = cfg
-        self.fake = FakeController()
-        self.rt = Runtime(cfg, self.fake, instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}", log_dir=tmp)
-        self.rt.start()
-        self.stopped = False
-        self.file = tmp / f"control-{uuid.uuid4().hex[:8]}.json"
-        self.server = ControlServer(self.rt, self.file, on_stop=self._on_stop, **server_kw).start()  # type: ignore[arg-type]
-        self.client = ControlClient.from_file(self.file)
+        self._parts = contextlib.ExitStack()
+        try:
+            self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1),
+                                                 client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1),
+                                                 telemetry_hz=telemetry_hz, crsf_pass=crsf_pass, seed=1))
+            self._parts.callback(self.sim.stop)
+            self.sim.start()
+            cfg = Config()
+            cfg.bridge.ip, cfg.bridge.port = self.sim.address
+            cfg.api.enabled = False
+            cfg.mavlink.enabled = False
+            self.cfg = cfg
+            self.fake = FakeController()
+            self.rt = Runtime(cfg, self.fake, instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}", log_dir=tmp)
+            self._parts.callback(self.rt.stop)
+            self.rt.start()
+            self.stopped = False
+            self.file = tmp / f"control-{uuid.uuid4().hex[:8]}.json"
+            self.server = ControlServer(self.rt, self.file, on_stop=self._on_stop, **server_kw)  # type: ignore[arg-type]
+            self._parts.callback(self.server.stop)
+            self.server.start()
+            self.client = ControlClient.from_file(self.file)
+            self._parts.callback(self.client.close)
+        except BaseException:
+            self.close()
+            raise
 
     def _on_stop(self) -> None:
         self.stopped = True
@@ -61,23 +77,19 @@ class Rig:
         raise AssertionError(f"timed out waiting for {what}: sender {self.rt.sender.state()}")
 
     def close(self) -> None:
-        self.client.close()
-        self.server.stop()
-        self.rt.stop()
-        self.sim.stop()
+        """Stop everything started so far (idempotent)."""
+        self._parts.close()
 
 
 @pytest.fixture
 def rig(tmp_path: Path):
-    made: list[Rig] = []
+    with contextlib.ExitStack() as made:                 # every rig is closed, even if a test fails or one close raises
 
-    def make(**kw: object) -> Rig:
-        r = Rig(tmp_path, **kw)
-        made.append(r)
-        return r
-    yield make
-    for r in made:
-        r.close()
+        def make(**kw: object) -> Rig:
+            r = Rig(tmp_path, **kw)
+            made.callback(r.close)
+            return r
+        yield make
 
 
 # --------------------------------------------------------------------------- transport and file
@@ -315,8 +327,7 @@ def test_crsf_send_guards(rig) -> None:
 
 # --------------------------------------------------------------------------- hardening (WP13)
 
-def _pipe_sddl(address: str) -> str:
-    """The pipe's DACL as SDDL, read back through a handle (GetSecurityInfo)."""
+def _win_security() -> tuple:
     import ctypes
     from ctypes import wintypes
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
@@ -326,20 +337,99 @@ def _pipe_sddl(address: str) -> str:
                                 wintypes.DWORD, wintypes.HANDLE]
     k32.CloseHandle.argtypes = [wintypes.HANDLE]
     k32.LocalFree.argtypes = [ctypes.c_void_p]
-    adv.GetSecurityInfo.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.DWORD, ctypes.c_void_p, ctypes.c_void_p,
-                                    ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    k32.GetCurrentProcess.restype = wintypes.HANDLE
+    adv.GetSecurityInfo.argtypes = [wintypes.HANDLE, ctypes.c_int, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p),
+                                    ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p,
+                                    ctypes.POINTER(ctypes.c_void_p)]
     adv.ConvertSecurityDescriptorToStringSecurityDescriptorW.argtypes = [
         ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, ctypes.POINTER(wintypes.LPWSTR), ctypes.c_void_p]
+    adv.ConvertSidToStringSidW.argtypes = [ctypes.c_void_p, ctypes.POINTER(wintypes.LPWSTR)]
+    adv.GetSecurityDescriptorControl.argtypes = [ctypes.c_void_p, ctypes.POINTER(wintypes.WORD),
+                                                 ctypes.POINTER(wintypes.DWORD)]
+    adv.GetAce.argtypes = [ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p)]
+    adv.OpenProcessToken.argtypes = [wintypes.HANDLE, wintypes.DWORD, ctypes.POINTER(wintypes.HANDLE)]
+    adv.GetTokenInformation.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD,
+                                        ctypes.POINTER(wintypes.DWORD)]
+    return ctypes, wintypes, k32, adv
+
+
+def _sid_str(psid: int) -> str:
+    """A SID as ``S-1-...`` (never an SDDL alias such as ``LA`` or ``BA``)."""
+    ctypes, wintypes, k32, adv = _win_security()
+    text = wintypes.LPWSTR()
+    if not psid or not adv.ConvertSidToStringSidW(psid, ctypes.byref(text)):
+        return "?"
+    out = text.value
+    k32.LocalFree(ctypes.cast(text, ctypes.c_void_p))
+    return out
+
+
+def _token_facts() -> dict:
+    """WP18 R3 diagnostics: this process token's user, default owner, elevation, integrity and groups."""
+    ctypes, wintypes, k32, adv = _win_security()
+    token = wintypes.HANDLE()
+    assert adv.OpenProcessToken(k32.GetCurrentProcess(), 0x0008, ctypes.byref(token)), ctypes.get_last_error()
+
+    def info(cls: int) -> ctypes.Array:
+        size = wintypes.DWORD(0)
+        adv.GetTokenInformation(token, cls, None, 0, ctypes.byref(size))
+        buf = ctypes.create_string_buffer(max(size.value, 4))
+        assert adv.GetTokenInformation(token, cls, buf, len(buf), ctypes.byref(size)), (cls, ctypes.get_last_error())
+        return buf
+    try:
+        ptr = ctypes.sizeof(ctypes.c_void_p)
+        groups_buf = info(2)                                                     # TokenGroups
+        count = ctypes.c_uint32.from_buffer(groups_buf).value
+        groups = []
+        for i in range(count):                                                   # SID_AND_ATTRIBUTES after the count
+            off = ptr + i * 2 * ptr
+            psid = ctypes.c_void_p.from_buffer(groups_buf, off).value
+            attrs = ctypes.c_uint32.from_buffer(groups_buf, off + ptr).value
+            groups.append(f"{_sid_str(psid)}{'' if attrs & 0x4 else ' (disabled)'}{' (owner ok)' if attrs & 0x8 else ''}")
+        user, owner, integrity = info(1), info(4), info(25)       # TokenUser, TokenOwner, TokenIntegrityLevel
+        return {"user": _sid_str(ctypes.c_void_p.from_buffer(user).value),
+                "default_owner": _sid_str(ctypes.c_void_p.from_buffer(owner).value),
+                "elevated": bool(ctypes.c_uint32.from_buffer(info(20)).value),          # TokenElevation
+                "elevation_type": {1: "default", 2: "full", 3: "limited"}.get(
+                    ctypes.c_uint32.from_buffer(info(18)).value, "?"),                   # TokenElevationType
+                "integrity": _sid_str(ctypes.c_void_p.from_buffer(integrity).value),
+                "session": ctypes.c_uint32.from_buffer(info(12)).value,                  # TokenSessionId
+                "groups": groups}
+    finally:
+        k32.CloseHandle(token)
+
+
+def _pipe_security(address: str) -> dict:
+    """The pipe's owner and DACL, read back through a handle (GetSecurityInfo), decoded ACE by ACE."""
+    ctypes, wintypes, k32, adv = _win_security()
     h = k32.CreateFileW(address, 0x00020000, 0, None, 3, 0, None)            # READ_CONTROL, OPEN_EXISTING
     assert h not in (None, wintypes.HANDLE(-1).value), ctypes.get_last_error()
     try:
-        sd = ctypes.c_void_p()
-        assert adv.GetSecurityInfo(h, 6, 4, None, None, None, None, ctypes.byref(sd)) == 0   # kernel object, DACL
-        text = wintypes.LPWSTR()
-        assert adv.ConvertSecurityDescriptorToStringSecurityDescriptorW(sd, 1, 4, ctypes.byref(text), None)
-        out = text.value
-        k32.LocalFree(sd)
-        return out
+        owner, dacl, sd = ctypes.c_void_p(), ctypes.c_void_p(), ctypes.c_void_p()
+        err = adv.GetSecurityInfo(h, 6, 1 | 4, ctypes.byref(owner), None, ctypes.byref(dacl), None, ctypes.byref(sd))
+        assert err == 0, f"GetSecurityInfo failed ({err})"                     # kernel object; OWNER | DACL
+        try:
+            text = wintypes.LPWSTR()
+            assert adv.ConvertSecurityDescriptorToStringSecurityDescriptorW(sd, 1, 1 | 4, ctypes.byref(text), None)
+            sddl = text.value
+            k32.LocalFree(ctypes.cast(text, ctypes.c_void_p))
+            control, rev = wintypes.WORD(), wintypes.DWORD()
+            assert adv.GetSecurityDescriptorControl(sd, ctypes.byref(control), ctypes.byref(rev))
+            aces = []
+            if dacl.value:
+                count = ctypes.c_uint16.from_address(dacl.value + 4).value      # ACL: rev, sbz1, size, AceCount
+                for i in range(count):
+                    ace = ctypes.c_void_p()
+                    assert adv.GetAce(dacl, i, ctypes.byref(ace))
+                    a = ace.value                                               # ACE_HEADER, Mask, SidStart
+                    aces.append({"type": ctypes.c_uint8.from_address(a).value,
+                                 "flags": ctypes.c_uint8.from_address(a + 1).value,
+                                 "mask": ctypes.c_uint32.from_address(a + 4).value,
+                                 "sid": _sid_str(a + 8)})
+            return {"sddl": sddl, "owner": _sid_str(owner.value), "protected": bool(control.value & 0x1000),
+                    "dacl_present": bool(dacl.value), "aces": aces}
+        finally:
+            k32.LocalFree(sd)
     finally:
         k32.CloseHandle(h)
 
@@ -362,13 +452,27 @@ def _remote_open(address: str) -> bool:
 
 @pytest.mark.skipif(sys.platform != "win32", reason="named pipes are Windows only")
 def test_pipe_dacl_is_user_only_and_remote_clients_are_rejected(rig) -> None:
-    """R1: explicit protected DACL (current user only) on the pipe; PIPE_REJECT_REMOTE_CLIENTS."""
+    """R1: explicit protected DACL (current user only) on the pipe; PIPE_REJECT_REMOTE_CLIENTS.
+
+    WP18 R3: the DACL is checked ACE by ACE against the token's user SID, not as an SDDL string.  The SDDL text
+    of the same DACL differs by account: Windows prints the built-in Administrator account (RID 500; the GitHub
+    runner's elevated ``runneradmin`` is such an account) as the alias ``LA`` instead of its ``S-1-5-21-...-500``,
+    so the old string comparison failed there although the DACL was right.  The owner is the token's default
+    owner: the user, or ``BUILTIN\\Administrators`` for an elevated administrator token (Windows' rule for objects
+    created without an explicit owner).  Either way no other account gets any access through the DACL.
+    """
     from multiprocessing.connection import Listener
     from vtolgcs.control import current_user_sid
     r = rig()
     address = ControlInfo.load(r.file).address
-    sddl = _pipe_sddl(address)
-    assert sddl == f"D:P(A;;FA;;;{current_user_sid()})", sddl                # no Everyone, Anonymous, Admins
+    sec, token = _pipe_security(address), _token_facts()
+    diag = f"pipe {sec}; token {token}"
+    print(f"WP18 R3 diagnostics: {diag}")                                     # shown with the failure (captured)
+    user = current_user_sid()
+    assert token["user"] == user, diag
+    assert sec["dacl_present"] and sec["protected"], diag                    # D:P (no inherited entries)
+    assert sec["aces"] == [{"type": 0, "flags": 0, "mask": 0x1F01FF, "sid": user}], diag   # one ACE: user, FILE_ALL_ACCESS
+    assert sec["owner"] == token["default_owner"], diag                      # the user, or Administrators if elevated
     assert r.client.call("ping")["t"] > 0                                    # the user still connects
     probe = Listener(r"\\.\pipe\vtol-gcs-probe-" + uuid.uuid4().hex[:8], family="AF_PIPE")   # stdlib default
     try:
@@ -376,8 +480,27 @@ def test_pipe_dacl_is_user_only_and_remote_clients_are_rejected(rig) -> None:
             pytest.skip("SMB loopback (\\\\127.0.0.1\\pipe) not available: cannot test the remote flag")
     finally:
         probe.close()
-    assert not _remote_open(address)                                         # refused as a remote client
+    assert not _remote_open(address), diag                                   # refused as a remote client
     assert r.client.call("ping")["t"] > 0
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="SDDL is Windows only")
+def test_sddl_text_of_the_builtin_administrator_is_an_alias() -> None:
+    """WP18 R3, the cause of the runner-only failure, shown without elevation: the SDDL text of a protected DACL for
+    the RID-500 account of this machine's account domain reads ``LA``, not the SID the old test expected."""
+    import ctypes
+    from vtolgcs.control import _security_descriptor, current_user_sid
+    _, wintypes, k32, adv = _win_security()
+    admin500 = current_user_sid().rsplit("-", 1)[0] + "-500"
+    if not admin500.startswith("S-1-5-21-"):
+        pytest.skip(f"not a local account SID: {admin500}")
+    sd = _security_descriptor(f"D:P(A;;FA;;;{admin500})")
+    text = wintypes.LPWSTR()
+    assert adv.ConvertSecurityDescriptorToStringSecurityDescriptorW(ctypes.addressof(sd), 1, 4, ctypes.byref(text), None)
+    try:
+        assert text.value == "D:P(A;;FA;;;LA)"
+    finally:
+        k32.LocalFree(ctypes.cast(text, ctypes.c_void_p))
 
 
 def test_stalled_handshake_does_not_block_a_second_client(rig) -> None:
@@ -489,30 +612,35 @@ def test_nothing_changes_after_an_accepted_stop(rig) -> None:
 def test_concurrent_stop_and_resume_from_two_clients(rig) -> None:
     """R4: two connections race a stop (no word) and a RESUME: exactly one wins, every time."""
     import threading
-    for _ in range(6):
+    for i in range(6):
         r = rig()
-        r.fake.set_channel_us(5, 2000)
-        r.fake.set_channel_us(3, 1400)
-        other = ControlClient.from_file(r.file)
-        prev = r.client.call("prepare_resume")
-        go = threading.Barrier(2)
-        out: dict[str, bool] = {}
+        try:                                      # WP18: one runtime at a time (six at once starved a small runner)
+            r.fake.set_channel_us(5, 2000)
+            r.fake.set_channel_us(3, 1400)
+            other = ControlClient.from_file(r.file)
+            prev = r.client.call("prepare_resume")
+            go = threading.Barrier(2)
+            out: dict[str, bool] = {}
 
-        def resume() -> None:
-            go.wait()
-            out["resume"] = r.client.request("confirm_resume", token=prev["token"], typed="RESUME")["ok"]
+            def resume() -> None:
+                go.wait()
+                out["resume"] = r.client.request("confirm_resume", token=prev["token"], typed="RESUME")["ok"]
 
-        def stop() -> None:
-            go.wait()
-            out["stop"] = other.request("stop")["ok"]
-        threads = [threading.Thread(target=resume), threading.Thread(target=stop)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join(10)
-        other.close()
-        assert out["resume"] != out["stop"], out
-        assert r.rt.sender.state().streaming == out["resume"] and r.stopped == out["stop"]
+            def stop() -> None:
+                go.wait()
+                out["stop"] = other.request("stop")["ok"]
+            threads = [threading.Thread(target=resume, name=f"resume-{i}"),
+                       threading.Thread(target=stop, name=f"stop-{i}")]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join(10)
+            other.close()
+            assert out.keys() == {"resume", "stop"}, f"iteration {i}: a request did not finish within 10 s: {out}"
+            assert out["resume"] != out["stop"], out
+            assert r.rt.sender.state().streaming == out["resume"] and r.stopped == out["stop"]
+        finally:
+            r.close()
 
 
 def test_server_budget_bounds_the_work_of_many_connections(rig) -> None:
@@ -528,13 +656,15 @@ def test_server_budget_bounds_the_work_of_many_connections(rig) -> None:
         while time.monotonic() - t0 < 1.5:
             assert clients[i].request("ping")["ok"]
             counts[i] += 1
-    threads = [threading.Thread(target=flood, args=(i,)) for i in range(4)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join(10)
-    elapsed = time.monotonic() - t0
-    assert sum(counts) <= 100 + 100 * elapsed + 4, (counts, elapsed)          # burst + rate
-    assert min(counts) > 0                                                   # every connection is served
-    for c in clients:
-        c.close()
+    threads = [threading.Thread(target=flood, args=(i,), name=f"flood-{i}") for i in range(4)]
+    try:
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(10)
+        elapsed = time.monotonic() - t0
+        assert sum(counts) <= 100 + 100 * elapsed + 4, (counts, elapsed)      # burst + rate
+        assert min(counts) > 0                                               # every connection is served
+    finally:
+        for c in clients:
+            c.close()

@@ -4,6 +4,7 @@ menu -> control channel ``crsf_send`` -> RC sender ``crsf_pass`` -> simulator ->
 
 from __future__ import annotations
 
+import contextlib
 import threading
 import time
 import uuid
@@ -23,24 +24,39 @@ from vtolgcs.runtime import Runtime
 
 class MenuRig:
     def __init__(self, tmp: Path, crsf_pass: bool = True, vrx_follows: bool = True) -> None:
-        self.sim = BS.BridgeSim(BS.SimConfig(
-            port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1, report_video="PAL"),
-            client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1), crsf_pass=crsf_pass, module="elrs",
-            vrx_follows=vrx_follows, seed=1)).start()
-        cfg = Config()
-        cfg.bridge.ip, cfg.bridge.port = self.sim.address
-        cfg.api.enabled = cfg.mavlink.enabled = False
-        cfg.video.status_bits_min_fw_ver = 0          # trust the sim's decoder-lock bit
-        self.fake = FakeController()
-        self.rt = Runtime(cfg, self.fake, instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}", log_dir=tmp)
-        self.rt.start()
-        self.server = ControlServer(self.rt, tmp / "control.json").start()
-        info = ControlInfo.load(tmp / "control.json")
-        self.client = ControlClient(info)
-        self.menu = CrsfMenu(control_send(self.client), timeout_s=0.3, retries=2)
-        self.stream = EventStream(info)
-        self._stop = threading.Event()
-        threading.Thread(target=self._pump, daemon=True).start()
+        self._parts = contextlib.ExitStack()           # WP18 R1: stop what was started, also after a failure
+        try:
+            self.sim = BS.BridgeSim(BS.SimConfig(
+                port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1, report_video="PAL"),
+                client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1), crsf_pass=crsf_pass, module="elrs",
+                vrx_follows=vrx_follows, seed=1))
+            self._parts.callback(self.sim.stop)
+            self.sim.start()
+            cfg = Config()
+            cfg.bridge.ip, cfg.bridge.port = self.sim.address
+            cfg.api.enabled = cfg.mavlink.enabled = False
+            cfg.video.status_bits_min_fw_ver = 0      # trust the sim's decoder-lock bit
+            self.fake = FakeController()
+            self.rt = Runtime(cfg, self.fake, instance_name=f"vtol-gcs-test-{uuid.uuid4().hex}", log_dir=tmp)
+            self._parts.callback(self.rt.stop)
+            self.rt.start()
+            self.server = ControlServer(self.rt, tmp / "control.json")
+            self._parts.callback(self.server.stop)
+            self.server.start()
+            info = ControlInfo.load(tmp / "control.json")
+            self.client = ControlClient(info)
+            self._parts.callback(self.client.close)
+            self.menu = CrsfMenu(control_send(self.client), timeout_s=0.3, retries=2)
+            self.stream = EventStream(info)
+            self._parts.callback(self.stream.close)
+            self._stop = threading.Event()
+            pump = threading.Thread(target=self._pump, name="menu-pump", daemon=True)
+            self._parts.callback(lambda: pump.join(2))
+            self._parts.callback(self._stop.set)
+            pump.start()
+        except BaseException:
+            self.close()
+            raise
 
     def _pump(self) -> None:                         # what the UI's event thread does
         while not self._stop.is_set():
@@ -59,25 +75,18 @@ class MenuRig:
             time.sleep(0.02)
 
     def close(self) -> None:
-        self._stop.set()
-        self.stream.close()
-        self.client.close()
-        self.server.stop()
-        self.rt.stop()
-        self.sim.stop()
+        self._parts.close()
 
 
 @pytest.fixture
 def menu_rig(tmp_path: Path):
-    made: list[MenuRig] = []
+    with contextlib.ExitStack() as made:              # WP18 R1: every rig closed, also when a test fails
 
-    def make(**kw: object) -> MenuRig:
-        r = MenuRig(tmp_path, **kw)
-        made.append(r)
-        return r
-    yield make
-    for r in made:
-        r.close()
+        def make(**kw: object) -> MenuRig:
+            r = MenuRig(tmp_path, **kw)
+            made.callback(r.close)
+            return r
+        yield make
 
 
 def test_menu_needs_a_stream(menu_rig) -> None:

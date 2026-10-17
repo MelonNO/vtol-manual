@@ -249,3 +249,333 @@ def test_every_subprocess_call_in_the_tests_has_a_timeout() -> None:
             if (is_sub or f.attr == "communicate") and not any(k.arg == "timeout" for k in node.keywords):
                 missing.append(f"{path.name}:{node.lineno}: {ast.get_source_segment(source, node)[:80]}")
     assert missing == []
+
+
+
+# =========================================================================== WP18
+
+LEAKS = '''
+import threading, time
+
+import pytest
+
+
+class FakeRuntime:
+    """Stands in for a Runtime / BridgeSim: a busy thread that only its stop() ends."""
+
+    def __init__(self):
+        self._stop = threading.Event()
+        self.thread = threading.Thread(target=self._run, name="rc-sender", daemon=True)
+
+    def _run(self):
+        while not self._stop.is_set():
+            sum(range(2000))                                  # busy, like a leaked sender + simulator
+
+    def stop(self):
+        self._stop.set()
+        self.thread.join(2)
+
+
+def test_leaks_a_runtime():
+    FakeRuntime().thread.start()                              # never stopped: the leak
+
+
+def test_a_thread_that_ends_within_the_grace_is_no_leak():
+    threading.Thread(target=time.sleep, args=(0.5,), name="short-lived").start()
+
+
+def test_after_the_leak_nothing_is_left_running():
+    assert [t.name for t in threading.enumerate() if t.name == "rc-sender"] == []
+
+
+def test_forced_to_fail():
+    pass
+
+
+def test_last():
+    pass
+'''
+
+SLOW_REPORT = '''
+import os, time
+
+import pytest
+
+
+class SlowToFormat(Exception):
+    def __str__(self):                                        # pytest formats the failure in its own hook
+        time.sleep(float(os.environ.get("SLOW_S", "30")))
+        return "slow"
+
+
+@pytest.fixture
+def stuck_teardown():
+    yield
+    if os.environ.get("STUCK_TEARDOWN"):
+        while True:                                           # the next phase of the same test hangs
+            time.sleep(0.05)
+
+
+def test_fails_and_its_report_is_slow(stuck_teardown):
+    raise SlowToFormat()
+
+
+def test_runs_after_it():
+    pass
+'''
+
+FAIL_THEN_HANG = '''
+import ctypes
+
+
+def test_fails_first():
+    assert 1 == 2, "the text that must not be lost"
+
+
+def test_then_hangs_holding_the_gil():
+    ctypes.PyDLL("kernel32").Sleep(600000)
+'''
+
+KEPT_TREE = '''
+import os, subprocess, sys, time
+
+import conftest
+
+PARENT = ("import subprocess, sys; p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(600)']); "
+          "open('grandchild.pid', 'w').write(str(p.pid)); p.wait()")
+
+
+def test_keeps_a_process_tree():
+    p = subprocess.Popen([sys.executable, "-c", PARENT])
+    conftest.CHILDREN.keep(p.pid)                             # e.g. a venv launcher: its interpreter is a child
+    open("parent.pid", "w").write(str(p.pid))
+    end = time.monotonic() + 20
+    while not os.path.exists("grandchild.pid") and time.monotonic() < end:
+        time.sleep(0.05)
+
+
+def test_the_kept_tree_survives_the_sweep():
+    time.sleep(0.2)
+'''
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the suite's platform")
+def test_a_leaked_thread_is_named_with_its_stack_fails_its_test_and_is_stopped(tmp_path: Path) -> None:
+    """WP18 R2 (+ R8's forced failure): the leaking test gets a teardown ERROR naming the thread and its stack; the
+    owner is stopped, so nothing is left running for the next test; a short-lived thread is no leak."""
+    proc, root, took = _run_tree(tmp_path, "leaks", LEAKS, VTOLGCS_TEST_FORCE_FAIL="test_forced_to_fail")
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 1, out
+    assert "are FORCED to fail" in out
+    assert "+++ LEAKED THREADS [" in out and "tests/test_leaks.py::test_leaks_a_runtime left 1 thread(s) running" in out
+    assert "'rc-sender'" in out and "target FakeRuntime._run, owner FakeRuntime" in out, out
+    assert "in _run" in out and "sum(range(2000))" in out, out                       # its stack
+    assert "stopped their owners: ['FakeRuntime.stop()']" in out, out
+    assert "ERROR at teardown of test_leaks_a_runtime" in out, out
+    assert "test_a_thread_that_ends_within_the_grace_is_no_leak PASSED" in out, out
+    assert "test_after_the_leak_nothing_is_left_running PASSED" in out, out
+    assert "forced failure (VTOLGCS_TEST_FORCE_FAIL='test_forced_to_fail')" in out, out
+    assert "1 failed, 4 passed, 1 error" in out, out
+    leaks = (root / "dumps" / "pytest-leaks.txt").read_text(encoding="utf-8")
+    assert "test_leaks_a_runtime left 1 thread(s)" in leaks and "sum(range(2000))" in leaks
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the suite's platform")
+def test_a_timeout_in_pytests_own_report_code_is_no_internalerror(tmp_path: Path) -> None:
+    """WP18 R5: the timeout expires while pytest formats the failure (CI: GIL starvation made it take minutes).
+    No TestTimeout is raised there (it became INTERNALERROR and skipped every teardown): with no further phase of the
+    test the run takes the hard-exit path (status 1); with a hanging teardown TestTimeout is raised in the teardown,
+    the test is reported and the run goes on."""
+    proc, root, took = _run_tree(tmp_path, "slow1", SLOW_REPORT, VTOLGCS_TEST_TIMEOUT="2", VTOLGCS_TEST_GRACE="3",
+                                 SLOW_S="60")
+    out = proc.stdout + proc.stderr
+    assert "INTERNALERROR>" not in out, out
+    assert "the main thread is in pytest's own code, not in the test" in out, out
+    assert "test_fails_and_its_report_is_slow is still running 3 s later: hard exit (status 1)" in out, out
+    assert "in __str__" in out, out                                               # where the main thread was
+    assert proc.returncode == 1 and took < 40, (took, out)
+    proc, root, took = _run_tree(tmp_path, "slow2", SLOW_REPORT, VTOLGCS_TEST_TIMEOUT="2", VTOLGCS_TEST_GRACE="6",
+                                 VTOLGCS_TEST_TEARDOWN_BUDGET="2", SLOW_S="3", STUCK_TEARDOWN="1")
+    out = proc.stdout + proc.stderr
+    assert "INTERNALERROR>" not in out, out
+    assert "the main thread is in pytest's own code, not in the test" in out, out
+    assert "is in its teardown: not interrupted (its finalisers must run)" in out, out          # round 2, F1
+    assert "TestTimeout raised in the main thread (teardown, still running after its 2 s budget)" in out, out
+    assert "ERROR at teardown of test_fails_and_its_report_is_slow" in out, out
+    assert "test_runs_after_it PASSED" in out, out
+    assert "1 failed, 1 passed, 1 error" in out and proc.returncode == 1, out
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="kernel32.Sleep: Windows")
+def test_a_failure_is_written_when_it_happens_even_if_the_session_dies_later(tmp_path: Path) -> None:
+    """WP18 R4: the failure text is out before the next test hangs and faulthandler ends the run (no summary)."""
+    proc, root, took = _run_tree(tmp_path, "lost", FAIL_THEN_HANG, **FAST)
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 1 and "short test summary" not in out, out           # the session died
+    head = out.split("Timeout (0:00:05)!")[0]
+    assert "+++ FAILED [" in head and "] tests/test_lost.py::test_fails_first (call)" in head, out
+    assert "the text that must not be lost" in head and "assert 1 == 2" in head, out
+    failures = (root / "dumps" / "pytest-failures.txt").read_text(encoding="utf-8")
+    assert "tests/test_lost.py::test_fails_first (call)" in failures and "the text that must not be lost" in failures
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the process guard is Windows only (the suite's platform)")
+def test_a_kept_process_keeps_its_descendants(tmp_path: Path) -> None:
+    """WP17 verify F-B: ``CHILDREN.keep(pid)`` also keeps that process's children (a venv launcher's interpreter)."""
+    proc, root, _ = _run_tree(tmp_path, "kept", KEPT_TREE)
+    out = proc.stdout + proc.stderr
+    assert proc.returncode == 0, out
+    assert "killed process(es) still running after the test" not in out, out
+    assert "2 passed" in out
+    for name in ("parent.pid", "grandchild.pid"):                                 # the job killed them at exit
+        assert not _alive(int((root / name).read_text())), name
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="job objects: Windows")
+def test_the_kill_path_skips_a_pid_that_is_no_longer_in_the_job() -> None:
+    """WP17 verify F-C: a listed PID whose process is not (or no longer) in the job is never terminated."""
+    g = _guards()
+    ctypes, k = g._kernel32()
+    other = g._Children()
+    other.job = k.CreateJobObjectW(None, None)              # a job nothing is in
+    sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+    try:
+        other.alive = lambda: [(sleeper.pid, "python.exe")]   # as if the PID had been listed, then reused
+        assert other.kill_all() == []
+        assert sleeper.poll() is None
+    finally:
+        sleeper.kill()
+        sleeper.wait(10)
+        k.CloseHandle(other.job)
+
+
+def test_the_runtime_switch_interval_is_at_least_1_ms() -> None:
+    """WP18 R6: Windows waits for the GIL in whole milliseconds; below 1 ms the waiters force a switch at once and
+    poll, which starved the RC thread on 2-4 CPUs (131-222 Hz instead of 250 Hz)."""
+    from vtolgcs import runtime
+    assert runtime.GIL_SWITCH_INTERVAL_S >= 0.001
+
+
+# --------------------------------------------------------------------------- WP18 round 2 (verify F1, F2)
+
+SLOW_REPORT_NORMAL_TEARDOWN = '''
+import os, threading, time
+
+import pytest
+
+
+class SlowToFormat(Exception):
+    def __str__(self):                       # pytest formats the failure in its own hook (outside the phases)
+        time.sleep(float(os.environ.get("SLOW_S", "4")))
+        return "slow"
+
+
+class Busy:
+    def __init__(self):
+        self.e = threading.Event()
+        self.t = threading.Thread(target=self.run, name="busy-runtime", daemon=True)
+        self.t.start()
+
+    def run(self):
+        while not self.e.is_set():
+            time.sleep(0.01)
+
+    def stop(self):
+        self.e.set()
+        self.t.join(2)
+
+
+@pytest.fixture
+def busy():
+    b = Busy()
+    yield b
+    time.sleep(0.3)                          # a normal, short teardown (e.g. Runtime.stop joining threads)
+    b.stop()
+    open("finaliser-ran.flag", "w").write("1")
+
+
+@pytest.fixture
+def second():
+    yield
+    open("second-finaliser-ran.flag", "w").write("1")
+
+
+def test_fails_and_report_is_slow(second, busy):
+    raise SlowToFormat()
+
+
+def test_next_one():
+    assert [t.name for t in threading.enumerate() if t.name == "busy-runtime"] == []
+'''
+
+LEAK_AND_TEARDOWN_ERROR = '''
+import threading, time
+
+import pytest
+
+
+class Busy:
+    def __init__(self):
+        self.e = threading.Event()
+        self.t = threading.Thread(target=self.run, name="leaky-runtime", daemon=True)
+        self.t.start()
+
+    def run(self):
+        while not self.e.is_set():
+            time.sleep(0.01)
+
+    def stop(self):
+        self.e.set()
+        self.t.join(2)
+
+
+@pytest.fixture
+def leaky():
+    yield Busy()                    # never stopped: a leak
+
+
+@pytest.fixture
+def broken_teardown():
+    yield
+    raise ValueError("an ordinary teardown error in another fixture")
+
+
+def test_leak_plus_teardown_error(leaky, broken_teardown):
+    pass
+
+
+def test_after():
+    assert [t.name for t in threading.enumerate() if t.name == "leaky-runtime"] == []
+'''
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the suite's platform")
+def test_a_timeout_during_report_formatting_lets_a_normal_teardown_finish(tmp_path: Path) -> None:
+    """Round 2, verify F1: the timeout fires while pytest formats the failure; the teardown that follows is healthy.
+    It must not be interrupted (TestTimeout is a BaseException: pytest would skip the remaining finalisers and leave
+    the runtime running): every finaliser runs, no thread survives, the next test is clean, no hard exit."""
+    proc, root, took = _run_tree(tmp_path, "r5", SLOW_REPORT_NORMAL_TEARDOWN, VTOLGCS_TEST_TIMEOUT="2",
+                                 VTOLGCS_TEST_GRACE="8", SLOW_S="4")
+    out = proc.stdout + proc.stderr
+    assert "INTERNALERROR>" not in out, out
+    assert "the main thread is in pytest's own code, not in the test" in out, out
+    assert "is in its teardown: not interrupted (its finalisers must run)" in out, out
+    assert "TestTimeout raised in the main thread" not in out and "hard exit (status 1)" not in out, out
+    assert (root / "finaliser-ran.flag").exists() and (root / "second-finaliser-ran.flag").exists(), out
+    assert "LEAKED THREADS" not in out, out
+    assert "test_next_one PASSED" in out, out
+    assert "1 failed, 1 passed" in out and proc.returncode == 1, out
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the suite's platform")
+def test_a_leak_is_caught_even_when_a_finaliser_raises(tmp_path: Path) -> None:
+    """Round 2, verify F2: the leak check runs whatever the teardown did; the leak is named for the right test and
+    stopped, the finaliser's own error stays in the report, and the next test is clean."""
+    proc, root, took = _run_tree(tmp_path, "r2b", LEAK_AND_TEARDOWN_ERROR)
+    out = proc.stdout + proc.stderr
+    assert "tests/test_r2b.py::test_leak_plus_teardown_error left 1 thread(s) running" in out, out
+    assert "'leaky-runtime'" in out and "stopped their owners: ['Busy.stop()']" in out, out
+    assert "an ordinary teardown error in another fixture" in out, out                   # chained: both texts
+    assert "ERROR at teardown of test_leak_plus_teardown_error" in out, out
+    assert "test_after PASSED" in out, out
+    assert "2 passed, 1 error" in out, out

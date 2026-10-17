@@ -25,6 +25,16 @@ def test_crc16_empty_is_init() -> None:
     assert P.crc16_ccitt_false(b"") == 0xFFFF
 
 
+def test_crc16_table_matches_the_bitwise_definition() -> None:
+    """WP18 R6: the table-driven CRC gives the bit-by-bit result for any data and any start value."""
+    rng = random.Random(18)
+    for _ in range(500):
+        data = bytes(rng.randrange(256) for _ in range(rng.randrange(0, 80)))
+        init = rng.randrange(0x10000)
+        assert P.crc16_ccitt_false(data, init) == P._crc16_bitwise(data, init)
+    assert P.crc16_ccitt_false(memoryview(b"123456789")) == P.crc16_ccitt_false(bytearray(b"123456789")) == 0x29B1
+
+
 @pytest.mark.parametrize("item", [c for c in V["crc"] if c["algo"] == "crc16_ccitt_false"])
 def test_crc16_vectors(item: dict) -> None:
     data = item["input_ascii"].encode() if "input_ascii" in item else HEX(item["input_hex"])

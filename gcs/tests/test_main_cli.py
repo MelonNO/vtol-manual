@@ -319,17 +319,18 @@ class _HandSender:
     def __init__(self, tmp_path: Path, *extra: str) -> None:
         from _console import vtolgcs_command
         self.tmp = tmp_path
+        self.proc: subprocess.Popen | None = None
+        self.client: ControlClient | None = None
         self.sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1),
                                              client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1), seed=1)).start()
-        env = dict(os.environ, PYTHONPATH=str(GCS_DIR), PYTHONIOENCODING="utf-8")
-        env[TEST_INSTANCE_ENV] = f"vtol-gcs-test-{uuid.uuid4().hex}"
-        cmd = vtolgcs_command("--headless", "--sim", "--bridge", f"127.0.0.1:{self.sim.address[1]}", "--no-api",
-                              "--mavlink-port", "0", "--config", str(tmp_path / "cfg.json"), "--log-dir",
-                              str(tmp_path), *extra)
-        self.proc = subprocess.Popen(cmd, env=env, cwd=GCS_DIR, creationflags=subprocess.CREATE_NO_WINDOW)
-        self.pid = self.proc.pid
-        self.client: ControlClient | None = None
-        try:
+        try:                                          # WP18 R1: a failure from here on still stops the sim
+            env = dict(os.environ, PYTHONPATH=str(GCS_DIR), PYTHONIOENCODING="utf-8")
+            env[TEST_INSTANCE_ENV] = f"vtol-gcs-test-{uuid.uuid4().hex}"
+            cmd = vtolgcs_command("--headless", "--sim", "--bridge", f"127.0.0.1:{self.sim.address[1]}", "--no-api",
+                                  "--mavlink-port", "0", "--config", str(tmp_path / "cfg.json"), "--log-dir",
+                                  str(tmp_path), *extra)
+            self.proc = subprocess.Popen(cmd, env=env, cwd=GCS_DIR, creationflags=subprocess.CREATE_NO_WINDOW)
+            self.pid = self.proc.pid
             self.client = _wait_for(lambda: ControlClient.from_file(tmp_path / "control.json", timeout=2.0)
                                     if (tmp_path / "control.json").exists() else None)
         except BaseException:
@@ -356,12 +357,14 @@ class _HandSender:
         return [json.loads(x) for x in next(self.tmp.glob("session-*.jsonl")).read_text(encoding="utf-8").splitlines()]
 
     def close(self) -> None:
-        if self.client is not None:
-            self.client.close()
-        if self.proc.poll() is None:
-            self.proc.kill()
-            self.proc.wait()
-        self.sim.stop()
+        try:
+            if self.client is not None:
+                self.client.close()
+            if self.proc is not None and self.proc.poll() is None:
+                self.proc.kill()
+                self.proc.wait(10)
+        finally:
+            self.sim.stop()
 
 
 QUIT_PROMPT = "QUIT: the RC stream is running"

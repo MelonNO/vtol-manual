@@ -143,8 +143,10 @@ jobs:
         # failing test) in pytest-logs/run-N.txt, uploaded below whatever the result, so a rare failure is never
         # reduced to a count. All five runs always execute; the step fails if any of them failed (pytest's exit code
         # OR a "N failed" / "N error" summary line). Annotations: GitHub shows at most 10 per step, so each distinct
-        # failing test id comes first (once, with its runs; at most 9), then one summary line. Only pytest's summary
-        # lines ("FAILED gcs/…::test", "ERROR gcs/…") match, never captured log lines ("ERROR    vtolgcs.…").
+        # failing test id comes first (once, with its runs; 7, then all the others in one line), then one summary
+        # line. WP18: the ids come from the conftest's "+++ FAILED|ERROR [time] <id> (<phase>)" lines, written when
+        # the test fails (they survive a session that dies later; the full text is in pytest-failures.txt), else
+        # from pytest's summary lines ("FAILED gcs/…::test"); never from captured log lines ("ERROR    vtolgcs.…").
         # A test that hangs is named live (-v, unbuffered, a START line per test), dumped and failed by the per-test
         # watchdog ("+++ TIMEOUT [time] <id>", also annotated); dumps also go to pytest-logs/pytest-timeouts.txt.
         # A hang with the GIL held ends the run through faulthandler ("Timeout (h:mm:ss)!" + stacks, exit 1): the
@@ -170,16 +172,18 @@ jobs:
             $summary = Select-String -Path "pytest-logs/run-$i.txt" -Pattern '^=+ .*\b\d+ (failed|errors?)\b'
             if ($code -ne 0 -or $summary) {
               $failed += $i
-              foreach ($m in (Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '^(FAILED|ERROR|\+\+\+ TIMEOUT \[[0-9:]+\]) ((gcs|protocol)/\S+)')) {
-                $id = $m.Matches[0].Groups[2].Value
-                if (-not $tests.Contains($id)) { $tests[$id] = @() }
-                if (-not (@($tests[$id]) -contains $i)) { $tests[$id] = @($tests[$id]) + $i }
-              }
-              $hang = Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '(^|\s)Timeout \([0-9:]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
+              $log = "pytest-logs/run-$i.txt"
+              $found = @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ (FAILED|ERROR) \[[0-9:]+\] (.+) \((setup|call|teardown|collect)\)$' | ForEach-Object { $_.Matches[0].Groups[2].Value })
+              if (-not $found.Count) { $found = @(Select-String -CaseSensitive -Path $log -Pattern '^(FAILED|ERROR) (\S+)' | ForEach-Object { $_.Matches[0].Groups[2].Value }) }
+              $found += @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ TIMEOUT \[[0-9:]+\] (.+) still running after' | ForEach-Object { $_.Matches[0].Groups[1].Value })
+              $hang = Select-String -CaseSensitive -Path $log -Pattern 'Timeout \([0-9:.]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
               if ($hang) {
-                $last = Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '^\[[0-9:]+\] (START ((gcs|protocol)/\S+)|END of session)' |
+                $last = Select-String -CaseSensitive -Path $log -Pattern '^\[[0-9:]+\] (START (\S.*)|END of session)' |
                   Where-Object { $_.LineNumber -lt $hang.LineNumber } | Select-Object -Last 1
-                $id = if ($last -and $last.Matches[0].Groups[2].Success) { $last.Matches[0].Groups[2].Value } else { '(hang at interpreter exit)' }
+                $found += $(if ($last -and $last.Matches[0].Groups[2].Success) { $last.Matches[0].Groups[2].Value } else { '(hang at interpreter exit)' })
+              }
+              foreach ($id in $found) {
+                $id = $id -replace '\\', '/'
                 if (-not $tests.Contains($id)) { $tests[$id] = @() }
                 if (-not (@($tests[$id]) -contains $i)) { $tests[$id] = @($tests[$id]) + $i }
               }
@@ -188,10 +192,10 @@ jobs:
           if ($failed.Count) {
             $n = 0
             foreach ($id in $tests.Keys) {
-              if ($n -lt 9) { Write-Host "::error::$id failed in run(s) $($tests[$id] -join ', ') of 5" }
+              if ($n -lt 7) { Write-Host "::error::$id failed in run(s) $($tests[$id] -join ', ') of 5" }
               $n++
             }
-            if ($n -gt 9) { Write-Host "::warning::$($n - 9) more failing test(s): see the pytest-logs-windows artifact" }
+            if ($n -gt 7) { Write-Host "::error::$($n - 7) more failed test(s): $((@($tests.Keys) | Select-Object -Skip 7 | ForEach-Object { "$_ (run(s) $($tests[$_] -join ', '))" }) -join ', ')" }
             Write-Host "::error::pytest failed in run(s) $($failed -join ', ') of 5 ($($tests.Count) distinct failing test id(s)); full logs: artifact pytest-logs-windows"
             exit 1
           }
