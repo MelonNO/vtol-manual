@@ -105,10 +105,9 @@ Accepted as MINOR at verification; none affects a safety value or blocks flight.
 | WP16 verify F4, F6, F7 | README wording on "files still open" (delete-sharing readers); wrong attach note with `--attach-only`; no echo when stdout is redirected |
 | WP13 verify 1 | Control-channel flood by a token holder still adds a few late RC packets (below the alarm); a lower `SERVER_MSGS_PER_S` would tighten it |
 | WP13 verify 2, 4, 5 | Same-user process can hold `MAX_PENDING` stalled handshakes; reliance on CPython 3.12 pipe internals (CI pins 3.12; `pyproject.toml` says ≥ 3.12); redundant `_cmd_lock` |
-| WP08a verify m1 | Carrier-only after an app restart: preview says telemetry "never" heard; better "unknown — nothing heard since app start", and refuse while the controller's arm switch is ARMED |
-| WP08a verify m4 | Config key renamed `alarms.jitter_p99_max_ms` → `send_late_max_ms` without migration (an older `config.json` fails validation with a clear message) |
 | WP08a verify m5 | `VTOLGCS_TEST_INSTANCE_NAME` (tests only) lets two senders run — never set it operationally |
 | WP11 verify | Tools: CLEAR PARAM FILE does not propagate through import (no tombstone; C1.5); AUTO VTOL take-off counted as "transition" in the `.bin` phases; `MSG_WARN` matches inside words and shows "Failsafe Cleared" as FAILSAFE; inline styles |
 | WP03 verify r2 | `gcs/tools/gen_test_vectors.py`: one redundant assignment in the `rc_cases` loop |
 | WP04 verify | `watch-push.ps1` misses folder renames; `optimize-images.py` docstring says "size limits" (it checks pixels); `git-setup.ps1` appends CRLF lines |
 | WP14 verify r3 | Some Tools handlers render twice (their own call, then the central refresh) — no visible effect |
+| WP10 verify r2 O1 | `pytest` run raised an uncaught `TypeError` warning (not a failure) from `gcs/vtolgcs/control.py:537` (WP13 code); investigate and handle the exception |

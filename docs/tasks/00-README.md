@@ -65,11 +65,11 @@ The PM updates this table.
 | WP16 | done | APPROVED (round 1) | yes |
 | WP14 | done (2 reworks) | APPROVED (round 3) | yes |
 | WP09 | done | APPROVED (round 1) | yes |
-| WP10 | done | (pending — PM) | (pending) |
+| WP10 | done (1 rework) | APPROVED (round 2) | yes |
 | WP11 | done (1 rework) | APPROVED (round 2) | yes |
 | WP12 | done (hotfix) | APPROVED (round 1) | yes |
 
-**Final state (WP10, 2026-10-17):** every work package is implemented; WP10 is the last one and awaits verification
-and merge. After that merge the programme is complete. What remains is outside software or undecided, and is tracked
+**Final state (2026-10-17):** every work package is implemented, independently verified and merged; WP10 was the last
+one. The programme is complete. What remains is outside software or undecided, and is tracked
 in `docs/relay/OPEN-ITEMS.md` (hardware, firmware, measurements, owner decisions, photos, deferred features, known
 minor follow-ups) and `docs/relay/FIRMWARE-REQUESTS.md`. Changes per release: `CHANGELOG.md` (2.0.0).
