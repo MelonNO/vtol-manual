@@ -12,11 +12,14 @@ import time
 import uuid
 from pathlib import Path
 
+import pytest
+
 import bridge_sim as BS
 from vtolgcs import timing_win
-from vtolgcs.__main__ import (TEST_INSTANCE_ENV, Console, build_parser, initial_start, make_sim_controller,
-                              sim_usage_error, status_line)
+from vtolgcs.__main__ import (TEST_INSTANCE_ENV, Console, build_parser, console_input, initial_start, is_console,
+                              make_sim_controller, sim_usage_error, status_line)
 from vtolgcs.config import Config
+from vtolgcs.control import ControlClient, ControlError
 from vtolgcs.protocol import BridgeState
 
 GCS_DIR = Path(__file__).resolve().parents[1]
@@ -250,3 +253,91 @@ def test_status_line_formats_unknowns() -> None:
     line = status_line(s)
     assert "FPV STOPPED" in line and "UNREACHABLE" in line and "cam ON/--" in line and "ctl LOST" in line
     assert "alarms rc_stream_stopped" in line
+
+
+# --------------------------------------------------------------------------- WP15: console keys
+
+def test_no_keys_and_console_detection(tmp_path: Path) -> None:
+    assert console_input(_args("--no-keys")) == (False, False)
+    with open(os.devnull) as nul:                                 # isatty() is True for NUL on Windows
+        assert is_console(nul) is False
+    with open(tmp_path / "f.txt", "w") as f:
+        assert is_console(f) is False
+    assert is_console(None) is False
+
+
+def _wait_for(cond, timeout: float = 15.0):
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        try:
+            v = cond()
+        except ControlError:
+            v = None
+        if v:
+            return v
+        time.sleep(0.05)
+    raise AssertionError("timed out")
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows console input")
+def test_real_console_single_keys_change_nothing_typed_words_work(tmp_path: Path) -> None:
+    """R2/R3 on a real (windowless) console: keys typed into the sender's own console input buffer."""
+    from _console import ctrl_c, type_keys
+    sim = BS.BridgeSim(BS.SimConfig(port=0, bridge=BS.BridgeConfig(boot_s=0.05, seed=1),
+                                    client=BS.ClientConfig(gps_fix_delay_s=0.0, seed=1), seed=1)).start()
+    env = dict(os.environ, PYTHONPATH=str(GCS_DIR), PYTHONIOENCODING="utf-8")
+    env[TEST_INSTANCE_ENV] = f"vtol-gcs-test-{uuid.uuid4().hex}"
+    proc = subprocess.Popen([sys.executable, "-m", "vtolgcs", "--headless", "--sim", "--bridge",
+                             f"127.0.0.1:{sim.address[1]}", "--no-api", "--mavlink-port", "0",
+                             "--config", str(tmp_path / "cfg.json"), "--log-dir", str(tmp_path)],
+                            env=env, cwd=GCS_DIR, creationflags=subprocess.CREATE_NO_WINDOW)
+    client = None
+    try:
+        client = _wait_for(lambda: ControlClient.from_file(tmp_path / "control.json", timeout=2.0)
+                           if (tmp_path / "control.json").exists() else None)
+
+        def status() -> dict:
+            return client.request("status")["result"]
+
+        def rx() -> int:
+            with sim.lock:
+                return sim.core.rx_ok
+        _wait_for(lambda: status()["bridge"]["state"] == "RUN")
+        for key in ("q", "i", "a", "k", "d", "f", "r", "c", "R", "Ctrl+C"):
+            n = rx()
+            if key == "Ctrl+C":
+                ctrl_c(proc.pid)
+            else:
+                type_keys(proc.pid, key)                          # one stray keystroke
+            time.sleep(0.8)
+            s = status()
+            assert proc.poll() is None, key
+            assert s["app"]["mode"] == "fpv" and s["app"]["streaming"] and s["bridge"]["state"] == "RUN", (key, s["app"])
+            assert s["controller"]["connected"] and s["controller"]["arm_switch_safe"], key
+            assert s["bridge"]["camera"]["requested"] is False, key
+            assert rx() - n > 100, key                              # still ~250 Hz
+            type_keys(proc.pid, "\r")                              # Enter: cancels the prompt
+            time.sleep(0.3)
+        # the typed words still work
+        type_keys(proc.pid, "kCAMERA\r")
+        _wait_for(lambda: status()["bridge"]["camera"]["requested"] is True)
+        type_keys(proc.pid, "iSTOP\r")
+        _wait_for(lambda: status()["app"]["mode"] == "idle")
+        type_keys(proc.pid, "fSTART\r")
+        _wait_for(lambda: status()["app"]["streaming"])
+        type_keys(proc.pid, "aARM\r")
+        _wait_for(lambda: status()["controller"]["arm_switch_safe"] is False)
+        type_keys(proc.pid, "qSTOP\r")
+        assert proc.wait(15) == 0
+    finally:
+        if client is not None:
+            client.close()
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        sim.stop()
+    recs = [json.loads(line) for line in next(tmp_path.glob("session-*.jsonl")).read_text(encoding="utf-8").splitlines()]
+    assert [r["mode"] for r in recs if r["type"] == "mode"] == ["fpv", "idle", "fpv"]
+    # k + CAMERA by the operator; the second FPV start switches it off again (camera rule 7)
+    assert [(r["requested"], r["reason"]) for r in recs if r["type"] == "camera_reason"][0] == (True, "operator")
+    assert [r["requested"] for r in recs if r["type"] == "camera"] == [True, False]

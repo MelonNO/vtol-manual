@@ -1,8 +1,10 @@
 """The windowed UI (tkinter, standard library) - brief R1, running in its own process (R0).
 
 ``python -m vtolgcs [--sim] [--config F]`` starts this UI.  It attaches to a running RC sender (the
-control file next to the config) or starts one in its own console window
-(``python -m vtolgcs --headless ...``).  The UI only *asks*: every start, stop, camera and ELRS
+control file next to the config) or starts one **without a console window**
+(``python -m vtolgcs --headless --no-keys ...``, WP15 R1: it never takes the focus and reads no keys; its
+output goes to ``sender-*.log`` in the log folder, and its last lines are shown under Events when it
+exits).  The UI only *asks*: every start, stop, camera and ELRS
 request goes through the control channel, and the RC sender applies all of its interlocks.  Typed
 confirmations (RESUME, THROTTLE, NOCLIENT, LANDED, STOP) are collected here and forwarded verbatim.
 
@@ -38,7 +40,7 @@ from ..video import (GST_INSTALL_HELP, FanoutProcess, GstLocator, choose_standar
 from . import view
 from .hotkey import GlobalHotkey
 from .link import (RuntimeLink, child_env, fanout_command, frozen, package_root, passthrough_args, sender_command,
-                   spawn_sender)
+                   sender_output_path, spawn_sender, tail_lines)
 from .mapping import Calibration, apply_assignment, detect_moved, save_channel_map, update_config
 from .profiles import ClientChoice, ProfileError, load_profiles
 
@@ -104,6 +106,8 @@ class App:
         self.control_file = Path(args.control_file) if args.control_file else default_control_file(args.config)
         self.cfg = config_mod.load_config(self.config_path)
         self.passthrough = passthrough_args(argv)
+        self.log_dir = Path(args.log_dir) if getattr(args, "log_dir", None) else config_mod.log_dir(self.cfg)
+        self.sender_output: Path | None = None             # output file of the sender this UI started
         self.q: queue.Queue = queue.Queue()
         self.status: dict | None = None
         self.link_state, self.link_detail = "connecting", ""
@@ -186,6 +190,7 @@ class App:
                     payload()
         except queue.Empty:
             pass
+        self._watch_spawned()
         self._render()
         self.root.after(POLL_MS, self._poll)
 
@@ -256,6 +261,7 @@ class App:
         self.lbl_sender.pack(side="left", padx=6)
         ttk.Button(proc, text="Stop sender", command=self.stop_sender).pack(side="right", padx=4, pady=4)
         ttk.Button(proc, text="Start sender", command=self.start_sender).pack(side="right", padx=4, pady=4)
+        ttk.Button(proc, text="Sender output", command=self.open_sender_output).pack(side="right", padx=4, pady=4)
         ttk.Button(proc, text="Open log folder", command=self.open_logs).pack(side="right", padx=4, pady=4)
         grid = ttk.LabelFrame(f, text="Status")
         grid.pack(fill="x", padx=8, pady=6)
@@ -888,10 +894,41 @@ class App:
         if self.link.up:
             messagebox.showinfo("RC sender", "The RC sender is already running.")
             return
-        self.spawned = spawn_sender(sender_command(self.passthrough))
+        self.start_sender_process()
+
+    def start_sender_process(self) -> None:
+        """Start the RC sender process: no console window, no keys; its output goes to a file (WP15 R1)."""
+        self.sender_output = sender_output_path(self.log_dir)
+        self.spawned = spawn_sender(sender_command(self.passthrough), self.sender_output)
+        self.note(f"RC sender started (pid {self.spawned.pid}, no console window); output: {self.sender_output}")
+
+    def _watch_spawned(self) -> None:
+        """When the sender this UI started exits, show its exit code and last output lines under Events
+        (it has no console window to show them)."""
+        proc = self.spawned
+        if proc is None or proc.poll() is None:
+            return
+        self.spawned = None
+        self.note(f"RC sender process exited (code {proc.returncode}); last output:")
+        for line in tail_lines(self.sender_output):
+            self.note("  " + line[:200])
+
+    def note(self, text: str) -> None:
+        self.txt_events.insert("end", time.strftime("%H:%M:%S ") + text + "\n")
+        self.txt_events.see("end")
+
+    def open_sender_output(self) -> None:
+        path = self.sender_output
+        if path is None or not path.exists():
+            messagebox.showinfo("Sender output", "No output file: this UI did not start the RC sender "
+                                f"(sender-*.log files are in {self.log_dir}).")
+        elif hasattr(os, "startfile"):
+            os.startfile(path)                                    # noqa: S606 - opens the text file
+        else:
+            messagebox.showinfo("Sender output", str(path))
 
     def open_logs(self) -> None:
-        path = config_mod.log_dir(self.cfg)
+        path = self.log_dir
         path.mkdir(parents=True, exist_ok=True)
         if hasattr(os, "startfile"):
             os.startfile(path)                                    # noqa: S606 - opens Explorer on the folder
@@ -981,6 +1018,10 @@ class App:
             _sound("crit")
 
     def close(self) -> None:
+        if self.link.up and not messagebox.askokcancel(
+                "Close", "The RC sender keeps running in the background (it has no window) and keeps streaming "
+                         "if it is. Start the UI again to control it, or use *Stop sender* first. Close the UI?"):
+            return
         if self.fanout is not None and self.fanout.running:
             if messagebox.askyesno("Close", "Stop the video fan-out too? (No = it keeps forwarding video.)"):
                 self.fanout.stop()
@@ -1117,7 +1158,7 @@ def main(args: Any, argv: list[str]) -> int:
         print(f"CONFIG ERROR: {exc}", file=sys.stderr)
         return 2
     if not args.attach_only and not _sender_reachable(control_file):
-        app.spawned = spawn_sender(sender_command(app.passthrough))       # its own console window
+        app.start_sender_process()                                       # no console window (WP15 R1)
     if getattr(args, "run_seconds", None):
         _smoke(app, args.run_seconds, getattr(args, "ui_smoke_out", None))
     root.mainloop()

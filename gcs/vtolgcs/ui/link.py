@@ -46,10 +46,12 @@ def frozen() -> bool:
 
 
 def sender_command(passthrough: list[str]) -> list[str]:
-    """Command line of the RC sender process (``--headless``)."""
+    """Command line of the RC sender process the UI starts (``--headless --no-keys``: it reads no keys
+    and no typed input, WP15 R1; the UI asks for the typed words)."""
+    args = ["--headless", "--no-keys", *(a for a in passthrough if a != "--no-keys")]
     if frozen():
-        return [str(Path(sys.executable).with_name("vtol-gcs-sender.exe")), "--headless", *passthrough]
-    return [sys.executable, "-m", "vtolgcs", "--headless", *passthrough]
+        return [str(Path(sys.executable).with_name("vtol-gcs-sender.exe")), *args]
+    return [sys.executable, "-m", "vtolgcs", *args]
 
 
 def fanout_command(listen: int, ports: list[int], control_file: Path | None) -> list[str]:
@@ -86,14 +88,52 @@ def passthrough_args(argv: list[str]) -> list[str]:
     return out
 
 
-def spawn_sender(cmd: list[str]) -> subprocess.Popen:
-    """Start the RC sender in its **own console window**, independent of the UI process (if the UI
-    dies, the sender keeps streaming; its console also takes typed confirmations)."""
+def sender_output_path(log_dir: Path) -> Path:
+    """File for the output of a sender the UI starts: ``sender-YYYYMMDDTHHMMSSZ.log`` in the log folder."""
+    return Path(log_dir) / time.strftime("sender-%Y%m%dT%H%M%SZ.log", time.gmtime())
+
+
+def spawn_sender(cmd: list[str], output: Path | None = None) -> subprocess.Popen:
+    """Start the RC sender **without a console window** (WP15 R1), independent of the UI process (if the
+    UI dies, the sender keeps streaming).
+
+    It never takes the focus and nothing can type into it: no window (``CREATE_NO_WINDOW``), stdin is
+    ``NUL`` and :func:`sender_command` adds ``--no-keys``.  Its output (status lines, events, errors such as
+    ``CONFIG ERROR``) is appended to ``output`` (:func:`sender_output_path`); without a file it is dropped.
+    """
     flags = 0
     if sys.platform == "win32":
-        flags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP
-    return subprocess.Popen(cmd, creationflags=flags, env=child_env(), close_fds=True,
-                            cwd=str(package_root()) if not frozen() else None)
+        flags = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
+    sink: Any = None
+    if output is not None:
+        try:
+            Path(output).parent.mkdir(parents=True, exist_ok=True)
+            sink = open(output, "ab")
+        except OSError as exc:                    # never keep the sender from starting
+            log.warning("sender output file %s: %s", output, exc)
+    env = child_env()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    try:
+        return subprocess.Popen(cmd, creationflags=flags, env=env, close_fds=True, stdin=subprocess.DEVNULL,
+                                stdout=sink or subprocess.DEVNULL, stderr=subprocess.STDOUT,
+                                cwd=str(package_root()) if not frozen() else None)
+    finally:
+        if sink is not None:
+            sink.close()                          # the child has its own handle
+
+
+def tail_lines(path: Path | None, n: int = 5, max_bytes: int = 4096) -> list[str]:
+    """The last ``n`` non-empty lines of a text file ([] when it cannot be read)."""
+    if path is None:
+        return []
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, os.SEEK_END)
+            f.seek(max(0, f.tell() - max_bytes))
+            text = f.read().decode("utf-8", "replace")
+    except OSError:
+        return []
+    return [line.rstrip() for line in text.splitlines() if line.strip()][-n:]
 
 
 def iter_sse(resp: Any) -> Any:
@@ -284,4 +324,4 @@ def wait_until(cond: Callable[[], bool], timeout: float, step: float = 0.05) -> 
 
 
 __all__ = ["RuntimeLink", "child_env", "fanout_command", "iter_sse", "passthrough_args", "sender_command",
-           "spawn_sender", "wait_until"]
+           "sender_output_path", "spawn_sender", "tail_lines", "wait_until"]
