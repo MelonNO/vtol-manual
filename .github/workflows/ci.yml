@@ -49,12 +49,23 @@ jobs:
           "jsdom@$JSDOM_VERSION" "html-validate@$HTML_VALIDATE_VERSION"
 
       - name: All unit tests with jsdom, including the page smoke tests (test/smoke/)
+        # shell: bash = `bash --noprofile --norc -eo pipefail`; GitHub's default (`bash -e`) has no pipefail, so a
+        # failing `node --test … | tee` would return tee's status 0 (WP10 verification F1). The script also sets
+        # pipefail itself and checks the reported fail count, so it fails under either shell.
+        # Proven by test/ci/workflows.test.js, which runs this script on a tree with a failing test.
+        shell: bash
         env:
           VTOL_JSDOM: ${{ runner.temp }}/ci-tools/node_modules/jsdom
         run: |
-          node --test test/ | tee "$RUNNER_TEMP/node-test.txt"
+          set -o pipefail
+          log="$RUNNER_TEMP/node-test.txt"
+          node --test test/ 2>&1 | tee "$log"
+          # a reported failure fails the step even if an exit status were lost
+          if grep -Eq '^# fail [1-9]|^ℹ fail [1-9]' "$log"; then
+            echo "::error::node --test reported failing tests"; exit 1
+          fi
           # with jsdom installed, no test may be skipped (R10c: the jsdom-gated tests really run in CI)
-          if grep -Eq '^# skipped [1-9]|^ℹ skipped [1-9]' "$RUNNER_TEMP/node-test.txt"; then
+          if grep -Eq '^# skipped [1-9]|^ℹ skipped [1-9]' "$log"; then
             echo "::error::tests were skipped although jsdom is installed"; exit 1
           fi
 
@@ -100,27 +111,55 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: python -m pip install pytest pygame-ce
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: The piped test steps of this workflow fail on a failing test (test/ci/workflows.test.js)
+        # Runs the jsdom step (Git Bash, `bash -e`) and the pytest loop below (PowerShell) verbatim on throw-away
+        # trees with failing and passing tests. Here every check must run: an unavailable tool fails the step.
+        env:
+          VTOL_REQUIRE_WORKFLOW_TEST: '1'
+          VTOL_PYTHON: python
+        run: node --test test/ci/workflows.test.js
       - name: pytest gcs protocol, five consecutive runs (R10b — timing-sensitive tests must not flake)
         # Every run keeps its FULL output (long tracebacks, the slowest tests, and the short summary naming each
         # failing test) in pytest-logs/run-N.txt, uploaded below whatever the result, so a rare failure is never
-        # reduced to a count. All five runs always execute; the step fails if any of them failed.
+        # reduced to a count. All five runs always execute; the step fails if any of them failed (pytest's exit code
+        # OR a "N failed" / "N error" summary line). Annotations: GitHub shows at most 10 per step, so each distinct
+        # failing test id comes first (once, with its runs; at most 9), then one summary line. Only pytest's summary
+        # lines ("FAILED gcs/…::test", "ERROR gcs/…") match, never captured log lines ("ERROR    vtolgcs.…").
+        # Proven by test/ci/workflows.test.js (runs this script on trees with failing / passing tests).
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force pytest-logs | Out-Null
           $failed = @()
+          $tests = [ordered]@{}
           for ($i = 1; $i -le 5; $i++) {
             Write-Host "::group::pytest run $i of 5"
             python -m pytest gcs protocol -p no:cacheprovider -rfE --tb=long --durations=10 2>&1 |
               Tee-Object -FilePath "pytest-logs/run-$i.txt"
             $code = $LASTEXITCODE
             Write-Host "::endgroup::"
-            if ($code -ne 0) {
+            $summary = Select-String -Path "pytest-logs/run-$i.txt" -Pattern '^=+ .*\b\d+ (failed|errors?)\b'
+            if ($code -ne 0 -or $summary) {
               $failed += $i
-              Select-String -Path "pytest-logs/run-$i.txt" -Pattern '^(FAILED|ERROR) ' |
-                ForEach-Object { Write-Host "::error::pytest run $i of 5: $($_.Line)" }
+              foreach ($m in (Select-String -CaseSensitive -Path "pytest-logs/run-$i.txt" -Pattern '^(FAILED|ERROR) ((gcs|protocol)/\S+)')) {
+                $id = $m.Matches[0].Groups[2].Value
+                if (-not $tests.Contains($id)) { $tests[$id] = @() }
+                $tests[$id] = @($tests[$id]) + $i
+              }
             }
           }
-          if ($failed.Count) { Write-Host "::error::pytest failed in run(s) $($failed -join ', ') of 5"; exit 1 }
+          if ($failed.Count) {
+            $n = 0
+            foreach ($id in $tests.Keys) {
+              if ($n -lt 9) { Write-Host "::error::$id failed in run(s) $($tests[$id] -join ', ') of 5" }
+              $n++
+            }
+            if ($n -gt 9) { Write-Host "::warning::$($n - 9) more failing test(s): see the pytest-logs-windows artifact" }
+            Write-Host "::error::pytest failed in run(s) $($failed -join ', ') of 5 ($($tests.Count) distinct failing test id(s)); full logs: artifact pytest-logs-windows"
+            exit 1
+          }
 
       - name: Keep the full pytest logs
         if: always()

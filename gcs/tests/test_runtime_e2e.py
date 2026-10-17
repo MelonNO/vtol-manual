@@ -392,28 +392,37 @@ def test_resume_dialog_paths(harness) -> None:
 
 
 def test_api_status_is_cached_briefly(harness, monkeypatch) -> None:
-    """The cache rule, made deterministic (WP10 R10b). This flaked once under load (WP14 round 3): the runtime's own
-    1 Hz session-log ``status()`` builds a fresh object and replaces the cache, so it can land between two calls.
-    The test therefore counts the builds made by *this* thread instead of relying on object identity alone."""
+    """The cache rule, deterministic (WP10 R10b, rework F3). This flaked once under load (WP14 round 3): the
+    runtime's own 1 Hz session-log ``status()`` (monitor loop) builds a fresh object and replaces the cache, so it
+    could land between two calls of the test. The only other callers in this process are the local API and SSE,
+    which no client uses here. Both reach ``self.status`` through the instance, so an instance attribute redirects
+    them to a plain build that never touches the cache. The test calls the real method directly: from then on
+    nothing but the test reads or writes the cache, and it counts its own builds."""
     import threading
+    from vtolgcs.runtime import Runtime
     h = harness()
+    rt = h.rt
     me, mine = threading.get_ident(), []
-    build = h.rt._build_status
+    build = rt._build_status
 
     def counting(now: float) -> dict:
         status = build(now)
         if threading.get_ident() == me:
             mine.append(status)
         return status
-    monkeypatch.setattr(h.rt, "_build_status", counting)
-    a = h.rt.status()                                            # max_age 0: always a fresh build, cached
+    monkeypatch.setattr(rt, "_build_status", counting)
+    # background callers (monitor / session log, API): fresh build, cache untouched
+    monkeypatch.setattr(rt, "status", lambda max_age_s=0.0: rt._build_status(rt._clock()))
+    status = lambda max_age_s=0.0: Runtime.status(rt, max_age_s)    # noqa: E731 - the real method, for the test
+
+    a = status()                                                 # max_age 0: always a fresh build, cached
     assert mine == [a]
-    h.rt.status(60.0)                                            # within max_age: a cached object (a, or a newer
-    assert len(mine) == 1, "status(max_age) rebuilt although the cache was younger than max_age"  # session-log build)
+    assert status(60.0) is a and len(mine) == 1                  # within max_age: the cached object, no build
     time.sleep(0.02)
-    c = h.rt.status(0.001)                                       # older than max_age: rebuilt by the caller
+    c = status(0.001)                                            # 20 ms old > 1 ms: rebuilt and cached
     assert len(mine) == 2 and c is mine[1] and c is not a
-    assert h.rt.status() is not c and len(mine) == 3             # fresh build by default
+    assert status(60.0) is c and len(mine) == 2
+    assert status() is not c and len(mine) == 3                  # fresh build by default
 
 
 # --------------------------------------------------------------------------- console keys (WP15 R2/R3)

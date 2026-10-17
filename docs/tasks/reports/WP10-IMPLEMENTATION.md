@@ -203,3 +203,66 @@ run takes ~93 s); it finished normally. No process was ended.
 Checks after these changes: `node --test test/` 303 tests (294 pass + 9 skipped without jsdom; 303/303 with jsdom);
 `gen-precache.mjs --check` (57 assets), `diagrams/build.js --check`, `gen-params-reference.mjs --check`,
 `check-links`, `check-images`, `check-colours` all green; `ci.yml` parses.
+
+## Rework round 1
+
+This round answers `S\verify\WP10\VERIFY-round1.md` (REJECTED: F1 MAJOR; F2, F3, F5, F6 MINOR; F4 open risk). Every
+finding is fixed or documented. No CPU-stress or long load test was run in this round.
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 (MAJOR)**: the jsdom step piped `node --test` into `tee` under GitHub's default `bash -e` (no pipefail), so a failing test passed CI | The step now declares `shell: bash` (`bash --noprofile --norc -eo pipefail`), sets `set -o pipefail` itself, and also fails when the log reports `ℹ fail N` / `# fail N`. **Audit of every piped step:** `ci.yml` has two — this bash step and the Windows pytest loop (pwsh: `$LASTEXITCODE` of python after `Tee-Object`, now **also** a `N failed / N errors` summary-line check). The other steps have no pipe; `gcs-build.yml` pipes only `Get-Item \| Format-List` in pwsh (no test output). A new static test fails if any bash step pipes output without pipefail. | `ci.yml` jsdom step and `python-windows` loop; `test/ci/workflows.test.js` |
+| F1 proof | Each piped step run **verbatim** (extracted from the YAML) on a throw-away tree with a deliberately failing test. The old step is from `git show HEAD:.github/workflows/ci.yml`, the new one from the working tree. | Table below |
+| **F2**: the annotation pattern also matched captured-log lines, so the test name could fall outside GitHub's 10-annotation limit | Only pytest's summary lines match now, and case-sensitively: `^(FAILED\|ERROR) ((gcs\|protocol)/\S+)`. Each **distinct failing test id is annotated once** with its runs (at most 9), then one summary line. More than 9 failing tests give a warning that points to the artifact. | Old step: 66 annotations, the first one a captured `ERROR    vtolgcs.sender…` line. New step: 2 annotations (`gcs/tests/test_f.py::test_bad failed in run(s) 1, 2, 3, 4, 5 of 5` + the summary) |
+| **F3**: a race remained in `test_api_status_is_cached_briefly` | Removed. The only background callers of `Runtime.status` (the monitor's 1 Hz session-log write; the API/SSE, which no client uses in the test) reach it through the instance attribute. The test redirects that attribute to a plain build that never touches the cache, and calls the real `Runtime.status` itself. From then on only the test reads or writes the cache, so every assertion is deterministic: build counts, `is a`, `status(60) is c`. | `gcs/tests/test_runtime_e2e.py::test_api_status_is_cached_briefly` (passes ×4) |
+| F4: unidentified full-suite failure | Documented as an open item: **M-15** in `docs/relay/OPEN-ITEMS.md` (17 green runs since; CI keeps full logs and annotates the test id) | `docs/relay/OPEN-ITEMS.md` M-15 |
+| **F5** | "17 work packages (WP01–WP16, WP08 in two parts)" | `CHANGELOG.md:16-17` |
+| **F6** | The Flask-era `relay/__pycache__/`, `relay/*.pyc`, `relay/.env` entries are removed from `.gitignore`, **and** from the list that `scripts/git-setup.ps1` appends, so a re-run does not add them back (minimal, justified edit outside the list) | `.gitignore`, `scripts/git-setup.ps1:43-58` |
+
+### F1/F2 proof: commands and exit codes (this machine: Git Bash, Windows PowerShell 5.1, Node 24.20.0)
+
+**The jsdom step.** The step script was extracted with `awk` from the YAML into `old-step.sh` / `new-step.sh`. The tree
+has `test/index.js` → `require('./a.test.js')`, where `a.test.js` throws. Each script was run with
+`env -u NODE_TEST_CONTEXT RUNNER_TEMP=<tmp> VTOL_JSDOM= <shell> <step>.sh`:
+
+| Step | Shell | Exit | Log |
+|---|---|---|---|
+| old | `bash -e` (GitHub's default) | **0** (the bug) | `ℹ fail 1` |
+| old | `bash --noprofile --norc -eo pipefail` | 1 | `ℹ fail 1` |
+| new | `bash -e` | **1** | `ℹ fail 1` |
+| new | `bash --noprofile --norc -eo pipefail` (what `shell: bash` runs) | **1** | `ℹ fail 1` |
+
+**The Windows pytest loop.** The script was run the way GitHub's pwsh shell runs it: `$ErrorActionPreference = 'stop'`
+first, then the step verbatim, then `if ((Test-Path -LiteralPath variable:\LASTEXITCODE)) { exit $LASTEXITCODE }`.
+The command was `powershell -NoProfile -ExecutionPolicy Bypass -File <step>.ps1` (PowerShell 5.1; there is no pwsh 7
+here). The tree is `gcs/tests/test_f.py` (one passing test; one failing test with 12 `logging.error` lines) plus
+`protocol/`:
+
+| Step | Tree | Exit | Error annotations |
+|---|---|---|---|
+| old | failing | 1 | **66**, the first one `ERROR    vtolgcs.sender:test_f.py:8 noise 0` |
+| new | failing | **1** | **2**: `gcs/tests/test_f.py::test_bad failed in run(s) 1, 2, 3, 4, 5 of 5`, then the summary |
+| new | passing | **0** | 0 |
+
+**Kept as a test.** `test/ci/workflows.test.js` repeats all of this on every `node --test test/`:
+
+- a static pipefail rule over every workflow;
+- the bash step under plain `bash -e` (failing → non-zero, skipped → non-zero, passing → 0);
+- the pwsh step on Windows with a Python that has pytest (`VTOL_PYTHON`).
+
+Where a tool is missing, it reports a diagnostic instead of a skip, so the CI rule "no skipped test with jsdom" stays
+about jsdom. The `python-windows` CI job now runs this file with `VTOL_REQUIRE_WORKFLOW_TEST=1`, so there both step
+checks must really run.
+
+### Tests (rework round 1)
+
+```
+node --test test/                                   → tests 306, pass 297, fail 0, skipped 9 (jsdom-only)
+VTOL_JSDOM=… VTOL_PYTHON=S/venv/… node --test test/ → tests 306, pass 306, fail 0, skipped 0
+gen-precache / diagrams / gen-params-reference --check → up to date (57 assets / 16 SVG / 1663 parameters)
+check-links / check-images / check-colours           → green
+python -m pytest gcs protocol -rfE --tb=long (once)  → 682 passed, 2 skipped (93.6 s)
+ci.yml                                              → parses (PyYAML)
+```
+
+The count went from 303 to 306: the 3 tests of `test/ci/workflows.test.js` were added.

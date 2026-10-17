@@ -49,6 +49,7 @@ implementation and verification report in `docs/tasks/reports/`.
 | M-12 | **On the target laptop:** Mission Planner UDP connection names and the ADS-B display; MP HUD on UDP 5602; GStreamer pipelines and `d3d11h264dec` vs `avdec_h264` latency; RC sender jitter with the UI attached (review the `SEND JITTER HIGH` threshold, WP08a m2); the frozen build (`vtol-gcs.exe` starting the sender without a console) | Each is marked VERIFY in `gcs/README.md` | GCS app README, manual pipelines |
 | M-13 | **Browser access to the local API** from the HTTPS pages (private-network access to `http://127.0.0.1:47800`) in Chrome, Edge and Firefox **with the app running** | Absent-app behaviour is verified; the live case is not (WP02 §5.4) | Tools Link tab, map live layer |
 | M-14 | **On a real ELRS module (after FR-2):** VTX Admin field names, 16-bit parameter byte order, the ModelID start byte (0xEE vs 0xC8) | — | ELRS tab |
+| M-15 | **One unidentified GCS-suite failure (WP10 R10b):** in the implementer's first batch of five full `pytest gcs protocol` runs, one run reported "1 failed, 681 passed"; only the summary line was kept, so the test is unknown. It has not recurred since: 6 further runs by the implementer and 11 by the verifier (3 of them under full CPU load) were all green | CI keeps the full log of every Windows run (artifact `pytest-logs-windows`) and annotates each failing test id, so a recurrence names it. Then fix that test and close this row | GCS app test suite |
 
 ## 3. Owner decisions
 

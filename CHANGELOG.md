@@ -13,8 +13,8 @@ content date and the parameter file). The GCS companion app has its own version 
 The whole suite was rewritten for the **new two-board relay** (the old Nomad 868 → DBR4 → Nomad 2.4 and
 CVBS → HDMI → SIYI chain is removed), for the owner's **failsafe intent** (the carrier fails safe only on SIYI/GCS
 link loss; the 915 MHz Nomad is close-range backup) and for the **carrier parameter file of 2026-10-17** (Rev C).
-Source of every requirement: `docs/SOFTWARE-IMPROVEMENT-PLAN.md` (Rev B + §15 Rev C). Work was done in 16 work
-packages, each independently verified (`docs/tasks/`).
+Source of every requirement: `docs/SOFTWARE-IMPROVEMENT-PLAN.md` (Rev B + §15 Rev C). Work was done in 17 work
+packages (WP01–WP16, WP08 in two parts), each independently verified (`docs/tasks/`).
 
 ### Safety content (crew-facing)
 
