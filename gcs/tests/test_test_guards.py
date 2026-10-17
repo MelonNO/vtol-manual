@@ -721,9 +721,10 @@ def test_the_teardown_recovery_was_verified_for_this_pytest() -> None:
     on a release it was not checked against it takes the hard exit, and this test fails until someone re-checks it
     against the new ``SetupState.teardown_exact`` / ``FixtureDef.finish`` and adds the release to PYTEST_VERIFIED."""
     g = _guards()
-    assert g.teardown_recovery_verified(), (f"pytest {pytest.__version__}: re-verify gcs/conftest.py "
-                                            "_finish_teardown against this release, then add it to "
-                                            f"PYTEST_VERIFIED {g.PYTEST_VERIFIED}")
+    assert g.teardown_recovery_verified(), (f"this venv has pytest {pytest.__version__}, CI uses the pinned "
+                                            f"release {g.PYTEST_VERIFIED}: install that one (pip install -e "
+                                            "gcs[dev]), or upgrade on purpose as in gcs/README.md, "
+                                            "'Upgrading pytest'")
 
 
 def test_the_documented_worst_case_per_hanging_test(monkeypatch) -> None:
@@ -736,3 +737,23 @@ def test_the_documented_worst_case_per_hanging_test(monkeypatch) -> None:
     assert "= **190 s**" in g.__doc__ and "at **200 s**" in g.__doc__
     readme = (GCS_DIR / "README.md").read_text(encoding="utf-8")
     assert "**190 s**" in readme and "**200 s**" in readme
+
+
+def test_the_pytest_pin_and_the_verified_release_agree() -> None:
+    """WP19 round 3: CI installs pytest pinned to the release the teardown recovery was verified for.  Every
+    ``pip install`` of pytest in the workflows and the ``dev`` extra use the same pin, and it matches the newest entry
+    of PYTEST_VERIFIED, so the two can only be raised together (gcs/README.md, "Upgrading pytest")."""
+    g = _guards()
+    major, minor = max(g.PYTEST_VERIFIED)
+    pin = f"pytest>={major}.{minor},<{major}.{minor + 1}"
+    repo = GCS_DIR.parent
+    installs = []
+    for name in ("ci.yml", "gcs-build.yml"):
+        for line in (repo / ".github" / "workflows" / name).read_text(encoding="utf-8").splitlines():
+            if "pip install" in line and "pytest" in line.split("#")[0]:
+                installs.append((name, line.split("#")[0].strip()))
+    assert len(installs) == 3, installs                                  # ci.yml Linux + Windows, gcs-build
+    assert all(f'"{pin}"' in line for _, line in installs), (pin, installs)
+    import tomllib
+    dev = tomllib.loads((GCS_DIR / "pyproject.toml").read_text(encoding="utf-8"))["project"]["optional-dependencies"]
+    assert pin in dev["dev"], dev

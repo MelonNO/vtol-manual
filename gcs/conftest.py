@@ -802,9 +802,11 @@ def _check_threads(item: pytest.Item) -> None:
 #: pytest releases (major, minor) whose internals :func:`_finish_teardown` was checked against (WP19 round 2, verify
 #: F2).  It relies on ``SetupState.teardown_exact`` popping each finaliser from its node's list before calling it (a
 #: list then holds only what has not run) and on ``FixtureDef.finish`` clearing ``cached_result`` (pytest 9.1.1:
-#: ``runner.py`` ``teardown_exact``, ``fixtures.py`` ``finish``).  pytest is not pinned (CI installs the latest), so on
-#: any other release the recovery is not trusted: it takes the hard exit instead, the header says so, and the
-#: self-test ``test_the_teardown_recovery_was_verified_for_this_pytest`` fails until it is re-checked and listed here.
+#: ``runner.py`` ``teardown_exact``, ``fixtures.py`` ``finish``).  CI installs pytest pinned to the newest entry here
+#: (``"pytest>=9.1,<9.2"`` in both workflows and the ``dev`` extra; round 3), and
+#: ``test_the_pytest_pin_and_the_verified_release_agree`` keeps the two in step.  A local venv may have another
+#: release: the recovery is then not trusted (hard exit instead), the header warns, and
+#: ``test_the_teardown_recovery_was_verified_for_this_pytest`` fails.  Upgrading: gcs/README.md, "Upgrading pytest".
 PYTEST_VERIFIED = ((9, 1),)
 
 
