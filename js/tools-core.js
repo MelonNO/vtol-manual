@@ -1,10 +1,10 @@
 // Flight Tools pure logic — global ToolsCore in the browser, module.exports in Node (tests in test/tools/).
 // No DOM access here. Colour choice stays in the page: functions return a level ('ok'|'warn'|'crit', 'go'|'caution'|'nogo').
 (function (root, factory) {
-  const api = factory();
+  const api = factory(root);
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.ToolsCore = api;
-})(typeof self !== 'undefined' ? self : this, function () {
+})(typeof self !== 'undefined' ? self : this, function (root) {
   'use strict';
 
   const pad2 = n => String(n).padStart(2, '0');
@@ -28,22 +28,58 @@
     liion: { full: 4.20, nominal: 3.60, low: 3.20, critical: 2.90, name: 'Li-Ion' },
     life:  { full: 3.65, nominal: 3.30, low: 3.00, critical: 2.70, name: 'LiFe' }
   };
-  const RETURN_MARGIN_V = 0.8;   // BATT_LOW_VOLT = avg landing voltage + this return margin
+  const RETURN_MARGIN_V = 0.8;   // suggested manual RTL trigger = avg landing voltage + this return margin
 
   function chemOf(pack) { return BATT_CHEM[pack && pack.chem] || BATT_CHEM.lipo; }
 
   // Pack thresholds. Carrier operational thresholds (settings) apply only to role 'carrier'.
   // The storage target uses settings.storageVoltPerCell, which is a LiPo figure: null (TBD) for other chemistries.
+  // lowV is the chemistry longevity floor; battLowV is BATT_LOW_VOLT (automatic RTL), armV is BATT_ARM_VOLT (plan §15.3).
+  // Pass ToolsCore.effectiveSettings(...) so that an imported param file takes precedence (contract C1.6).
   function packThresholds(pack, settings) {
     const cells = pack.cells, chem = chemOf(pack), carrier = pack.role === 'carrier';
+    const n = v => (typeof v === 'number' && isFinite(v) ? v : null);
     return {
       cells, chem, carrier,
       fullV: chem.full * cells, lowV: chem.low * cells, critV: chem.critical * cells,
       storageV: pack.chem === 'lipo' ? settings.storageVoltPerCell * cells : null,
-      crtV: carrier ? settings.battCrtVolt : null,
-      rtlV: carrier ? settings.manualRtlVolt : null,
-      hardV: carrier ? settings.hardLimitVolt : null
+      crtV: carrier ? n(settings.battCrtVolt) : null,
+      battLowV: carrier ? n(settings.battLowVolt) : null,
+      armV: carrier ? n(settings.battArmVolt) : null,
+      rtlV: carrier ? n(settings.manualRtlVolt) : null,
+      hardV: carrier ? n(settings.hardLimitVolt) : null
     };
+  }
+
+  // ── Carrier failsafe voltages: settings vs param file vs reference (contract C1.6, plan §15) ──
+  // The reference parameter file (data/params-reference.js, global VtolParamsRef), loaded lazily.
+  function refParams() {
+    if (root && root.VtolParamsRef) return root.VtolParamsRef;
+    if (typeof module === 'object' && module.exports && typeof require === 'function') {
+      try { return require('../data/params-reference.js'); } catch (e) { return null; }
+    }
+    return null;
+  }
+  const FS_VOLT_PARAMS = { battCrtVolt: 'BATT_CRT_VOLT', battLowVolt: 'BATT_LOW_VOLT', battArmVolt: 'BATT_ARM_VOLT' };
+  // settings with BATT_CRT_VOLT / BATT_LOW_VOLT / BATT_ARM_VOLT taken from an imported param file when it has them.
+  // → copy of settings + voltSource { battCrtVolt: 'file'|'settings', … } + voltFile (file name or null).
+  function effectiveSettings(settings, paramFile) {
+    const out = Object.assign({}, settings || {}), src = {};
+    const pf = paramFile && paramFile.params ? paramFile.params : null;
+    Object.keys(FS_VOLT_PARAMS).forEach(k => {
+      const v = pf ? pf[FS_VOLT_PARAMS[k]] : undefined;
+      if (typeof v === 'number' && isFinite(v) && v > 0) { out[k] = v; src[k] = 'file'; } else src[k] = 'settings';
+    });
+    out.voltSource = src;
+    out.voltFile = pf && paramFile.name ? String(paramFile.name) : null;
+    return out;
+  }
+  // Settings that differ from the reference param file → [{ key, param, setting, ref }] (empty when they agree or no ref).
+  function settingsVsReference(settings, ref) {
+    ref = ref || refParams();
+    if (!ref || !ref.params) return [];
+    return Object.keys(FS_VOLT_PARAMS).map(k => ({ key: k, param: FS_VOLT_PARAMS[k], setting: settings ? settings[k] : undefined, ref: ref.params[FS_VOLT_PARAMS[k]] }))
+      .filter(d => typeof d.ref === 'number' && !(typeof d.setting === 'number' && paramEq(d.setting, d.ref)));
   }
 
   // Plausible pack-voltage window for log parsing (sag below the hard floor, slight overcharge above full).
@@ -63,19 +99,24 @@
     };
   }
 
-  // Recommended BATT_LOW_VOLT for a carrier pack: avg landing + return margin, never below the manual RTL
-  // voltage. The margin is measured to BATT_CRT_VOLT (the ArduPilot critical failsafe), not to the chemistry floor.
-  // Returns null for non-carrier packs (no ArduPilot recommendation).
-  function recommendBattLow(entries, pack, settings) {
+  // Suggested MANUAL RTL trigger for a carrier pack (plan §15.4): the pilot's OSD raw-voltage call, never a parameter.
+  // avg landing + return margin, never below the manual RTL setting. BATT_LOW_VOLT (automatic RTL) and BATT_CRT_VOLT
+  // (QLand here) are configured failsafes on the sag-compensated voltage: they are shown, never recommended or changed.
+  // Returns null for non-carrier packs.
+  function suggestManualRtl(entries, pack, settings) {
     if (pack.role !== 'carrier') return null;
     const st = battStats(entries);
     if (!st) return null;
     const raw = st.avgMin + RETURN_MARGIN_V;
     const recV = Math.max(raw, settings.manualRtlVolt);
+    const lowV = typeof settings.battLowVolt === 'number' ? settings.battLowVolt : null;
+    const crtV = typeof settings.battCrtVolt === 'number' ? settings.battCrtVolt : null;
     return {
       recV, perCellV: recV / pack.cells,
-      crtV: settings.battCrtVolt, marginToCrtV: recV - settings.battCrtVolt,
+      lowV, marginToLowV: lowV === null ? null : recV - lowV,
+      crtV, marginToCrtV: crtV === null ? null : recV - crtV,
       rtlFloorV: settings.manualRtlVolt, flooredByRtl: raw < settings.manualRtlVolt,
+      raisesManualRtl: recV > settings.manualRtlVolt + 1e-9,
       chemFloorV: chemOf(pack).critical * pack.cells,
       avgMin: st.avgMin
     };
@@ -518,40 +559,103 @@
       .replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\s+/g, ' ').trim();
   }
 
-  // ══════════════ PARAMETER FILE (plan §10.1 A-3) ══════════════
-  // Expected values = the values the manual and the plan rely on. Sources per row; never edit a value without one.
-  // TODO(content): move EXPECTED_PARAMS into VtolContent (data/content.js) — WP05 left no `expectedParams` slot and
-  // data/content.js was being changed by WP06 in parallel, so the table lives here for now (WP11).
-  const PARAM_SRC_FS = 'plan §13.1 / §6.1.5; data/content.js failsafe params';
-  const PARAM_SRC_MAN = 'manual.html Aircraft tab';
-  const PARAM_SRC_NOTES = 'ai/PROJECT_CONTEXT.txt (project param notes; the manual gives only the switch positions)';
-  const EXPECTED_PARAMS = [
-    { name: 'THR_FAILSAFE', value: 2, meaning: '2 = EnabledNoFailsafe: RC loss ignored, no failsafe action (by design, plan §1.1)', source: PARAM_SRC_FS },
-    { name: 'FS_GCS_ENABL', value: 2, meaning: '2 = Heartbeat and REMRSSI: SIYI / GCS loss → failsafe in all modes', source: PARAM_SRC_FS },
-    { name: 'FS_LONG_TIMEOUT', value: 5, unit: 's', meaning: 'GCS heartbeat loss → failsafe after 5 s', source: PARAM_SRC_FS },
-    { name: 'FS_LONG_ACTN', value: 1, meaning: '1 = ReturnToLaunch', source: PARAM_SRC_FS },
-    { name: 'BATT_CRT_VOLT', value: 22.2, unit: 'V', meaning: 'critical battery failsafe voltage (pack)', source: PARAM_SRC_FS + '; ' + PARAM_SRC_MAN },
-    { name: 'BATT_FS_CRT_ACT', value: 6, meaning: 'documented as Loiter → QLand at the current position (not re-verified, plan §13.1)', source: PARAM_SRC_FS },
-    { name: 'BATT_LOW_VOLT', value: 0, unit: 'V', meaning: '0 = not set: no automatic low-battery warning (manual RTL at 23.0 V)', source: PARAM_SRC_MAN + '; plan §6.1.5' },
-    { name: 'RTL_ALTITUDE', value: 120, unit: 'm', meaning: 'RTL target altitude above home', source: 'plan §13.1; ' + PARAM_SRC_MAN },
-    { name: 'Q_RTL_ALT', value: 70, unit: 'm', meaning: 'VTOL RTL altitude', source: PARAM_SRC_MAN },
-    { name: 'Q_TRANS_FAIL', value: 4, unit: 's', meaning: 'transition timeout (not re-verified, plan §13.1)', source: PARAM_SRC_MAN + '; plan §6.1.5' },
-    { name: 'Q_TRANS_FAIL_ACT', value: 0, meaning: '0 = QLand at the current position (−1 warn only · 1 QRTL) — not QHOVER', source: 'plan §13.1 (ArduPlane quadplane.cpp)' },
-    { name: 'Q_ASSIST_SPEED', value: 9, unit: 'm/s', meaning: 'VTOL assist below this airspeed in FW modes', source: PARAM_SRC_MAN },
-    { name: 'Q_ASSIST_ALT', value: 25, unit: 'm', meaning: 'VTOL assist below this altitude (altitude reference: VERIFY, plan S-04)', source: PARAM_SRC_MAN },
-    { name: 'Q_FRAME_CLASS', value: 7, meaning: '7 = Tri (not re-verified, plan §13.1)', source: PARAM_SRC_MAN },
-    { name: 'Q_TILT_MASK', value: 3, meaning: 'motors 1 and 2 (front pair) tilt', source: PARAM_SRC_MAN },
-    { name: 'AIRSPEED_CRUISE', value: 13, unit: 'm/s', meaning: 'cruise airspeed', source: PARAM_SRC_MAN },
-    { name: 'AIRSPEED_MIN', value: 11, unit: 'm/s', meaning: 'minimum airspeed (also the .bin transition-time target)', source: PARAM_SRC_MAN },
-    { name: 'AIRSPEED_MAX', value: 22, unit: 'm/s', meaning: 'maximum airspeed', source: PARAM_SRC_MAN },
-    { name: 'FENCE_ENABLE', value: 0, meaning: '0 = geofence disabled (intentional for now)', source: 'CLAUDE.md known issues; manual pre-arm table' },
-    { name: 'FLTMODE1', value: 18, meaning: '18 = QHOVER (Nomad switch position 1)', source: PARAM_SRC_NOTES },
-    { name: 'FLTMODE2', value: null, meaning: 'TBD — the project notes give 11 (= RTL in ArduPlane numbering) but call it QLOITER (= 19); confirm from the param file', source: PARAM_SRC_NOTES },
-    { name: 'FLTMODE3', value: 6, meaning: '6 = FBWB', source: PARAM_SRC_NOTES },
-    { name: 'FLTMODE4', value: 6, meaning: '6 = FBWB (Nomad switch position 2)', source: PARAM_SRC_NOTES },
-    { name: 'FLTMODE5', value: 0, meaning: '0 = MANUAL (GCS only, never in flight)', source: PARAM_SRC_NOTES },
-    { name: 'FLTMODE6', value: 10, meaning: '10 = AUTO (Nomad switch position 3)', source: PARAM_SRC_NOTES }
+  // ══════════════ PARAMETER FILE (plan §10.1 A-3, §15; contract C1.6) ══════════════
+  // Parameters the manual, the checklists and the emergency cards rely on. The VALUES come from the reference parameter
+  // file (data/params-reference.js — docs/reference/carrier-params-2026-10-17.param); this table only adds the unit, a
+  // one-line meaning (plan §15.1 / §15.2 / §13.1) and the manual chapter that uses it (tab[/anchor]).
+  // tools:false = shown in the manual's parameter reference only (not part of the Tools safety comparison).
+  // learned:true = the autopilot learns / calibrates it, so it drifts: shown, never judged.
+  const PARAM_NOTES = [
+    // carrier failsafe (plan §15.2) — unchanged values plus Q_OPTIONS / Q_RTL_MODE
+    { name: 'THR_FAILSAFE', meaning: '2 = EnabledNoFailsafe: RC (915 MHz) loss is detected but triggers NO failsafe action — by design', tab: 'flightmodes/rc-failsafe-param' },
+    { name: 'THR_FS_VALUE', meaning: 'throttle channel value below which RC loss is detected', tab: 'flightmodes/rc-failsafe-param' },
+    { name: 'FS_SHORT_ACTN', meaning: '0 = no change in AUTO / GUIDED / LOITER, CIRCLE in manual modes — reachable only through an RC failsafe (disabled by design)', tab: 'flightmodes/rc-failsafe-param' },
+    { name: 'FS_SHORT_TIMEOUT', unit: 's', meaning: 'short failsafe delay', tab: 'flightmodes/rc-failsafe-param' },
+    { name: 'FS_LONG_ACTN', meaning: '1 = RTL — the GCS (SIYI) failsafe action', tab: 'flightmodes/rc-failsafe-param' },
+    { name: 'FS_LONG_TIMEOUT', unit: 's', meaning: 'GCS heartbeat lost this long → failsafe (SIYI loss)', tab: 'flightmodes/siyi-loss' },
+    { name: 'FS_GCS_ENABL', meaning: '2 = heartbeat and REMRSSI: SIYI / GCS loss → failsafe in ALL modes', tab: 'flightmodes/siyi-loss' },
+    { name: 'Q_OPTIONS', meaning: 'bitmask: bit 5 set = VTOL modes use QRTL for a failsafe RTL; bit 19 cleared (transition fail per Q_TRANS_FAIL_ACT)', tab: 'flightmodes/failsafe' },
+    { name: 'Q_RTL_MODE', meaning: '2 = RTL flies home in fixed-wing at RTL_ALTITUDE, loiters down, then an automatic VTOL landing AT HOME', tab: 'flightmodes/siyi-loss' },
+    { name: 'RTL_ALTITUDE', unit: 'm', meaning: 'RTL altitude above home (REL)', tab: 'flightmodes/siyi-loss' },
+    { name: 'Q_RTL_ALT', unit: 'm', meaning: 'QRTL altitude (REL): hover return home at this height', tab: 'aircraft/ac-battery' },
+    { name: 'Q_RTL_ALT_MIN', unit: 'm', meaning: 'minimum QRTL altitude (REL)', tab: 'aircraft/ac-battery', tools: false },
+    // battery (plan §15.1, §15.3)
+    { name: 'BATT_LOW_VOLT', unit: 'V', meaning: 'low battery → automatic RTL after BATT_LOW_TIMER (sag-compensated voltage)', tab: 'aircraft/ac-battery' },
+    { name: 'BATT_FS_LOW_ACT', meaning: '1 = RTL', tab: 'aircraft/ac-battery' },
+    { name: 'BATT_LOW_TIMER', unit: 's', meaning: 'time below BATT_LOW_VOLT before the low-battery RTL', tab: 'aircraft/ac-battery' },
+    { name: 'BATT_CRT_VOLT', unit: 'V', meaning: 'critical battery → BATT_FS_CRT_ACT', tab: 'aircraft/ac-battery' },
+    { name: 'BATT_FS_CRT_ACT', meaning: '6 = Loiter → QLand at the CURRENT position, not home', tab: 'aircraft/ac-battery' },
+    { name: 'BATT_FS_VOLTSRC', meaning: '1 = failsafes use the sag-compensated (resting) voltage; OSD and Mission Planner show raw voltage, lower under load', tab: 'aircraft/ac-battery' },
+    { name: 'BATT_ARM_VOLT', unit: 'V', meaning: 'arming refused below this pack voltage — fit a fully charged pack', tab: 'aircraft/ac-battery' },
+    { name: 'BATT_CAPACITY', unit: 'mAh', meaning: 'carrier pack capacity (6S 7000 mAh)', tab: 'aircraft/ac-battery' },
+    { name: 'Q_M_BAT_VOLT_MAX', unit: 'V', meaning: 'VTOL motor battery-voltage compensation: maximum (full 6S)', tab: 'aircraft/ac-battery' },
+    { name: 'Q_M_BAT_VOLT_MIN', unit: 'V', meaning: 'VTOL motor battery-voltage compensation: minimum', tab: 'aircraft/ac-battery' },
+    // transition (plan §15.1)
+    { name: 'Q_TRANSITION_MS', unit: 'ms', meaning: 'forward transition time', tab: 'aircraft/ac-transition' },
+    { name: 'Q_TRANS_FAIL', unit: 's', meaning: 'transition timeout: the transition is cancelled after this', tab: 'aircraft/ac-transition' },
+    { name: 'Q_TRANS_FAIL_ACT', meaning: '1 = QRTL: hover return home at Q_RTL_ALT, vertical landing at home — never QHOVER (−1 warn only · 0 QLand · 1 QRTL)', tab: 'aircraft/ac-transition' },
+    { name: 'Q_BACKTRANS_MS', unit: 'ms', meaning: 'back-transition time (≈ 8 s × 12 m/s ≈ 100 m flown)', tab: 'aircraft/ac-transition' },
+    { name: 'Q_ASSIST_SPEED', unit: 'm/s', meaning: 'VTOL assist below this airspeed in fixed-wing modes', tab: 'flightmodes' },
+    { name: 'Q_ASSIST_ALT', unit: 'm', meaning: 'VTOL assist below this altitude (altitude reference: VERIFY, plan S-04)', tab: 'flightmodes' },
+    // fixed-wing performance
+    { name: 'AIRSPEED_CRUISE', unit: 'm/s', meaning: 'cruise airspeed (12 m/s = 43.2 km/h)', tab: 'aircraft/ac-performance' },
+    { name: 'AIRSPEED_MIN', unit: 'm/s', meaning: 'minimum airspeed (also the .bin transition-time target and the map sim minimum)', tab: 'aircraft/ac-performance' },
+    { name: 'AIRSPEED_MAX', unit: 'm/s', meaning: 'maximum airspeed', tab: 'aircraft/ac-performance' },
+    { name: 'ARSPD_TYPE', meaning: 'airspeed sensor type', tab: 'prearm' },
+    { name: 'TRIM_THROTTLE', unit: '%', meaning: 'cruise throttle', tab: 'aircraft/ac-performance' },
+    { name: 'TECS_CLMB_MAX', unit: 'm/s', meaning: 'maximum climb rate (also the map mission simulation)', tab: 'aircraft/ac-performance', tools: false },
+    { name: 'TECS_SINK_MAX', unit: 'm/s', meaning: 'maximum sink rate (also the map mission simulation)', tab: 'aircraft/ac-performance', tools: false },
+    // frame and tilt
+    { name: 'Q_FRAME_CLASS', meaning: '7 = Tri (M1, M2, M4)', tab: 'aircraft' },
+    { name: 'Q_FRAME_TYPE', meaning: 'frame type as set (meaning for frame class 7: VERIFY)', tab: 'aircraft', tools: false },
+    { name: 'Q_TILT_MASK', meaning: 'motors 1 and 2 (wing motors) tilt', tab: 'aircraft' },
+    { name: 'Q_TILT_TYPE', meaning: 'tilt-rotor type', tab: 'aircraft', tools: false },
+    { name: 'Q_TILT_MAX', unit: 'deg', meaning: 'tilt held during the forward transition until the transition airspeed', tab: 'aircraft' },
+    { name: 'Q_TILT_RATE_UP', unit: 'deg/s', meaning: 'tilt rate up', tab: 'aircraft' },
+    { name: 'Q_TILT_RATE_DN', unit: 'deg/s', meaning: 'tilt rate down', tab: 'aircraft' },
+    { name: 'Q_M_THST_HOVER', meaning: 'hover thrust (≈ 35 % throttle at 0.35) — learned (Q_M_HOVER_LEARN = 2), it drifts', tab: 'aircraft', learned: true },
+    { name: 'Q_M_HOVER_LEARN', meaning: '2 = learn and save the hover thrust', tab: 'aircraft' },
+    { name: 'Q_LAND_FINAL_SPD', unit: 'm/s', meaning: 'final VTOL landing descent speed', tab: 'procedures', tools: false },
+    // mode switch (FLTMODE_CH): positions 1 / 2 / 3 of the Nomad 3-position switch = FLTMODE1 / FLTMODE4 / FLTMODE6
+    { name: 'FLTMODE1', meaning: '18 = QHOVER (Nomad switch position 1)', tab: 'flightmodes' },
+    { name: 'FLTMODE2', meaning: '11 = RTL — not reachable from the 3-position switch (the old "QLOITER" label was wrong)', tab: 'flightmodes' },
+    { name: 'FLTMODE3', meaning: '6 = FBWB', tab: 'flightmodes' },
+    { name: 'FLTMODE4', meaning: '6 = FBWB (Nomad switch position 2)', tab: 'flightmodes' },
+    { name: 'FLTMODE5', meaning: '0 = MANUAL (GCS only, never in flight)', tab: 'flightmodes' },
+    { name: 'FLTMODE6', meaning: '10 = AUTO (Nomad switch position 3)', tab: 'flightmodes' },
+    // geofence (plan §15.1): none configured
+    { name: 'FENCE_ENABLE', meaning: '0 = no geofence', tab: 'prearm/prearm-fence' },
+    { name: 'FENCE_TYPE', meaning: '0 = no fence types selected', tab: 'prearm/prearm-fence' },
+    { name: 'FENCE_TOTAL', meaning: '0 = no fence polygon', tab: 'prearm/prearm-fence' },
+    { name: 'FENCE_ALT_MAX', unit: 'm', meaning: 'leftover, inactive (no fence). If a fence is ever enabled: below RTL_ALTITUDE — an RTL would breach it', tab: 'prearm/prearm-fence', tools: false },
+    { name: 'FENCE_RADIUS', unit: 'm', meaning: 'leftover, inactive (no fence). If a fence is ever enabled: smaller than the planning distances (up to 1 km)', tab: 'prearm/prearm-fence', tools: false },
+    // compass (plan §15.1, §15.5): external IST8310 only
+    { name: 'COMPASS_DEV_ID', meaning: 'external IST8310 on the GPS mast', tab: 'aircraft/ac-compass' },
+    { name: 'COMPASS_PRIO1_ID', meaning: 'priority 1 = the IST8310', tab: 'aircraft/ac-compass' },
+    { name: 'COMPASS_EXTERNAL', meaning: '2 = forced external (auto-detection cannot flip it back)', tab: 'aircraft/ac-compass' },
+    { name: 'COMPASS_USE', meaning: '1 = the IST8310 is used', tab: 'aircraft/ac-compass' },
+    { name: 'COMPASS_DEV_ID2', meaning: 'internal AK09916 in the flight controller', tab: 'aircraft/ac-compass' },
+    { name: 'COMPASS_USE2', meaning: '0 = internal compass disabled — no backup compass', tab: 'aircraft/ac-compass' },
+    { name: 'COMPASS_CAL_FIT', meaning: 'calibration fitness (default) — never relax it to make a calibration pass', tab: 'aircraft/ac-compass' },
+    { name: 'COMPASS_AUTO_ROT', meaning: '2 = orientation detected during calibration', tab: 'aircraft/ac-compass' },
+    { name: 'COMPASS_OFS_X', meaning: 'calibration offset — record after each calibration (Maintenance)', tab: 'maintenance', tools: false, learned: true },
+    { name: 'COMPASS_OFS_Y', meaning: 'calibration offset — record after each calibration (Maintenance)', tab: 'maintenance', tools: false, learned: true },
+    { name: 'COMPASS_OFS_Z', meaning: 'calibration offset — record after each calibration (Maintenance)', tab: 'maintenance', tools: false, learned: true },
+    { name: 'AHRS_GPS_MINSATS', meaning: 'minimum GPS satellites for the AHRS to use GPS', tab: 'prearm', tools: false }
   ];
+  // Rows {name, value, unit, meaning, source, tab, learned}, value from the reference (null when it has none).
+  // all: include the manual-only rows (tools:false).
+  function expectedParams(ref, all) {
+    ref = ref || refParams();
+    const p = ref && ref.params ? ref.params : {};
+    const src = ref ? 'reference param file ' + ref.savedDate : 'reference param file not loaded';
+    return PARAM_NOTES.filter(n => all || n.tools !== false).map(n => ({
+      name: n.name, value: Object.prototype.hasOwnProperty.call(p, n.name) ? p[n.name] : null, unit: n.unit || '', meaning: n.meaning,
+      source: src, tab: n.tab || '', learned: !!n.learned
+    }));
+  }
+  // The Tools safety comparison table (plan §15.1 parameters, the unchanged failsafe parameters, the mode switch):
+  // ToolsCore.EXPECTED_PARAMS (a getter, so it follows VtolParamsRef even when that script loads later).
 
   const PARAM_NAME_RE = /^[A-Z][A-Z0-9_]{0,15}$/;
   const PARAM_NUM_RE = /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/;
@@ -576,16 +680,17 @@
   // Param values are float32 on the autopilot (22.2 is stored as 22.200000763): compare with a small tolerance.
   function paramEq(a, b) { return Math.abs(a - b) <= 1e-4 * Math.max(1, Math.abs(b)); }
 
-  // Rows: {name, expected, actual, unit, meaning, source, status}; status 'match' | 'differs' | 'missing' |
-  // 'undocumented' (no documented value: shown, never judged). summary counts per status.
+  // Rows: {name, expected, actual, unit, meaning, source, tab, status}; status 'match' | 'differs' | 'missing' |
+  // 'undocumented' (no reference value: shown, never judged) | 'learned' (learned / calibrated value that drifts:
+  // shown, never judged). summary counts per status. expected: default = the reference subset (EXPECTED_PARAMS).
   function compareParams(params, expected) {
     params = params || {};
-    const rows = (expected || EXPECTED_PARAMS).map(e => {
+    const rows = (expected || expectedParams()).map(e => {
       const has = Object.prototype.hasOwnProperty.call(params, e.name), actual = has ? params[e.name] : null;
-      const status = e.value === null || e.value === undefined ? 'undocumented' : !has ? 'missing' : paramEq(actual, e.value) ? 'match' : 'differs';
-      return { name: e.name, expected: e.value === undefined ? null : e.value, actual, unit: e.unit || '', meaning: e.meaning || '', source: e.source || '', status };
+      const status = e.value === null || e.value === undefined ? 'undocumented' : !has ? 'missing' : paramEq(actual, e.value) ? 'match' : e.learned ? 'learned' : 'differs';
+      return { name: e.name, expected: e.value === undefined ? null : e.value, actual, unit: e.unit || '', meaning: e.meaning || '', source: e.source || '', tab: e.tab || '', status };
     });
-    const summary = { match: 0, differs: 0, missing: 0, undocumented: 0 };
+    const summary = { match: 0, differs: 0, missing: 0, undocumented: 0, learned: 0 };
     rows.forEach(r => { summary[r.status]++; });
     return { rows, summary };
   }
@@ -600,11 +705,25 @@
     const d = new Date(pf.importedAt);
     return 'verified against param file ' + pf.name + ' ' + localDateStr(d.getTime()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
   }
-  // Value of a parameter from the imported file, else the documented value. → {value, source: 'file'|'documented'} or null.
-  function paramValue(pf, name) {
+  // Value of a parameter from the imported file, else from the reference param file (contract C1.6).
+  // → {value, source: 'file'|'reference'} or null.
+  function paramValue(pf, name, ref) {
     if (pf && pf.params && Object.prototype.hasOwnProperty.call(pf.params, name) && isFinite(pf.params[name])) return { value: pf.params[name], source: 'file' };
-    const e = EXPECTED_PARAMS.find(x => x.name === name);
-    return e && e.value !== null ? { value: e.value, source: 'documented' } : null;
+    ref = ref || refParams();
+    const v = ref && ref.params ? ref.params[name] : undefined;
+    return typeof v === 'number' && isFinite(v) ? { value: v, source: 'reference' } : null;
+  }
+  // The whole imported file against the whole reference → { differs: [{name, file, ref}], onlyRef: [name], onlyFile: [name] }.
+  function diffParamSets(fileParams, ref) {
+    ref = ref || refParams();
+    const r = ref && ref.params ? ref.params : {}, f = fileParams || {};
+    const out = { differs: [], onlyRef: [], onlyFile: [] };
+    Object.keys(r).forEach(n => {
+      if (!Object.prototype.hasOwnProperty.call(f, n)) out.onlyRef.push(n);
+      else if (!paramEq(f[n], r[n])) out.differs.push({ name: n, file: f[n], ref: r[n] });
+    });
+    Object.keys(f).forEach(n => { if (!Object.prototype.hasOwnProperty.call(r, n)) out.onlyFile.push(n); });
+    return out;
   }
 
   // ══════════════ .BIN FLIGHT ANALYSIS (plan §10.4) ══════════════
@@ -914,7 +1033,8 @@
 
   return {
     localDateStr, fmtHMAtOffset,
-    BATT_CHEM, RETURN_MARGIN_V, chemOf, packThresholds, voltRange, battStats, recommendBattLow,
+    BATT_CHEM, RETURN_MARGIN_V, chemOf, packThresholds, voltRange, battStats, suggestManualRtl,
+    refParams, FS_VOLT_PARAMS, effectiveSettings, settingsVsReference,
     minVoltLevel, sagLevel, healthClass,
     parseTlog, mavFrame,
     GPS_UTC_LEAP_SECONDS, gpsToUnixMs, binRecord, parseBin, binStartUnixMs, binBatterySeries, chartXFractions,
@@ -922,7 +1042,8 @@
     sunTimes,
     clNew, clNormalize, clCheckedCount, clIsExpired, clToggle,
     crItems, crNextOpen, speechText,
-    EXPECTED_PARAMS, parseParamFile, paramEq, compareParams, paramFileRecord, paramFileLabel, paramValue,
+    get EXPECTED_PARAMS() { return expectedParams(); },
+    PARAM_NOTES, expectedParams, parseParamFile, paramEq, compareParams, paramFileRecord, paramFileLabel, paramValue, diffParamSets,
     PLANE_MODES, modeClass, MODE_REASON, msgKinds, binAnalyze, binBattEntry, binSummary,
     parseSessionLog, sessionArmedS, sessionBattEntry, sessionSummary,
     MAINT_TASKS, addMonths, maintLast, maintStatus,

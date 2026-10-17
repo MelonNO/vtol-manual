@@ -113,7 +113,7 @@ D['d06-client-failsafe'] = () => {
     source: 'Sources: plan §6.1.5 client failsafe chain, §9.3 draft D6; relay design "Bandwidth and failsafe", "Boot behaviour", test 6; data/content.js clientFailsafeChain; client profile default (C1.3) and BF dump failsafe_delay.', body: b };
 };
 
-// ── D7 CARRIER FAILSAFE MATRIX + SIYI-LOSS TIMELINE ── plan §4, §6.1.5 (QLand correction, brief R11b), §9.2 row 1.
+// ── D7 CARRIER FAILSAFE MATRIX + SIYI-LOSS TIMELINE ── plan §15.1 / §15.2 (Rev C), §4 design intent, §9.2 row 1.
 D['d07-carrier-failsafe'] = () => {
   const b = [];
   let y = 70;
@@ -126,36 +126,37 @@ D['d07-carrier-failsafe'] = () => {
     b.push(box(18, y, 364, h, { align: 'left', top: 21, lines: items, lh: 19, stroke: o.c, sw: o.primary ? 2.5 : 1 }));
     y += h + 10;
   };
-  card({ primary: true, c: P.red, event: 'SIYI / MP LINK LOST — PRIMARY', detect: ['no GCS heartbeat 5 s', '(FS_LONG_TIMEOUT), all modes', '(FS_GCS_ENABL = 2)'], act: ['RTL (FS_LONG_ACTN = 1)', 'Q-mode RTL: TBD (SITL)'], ac: P.red, pilot: ['monitor; Nomad only', 'if close range'] });
-  card({ c: P.muted, event: '915 MHz BACKUP LOST', detect: ['ELRS RX failsafe'], act: ['NONE — RC ignored', '(THR_FAILSAFE = 2)'], pilot: ['none beyond close range;', 'close-in: take over in MP', '(QLOITER / QLAND)'] });
-  card({ c: P.red, event: 'BATTERY CRITICAL 22.2 V', detect: ['BATT_CRT_VOLT'], act: ['Loiter → QLand at the', 'current position'], pilot: ['clear the area below'] });
-  card({ c: P.amber, event: 'BATTERY LOW', detect: ['BATT_LOW_VOLT = 0 (not set)'], act: ['none'], pilot: ['manual RTL at 23.0 V;', 'RTL active before 22.5 V'] });
-  card({ c: P.amber, event: 'TRANSITION FAIL', detect: ['Q_TRANS_FAIL 4 s'], act: ['QLand at the current', 'position (Q_TRANS_FAIL_ACT', '= 0) — VERIFY firmware'], ac: P.amber, pilot: ['no airspeed in 3 s →', 'QHOVER before 4 s'] });
+  card({ primary: true, c: P.red, event: 'SIYI / MP LINK LOST — PRIMARY', detect: ['no GCS heartbeat 5 s', '(FS_LONG_TIMEOUT), all modes', '(FS_GCS_ENABL = 2)'], act: ['FW modes: RTL (FS_LONG_ACTN)', 'VTOL modes: QRTL (Q_OPTIONS', 'bit 5) — VERIFY in SITL', 'RTL ends: auto VTOL landing', 'at home (Q_RTL_MODE = 2)'], ac: P.red, pilot: ['keep the home LZ clear;', 'Nomad only if close range'] });
+  card({ c: P.muted, event: '915 MHz BACKUP LOST', detect: ['ELRS RX failsafe'], act: ['NONE — RC ignored', '(THR_FAILSAFE = 2); QHOVER', 'holds, drifts with the wind'], pilot: ['none beyond close range;', 'close-in: take over in MP', '(QLOITER / QLAND)'] });
+  card({ c: P.amber, event: 'BATTERY LOW 22.0 V', detect: ['BATT_LOW_VOLT, 10 s below', '(sag-compensated voltage)'], act: ['RTL (BATT_FS_LOW_ACT = 1),', 'auto VTOL landing at home'], ac: P.amber, pilot: ['manual RTL at 23.0 V first;', 'in a manual QHOVER landing:', 'reselect QHOVER'] });
+  card({ c: P.red, event: 'BATTERY CRITICAL 21.0 V', detect: ['BATT_CRT_VOLT'], act: ['Loiter → QLand HERE', '(BATT_FS_CRT_ACT = 6),', 'not home'], ac: P.red, pilot: ['clear the area below'] });
+  card({ c: P.amber, event: 'TRANSITION FAIL', detect: ['Q_TRANS_FAIL 8 s'], act: ['QRTL home (Q_TRANS_FAIL_ACT', '= 1): hover at 50 m REL,', 'vertical landing at home'], ac: P.amber, pilot: ['no airspeed in 3 s → QHOVER', '(faster than the timer);', 'keep WP2 → home clear'] });
   y += 8;
   b.push(t(18, y + 6, 'SIYI-LOSS TIMELINE', { weight: 'bold', fill: P.red }));
   y += 20;
   const tl = [
     ['0 s', 'GCS heartbeat lost (MP closed,', 'laptop asleep, cable, HM30).', 'Client RC + video lost too →', 'client fails safe; camera off.'],
-    ['5 s', 'RTL in any mode', '(FS_LONG_ACTN = 1).'],
-    ['→', 'climb to RTL_ALTITUDE 120 m', 'REL (above home), return.'],
-    ['→', 'back-transition and land per', 'the Q settings — Q-mode RTL', 'behaviour: TBD (param file +', 'SITL test, S-02).']
+    ['5 s', 'any mode: RTL in FW modes,', 'QRTL in VTOL modes', '(FS_LONG_ACTN = 1, Q_OPTIONS).'],
+    ['→', 'RTL: climb to RTL_ALTITUDE', '120 m REL (above home), FW', 'return, loiter down.'],
+    ['→', 'airbrake approach, automatic', 'VTOL landing at home', '(Q_RTL_MODE = 2): keep the', 'home landing zone clear.']
   ];
   tl.forEach((row, i) => {
     const h = row.length * 19 + 6;
     b.push('<circle cx="40" cy="' + (y + 14) + '" r="6" fill="' + (i === 1 ? P.red : P.surf2) + '" stroke="' + P.red + '" stroke-width="2"/>');
     if (i < tl.length - 1) b.push('<line x1="40" y1="' + (y + 20) + '" x2="40" y2="' + (y + h + 8) + '" stroke="' + P.red + '" stroke-width="2"/>');
     b.push(t(56, y + 19, row[0], { weight: 'bold', fill: P.red }));
-    b.push(lines(104, y + 19, row.slice(1).map((s, k) => ({ s, o: { fill: i === 3 && k > 0 ? P.amber : P.text } })), { maxw: 278, lh: 19 }));
+    b.push(lines(104, y + 19, row.slice(1).map((s, k) => ({ s, o: { fill: i === 3 && k > 1 ? P.amber : P.text } })), { maxw: 278, lh: 19 }));
     y += h + 8;
   });
-  b.push(t(18, y + 14, 'Values: param file + default settings.', { fill: P.muted, maxw: 364 }));
-  return { h: y + 30, heading: 'D7 · CARRIER FAILSAFE', sub: 'Fails safe ONLY on SIYI / GCS loss',
+  b.push(t(18, y + 14, 'Values: reference param file 2026-10-17.', { fill: P.muted, maxw: 364 }));
+  return { h: y + 30, heading: 'D7 · CARRIER FAILSAFE', sub: 'Link: SIYI loss only · battery',
     title: 'D7 — Carrier failsafe matrix and SIYI-loss timeline (replaces the old RC failsafe cascade)',
-    desc: 'SIYI / Mission Planner link lost (primary): no GCS heartbeat for FS_LONG_TIMEOUT = 5 s in all modes (FS_GCS_ENABL = 2) → RTL (FS_LONG_ACTN = 1); Q-mode RTL behaviour TBD (SITL); pilot monitors, Nomad only within close range. '
-      + '915 MHz backup lost: ELRS RX failsafe → no action, RC ignored (THR_FAILSAFE = 2); beyond close range no pilot action, close-in take over in Mission Planner (QLOITER / QLAND). Battery critical 22.2 V (BATT_CRT_VOLT) → Loiter then QLand at the current position; clear the area below. '
-      + 'Battery low: BATT_LOW_VOLT = 0, not set, no action; manual RTL at 23.0 V, RTL active before the 22.5 V hard limit. Transition fail: Q_TRANS_FAIL 4 s → Q_TRANS_FAIL_ACT = 0 → QLand at the current position (VERIFY against the firmware); the pilot switches to QHOVER if airspeed has not built within 3 s. '
-      + 'SIYI-loss timeline: 0 s heartbeat lost (client RC and video lost too, client fails safe, camera forced off); 5 s RTL in any mode; climb to RTL_ALTITUDE 120 m REL and return; back-transition and land per the Q settings (Q-mode behaviour TBD).',
-    source: 'Sources: plan §4 (design intent, S-01, S-02, S-03), §6.1.5 failsafe table, §9.2 row 1, §13.1; brief R11b (Q_TRANS_FAIL_ACT 0 = QLand, VERIFY); data/content.js failsafeTable; manual Flight Modes.', body: b };
+    desc: 'SIYI / Mission Planner link lost (primary): no GCS heartbeat for FS_LONG_TIMEOUT = 5 s in all modes (FS_GCS_ENABL = 2) → RTL in fixed-wing modes (FS_LONG_ACTN = 1), QRTL in VTOL modes (Q_OPTIONS bit 5, VERIFY in SITL); RTL ends with an automatic VTOL landing at home (Q_RTL_MODE = 2); pilot keeps the home landing zone clear, Nomad only within close range. '
+      + '915 MHz backup lost: ELRS RX failsafe → no action, RC ignored (THR_FAILSAFE = 2); QHOVER holds with centred sticks and drifts with the wind; beyond close range no pilot action, close-in take over in Mission Planner (QLOITER / QLAND). '
+      + 'Battery low 22.0 V (BATT_LOW_VOLT, 10 s below, sag-compensated voltage) → RTL (BATT_FS_LOW_ACT = 1) with an automatic VTOL landing at home; the pilot starts a manual RTL at 23.0 V first, and reselects QHOVER if it fires during a manual QHOVER landing. Battery critical 21.0 V (BATT_CRT_VOLT) → Loiter then QLand at the current position, not home (BATT_FS_CRT_ACT = 6); clear the area below. '
+      + 'Transition fail: Q_TRANS_FAIL 8 s → Q_TRANS_FAIL_ACT = 1 → QRTL home, hover at 50 m REL and vertical landing at home; the pilot switches to QHOVER if airspeed has not built within 3 s and keeps the route WP2 → home clear. '
+      + 'SIYI-loss timeline: 0 s heartbeat lost (client RC and video lost too, client fails safe, camera forced off); 5 s RTL in fixed-wing modes or QRTL in VTOL modes; RTL climbs to RTL_ALTITUDE 120 m REL, returns in fixed-wing and loiters down; airbrake approach and automatic VTOL landing at home — keep the home landing zone clear.',
+    source: 'Sources: plan §15.1 / §15.2 (Rev C), §4 design intent (S-01, S-02, S-03), §9.2 row 1; reference param file docs/reference/carrier-params-2026-10-17.param; data/content.js failsafeTable; manual Flight Modes.', body: b };
 };
 
 // ── D8 BANDWIDTH BUDGET ── plan §6.1.4 bandwidth budget, §3.4; relay design "Bandwidth and failsafe", test 9.

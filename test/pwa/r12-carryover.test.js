@@ -13,7 +13,8 @@ const S = require('../../js/store.js');
 const st = S.defaults();
 const carrier = st.packs.find(p => p.id === S.IDS.carrierPack), client = st.packs.find(p => p.id === S.IDS.refClientPack) || st.packs.find(p => p.role === 'client');
 const GAUGES = {
-  'carrier, BATT_LOW not set': D.batteryGauge(carrier, st.settings),
+  'carrier, Rev C defaults': D.batteryGauge(carrier, st.settings),
+  'carrier, BATT_LOW not set': D.batteryGauge(carrier, Object.assign({}, st.settings, { battLowVolt: null })),
   'carrier, BATT_LOW 23.6': D.batteryGauge(carrier, st.settings, { battLowVolt: 23.6 }),
   'carrier, thresholds TBD': D.batteryGauge(carrier, Object.assign({}, st.settings, { manualRtlVolt: null, hardLimitVolt: null })),
   'client Li-Ion (storage TBD)': D.batteryGauge(Object.assign({}, client, { chem: 'liion' }), st.settings),
@@ -32,7 +33,7 @@ test('R12(a): battery-gauge notes and labels are wrapped — no text runs past t
       assert.ok(t.y > 0 && t.y <= H, name + ': "' + t.s + '" inside the height');
     }
   }
-  assert.match(GAUGES['carrier, BATT_LOW not set'], /BATT_LOW_VOLT not set \(0\): no warning/);
+  assert.match(GAUGES['carrier, BATT_LOW not set'], /BATT_LOW_VOLT: TBD in the settings/);   // WP14: BATT_LOW_VOLT is now a configured failsafe
   assert.match(GAUGES['client Li-Ion (storage TBD)'], /Storage voltage for Li-Ion: TBD/);
 });
 
@@ -47,8 +48,8 @@ test('R12(b): gauge text ≥ 14 units → ≥ 12.2 px when the 360-unit gauge is
 
 test('R12(c): the gauge zone names are visible text (a legend), not only <title> tooltips', () => {
   const visible = g => texts(g).map(t => t.s).join(' ');
-  const c = visible(GAUGES['carrier, BATT_LOW not set']);
-  for (const z of ['Operate — RTL at 23.0 V', 'RTL now', 'Past the hard limit — RTL must already be active', 'Below BATT_CRT — failsafe QLand']) assert.ok(c.includes(z), z);
+  const c = visible(GAUGES['carrier, Rev C defaults']);
+  for (const z of ['Operate — RTL at 23.0 V', 'RTL now', 'Past the hard limit — RTL must already be active', 'Below BATT_LOW —', 'automatic RTL', 'Below BATT_CRT —', 'automatic QLand here']) assert.ok(c.includes(z), z);
   assert.match(c, /22\.5–23\.0 V RTL now/);
   const o = visible(GAUGES['client Li-Ion (storage TBD)']);
   for (const z of ['Usable range', 'Below the longevity floor']) assert.ok(o.includes(z), z);
@@ -84,8 +85,8 @@ test('R12(e): every VERIFY marker inside the manual\'s inline SVGs uses the ambe
       assert.match(t[1], /fill="var\(--amber\)"/, 'VERIFY text: ' + t[2]);
     }
   }
-  assert.ok(n >= 2, n + ' VERIFY markers found');
-  assert.match(readText('scripts/diagrams/inline.js'), /'\(4 s: automatic QLand — VERIFY\)', \{ fill: 'var\(--amber\)' \}/);
+  assert.ok(n >= 1, n + ' VERIFY markers found');   // WP14: the transition-fail VERIFY is resolved by the reference param file (8 s → QRTL)
+  assert.match(readText('scripts/diagrams/inline.js'), /'\(8 s: automatic QRTL home\)', \{ fill: 'var\(--amber\)' \}/);
 });
 
 test('R12(g): img/README.md gives the measured phone content width (330 px figure image, ≈ 315 px with a scrollbar)', () => {

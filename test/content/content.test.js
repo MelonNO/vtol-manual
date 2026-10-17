@@ -30,7 +30,7 @@ const FORBIDDEN = [
   /CVBS\s*(→|->)\s*HDMI/i, /HDMI\s*(→|->)\s*IP/i, /SIYI HDMI/i, /192\.168\.144\.25\b/, /MPV RTSP/i, /MPV\.net/i, /mpv\.conf/i,
   /re-?bind/i, /sub-drone/i, /relay bind/i, /bind(ing)? every (pre)?flight/i, /required every (pre)?flight/i,
   /120\s?m AGL/i, /all 4 motors/i, /props \(all 4\)/i, /rear pair/i, /cruise motor/i,
-  /FS_SHORT/i, /1\.5\s?s/i, /AUTO only/i, /do not touch TX/i, /T2 Ranger/i, /2\.4\s?GHz relay/i, /868\s?(→|->)\s?2\.4/i
+  /FS_SHORT/i, /1\.5\s?s/i, /AUTO only/i,   // FS_SHORT*: allowed only in the owner's failsafe copy block (see the scan) /do not touch TX/i, /T2 Ranger/i, /2\.4\s?GHz relay/i, /868\s?(→|->)\s?2\.4/i
 ];
 
 test('C5 shape: all top-level parts exist', () => {
@@ -68,7 +68,7 @@ test('emergencies: immediate ≤ 6 short phrases, clean-up present; the §6.1.8 
     assert.ok(Array.isArray(e.cleanup) && e.cleanup.length >= 1, e.id + ' cleanup');
   }
   const titles = C.emergencies.map(e => e.title).join(' | ');
-  for (const re of [/SIYI \/ GCS Link Loss/, /Client RC Loss/, /Video Loss/, /Relay PCB Fault/, /GCS App \/ Controller Failure/, /Carrier Camera Loss/, /Transition Failure/, /Battery Critical/]) assert.match(titles, re);
+  for (const re of [/SIYI \/ GCS Link Loss/, /Client RC Loss/, /Video Loss/, /Relay PCB Fault/, /GCS App \/ Controller Failure/, /Carrier Camera Loss/, /Transition Failure/, /Battery Low \/ Critical/]) assert.match(titles, re);
   const v = C.emergencies.find(e => e.id === 'emerg-video');
   assert.match(v.cleanup.join(' '), /\(a\) Analog RF/);
   assert.match(v.cleanup.join(' '), /\(b\) Digital chain/);
@@ -82,7 +82,8 @@ test('failsafe intent: SIYI card = RTL after 5 s in all modes, first and primary
   assert.match(txt, /5 s/);
   assert.match(txt, /RTL/);
   assert.match(txt, /any mode|every mode|all modes/i);
-  assert.match(siyi.immediate.join(' '), /5 s → \[\[RTL\]\] AUTOMATIC — ANY MODE/);
+  assert.match(siyi.immediate.join(' '), /5 s → AUTO \[\[RTL\]\] \/ \[\[QRTL\]\] — ANY MODE/);   // WP14: QRTL in VTOL modes (plan §15.2)
+  assert.match(siyi.immediate.join(' '), /HOME LZ CLEAR — AUTO VTOL LANDING/);
   assert.match(siyi.immediate.join(' '), /CLIENT FAILSAFE/);
   assert.match(siyi.cleanup.join(' '), /forced OFF/, 'camera forced off on GCS loss');
   assert.match(siyi.cleanup.join(' '), /laptop asleep|sleep/i, 'S-02a causes');
@@ -96,7 +97,8 @@ test('failsafe intent: 915 loss is a note, not an emergency; close-in case kept'
   assert.equal(note.kind, 'note');
   assert.match(note.text, /expected, no action/);
   assert.match(note.closeIn.steps.join(' '), /TAKE OVER IN MP/);
-  assert.match(note.closeIn.note, /\[\[TBD — S-01a/);
+  assert.match(note.closeIn.note, /drifts with the wind/);   // WP14: plan §15.2 behaviour, test still to confirm it
+  assert.match(note.closeIn.note, /\[\[VERIFY — S-01a/);
 });
 
 test('WP05 rework F1: app/controller card — airborne client only via RESUME (arm switch ARMED), never DISARMED / normal start', () => {
@@ -125,16 +127,20 @@ test('WP05 rework F1: app/controller card — airborne client only via RESUME (a
   }
 });
 
-test('WP05 rework F8: transition failure — automatic action is QLand (Q_TRANS_FAIL_ACT = 0), with a visible verify marker', () => {
+// WP14 (plan §15.1 / §15.2): supersedes WP05 F8 — the reference param file has Q_TRANS_FAIL = 8, Q_TRANS_FAIL_ACT = 1 (QRTL).
+test('Rev C: transition timeout 8 s → QRTL home (Q_TRANS_FAIL_ACT = 1), never QHOVER / QLand; WP2 → home kept clear', () => {
   const row = C.failsafeTable.rows.find(r => r.id === 'fs-trans');
-  assert.match(row.action, /`Q_TRANS_FAIL_ACT` = 0 → \*\*\[\[QLAND\]\] at current position\*\*/);
-  assert.match(row.action, /\[\[VERIFY — /);
-  assert.doesNotMatch(row.action, /QHOVER/);
+  assert.match(row.detection, /`Q_TRANS_FAIL` 8 s/);
+  assert.match(row.action, /`Q_TRANS_FAIL_ACT` = 1 → transition cancelled → \*\*\[\[QRTL\]\] home\*\*/);
+  assert.match(row.action, /never QHOVER/);
+  assert.match(row.pilot, /QHOVER\]\] at 2–3 s/);
+  assert.match(row.pilot, /WP2 → home clear/);
   const card = C.emergencies.find(e => e.id === 'emerg-trans');
-  assert.match(card.summary, /QLAND at the current position/);
-  assert.match(card.summary, /\[\[VERIFY — /);
-  assert.match(card.immediate.join(' '), /AUTO \[\[QLAND\]\] HERE/);
-  assert.doesNotMatch(JSON.stringify(C), /Q_TRANS_FAIL_ACT[^"]{0,20}(→|->)\s*\[\[QHOVER\]\]/);
+  assert.match(card.summary, /\*\*8 s\*\*/); assert.match(card.summary, /QRTL home/); assert.match(card.summary, /never falls back to QHOVER/);
+  assert.match(card.immediate.join(' '), /NO ACTION BY 8 s → AUTO \[\[QRTL\]\] HOME/);
+  assert.match(card.immediate[0], /\[\[QHOVER\]\] — switch now/);
+  assert.doesNotMatch(JSON.stringify(C), /Q_TRANS_FAIL_ACT[^"]{0,20}(→|->)\s*\[\[(QHOVER|QLAND)\]\]/);
+  assert.doesNotMatch(JSON.stringify(C), /Q_TRANS_FAIL_ACT = 0|Q_TRANS_FAIL \(?4 s/);
 });
 
 test('WP05 rework F2/F3/F7: video decision time, relay PCB → SIYI card, S-02b', () => {
@@ -159,14 +165,36 @@ test('failsafe table (§6.1.5): SIYI → RTL all modes; 915 → none (THR_FAILSA
   assert.match(C.designIntent.text, /only link whose loss triggers a carrier failsafe/);
 });
 
-test('corrected failsafe parameter block in pre-flight D', () => {
+// WP14 R12: exactly the owner's list (VTOL Manual Changes Needed to Match Carrier Params, 2026-10-17), with its comments.
+const OWNER_FAILSAFE_BLOCK = [
+  'THR_FAILSAFE = 2      (RC loss detected, NO failsafe action)',
+  'THR_FS_VALUE = 950',
+  'FS_SHORT_ACTN = 0     (no change in AUTO/GUIDED; CIRCLE in manual modes)',
+  'FS_SHORT_TIMEOUT = 1.5',
+  'FS_LONG_ACTN = 1      (long failsafe -> RTL)',
+  'FS_LONG_TIMEOUT = 5',
+  'FS_GCS_ENABL = 2      (GCS failsafe in ALL modes)',
+  'BATT_LOW_VOLT = 22.0  (low -> RTL home)',
+  'BATT_FS_LOW_ACT = 1',
+  'BATT_CRT_VOLT = 21.0  (critical -> Loiter to QLand HERE)',
+  'BATT_FS_CRT_ACT = 6',
+  'BATT_FS_VOLTSRC = 1   (sag-compensated voltage)',
+  'BATT_ARM_VOLT = 24.6',
+  'Q_TRANS_FAIL = 8      (transition timeout, s)',
+  'Q_TRANS_FAIL_ACT = 1  (timeout -> QRTL home)'
+].join('\n');
+test('R12: "Failsafe params verified" copy block = exactly the owner\'s list; every value equals the reference param file', () => {
   const d = C.checklists.preflight.sections.find(s => s.id === 'D');
   const fs = d.items.find(i => i.id === 'carrier-failsafe-params');
   assert.ok(fs.copy && fs.w);
-  assert.match(fs.n, /THR_FAILSAFE = 2 {2}\(RC loss ignored — by design/);
-  assert.match(fs.n, /FS_GCS_ENABL = 2 {2}\(SIYI loss → failsafe in all modes\)/);
-  assert.match(fs.n, /FS_LONG_TIMEOUT = 5/);
-  assert.match(fs.n, /FS_LONG_ACTN = 1 {2}\(RTL on SIYI loss\)/);
+  assert.equal(fs.n, OWNER_FAILSAFE_BLOCK);
+  assert.equal(C.failsafeParams, OWNER_FAILSAFE_BLOCK);
+  const ref = require('../../data/params-reference.js').params;
+  for (const line of fs.n.split('\n')) {
+    const m = line.match(/^([A-Z_]+) = ([\d.]+)/);
+    assert.ok(m, line);
+    assert.equal(ref[m[1]], Number(m[2]), m[1] + ' = reference');
+  }
 });
 
 test('copy blocks (R3): viewer + MP HUD in PAL and NTSC on ports 5601 / 5602, camera .26, sdp', () => {
@@ -205,8 +233,15 @@ test('auto rules on items exist in VtolRender.AUTO_RULES', () => {
 
 test('forbidden-terms scan: content strings', () => {
   const hits = [];
-  for (const [p, s] of strings(C, 'VtolContent')) for (const re of FORBIDDEN) if (re.test(s)) hits.push(p + ' ~ ' + re + ' :: ' + s.slice(0, 80));
+  // WP14 R12: the owner's "Failsafe params verified" block lists FS_SHORT_ACTN / FS_SHORT_TIMEOUT = 1.5 verbatim.
+  const di = C.checklists.preflight.sections[3].items.findIndex(i => i.id === 'carrier-failsafe-params');
+  const OWNER_BLOCK = new Set(['VtolContent.failsafeParams', 'VtolContent.checklists.preflight.sections[3].items[' + di + '].n']);
+  for (const [p, s] of strings(C, 'VtolContent')) for (const re of FORBIDDEN) {
+    if (OWNER_BLOCK.has(p) && (String(re) === '/FS_SHORT/i' || String(re) === '/1\\.5\\s?s/i')) continue;
+    if (re.test(s)) hits.push(p + ' ~ ' + re + ' :: ' + s.slice(0, 80));
+  }
   assert.deepEqual(hits, []);
+  assert.ok(di >= 0 && C.checklists.preflight.sections[3].id === 'D', 'the exemption path points at the copy block');
 });
 
 test('forbidden-terms scan: index.html, data/ and js/ (acceptance grep)', () => {

@@ -123,7 +123,14 @@ test('R8: print stylesheet linked (media=print) by the Tools page and the manual
   for (const [f, href] of [['index.html', 'css/print.css'], ['manual.html', 'css/print.css']]) assert.ok(readText(f).includes('<link rel="stylesheet" href="' + href + '" media="print">'), f);
   const p = readText('css/print.css');
   assert.match(p, /--text:var\(--ink\)/);
-  assert.match(p, /:root\.vf-kb #tab-preflight, :root\.vf-kb #tab-turnaround \{ display:block !important; break-after:page; \}/);
+  assert.match(p, /:root\.vf-kb #tab-preflight, :root\.vf-kb #tab-turnaround \{ display:block !important; \}/);
+  // WP14 R12c(b): a page break after the pre-flight list only — never after the last block (no footer-only page)
+  assert.match(p, /:root\.vf-kb #tab-preflight \{ break-after:page; \}/);
+  assert.doesNotMatch(p, /#tab-turnaround[^{]*\{[^}]*break-after:page/);
+  assert.match(p, /:root\.vf-kb footer \{ break-before:avoid;/);
+  // WP14 R12c(c): the comment says the emergency cards print first
+  assert.match(p, /emergency cards from the \(closed\) modal: static, printed FIRST/);
+  assert.doesNotMatch(p, /static, after the checklists/);
   assert.match(p, /:root\.vf-kb #emerg-modal \{ display:block !important; position:static !important;/);
   assert.match(p, /:root\.vf-kb \.emerg-card \{[^}]*break-inside:avoid/);
   assert.match(p, /\.emerg-cleanup \{ display:block !important;/);

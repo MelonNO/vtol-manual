@@ -83,6 +83,7 @@ tr:last-child td{border-bottom:none;}
 .emerg-imm-step{display:flex;gap:12px;align-items:baseline;padding:7px 0;border-bottom:1px solid #2a1010;font-size:15px;font-weight:700;color:var(--text);}
 .emerg-imm-step:last-child{border-bottom:none;}
 .emerg-imm-step .n{color:var(--red);font-family:var(--head);font-size:16px;font-weight:700;min-width:24px;}
+.ref-diff{font-size:12px;color:var(--muted);margin:6px 0 12px;}
 .emerg-cleanup-btn{margin-top:10px;background:none;border:1px solid #332200;color:#facc1555;font-family:var(--head);font-size:10px;font-weight:700;letter-spacing:1.5px;padding:7px 14px;cursor:pointer;text-transform:uppercase;width:100%;text-align:left;transition:all .15s;}
 .emerg-cleanup-btn:hover,.emerg-cleanup-btn.open{border-color:var(--amber);color:var(--amber);}
 .emerg-cleanup{display:none;margin-top:8px;padding:12px 14px;background:#1a1206;border-left:3px solid var(--amber);}
@@ -290,9 +291,10 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
     <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
     <span><strong>CLIENT</strong> <span id="hdr-client"></span></span>
     <span><strong>BATT</strong> 6S 7000mAh</span>
-    <span><strong>CRIT VOLT</strong> 22.2V</span>
+    <span><strong>LOW VOLT</strong> <span id="hdr-low">22.0</span>V auto RTL</span>
+    <span><strong>CRIT VOLT</strong> <span id="hdr-crit">21.0</span>V QLand here</span>
     <span><strong>RTL ALT</strong> 120m REL (above home)</span>
-    <span><strong>CRUISE</strong> 13 m/s</span>
+    <span><strong>CRUISE</strong> 12 m/s</span>
     <span><strong>VERSION</strong> <span class="ver-app"></span> · CONTENT <span class="ver-content"></span></span>
     <span><strong>PARAMS</strong> <span id="hdr-params">not verified against a param file</span></span>
   </div>
@@ -360,6 +362,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 
 <div class="content vf-zoom">
 <div id="store-notice" class="alert alert-warn" role="status" style="display:none"></div>
+<div id="info-notice" class="alert alert-warn" role="status" style="display:none"></div>
 
 <!-- PRE-FLIGHT -->
 <div id="tab-preflight" class="tab-panel">
@@ -463,10 +466,13 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
     <div id="bl-carrier-cfg" style="margin-top:12px">
       <div class="bl-label" style="margin-bottom:6px">CARRIER THRESHOLDS (V, PACK) — APPLY TO PACKS WITH ROLE CARRIER ONLY</div>
       <div class="cfg-row">
-        <div><label class="bl-label" for="set-crt">BATT_CRT_VOLT</label><input type="number" id="set-crt" class="bl-input cfg-input" step="0.1" min="0" data-setting="battCrtVolt" onchange="saveSetting(this)"></div>
-        <div><label class="bl-label" for="set-rtl">MANUAL RTL</label><input type="number" id="set-rtl" class="bl-input cfg-input" step="0.1" min="0" data-setting="manualRtlVolt" onchange="saveSetting(this)"></div>
+        <div><label class="bl-label" for="set-rtl">MANUAL RTL (OSD)</label><input type="number" id="set-rtl" class="bl-input cfg-input" step="0.1" min="0" data-setting="manualRtlVolt" onchange="saveSetting(this)"></div>
         <div><label class="bl-label" for="set-hard">RTL MUST BE ACTIVE</label><input type="number" id="set-hard" class="bl-input cfg-input" step="0.1" min="0" data-setting="hardLimitVolt" onchange="saveSetting(this)"></div>
+        <div><label class="bl-label" for="set-low">BATT_LOW_VOLT (AUTO RTL)</label><input type="number" id="set-low" class="bl-input cfg-input" step="0.1" min="0" data-setting="battLowVolt" onchange="saveSetting(this)"></div>
+        <div><label class="bl-label" for="set-crt">BATT_CRT_VOLT (QLAND)</label><input type="number" id="set-crt" class="bl-input cfg-input" step="0.1" min="0" data-setting="battCrtVolt" onchange="saveSetting(this)"></div>
+        <div><label class="bl-label" for="set-arm">BATT_ARM_VOLT</label><input type="number" id="set-arm" class="bl-input cfg-input" step="0.1" min="0" data-setting="battArmVolt" onchange="saveSetting(this)"></div>
       </div>
+      <div class="ref-diff"></div>
     </div>
   </div>
   <div id="bl-analysis"></div>
@@ -523,7 +529,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 <!-- PARAMS: param-file import and comparison (plan §10.1 A-3) -->
 <div id="tab-params" class="tab-panel">
   <div class="section-title" style="margin-top:0">Parameter File Check</div>
-  <p>Import the carrier's ArduPlane <strong>.param</strong> file (Mission Planner → Config → Full Parameter List → Save to file). It is compared with the values the manual and the checklists rely on. The file stays in this browser's data store and travels with EXPORT / LINK FILE.</p>
+  <p>Import the carrier's ArduPlane <strong>.param</strong> file (Mission Planner → Config → Full Parameter List → Save to file). It is compared with the <strong>reference param file</strong> (<span id="pf-ref-name">TBD</span>): the safety-relevant values the manual and the checklists rely on, and the whole file. The file stays in this browser's data store and travels with EXPORT / LINK FILE.</p>
   <div class="card accent" style="margin-bottom:16px">
     <label class="bl-label" for="pf-file" style="margin-bottom:8px;display:block">SELECT .PARAM FILE</label>
     <input type="file" id="pf-file" accept=".param,.params,.parm,.txt" style="color:var(--text);font-family:var(--mono);font-size:14px;margin-bottom:12px;width:100%">
@@ -610,10 +616,13 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
   <div class="card">
     <div class="bl-label" style="margin-bottom:6px">CARRIER (V, PACK)</div>
     <div class="cfg-row" style="margin-bottom:12px">
-      <div><label class="bl-label" for="pset-crt">BATT_CRT_VOLT (V)</label><input type="number" id="pset-crt" class="bl-input cfg-input" step="0.1" min="0" data-setting="battCrtVolt" onchange="saveSetting(this)"></div>
-      <div><label class="bl-label" for="pset-rtl">MANUAL RTL (V)</label><input type="number" id="pset-rtl" class="bl-input cfg-input" step="0.1" min="0" data-setting="manualRtlVolt" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-rtl">MANUAL RTL, OSD (V)</label><input type="number" id="pset-rtl" class="bl-input cfg-input" step="0.1" min="0" data-setting="manualRtlVolt" onchange="saveSetting(this)"></div>
       <div><label class="bl-label" for="pset-hard">RTL MUST BE ACTIVE (V)</label><input type="number" id="pset-hard" class="bl-input cfg-input" step="0.1" min="0" data-setting="hardLimitVolt" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-low">BATT_LOW_VOLT, AUTO RTL (V)</label><input type="number" id="pset-low" class="bl-input cfg-input" step="0.1" min="0" data-setting="battLowVolt" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-crt">BATT_CRT_VOLT, QLAND (V)</label><input type="number" id="pset-crt" class="bl-input cfg-input" step="0.1" min="0" data-setting="battCrtVolt" onchange="saveSetting(this)"></div>
+      <div><label class="bl-label" for="pset-arm">BATT_ARM_VOLT (V)</label><input type="number" id="pset-arm" class="bl-input cfg-input" step="0.1" min="0" data-setting="battArmVolt" onchange="saveSetting(this)"></div>
     </div>
+    <div class="ref-diff"></div>
     <div class="cfg-row" style="margin-bottom:12px">
       <div><label class="bl-label" for="pset-storage">STORAGE (V/CELL, LIPO)</label><input type="number" id="pset-storage" class="bl-input cfg-input" step="0.01" min="0" data-setting="storageVoltPerCell" onchange="saveSetting(this)"></div>
       <div><label class="bl-label" for="pset-expiry">CHECKLIST EXPIRY (h)</label><input type="number" id="pset-expiry" class="bl-input cfg-input" step="0.5" min="0" data-setting="checklistExpiryHours" onchange="saveSetting(this)"></div>
@@ -649,6 +658,7 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 <script src="js/version.js"></script>
 <script src="js/common.js"></script>
 <script src="js/store.js"></script>
+<script src="data/params-reference.js"></script>
 <script src="js/tools-core.js"></script>
 <script src="js/diagrams.js"></script>
 <script src="js/gcs-client.js"></script>
@@ -704,6 +714,28 @@ const STATUS_STYLE = {
 
 function renderSettingsInputs() {
   document.querySelectorAll('[data-setting]').forEach(el => { el.value = store.settings[el.dataset.setting]; });
+  renderRefDiff();
+}
+// Settings with an imported param file's BATT_CRT_VOLT / BATT_LOW_VOLT / BATT_ARM_VOLT taking precedence (contract C1.6).
+function effSettings() { return ToolsCore.effectiveSettings(store.settings, store.paramFile); }
+// Carrier failsafe voltages: source (param file or settings) and any difference from the reference param file.
+function renderRefDiff() {
+  const f1 = v => typeof v === 'number' && isFinite(v) ? v.toFixed(1) : escH(v);
+  const ref = ToolsCore.refParams(), es = effSettings(), d = ToolsCore.settingsVsReference(store.settings, ref);
+  const fromFile = Object.keys(es.voltSource).filter(k => es.voltSource[k] === 'file').map(k => ToolsCore.FS_VOLT_PARAMS[k]);
+  const html = (ref ? 'Defaults = reference param file ' + escH(ref.savedDate) + ' (BATT_LOW_VOLT ' + f1(ref.params.BATT_LOW_VOLT) + ' · BATT_CRT_VOLT ' + f1(ref.params.BATT_CRT_VOLT) + ' · BATT_ARM_VOLT ' + f1(ref.params.BATT_ARM_VOLT) + ' V).' : '<span class="warn-val">Reference param file not loaded.</span>')
+    + (d.length ? ' <span class="warn-val">⚠ Your settings differ from the reference param file: ' + d.map(x => escH(x.param) + ' ' + f1(x.setting) + ' V (reference ' + f1(x.ref) + ' V)').join(', ') + '.</span>' : '')
+    + (fromFile.length ? ' In use from the imported param file "' + escH(es.voltFile) + '": ' + escH(fromFile.join(', ')) + '.' : '');
+  document.querySelectorAll('.ref-diff').forEach(el => { el.innerHTML = html; });
+  const h = document.getElementById('hdr-low'), c = document.getElementById('hdr-crit');
+  if (h) h.textContent = typeof es.battLowVolt === 'number' ? es.battLowVolt.toFixed(1) : 'TBD';
+  if (c) c.textContent = typeof es.battCrtVolt === 'number' ? es.battCrtVolt.toFixed(1) : 'TBD';
+}
+// One-time information notices from the store (the Rev C threshold migration), shown until dismissed.
+function renderInfoNotices() {
+  const el = document.getElementById('info-notice'), list = VtolStore.notices();
+  el.style.display = list.length ? '' : 'none';
+  el.innerHTML = list.map(n => '<div>' + escH(n.text) + ' <button class="cl-reset" data-id="' + escH(n.id) + '" onclick="VtolStore.dismissNotice(this.dataset.id);renderInfoNotices()">DISMISS</button></div>').join('');
 }
 function saveSetting(el) {
   const v = parseFloat(el.value), key = el.dataset.setting;
@@ -796,9 +828,10 @@ function buildChecklist(name) {
 }
 
 // ── SHARED CONTENT ── header, checklists, post-flight and emergency modal from VtolContent + active profile.
-let contentCtx = VtolRender.ctxFrom(store);
+const effStore = () => Object.assign({}, store, { settings: effSettings() });
+let contentCtx = VtolRender.ctxFrom(effStore());
 function renderContent() {
-  contentCtx = VtolRender.ctxFrom(store);
+  contentCtx = VtolRender.ctxFrom(effStore());
   document.getElementById('hdr-doc-id').textContent = VtolRender.headerDocId(contentCtx);
   document.getElementById('hdr-client').textContent = contentCtx.client ? contentCtx.client.name : 'TBD — no active client';
   Object.keys(CHECKLISTS).forEach(n => { if (clState[n]) buildChecklist(n); });
@@ -1005,7 +1038,7 @@ function resetCL(name, skipConfirm) {
 
 // ── BATTERY TREND CHART ── (generator: VtolDiagrams.battTrend — profile thresholds, y-axis ticks, <title> per point)
 function battTrendSVG(entries, pack) {
-  const svg = VtolDiagrams.battTrend(entries, pack, store.settings);
+  const svg = VtolDiagrams.battTrend(entries, pack, effSettings());
   if (!svg) return '';
   const n = Math.min(entries.length, 12);
   return '<div style="margin-bottom:14px">'
@@ -1021,7 +1054,7 @@ function battTrendSVG(entries, pack) {
 
 // ── BATTERY SPARKLINE ── (generator: VtolDiagrams.battSparkline — start → min → rest, threshold line, <title> with the date)
 function battSparkline(e, pack) {
-  return VtolDiagrams.battSparkline(e, pack, store.settings);
+  return VtolDiagrams.battSparkline(e, pack, effSettings());
 }
 
 // ── BATTERY LOG ── (entries live in store.battLog, each with packId)
@@ -1047,7 +1080,7 @@ function renderPackSelect(pack) {
     `<option value="${escH(p.id)}"${p.id === pack.id ? ' selected' : ''}>${escH(p.label)} — ${escH(p.cells)}S ${escH(ToolsCore.chemOf(p).name)} · ${escH(p.role)}</option>`).join('');
   document.getElementById('bl-pack-info').textContent = pack.cells + 'S ' + ToolsCore.chemOf(pack).name
     + (pack.capacityMah ? ' · ' + pack.capacityMah + ' mAh' : '') + ' · role ' + pack.role
-    + (pack.role === 'carrier' ? ' — carrier thresholds below apply' : ' — per-chemistry analysis only (no BATT_LOW_VOLT recommendation)');
+    + (pack.role === 'carrier' ? ' — carrier thresholds below apply' : ' — per-chemistry analysis only (no manual RTL suggestion)');
 }
 function blEntries(pack) {
   return VtolStore.live(store.battLog).filter(e => e.packId === pack.id)
@@ -1073,7 +1106,7 @@ function deleteBattEntry(id) {
 }
 
 function renderBattLog() {
-  const pack = blActivePack(), settings = store.settings;
+  const pack = blActivePack(), settings = effSettings();
   const th = ToolsCore.packThresholds(pack, settings), chem = th.chem, cells = th.cells;
   renderPackSelect(pack);
   document.getElementById('bl-log-pack').textContent = '— ' + pack.label;
@@ -1092,31 +1125,34 @@ function renderBattLog() {
     }).join('');
 
   const st = ToolsCore.battStats(entries);
-  const rec = ToolsCore.recommendBattLow(entries, pack, settings);
+  const rec = ToolsCore.suggestManualRtl(entries, pack, settings);
   const health = ToolsCore.healthClass(st.avgMin, pack), hColor = LEVEL_CLR[health.level];
   const v1 = v => v.toFixed(1), v2 = v => v.toFixed(2);
   const storageRow = th.storageV != null
     ? `<tr><td>Storage target</td><td style="color:var(--green)">${v1(th.storageV)}V</td><td style="color:var(--green)">${v2(settings.storageVoltPerCell)}V</td><td style="color:var(--muted)">Optimal SoC for storage ≥48h (40–60% capacity)</td></tr>`
     : `<tr><td>Storage target</td><td colspan="3"><span class="warn-val">TBD — storage voltage for ${escH(chem.name)} not set (the storage setting is a LiPo value)</span></td></tr>`;
+  const vs = k => settings.voltSource && settings.voltSource[k] === 'file' ? 'param file' : 'settings';
+  const vv = v => typeof v === 'number' ? v1(v) + 'V' : '<span class="warn-val">TBD</span>', vc = v => typeof v === 'number' ? v2(v / cells) + 'V' : '—';
   const carrierRows = th.carrier
-    ? `<tr><th colspan="4" style="padding-top:10px;color:var(--muted)">CARRIER OPERATIONAL THRESHOLDS (SETTINGS)</th></tr>
-      <tr><td>Manual RTL</td><td style="color:var(--accent)">${v1(th.rtlV)}V</td><td>${v2(th.rtlV/cells)}V</td><td style="color:var(--muted)">RTL now — also the floor for BATT_LOW_VOLT</td></tr>
+    ? `<tr><th colspan="4" style="padding-top:10px;color:var(--muted)">CARRIER THRESHOLDS — PILOT (SETTINGS) AND CONFIGURED FAILSAFES</th></tr>
+      <tr><td>Manual RTL (pilot, OSD raw)</td><td style="color:var(--accent)">${v1(th.rtlV)}V</td><td>${v2(th.rtlV/cells)}V</td><td style="color:var(--muted)">Pilot starts RTL — also the floor of the suggested trigger below</td></tr>
       <tr><td>RTL must be active</td><td style="color:var(--amber)">${v1(th.hardV)}V</td><td>${v2(th.hardV/cells)}V</td><td style="color:var(--muted)">Landing below this is flagged red</td></tr>
-      <tr><td>BATT_CRT_VOLT</td><td style="color:var(--red)">${v1(th.crtV)}V</td><td>${v2(th.crtV/cells)}V</td><td style="color:var(--muted)">ArduPilot critical battery failsafe</td></tr>`
+      <tr><td>BATT_LOW_VOLT</td><td style="color:var(--red)">${vv(th.battLowV)}</td><td>${vc(th.battLowV)}</td><td style="color:var(--muted)">Configured failsafe (${vs('battLowVolt')}): automatic RTL, sag-compensated voltage</td></tr>
+      <tr><td>BATT_CRT_VOLT</td><td style="color:var(--red)">${vv(th.crtV)}</td><td>${vc(th.crtV)}</td><td style="color:var(--muted)">Configured failsafe (${vs('battCrtVolt')}): Loiter → QLand at the current position</td></tr>
+      <tr><td>BATT_ARM_VOLT</td><td>${vv(th.armV)}</td><td>${vc(th.armV)}</td><td style="color:var(--muted)">Arming refused below (${vs('battArmVolt')})</td></tr>`
     : '';
   const recCard = rec ? `
   <div class="card accent" style="margin-bottom:14px">
-    <div class="card-title">Recommended BATT_LOW_VOLT</div>
+    <div class="card-title">Suggested manual RTL trigger (pilot, OSD raw voltage)</div>
     <div style="font-family:var(--head);font-size:44px;font-weight:700;color:var(--accent);letter-spacing:3px;line-height:1;margin-bottom:8px">${v1(rec.recV)}V</div>
-    <div style="font-size:14px;color:var(--text);margin-bottom:6px">${v2(rec.perCellV)}V/cell &nbsp;·&nbsp; <span class="${rec.marginToCrtV <= 0 ? 'crit-val' : 'warn-val'}">${v1(rec.marginToCrtV)}V above BATT_CRT_VOLT (${v1(rec.crtV)}V)</span></div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Avg landing (${v1(rec.avgMin)}V) + ${ToolsCore.RETURN_MARGIN_V}V return margin${rec.flooredByRtl ? `, raised to the manual RTL floor (${v1(rec.rtlFloorV)}V)` : ''}. When BATT_LOW triggers, only ${v1(rec.marginToCrtV)}V remain before BATT_CRT_VOLT (${v1(rec.crtV)}V) triggers the critical battery failsafe — RTL and the VTOL descent must fit inside this margin.</div>
+    <div style="font-size:14px;color:var(--text);margin-bottom:6px">${v2(rec.perCellV)}V/cell${rec.lowV !== null ? ` &nbsp;·&nbsp; <span class="${rec.marginToLowV <= 0 ? 'crit-val' : 'warn-val'}">${v1(rec.marginToLowV)}V above the automatic RTL (BATT_LOW_VOLT ${v1(rec.lowV)}V)</span>` : ''}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Avg landing (${v1(rec.avgMin)}V) + ${ToolsCore.RETURN_MARGIN_V}V return margin${rec.flooredByRtl ? `, never below the manual RTL setting (${v1(rec.rtlFloorV)}V)` : ''}. This is the pilot's call on the OSD (raw voltage, lower under load)${rec.raisesManualRtl ? ` — above the current manual RTL setting (${v1(rec.rtlFloorV)}V): consider raising the manual RTL call` : ` — the current manual RTL setting (${v1(rec.rtlFloorV)}V) already covers it`}.</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Chemistry hard floor (separate, not an operating margin): ${v1(rec.chemFloorV)}V (${chem.critical}V/cell ${escH(chem.name)}).</div>
-    ${rec.marginToCrtV <= 0 ? '<div class="alert alert-danger">The recommendation is not above BATT_CRT_VOLT — check the carrier thresholds.</div>' : ''}
-    <div class="alert alert-info" style="margin:0">Mission Planner: Full Parameter List → <strong>BATT_LOW_VOLT = ${v1(rec.recV)}</strong></div>
+    <div class="alert alert-info" style="margin:0"><strong>Configured failsafes — not changed from this log:</strong> BATT_LOW_VOLT ${rec.lowV !== null ? v1(rec.lowV) + 'V' : 'TBD'} → automatic RTL · BATT_CRT_VOLT ${rec.crtV !== null ? v1(rec.crtV) + 'V' : 'TBD'} → QLand at the current position. They read the sag-compensated voltage (BATT_FS_VOLTSRC = 1), the OSD reads raw voltage.</div>
   </div>` : `
   <div class="card" style="margin-bottom:14px">
-    <div class="card-title">BATT_LOW_VOLT recommendation</div>
-    <div style="font-size:13px;color:var(--muted)">Not shown for this pack (role ${escH(pack.role)}). The ArduPilot recommendation and the carrier thresholds apply only to carrier packs. Per-chemistry analysis above.</div>
+    <div class="card-title">Manual RTL suggestion</div>
+    <div style="font-size:13px;color:var(--muted)">Not shown for this pack (role ${escH(pack.role)}). The manual RTL suggestion and the carrier thresholds apply only to carrier packs. Per-chemistry analysis above.</div>
   </div>`;
 
   analysis.innerHTML = battTrendSVG(entries, pack) + `
@@ -1449,7 +1485,7 @@ function profSetActive(key, val) {
 function profAfterChange() { renderProfiles(); renderContent(); renderBattLog(); }
 
 Object.keys(CHECKLISTS).forEach(n => clLoad(n));
-renderContent(); renderProfiles();
+renderContent(); renderProfiles(); renderRefDiff(); renderInfoNotices();
 GcsClient.start({ onStatus: linkOnStatus, onAlarm: linkOnAlarm, onConnection: linkOnConnection });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') clRecheck(); });
 setInterval(clRecheck, 60000);   // a page left open in the foreground expires too
@@ -1522,6 +1558,7 @@ function showStoreIssues(issues) {
 function vtolRefreshAll() {
   store = VtolStore.load();
   showStoreIssues(VtolStore.takeIssues());
+  renderInfoNotices();
   renderSettingsInputs(); renderWxLimits();
   pfRenderArchive(); wxRenderFavorites(); renderBattLog();
   if (profEdit && !VtolStore.find(store, profEdit.coll, profEdit.id) && !profEdit.isNew) profEdit = null;   // edited record deleted elsewhere
@@ -1974,7 +2011,7 @@ function renderBinResult(d, filename) {
           row(lbl('Max',maxAlt+'m'))+'\n'+(hasPos?'<span style="font-size:11px;color:var(--muted)">EKF, relative to home — not AGL</span>':row(lbl('Base',baseAlt.toFixed(0)+'m MSL'))))
       +sc('AIRSPEED','#60a5fa',
           row(lbl('Max',maxSpd+' m/s'),lbl('Avg',avgSpd+' m/s'))+'\n'
-          +'<span style="font-size:11px">Cruise target: 13 m/s</span>')
+          +'<span style="font-size:11px">Cruise target: '+escH((ToolsCore.paramValue(store.paramFile,'AIRSPEED_CRUISE')||{value:'TBD'}).value)+' m/s (AIRSPEED_CRUISE)</span>')
       +sc('GPS',avgSat>=8?'var(--green)':'var(--amber)',
           row(lbl('Avg sats',avgSat),lbl('Min',minSat))+'\n'+row(lbl('Max HDOP',maxHDop)))
     +'</div>'
@@ -2030,7 +2067,7 @@ function binExtrasHTML() {
   const d = binLast.d, pv = ToolsCore.paramValue(store.paramFile, 'AIRSPEED_MIN');
   const an = ToolsCore.binAnalyze(d, { airspeedMin: pv ? pv.value : null });
   binLast.an = an;
-  const aSrc = pv ? (pv.source === 'file' ? 'from the imported param file' : 'documented value — no param file imported') : 'unknown';
+  const aSrc = pv ? (pv.source === 'file' ? 'from the imported param file' : 'reference param file — no param file imported') : 'unknown';
   const trRows = an.transitions.map(t => {
     let tt;
     if (t.dir !== 'forward') tt = '—';
@@ -2317,7 +2354,7 @@ function mtUndo(taskId) {
 // ══════════════════════════════════════
 // PARAMS — param-file import and check (plan §10.1 A-3); store.paramFile = {name, importedAt, params}
 // ══════════════════════════════════════
-const PF_ST = { match: ['ok', '✓ MATCH'], differs: ['crit', '✖ DIFFERS'], missing: ['warn', '? MISSING'], undocumented: ['', 'i NO DOCUMENTED VALUE'] };
+const PF_ST = { match: ['ok', '✓ MATCH'], differs: ['crit', '✖ DIFFERS'], missing: ['warn', '? MISSING'], undocumented: ['', 'i NO REFERENCE VALUE'], learned: ['', '~ LEARNED (DRIFTS)'] };
 function renderParamHeader() {
   const l = ToolsCore.paramFileLabel(store.paramFile);
   document.getElementById('hdr-params').textContent = l || 'not verified against a param file';
@@ -2345,26 +2382,40 @@ function paramClear() {
 }
 function renderParams() {
   const el = document.getElementById('pf-view'); if (!el) return;
+  const ref = ToolsCore.refParams(), refName = ref ? ref.source.split('/').pop() + ' (saved ' + ref.savedDate + ', ' + Object.keys(ref.params).length + ' parameters)' : null;
+  const rn = document.getElementById('pf-ref-name'); if (rn) { rn.textContent = refName || 'TBD — reference not loaded'; rn.className = refName ? '' : 'warn-val'; }
   const pf = store.paramFile, only = document.getElementById('pf-only-diff').checked;
-  const res = ToolsCore.compareParams(pf ? pf.params : {});
+  // Without an imported file the reference itself is the baseline ("Use reference"): every row shows its reference value.
+  const res = ToolsCore.compareParams(pf ? pf.params : (ref ? ref.params : {}));
   const val = (v, name) => v === null ? '<span class="warn-val">TBD</span>' : escH(v) + (/^FLTMODE\d$/.test(name) && ToolsCore.PLANE_MODES[v] ? ' <span style="color:var(--muted)">(' + escH(ToolsCore.PLANE_MODES[v]) + ')</span>' : '');
   const rows = res.rows.filter(r => !only || r.status === 'differs' || r.status === 'missing').map(r => {
     const [cls, txt] = PF_ST[r.status];
     return '<tr><td><code>' + escH(r.name) + '</code></td><td>' + val(r.expected, r.name) + (r.unit ? ' ' + escH(r.unit) : '') + '</td>'
-      + '<td>' + (pf ? (r.actual === null ? '—' : val(r.actual, r.name)) : '<span style="color:var(--muted)">no file</span>') + '</td>'
+      + '<td>' + (pf ? (r.actual === null ? '—' : val(r.actual, r.name)) : '<span style="color:var(--muted)">reference</span>') + '</td>'
       + '<td>' + (pf ? '<span class="st ' + cls + '">' + txt + '</span>' : '—') + '</td>'
-      + '<td style="font-size:12px">' + (r.meaning.startsWith('TBD') ? '<span class="warn-val">' + escH(r.meaning) + '</span>' : escH(r.meaning).replace(/(VERIFY[^)]*)/, '<span class="warn-val">$1</span>')) + '<div style="color:var(--muted);font-size:11px">source: ' + escH(r.source) + '</div></td></tr>';
+      + '<td style="font-size:12px">' + escH(r.meaning).replace(/(VERIFY[^)]*)/, '<span class="warn-val">$1</span>') + '<div style="color:var(--muted);font-size:11px">source: ' + escH(r.source) + '</div></td></tr>';
   }).join('');
   const s = res.summary;
+  let full = '';
+  if (pf && ref) {
+    const d = ToolsCore.diffParamSets(pf.params, ref), list = (a, f) => a.slice(0, 60).map(f).join(', ') + (a.length > 60 ? ' … and ' + (a.length - 60) + ' more' : '');
+    full = '<div class="card' + (d.differs.length ? ' amber' : '') + '"><div class="card-title">Whole file vs the reference param file</div>'
+      + '<p style="margin:0 0 6px">' + d.differs.length + ' value(s) differ · ' + d.onlyRef.length + ' only in the reference · ' + d.onlyFile.length + ' only in the imported file.</p>'
+      + (d.differs.length ? '<p style="font-size:12px;margin:0 0 6px">Differ (file / reference): ' + list(d.differs, x => '<code>' + escH(x.name) + '</code> ' + escH(x.file) + ' / ' + escH(x.ref)) + '</p>' : '')
+      + (d.onlyRef.length ? '<p style="font-size:12px;margin:0 0 6px">Only in the reference: ' + list(d.onlyRef, n => '<code>' + escH(n) + '</code>') + '</p>' : '')
+      + (d.onlyFile.length ? '<p style="font-size:12px;margin:0">Only in the imported file: ' + list(d.onlyFile, n => '<code>' + escH(n) + '</code>') + '</p>' : '')
+      + '</div>';
+  }
   el.innerHTML = (pf
     ? '<div class="card ' + (s.differs ? 'danger' : s.missing ? 'amber' : 'accent') + '"><div class="card-title">' + escH(ToolsCore.paramFileLabel(pf)) + '</div>'
-      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="st ok">✓ ' + s.match + ' MATCH</span><span class="st crit">✖ ' + s.differs + ' DIFFER</span><span class="st warn">? ' + s.missing + ' MISSING</span><span class="st">i ' + s.undocumented + ' NO DOCUMENTED VALUE</span>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="st ok">✓ ' + s.match + ' MATCH</span><span class="st crit">✖ ' + s.differs + ' DIFFER</span><span class="st warn">? ' + s.missing + ' MISSING</span><span class="st">~ ' + s.learned + ' LEARNED</span><span class="st">i ' + s.undocumented + ' NO REFERENCE VALUE</span>'
       + '<span class="st">' + Object.keys(pf.params).length + ' PARAMS IN FILE</span></div>'
-      + (s.differs ? '<p style="margin:8px 0 0">A parameter that differs from the documented value means the manual or the aircraft is wrong — resolve it before flight.</p>' : '') + '</div>'
-    : '<div class="card amber"><div class="card-title">⚠ No param file imported</div><p style="margin:0">The table shows the documented values only. Import the carrier\'s .param file to check them.</p></div>')
-    + '<div class="tbl-wrap"><table><tr><th>Parameter</th><th>Documented</th><th>In file</th><th>Status</th><th>Meaning · source</th></tr>'
+      + (s.differs ? '<p style="margin:8px 0 0">A safety-relevant parameter that differs from the reference param file means the manual or the aircraft is wrong — resolve it before flight.</p>' : '') + '</div>'
+    : '<div class="card amber"><div class="card-title">No param file imported — using the reference baseline</div><p style="margin:0">The table shows the reference param file (' + escH(refName || 'TBD') + ') as the baseline. Import the carrier\'s current .param file to check the aircraft against it.</p></div>')
+    + '<div class="tbl-wrap"><table><tr><th>Parameter</th><th>Reference</th><th>' + (pf ? 'In file' : 'Baseline') + '</th><th>Status</th><th>Meaning · source</th></tr>'
     + (rows || '<tr><td colspan="5" style="color:var(--green)">✓ No differences or missing parameters.</td></tr>') + '</table></div>'
-    + '<p style="font-size:12px">Expected values come from the plan (§13.1, §6.1.5) and the manual. TODO: the table moves into the shared content file (data/content.js).</p>';
+    + full
+    + '<p style="font-size:12px">Reference values: docs/reference (data/params-reference.js); meanings: plan §15 and the manual (Reference → Parameters lists the whole file). A learned value (hover thrust) drifts and is never judged.</p>';
 }
 
 // ── WIND COMPASS SVG ── (generator: VtolDiagrams.windCompass)

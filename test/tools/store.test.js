@@ -45,7 +45,8 @@ test('defaults() follow contract C1 (shape, default profiles, settings)', () => 
   const s = d.settings;
   assert.equal(s.activeClientId, c.id);
   assert.equal(s.activeCarrierPackId, d.packs[0].id);
-  assert.deepEqual([s.battCrtVolt, s.manualRtlVolt, s.hardLimitVolt, s.storageVoltPerCell, s.checklistExpiryHours], [22.2, 23.0, 22.5, 3.80, 6]);
+  // C1.6 (WP14): Rev C defaults from the reference param file
+  assert.deepEqual([s.battCrtVolt, s.battLowVolt, s.battArmVolt, s.manualRtlVolt, s.hardLimitVolt, s.storageVoltPerCell, s.checklistExpiryHours], [21.0, 22.0, 24.6, 23.0, 22.5, 3.80, 6]);
   assert.deepEqual([s.windGoMaxMs, s.windCautionMaxMs, s.gustMaxMs], [5, 8, 10]);
   assert.equal(VtolStore.KEY, 'vtol_store');
 });

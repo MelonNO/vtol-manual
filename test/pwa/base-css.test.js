@@ -12,12 +12,15 @@ const { PAGES, PROPS, rootTokens, computeKeyStyles, loadJsdom } = require('./com
 const BEFORE = JSON.parse(readText('test/pwa/fixtures/computed-before.json'));
 
 test('R2: css/base.css :root tokens are exactly the values the pages used before (index.html / map / latency clock)', () => {
-  assert.deepEqual(Object.fromEntries(Object.entries(rootTokens([readText('css/base.css')])).filter(([k]) => !/^--(paper|ink|vf-zoom)$/.test(k))), {
+  assert.deepEqual(Object.fromEntries(Object.entries(rootTokens([readText('css/base.css')])).filter(([k]) => !/^--(paper|ink|vf-zoom|shadow)$/.test(k))), {
     '--bg': '#0f0f0f', '--surface': '#1a1a1a', '--surface2': '#222', '--border': '#2a2a2a', '--border2': '#333',
     '--text': '#e8e8e8', '--muted': '#666', '--accent': '#f97316', '--amber': '#facc15', '--red': '#ef4444',
     '--green': '#22c55e', '--dim': '#444', '--mono': "'Share Tech Mono',monospace", '--head': "'Oswald',sans-serif"
   });
   assert.equal(rootTokens([readText('manual.html').match(/<style>([\s\S]*?)<\/style>/)[1]])['--muted'], '#777', 'the manual keeps its own --muted');
+  // WP14 R12c(e): the toast shadow is a token, not a hard-coded colour in a rule
+  assert.equal(rootTokens([readText('css/base.css')])['--shadow'], 'rgba(0,0,0,.6)');
+  assert.doesNotMatch(readText('css/base.css').replace(/\/\*[\s\S]*?\*\//g, '').replace(/:root(\[[^\]]*\])?\s*\{[^}]*\}/g, ''), /rgba?\(/i, 'no rgba() colour outside the :root token blocks');
 });
 
 test('R2: computed styles of the key elements are unchanged (jsdom, every page)', t => {

@@ -5,6 +5,9 @@
  * the carrier fails safe ONLY on SIYI / GCS link loss; the 915 MHz link is close-range backup.
  * Sources: docs/SOFTWARE-IMPROVEMENT-PLAN.md (Rev B) §3.3, §4, §6.1.5, §6.1.6, §6.1.8, §6.1.9, §6.2, §7.4, §14.2,
  * the relay design document, and the previous manual / Tools content. Unknown values are TBD — never invent numbers.
+ * Rev C (plan §15, WP14): carrier parameter values, failsafe behaviour and the battery ladder follow the reference
+ * parameter file docs/reference/carrier-params-2026-10-17.param and the owner's document of 2026-10-17. Plan §15
+ * supersedes older values.
  *
  * TEXT MARKUP (rendered by js/render-content.js, which escapes everything first):
  *   `code`            → <code>
@@ -39,21 +42,30 @@
   };
   const SDP = 'v=0\no=- 0 0 IN IP4 0.0.0.0\ns=Relay client video\nc=IN IP4 0.0.0.0\nt=0 0\nm=video 5601 RTP/AVP 96\na=rtpmap:96 H264/90000';
 
-  // Corrected failsafe parameter block (plan §6.2.1 D, §4 S-01/S-02/S-03, §13.1).
+  // "Failsafe params verified" copy block: exactly the owner's list (VTOL Manual Changes Needed to Match Carrier Params,
+  // 2026-10-17), with its comments; every value matches the reference param file (plan §15.1). Copied verbatim.
   const FAILSAFE_PARAMS = [
-    'THR_FAILSAFE = 2  (RC loss ignored — by design; no RC failsafe action)',
-    'THR_FS_VALUE = 950  (throttle loss threshold)',
-    'FS_GCS_ENABL = 2  (SIYI loss → failsafe in all modes)',
-    'FS_LONG_TIMEOUT = 5  (seconds without GCS heartbeat)',
-    'FS_LONG_ACTN = 1  (RTL on SIYI loss)',
-    'BATT_CRT_VOLT = {settings.battCrtVolt}  (critical voltage, V)',
-    'BATT_FS_CRT_ACT = 6  (critical → Loiter to QLand at current position)'
+    'THR_FAILSAFE = 2      (RC loss detected, NO failsafe action)',
+    'THR_FS_VALUE = 950',
+    'FS_SHORT_ACTN = 0     (no change in AUTO/GUIDED; CIRCLE in manual modes)',
+    'FS_SHORT_TIMEOUT = 1.5',
+    'FS_LONG_ACTN = 1      (long failsafe -> RTL)',
+    'FS_LONG_TIMEOUT = 5',
+    'FS_GCS_ENABL = 2      (GCS failsafe in ALL modes)',
+    'BATT_LOW_VOLT = 22.0  (low -> RTL home)',
+    'BATT_FS_LOW_ACT = 1',
+    'BATT_CRT_VOLT = 21.0  (critical -> Loiter to QLand HERE)',
+    'BATT_FS_CRT_ACT = 6',
+    'BATT_FS_VOLTSRC = 1   (sag-compensated voltage)',
+    'BATT_ARM_VOLT = 24.6',
+    'Q_TRANS_FAIL = 8      (transition timeout, s)',
+    'Q_TRANS_FAIL_ACT = 1  (timeout -> QRTL home)'
   ].join('\n');
 
   const designIntent = {
     id: 'design-intent',
     title: 'Carrier failsafe — design intent',
-    text: 'The SIYI HM30 link (Mission Planner) is the **primary control link** and the **only link whose loss triggers a carrier failsafe**. The 915 MHz Nomad link is **close-range backup control** (takeoff, landing, or HM30 trouble near the field). Losing it beyond close range is **expected and requires no action**; the aircraft ignores RC while it is absent.'
+    text: 'The SIYI HM30 link (Mission Planner) is the **primary control link** and the **only link whose loss triggers a carrier failsafe**: RTL in fixed-wing modes, QRTL in VTOL modes. The 915 MHz Nomad link is **close-range backup control** (takeoff, landing, or HM30 trouble near the field). Losing it beyond close range is **expected and requires no action**; the aircraft ignores RC while it is absent. **Battery failsafes** also act: low {settings.battLowVolt} V → automatic RTL, critical {settings.battCrtVolt} V → QLand at the current position. Every RTL ends with an **automatic VTOL landing at home**: keep the home landing zone clear for the whole flight.'
   };
 
   // ── CHECKLISTS ── (plan §6.2.1; sections A–E, E renamed CLIENT)
@@ -65,7 +77,8 @@
       { id: 'A', name: 'SITE', items: [
         { id: 'site-airspace', s: 'Airspace verified & pilots briefed', t: 'Airspace verified — NOTAMs checked, operation permitted. Remote piloting through the relay is covered by the operator\'s authorisation (Luftfartstilsynet). Both pilots briefed on roles and emergency actions.', w: true },
         { id: 'site-wind', s: 'Wind within limits', t: 'Wind within limits — crosswind acceptable for VTOL.', n: 'Wind vane active — carrier will weathervane into wind automatically.' },
-        { id: 'site-lz', s: 'Landing zone clear', t: 'VTOL landing zone clear — 5m radius, level, no obstacles.' }
+        { id: 'site-lz', s: 'Landing zone clear', t: 'VTOL landing zone clear — 5m radius, level, no obstacles.' },
+        { id: 'site-home-lz-flight', s: 'Home LZ kept clear all flight', t: 'Every RTL — SIYI / GCS loss, low battery ({settings.battLowVolt} V) or the pilot — ends in an **automatic VTOL landing at home** (`Q_RTL_MODE` = 2); a transition timeout QRTLs home. **Keep the home landing zone clear for the whole flight** and brief everyone on site.', w: true }
       ] },
       { id: 'B', name: 'VTOL BUILD', items: [
         { id: 'build-airframe', s: 'Airframe inspected', t: 'Carrier drone (Heewing T2 Cruza) assembled and inspected — no cracks at tilt motor mounts or wing joins.' },
@@ -79,10 +92,10 @@
         { id: 'gs-ethernet', s: 'Ethernet connected', t: 'Ethernet cable connected mast → laptop.' },
         { id: 'gs-hm30-link', s: 'HM30 linked, battery OK', t: 'HM30 ground unit linked — verify LED is blue. Check mast battery voltage.' },
         { id: 'gs-subnet', s: 'Laptop IP verified', t: 'Ethernet network adapter: static IP on the HM30 subnet.', n: 'IP `192.168.144.X`, mask `255.255.255.0`. X must not clash with any relay address (suggested `.100`; final address [[TBD — decide at bring-up]]).' },
-        { id: 'gs-laptop-sleep', s: 'Laptop will not sleep', t: 'Power plan: never sleep or hibernate, on battery or mains. Lid-close action "do nothing". Laptop on mains where possible.', n: 'Mission Planner is the carrier\'s GCS heartbeat: closing MP, sleep/hibernate or a pulled cable = carrier RTL after 5 s (FS_GCS_ENABL = 2).', w: true },
+        { id: 'gs-laptop-sleep', s: 'Laptop will not sleep', t: 'Power plan: never sleep or hibernate, on battery or mains. Lid-close action "do nothing". Laptop on mains where possible.', n: 'Mission Planner is the carrier\'s GCS heartbeat: closing MP, sleep/hibernate or a pulled cable = carrier RTL (QRTL in VTOL modes) after 5 s (FS_GCS_ENABL = 2).', w: true },
         { id: 'gs-app', s: 'GCS app started', t: 'GCS companion app running. Controller detected, arm switch DISARMED, throttle low, bridge reachable (RTT shown).', n: 'The FPV pilot\'s EdgeTX radio is a USB joystick only: internal and external RF modules OFF in the GCS-RELAY model. A radio transmitting ELRS could fight the relay for the client.', w: true, auto: 'app-controller-safe' },
         { id: 'fpv-battery', s: 'Client battery connected', t: 'Client battery connected — voltage nominal (power-up step 3: VTX on, ELRS RX waiting).' },
-        { id: 'build-battery-power', s: 'Battery secured & power on', t: 'Battery secured — strap tight, no movement. Connect the carrier battery at power-up **step 4**: after the HM30 ground unit (1), the laptop and GCS app — arm switch DISARMED, throttle low (2) and the client (3); the 915 Nomad comes last (8). Allow GPS fix time after step 4, before arming.', n: 'Power-up order: Manual → Procedures → Power-Up Sequence. Do not arm yet. The relay bridge stays silent (WAIT_GCS) until the GCS app stream arrives — it never sends default sticks. Final power-up order with the relay: [[TBD — confirm by bench test, plan §6.1.6]].' },
+        { id: 'build-battery-power', s: 'Battery secured & power on', t: 'Battery secured — strap tight, no movement. Connect the carrier battery at power-up **step 4**: after the HM30 ground unit (1), the laptop and GCS app — arm switch DISARMED, throttle low (2) and the client (3); the 915 Nomad comes last (8). Allow GPS fix time after step 4, before arming.', n: 'Arming is refused below {settings.battArmVolt} V (`BATT_ARM_VOLT`): fit a fully charged pack. Power-up order: Manual → Procedures → Power-Up Sequence. Do not arm yet. The relay bridge stays silent (WAIT_GCS) until the GCS app stream arrives — it never sends default sticks. Final power-up order with the relay: [[TBD — confirm by bench test, plan §6.1.6]].' },
         { id: 'gs-mp-connect', s: 'Mission Planner connected', t: 'Mission Planner open — second screen via USB-C. Select **UDPCI** in MP connection dropdown. Never close MP in flight.', n: 'No other program may send MAVLink as GCS sysid 255 on this network (S-02b) — it would mask the SIYI failsafe.', extras: [{ label: 'IP', val: '192.168.144.12' }, { label: 'Port', val: '19856' }] },
         { id: 'gs-client-video', s: 'Client video viewer', t: 'Client video arrives as RTP/UDP. The GCS app receives UDP 5600 and re-sends it to `127.0.0.1:5601` (standalone viewer) and `127.0.0.1:5602` (MP HUD: right-click avionics screen → Video → Set GStreamer Source). Use the variant for the client\'s video standard: **{client.videoStandard}**.', n: 'Mission Planner holds UDP 5600 by default: while the app\'s fan-out runs, MP must NOT listen on 5600 — its HUD source uses port 5602, the standalone viewer 5601. Windows GStreamer pipelines from plan §7.4 — verify on the target laptop. No rtpjitterbuffer. mpv with the .sdp file: verify its latency matches GStreamer before relying on it.', w: true, extras: [
           { label: 'VIEWER · PAL (UDP 5601)', val: PIPE.viewerPal },
@@ -94,10 +107,10 @@
         { id: 'gs-carrier-camera', s: 'Carrier camera (GStreamer in MP)', t: 'Carrier IP camera (`.26`, via relay switch P3). **Switch the camera on in the GCS app first** (default OFF). Verify the picture, then set it to the state planned for the sortie. MP\'s HUD takes one GStreamer source at a time.', n: PIPE.carrierCamera, copy: true, w: true }
       ] },
       { id: 'D', name: 'CARRIER DRONE', items: [
-        { id: 'carrier-compass', s: 'Compass calibrated', t: 'Compass calibration — Mission Planner: Initial Setup → Mandatory Hardware → Compass → Start. Rotate through all axes. Verify no compass errors.' },
+        { id: 'carrier-compass-ext', s: 'Compass calibrated & heading checked', t: 'Mission Planner: Initial Setup → Mandatory Hardware → Compass. **First confirm the external IST8310 is priority 1 and marked External, and the internal compass is unticked.** Outdoors, away from vehicles and metal, aircraft assembled as flown: Onboard Mag Calibration → rotate through all axes until success → Accept → **reboot**. Then the **four-direction check**: nose N, E, S, W — the MP heading must match a phone compass within 5–10°.', n: 'No backup compass (internal AK09916 disabled): no arming without the GPS-mast unit. Never relax COMPASS_CAL_FIT to make a calibration pass. Record COMPASS_OFS_X/Y/Z after each calibration (Manual → Maintenance).', w: true },
         { id: 'carrier-home', s: 'Home position set', t: 'Home position set correctly — verify on map.' },
-        { id: 'carrier-mission', s: 'Mission verified', t: 'Mission loaded and verified on map — all 7 waypoints in correct positions.' },
-        { id: 'carrier-failsafe-params', s: 'Failsafe params verified', t: 'Failsafe parameters verified in Mission Planner Full Parameter List. The carrier fails safe only on SIYI / GCS loss (RTL after 5 s, all modes); 915 MHz loss is ignored by design.', n: FAILSAFE_PARAMS, w: true, copy: true },
+        { id: 'carrier-mission', s: 'Mission verified', t: 'Mission loaded and verified on map — all 7 waypoints in correct positions.', n: 'Keep the route WP2 → home clear: after a transition timeout (8 s) the aircraft QRTLs home along it.' },
+        { id: 'carrier-failsafe-params', s: 'Failsafe params verified', t: 'Failsafe parameters verified in Mission Planner Full Parameter List. Link failsafe only on SIYI / GCS loss (after 5 s, all modes: RTL in fixed-wing modes, QRTL in VTOL modes); 915 MHz loss is ignored by design. Battery failsafes: low → RTL home, critical → QLand here. Transition timeout → QRTL home.', n: FAILSAFE_PARAMS, w: true, copy: true },
         { id: 'carrier-servo-check', s: 'Servo check (MANUAL)', t: 'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and in correct direction. Switch back to QHOVER when done.', n: 'MANUAL must never be used in flight.', w: true },
         { id: 'carrier-mode-cycle', s: 'Mode cycle verified', t: '915 backup radio (Nomad) on, RC visible in MP. Cycle through all 3 mode-switch positions, confirm QHOVER / FBWB / AUTO update in Mission Planner. Verify tilt servos rotate forward on FBWB.' },
         { id: 'carrier-pitot-cal', s: 'Pitot calibrated, cover removed', t: 'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated" in Messages. Confirm airspeed stable and below 2 m/s. Remove pitot cover.', w: true },
@@ -123,7 +136,7 @@
     sections: [
       { id: 'T1', name: 'CARRIER — BATTERY & INSPECTION', items: [
         { id: 'ta-airframe', s: 'Airframe inspected', t: 'Quick visual — check tilt motor mounts, wing joins, props for damage from previous flight.' },
-        { id: 'ta-battery-swap', s: 'Battery swapped', t: 'Remove used battery, record landing voltage, place on charger immediately. Install fresh battery — strap tight, verify above 25.0V.', n: 'Used batteries must be set to charge before the next flight begins.', w: true },
+        { id: 'ta-battery-swap', s: 'Battery swapped', t: 'Remove used battery, record landing voltage, place on charger immediately. Install fresh battery — strap tight, verify above 25.0V.', n: 'Used batteries must be set to charge before the next flight begins. Arming is refused below {settings.battArmVolt} V (`BATT_ARM_VOLT`): a part-used pack cannot be flown.', w: true },
         { id: 'ta-power-gps', s: 'Power on, GPS acquiring', t: 'Power on carrier drone. Allow GPS to re-acquire fix before proceeding.' }
       ] },
       { id: 'T2', name: 'CARRIER — PRE-ARM', items: [
@@ -173,17 +186,18 @@
   const emergencies = [
     { id: 'emerg-gcs', pill: 'SIYI / GCS LOSS', priority: 'primary',
       title: 'SIYI / GCS Link Loss (HM30) — primary carrier failsafe',
-      summary: 'The only link whose loss triggers a carrier failsafe: no GCS heartbeat for 5 s → RTL in any mode (FS_GCS_ENABL = 2, FS_LONG_TIMEOUT = 5, FS_LONG_ACTN = 1). HM30 loss also cuts client RC and video.',
+      summary: 'The only link whose loss triggers a carrier failsafe: no GCS heartbeat for 5 s, in any mode (FS_GCS_ENABL = 2, FS_LONG_TIMEOUT = 5, FS_LONG_ACTN = 1) → **RTL** in fixed-wing modes (incl. AUTO / GUIDED), **QRTL** in VTOL modes (Q_OPTIONS bit 5). RTL ends with an **automatic VTOL landing at home**. HM30 loss also cuts client RC and video.',
       immediate: [
         'CHECK MP · CABLE · HM30 LED',
-        'SIYI LOST 5 s → [[RTL]] AUTOMATIC — ANY MODE',
+        'SIYI LOST 5 s → AUTO [[RTL]] / [[QRTL]] — ANY MODE',
+        'HOME LZ CLEAR — AUTO VTOL LANDING',
         'NOMAD (915) ONLY IF CLOSE',
         'CLIENT FAILSAFE FIRES TOO',
         'CALL "CARRIER RTL" · "FPV FAILSAFE"'
       ],
       cleanup: [
         'Causes (S-02a): Mission Planner closed or crashed, laptop asleep or hibernating, Ethernet cable pulled, or HM30 link lost. Each one stops the GCS heartbeat → RTL after FS_LONG_TIMEOUT (5 s), in every mode.',
-        'RTL climbs to RTL_ALTITUDE (120m REL, above home) and returns. Behaviour when RTL triggers in a Q-mode: [[TBD — check Q_RTL_MODE / Q_OPTIONS in the param file, then SITL test]].',
+        'Fixed-wing modes (incl. AUTO / GUIDED): **RTL** — home in fixed-wing at RTL_ALTITUDE (120m REL, above home), loiter down, airbrake approach and an **automatic VTOL landing at home** (Q_RTL_MODE = 2). VTOL modes: **QRTL** (Q_OPTIONS bit 5) — hover return home at Q_RTL_ALT (50m REL), vertical landing at home. [[VERIFY — confirm the Q-mode case in SITL (S-02)]]. Keep the home landing zone clear.',
         'Check the Ethernet cable mast → laptop and reseat both ends. Check the HM30 ground unit LED (blue = linked). Check mast battery voltage — below 21.0V the HM30 may brown out.',
         'Restart the MP UDPCI connection: IP `192.168.144.12` / Port `19856`. Do not re-enter AUTO until GCS telemetry is stable for 30+ seconds.',
         'The client fails safe at the same time: the bridge goes silent after T_hold and the client\'s own failsafe ({client.failsafe.type}) runs. Do not rely on the carrier camera to watch the client return — it is forced OFF when the GCS stream is lost and stays off until the stream is back and the pilot re-enables it.',
@@ -280,15 +294,15 @@
       ] },
     { id: 'emerg-trans', pill: 'TRANSITION',
       title: 'Transition Failure — VTOL → FW',
-      summary: 'Automatic action: Q_TRANS_FAIL elapsed (4 s) → Q_TRANS_FAIL_ACT = 0 → **QLAND at the current position**, not QHOVER (ArduPlane source: -1 warn only, 0 QLand, 1 QRTL). [[VERIFY — against the firmware version and param file in use]]. Switching to QHOVER first ends the transition attempt.',
+      summary: 'Automatic action: Q_TRANS_FAIL elapsed (**8 s**) → the transition is cancelled → Q_TRANS_FAIL_ACT = 1 → **QRTL home**: hover return at Q_RTL_ALT (50 m REL) and a vertical landing at home. It never falls back to QHOVER. The pilot is faster than the timer: switch to QHOVER at 2–3 s. Keep the route WP2 → home clear — it is the QRTL path.',
       immediate: [
         '[[QHOVER]] — switch now',
         'GAIN ALTITUDE — full VTOL power',
-        'NO ACTION BY 4 s → AUTO [[QLAND]] HERE',
+        'NO ACTION BY 8 s → AUTO [[QRTL]] HOME',
         'HOLD — assess before any retry'
       ],
       cleanup: [
-        'Automatic action: Q_TRANS_FAIL (4 s) → Q_TRANS_FAIL_ACT = 0 → **QLAND at the current position** — not QHOVER ([[VERIFY — against the firmware version in use]]). If it has started, clear the area below; switch to QHOVER only if that spot is unsafe.',
+        'Automatic action: Q_TRANS_FAIL (8 s) → Q_TRANS_FAIL_ACT = 1 (Q_OPTIONS bit 19 cleared) → **QRTL home**: hover at 50 m REL back to home, vertical landing at home — never QHOVER. If QRTL has started: the route WP2 → home and the home landing zone must be clear.',
         'Check pitot — airspeed reading in MP? Zero = blocked/disconnected. Do not retry without airspeed data.',
         'Check tilt servos — switch to FBWB and observe in MP. Do the M1/M2 tilt motors rotate forward?',
         'Check battery — sufficient for another transition attempt plus VTOL recovery?',
@@ -297,21 +311,23 @@
         'Log failure phase: no airspeed build in 3s vs pitch-down upset. Note battery voltage.'
       ] },
     { id: 'emerg-batt', pill: 'BATTERY',
-      title: 'Battery Critical — Carrier',
-      summary: 'No BATT_LOW warning is configured. BATT_CRT_VOLT triggers Loiter → QLand at the current position, not home.',
+      title: 'Battery Low / Critical — Carrier',
+      summary: 'Two battery failsafes (plan §15.3): **BATT_LOW_VOLT {settings.battLowVolt} V → automatic RTL** (10 s below; home at 120 m, automatic VTOL landing at home) and **BATT_CRT_VOLT {settings.battCrtVolt} V → Loiter → QLand at the current position, not home**. The failsafes read the sag-compensated voltage (BATT_FS_VOLTSRC = 1); the OSD shows raw voltage, lower under load — the pilot\'s {settings.manualRtlVolt} V call comes well before the automatic RTL.',
       immediate: [
         '{settings.manualRtlVolt}V → [[RTL]] NOW — CLIENT RETURNS',
         '{settings.hardLimitVolt}V → RTL MUST BE ACTIVE',
-        '{settings.battCrtVolt}V → AUTOLAND HERE — not home',
+        '{settings.battLowVolt}V → AUTO [[RTL]] (FAILSAFE)',
+        '{settings.battCrtVolt}V → AUTO [[QLAND]] HERE — not home',
         'CLEAR AREA BELOW'
       ],
       cleanup: [
         'Call "CARRIER BATT — RTL SOON" so the FPV pilot brings the client back first; the relay ends when the carrier leaves.',
+        'Low-battery RTL during a **manual QHOVER landing**: the aircraft switches to RTL (fixed-wing return, climb to 120 m). **Reselect QHOVER on the Nomad switch** to finish the landing. The failsafe does not interrupt QLAND, QRTL or an AUTO VTOL landing.',
+        'The automatic RTL ends with an automatic VTOL landing at home (Q_RTL_MODE = 2): keep the home landing zone clear. Only the critical stage ({settings.battCrtVolt} V) lands where the aircraft is.',
         'Log landing voltage in battery log — note start voltage and any anomalies.',
         'Inspect battery for puffing, heat, smell. If any present — quarantine, do not charge.',
         'Allow pack to cool 30 minutes minimum before charging.',
-        'Review: was RTL initiated on time? Use battery log analysis to check sag vs previous flights.',
-        'Set BATT_LOW_VOLT using the battery log recommendation in the Tools page.'
+        'Review: was RTL initiated on time? Use the battery-log analysis (suggested manual RTL trigger, OSD raw voltage) to check sag vs previous flights. BATT_LOW_VOLT and BATT_CRT_VOLT are configured failsafes — do not change them from the log.'
       ] }
   ];
 
@@ -323,7 +339,7 @@
       closeIn: {
         title: 'Close-in case: 915 lost during a manual takeoff or landing on the Nomad',
         steps: ['TAKE OVER IN MP — [[QLOITER]] / [[QLAND]]'],
-        note: 'What QHOVER does when the 915 link drops during a manual phase: [[TBD — S-01a bench/SITL test result]].'
+        note: 'No failsafe action: in QHOVER the aircraft holds with centred sticks and **drifts with the wind** (plan §15.2) — take over in Mission Planner. [[VERIFY — S-01a bench/SITL test]].'
       } }
   ];
 
@@ -332,11 +348,11 @@
     id: 'failsafe-table',
     columns: ['Event', 'Detection', 'Carrier action', 'Pilot action'],
     rows: [
-      { id: 'fs-siyi', primary: true, event: '**SIYI / Mission Planner link lost**', detection: 'No GCS heartbeat for `FS_LONG_TIMEOUT` = 5 s (plus HM30 `remrssi = 0` if the HM30 reports it), **all modes**', action: '`FS_LONG_ACTN` = 1 → **[[RTL]]** (Q-mode behaviour: [[TBD — per param file + SITL test]])', pilot: 'Monitor; use the Nomad only if within close range' },
-      { id: 'fs-915', event: '915 MHz backup link lost', detection: 'ELRS RX failsafe', action: '**None** — RC ignored (`THR_FAILSAFE` = 2)', pilot: 'None beyond close range; during manual phases, take over in MP (S-01a)' },
-      { id: 'fs-batt-crit', event: 'Battery critical {settings.battCrtVolt} V', detection: '`BATT_CRT_VOLT`', action: 'Loiter → QLand at current position', pilot: 'Clear the area below' },
-      { id: 'fs-batt-low', event: 'Battery low', detection: '`BATT_LOW_VOLT` = 0 (not set)', action: 'None', pilot: 'Manual RTL at {settings.manualRtlVolt} V' },
-      { id: 'fs-trans', event: 'Transition fail', detection: '`Q_TRANS_FAIL` 4 s', action: '`Q_TRANS_FAIL_ACT` = 0 → **[[QLAND]] at current position** (ArduPlane source: -1 warn only, 0 QLand, 1 QRTL; [[VERIFY — against the firmware version in use]])', pilot: 'Switch to [[QHOVER]] and climb (emergency card); if QLand has started, clear the area below' }
+      { id: 'fs-siyi', primary: true, event: '**SIYI / Mission Planner link lost**', detection: 'No GCS heartbeat for `FS_LONG_TIMEOUT` = 5 s (plus HM30 `remrssi = 0` if the HM30 reports it), **all modes**', action: '`FS_LONG_ACTN` = 1 → **[[RTL]]** in fixed-wing modes (incl. AUTO / GUIDED); **[[QRTL]]** in VTOL modes (`Q_OPTIONS` bit 5; [[VERIFY — SITL test S-02]]). RTL: home at 120 m REL, loiter down, **automatic VTOL landing at home** (`Q_RTL_MODE` = 2)', pilot: 'Monitor; keep the home landing zone clear; use the Nomad only if within close range' },
+      { id: 'fs-915', event: '915 MHz backup link lost', detection: 'ELRS RX failsafe', action: '**None** — RC ignored (`THR_FAILSAFE` = 2). In QHOVER the aircraft holds with centred sticks and drifts with the wind', pilot: 'None beyond close range; during manual phases, take over in MP (S-01a)' },
+      { id: 'fs-batt-low', event: 'Battery low {settings.battLowVolt} V', detection: '`BATT_LOW_VOLT` for 10 s (`BATT_LOW_TIMER`), sag-compensated voltage (`BATT_FS_VOLTSRC` = 1)', action: '`BATT_FS_LOW_ACT` = 1 → **[[RTL]]** (home at 120 m REL, automatic VTOL landing at home). Does not interrupt QLAND, QRTL or an AUTO VTOL landing', pilot: 'Manual RTL earlier, at {settings.manualRtlVolt} V (OSD). If it fires during a manual QHOVER landing: reselect QHOVER' },
+      { id: 'fs-batt-crit', event: 'Battery critical {settings.battCrtVolt} V', detection: '`BATT_CRT_VOLT` (sag-compensated voltage)', action: '`BATT_FS_CRT_ACT` = 6 → Loiter → **[[QLAND]] at the current position, not home**', pilot: 'Clear the area below' },
+      { id: 'fs-trans', event: 'Transition fail', detection: '`Q_TRANS_FAIL` 8 s', action: '`Q_TRANS_FAIL_ACT` = 1 → transition cancelled → **[[QRTL]] home** (hover at `Q_RTL_ALT` 50 m REL, vertical landing at home); never QHOVER', pilot: 'Switch to [[QHOVER]] at 2–3 s and climb (emergency card) — faster than the timer. Keep the route WP2 → home clear (QRTL path)' }
     ]
   };
 
@@ -391,7 +407,7 @@
         { id: 'co-taking-off', trigger: 'VTOL takeoff / mission start', who: 'Carrier Pilot', call: 'TAKING OFF' },
         { id: 'co-stable', trigger: 'Carrier airborne, stable hover', who: 'FPV Pilot (monitors MP)', call: 'STABLE' },
         { id: 'co-transitioning', trigger: 'Transition commencing', who: 'Carrier Pilot', call: 'TRANSITIONING' },
-        { id: 'co-clean-transition', trigger: 'Airspeed >11 m/s, wings level', who: 'FPV Pilot (monitors MP)', call: 'CLEAN TRANSITION' },
+        { id: 'co-clean-transition', trigger: 'Airspeed >10 m/s (AIRSPEED_MIN), wings level', who: 'FPV Pilot (monitors MP)', call: 'CLEAN TRANSITION' },
         { id: 'co-advancing-wp', trigger: 'Co-pilot advancing mission WP1→WP2', who: 'FPV Pilot', call: 'ADVANCING WAYPOINT' },
         { id: 'co-transition-fail', trigger: 'No airspeed build within 3 s', who: 'Either pilot', call: 'TRANSITION FAIL — QHOVER', note: 'Carrier Pilot acts immediately' },
         { id: 'co-on-station', trigger: 'Carrier at relay altitude, loitering', who: 'FPV Pilot (monitors MP)', call: 'CARRIER ON STATION' }

@@ -34,16 +34,19 @@ test('XML checker rejects broken markup (sanity check of the test helper)', () =
     assert.equal(wellFormed(bad).ok, false, bad);
 });
 
-test('batteryGauge (R4): carrier markers manual RTL, hard limit, BATT_CRT, storage; BATT_LOW only when set', () => {
+test('batteryGauge (R4, WP14 R9): carrier ladder 24.6 arm / 23.0 RTL / 22.5 hard / 22.0 auto RTL / 21.0 QLand / 22.8 storage / 18.6 floor', () => {
   const g = D.batteryGauge(carrier, settings);
   checkSvg(g, 'gauge carrier');
-  for (const v of ['23.0 V', '22.5 V', '22.2 V', '22.8 V']) assert.ok(g.includes(v), v);
-  assert.match(g, /MANUAL RTL/); assert.match(g, /HARD LIMIT/); assert.match(g, /BATT_CRT_VOLT/); assert.match(g, /STORAGE/);
-  assert.match(g, /BATT_LOW_VOLT not set/);
-  assert.doesNotMatch(g, /BATT_LOW_VOLT — low-battery warning/);
-  const g2 = D.batteryGauge(carrier, settings, { battLowVolt: 23.6 });
-  checkSvg(g2, 'gauge with BATT_LOW');
-  assert.match(g2, /23\.6 V/); assert.match(g2, /BATT_LOW_VOLT — low-battery warning/); assert.doesNotMatch(g2, /not set/);
+  for (const v of ['24.6 V · 4.10', '23.0 V · 3.83', '22.5 V · 3.75', '22.0 V · 3.67', '21.0 V · 3.50', '22.8 V · 3.80', '18.6 V floor']) assert.ok(g.includes(v), v);
+  assert.match(g, /BATT_ARM_VOLT — arming refused below/); assert.match(g, /MANUAL RTL/); assert.match(g, /HARD LIMIT/);
+  assert.match(g, /BATT_LOW_VOLT — AUTOMATIC RTL/); assert.match(g, /BATT_CRT_VOLT — Loiter → QLand HERE, not home/); assert.match(g, /STORAGE/);
+  assert.match(g, /BATT_FS_VOLTSRC = 1/);
+  assert.doesNotMatch(g, /22\.2 V|not set/);
+  const g2 = D.batteryGauge(carrier, settings, { battLowVolt: 22.3 });   // opts override (e.g. a param file value)
+  checkSvg(g2, 'gauge with BATT_LOW override');
+  assert.match(g2, /22\.3 V/); assert.doesNotMatch(g2, /22\.0 V ·/);
+  const g3 = D.batteryGauge(carrier, Object.assign({}, settings, { battLowVolt: null }));
+  assert.match(g3, /BATT_LOW_VOLT: TBD in the settings/);
   // MAN-14: the operating zone ends at the manual RTL voltage, "RTL now" between hard limit and RTL
   assert.match(g, /22\.5–23\.0 V: RTL now/);
   assert.match(g, /23\.0–25\.2 V: Operate/);
@@ -74,7 +77,7 @@ test('battTrend (R5): profile thresholds, y-axis ticks, <title> with date on eve
   checkSvg(t, 'trend');
   assert.equal((t.match(/<circle/g) || []).length, 3);
   for (const d of ['2026-10-09', '2026-10-05', '2026-10-01']) assert.match(t, new RegExp('<title>' + d));
-  assert.match(t, /23\.0 MANUAL RTL/); assert.match(t, /22\.5 HARD LIMIT/); assert.match(t, /22\.2 BATT_CRT/);
+  assert.match(t, /23\.0 MANUAL RTL/); assert.match(t, /22\.5 HARD LIMIT/); assert.match(t, /22\.0 BATT_LOW RTL/); assert.match(t, /21\.0 BATT_CRT QLAND/);
   assert.ok((t.match(/text-anchor="end">\d+<\/text>/g) || []).length >= 3, 'y-axis tick labels');
   assert.match(t, /&lt;b&gt;2&lt;\/b&gt;/, 'flight text escaped');
   assert.match(t, /CRIT<\/title>/, 'level as text, not only colour');

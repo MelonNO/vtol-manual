@@ -14,19 +14,23 @@ function resolveRef(from, ref) {
 }
 
 // [{ from, ref, path, picture }] for one HTML page. picture: an <img> fallback inside <picture> next to a .webp <source>.
-function htmlRefs(file) {
+function htmlRefs(file) { return htmlRefsFromText(file, readText(file)); }
+// Same for page text given directly (tests). file: the page path the references are resolved against.
+function htmlRefsFromText(file, text) {
   // comments and inline script bodies are dropped (script code builds markup strings, not static references)
-  const html = readText(file).replace(/<!--[\s\S]*?-->/g, '').replace(/<script\b([^>]*)>[\s\S]*?<\/script>/g, '<script$1></script>');
+  const html = text.replace(/<!--[\s\S]*?-->/g, '').replace(/<script\b([^>]*)>[\s\S]*?<\/script>/g, '<script$1></script>');
   const out = [];
   const add = (ref, picture) => { const p = resolveRef(file, ref); if (p) out.push({ from: file, ref, path: p, picture: !!picture }); };
-  // <picture> blocks first, so their <img> fallbacks are known
-  const pictureImgs = new Set();
+  // <picture> blocks with a .webp source, by position: only an <img> INSIDE such a block is a picture fallback
+  // (WP09 verification F4: a plain <img> elsewhere on the page with the same jpg must still be reported).
+  const webpPictures = [];
   for (const m of html.matchAll(/<picture\b[\s\S]*?<\/picture>/g)) {
-    if (/type="image\/webp"|\.webp/.test(m[0])) for (const i of m[0].matchAll(/<img\b[^>]*\ssrc="([^"]+)"/g)) pictureImgs.add(i[1]);
+    if (/type="image\/webp"|\.webp/.test(m[0])) webpPictures.push([m.index, m.index + m[0].length]);
   }
+  const inWebpPicture = pos => webpPictures.some(([a, b]) => pos > a && pos < b);
   for (const m of html.matchAll(/<(?:script|img|source|link|a|iframe|video|audio)\b[^>]*>/g)) {
-    const tag = m[0];
-    for (const a of tag.matchAll(/\s(src|href)="([^"]*)"/g)) add(a[2], a[1] === 'src' && pictureImgs.has(a[2]));
+    const tag = m[0], fallback = /^<img\b/.test(tag) && inWebpPicture(m.index);
+    for (const a of tag.matchAll(/\s(src|href)="([^"]*)"/g)) add(a[2], a[1] === 'src' && fallback);
     for (const a of tag.matchAll(/\ssrcset="([^"]*)"/g)) a[1].split(',').forEach(c => add(c.trim().split(/\s+/)[0]));
   }
   for (const m of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)) cssUrls(m[1]).forEach(u => add(u));
@@ -69,4 +73,4 @@ function allRefs(list) {
   return refs;
 }
 
-module.exports = { resolveRef, htmlRefs, cssRefs, manifestRefs, scriptRefs, allRefs };
+module.exports = { resolveRef, htmlRefs, htmlRefsFromText, cssRefs, manifestRefs, scriptRefs, allRefs };

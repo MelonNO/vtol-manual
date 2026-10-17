@@ -14,6 +14,13 @@
   const COLLECTIONS = ['archive', 'weatherFavorites', 'battLog', 'packs', 'clients', 'links', 'flights', 'maintenance'];
   const LEGACY_KEYS = ['vtol_battlog', 'vtol_pf_archive', 'vtol_wx_fav', 'vtol_batt_type'];
   const GIST_KEYS = ['vtol_gh_pat', 'vtol_gh_gist_id', 'vtol_last_sync'];   // Gist sync removed (plan Q11)
+  // Rev C (plan §15.3, contract C1.6): carrier failsafe voltages of the reference parameter file
+  // docs/reference/carrier-params-2026-10-17.param (BATT_CRT_VOLT, BATT_LOW_VOLT, BATT_ARM_VOLT), V per pack.
+  const REV_C = { battCrtVolt: 21.0, battLowVolt: 22.0, battArmVolt: 24.6 };
+  const REV_C_PARAM = { battCrtVolt: 'BATT_CRT_VOLT', battLowVolt: 'BATT_LOW_VOLT', battArmVolt: 'BATT_ARM_VOLT' };
+  const REV_C_DATE = '2026-10-17';
+  const OLD_BATT_CRT = 22.2;                          // the pre-Rev C default of settings.battCrtVolt
+  const NOTICE_KEY = 'vtol_store_notices';            // one-time information notices (shown until dismissed)
 
   const ID = {
     carrierPack: 'pack-carrier-6s-7000',
@@ -88,7 +95,11 @@
       settings: {
         activeClientId: ID.refClient,
         activeCarrierPackId: ID.carrierPack,
-        battCrtVolt: 22.2, manualRtlVolt: 23.0, hardLimitVolt: 22.5,
+        // Carrier thresholds, V per pack (plan §15.3). battCrtVolt / battLowVolt / battArmVolt = BATT_CRT_VOLT /
+        // BATT_LOW_VOLT / BATT_ARM_VOLT of the reference param file (C1.6); an imported store.paramFile takes
+        // precedence for display and analysis (ToolsCore.effectiveSettings). manualRtlVolt / hardLimitVolt: pilot.
+        battCrtVolt: REV_C.battCrtVolt, battLowVolt: REV_C.battLowVolt, battArmVolt: REV_C.battArmVolt,
+        manualRtlVolt: 23.0, hardLimitVolt: 22.5,
         storageVoltPerCell: 3.80,
         checklistExpiryHours: 6,
         // settings.updatedAt (ISO) is added when the user edits a setting; used for import merging.
@@ -109,7 +120,7 @@
   const ENUM = {
     role: ['carrier', 'mast', 'client'], chem: ['lipo', 'liion', 'life'], source: ['manual', 'tlog', 'bin', 'gcs']
   };
-  const NUM_SETTINGS = ['battCrtVolt', 'manualRtlVolt', 'hardLimitVolt', 'storageVoltPerCell', 'checklistExpiryHours',
+  const NUM_SETTINGS = ['battCrtVolt', 'battLowVolt', 'battArmVolt', 'manualRtlVolt', 'hardLimitVolt', 'storageVoltPerCell', 'checklistExpiryHours',
     'windGoMaxMs', 'windCautionMaxMs', 'gustMaxMs'];
   let pendingIssues = [];
 
@@ -375,6 +386,47 @@
   // Repairs made since the last call (load-time or import-time), for a visible notice. Clears the list.
   function takeIssues() { const t = pendingIssues; pendingIssues = []; return t; }
 
+  // ── one-time notices (information, not repairs) ──
+  // Kept in their own key so that every page can show them until the user dismisses them, whichever page ran the
+  // migration first. [{ id, text, at }]
+  function notices() {
+    const n = readJSON(NOTICE_KEY);
+    return Array.isArray(n) ? n.filter(x => x && typeof x.id === 'string' && typeof x.text === 'string') : [];
+  }
+  function addNotice(id, text) {
+    const list = notices().filter(x => x.id !== id);
+    list.push({ id, text, at: new Date().toISOString() });
+    try { setItem(NOTICE_KEY, JSON.stringify(list)); } catch (e) { /* storage unavailable: nothing to show later */ }
+  }
+  function dismissNotice(id) {
+    const list = notices().filter(x => x.id !== id);
+    if (list.length) { try { setItem(NOTICE_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ } } else removeItem(NOTICE_KEY);
+  }
+
+  // Rev C migration (contract C1.6) of a stored, pre-Rev C store (its settings have no battLowVolt yet). Mutates s.
+  // Never user-edited settings (no settings.updatedAt): the old default battCrtVolt 22.2 becomes 21.0. Edited settings
+  // keep their values. Both get the new keys battLowVolt / battArmVolt. → { id, text } notice, or null (nothing to do).
+  function migrateRevC(s) {
+    const st = s && s.settings;
+    if (!st || typeof st !== 'object' || Array.isArray(st) || st.battLowVolt !== undefined) return null;
+    const edited = typeof st.updatedAt === 'string';
+    const changed = [];
+    if (!edited && (st.battCrtVolt === undefined || num(st.battCrtVolt) === OLD_BATT_CRT)) {
+      if (st.battCrtVolt !== undefined) changed.push('BATT_CRT_VOLT ' + OLD_BATT_CRT.toFixed(1) + ' → ' + REV_C.battCrtVolt.toFixed(1) + ' V');
+      st.battCrtVolt = REV_C.battCrtVolt;
+    }
+    st.battLowVolt = REV_C.battLowVolt;
+    st.battArmVolt = REV_C.battArmVolt;
+    const differs = Object.keys(REV_C).filter(k => num(st[k]) !== REV_C[k])
+      .map(k => REV_C_PARAM[k] + ' ' + (isFinite(num(st[k])) ? num(st[k]).toFixed(1) : String(st[k])) + ' V (reference ' + REV_C[k].toFixed(1) + ' V)');
+    const added = 'New: BATT_LOW_VOLT ' + REV_C.battLowVolt.toFixed(1) + ' V (automatic RTL) and BATT_ARM_VOLT ' + REV_C.battArmVolt.toFixed(1) + ' V (arming minimum).';
+    if (differs.length) {
+      return { id: 'revc-settings', text: 'Carrier thresholds: your edited settings were kept, but they differ from the reference param file (' + REV_C_DATE + '): '
+        + differs.join(', ') + '. Check Tools → PROFILES → Settings. ' + added };
+    }
+    return { id: 'revc-settings', text: 'Carrier thresholds updated to the reference param file (' + REV_C_DATE + ')' + (changed.length ? ': ' + changed.join(', ') : '') + '. ' + added };
+  }
+
   function legacyBattEntry(e, packId) {
     const r = Object.assign({}, e);
     r.id = r.id || hashId('bl', JSON.stringify([e.date, e.flight, e.start, e.min, e.rest, e.time, e.notes]));
@@ -437,8 +489,11 @@
         return defaults();
       }
       const issues = [];
+      const revC = migrateRevC(parsed);                                 // before normalize: it fills missing settings
       const s = normalize(parsed, Date.now(), issues);
-      if (issues.length) { pendingIssues.push(...issues); save(s); }   // persist the repair once
+      if (issues.length) pendingIssues.push(...issues);
+      if (issues.length || revC) save(s);                               // persist the repair / migration once
+      if (revC) addNotice(revC.id, revC.text);
       return s;
     }
     let s;
@@ -551,6 +606,7 @@
     KEY, SCHEMA_VERSION, IDS: ID,
     load, save, update, uid, defaults, exportJSON, importJSON,
     live, find, upsert, remove, mergeStores, takeIssues, validateRecord, FIELDS,
+    REV_C, REV_C_PARAM, NOTICE_KEY, notices, dismissNotice,
     _setStorage(s) { storageOverride = s; }
   };
 });

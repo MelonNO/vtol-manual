@@ -199,6 +199,22 @@ svg .warn-val{fill:var(--amber);}
 .q-green{color:var(--green);}
 .copy-block{display:block;background:var(--surface2);border:1px solid var(--border2);padding:10px 12px;margin:4px 0 12px;font-family:var(--mono);font-size:12px;color:var(--accent);white-space:pre-wrap;word-break:break-all;}
 .copy-label{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+.notice-btn{background:none;border:1px solid var(--amber);color:var(--amber);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;padding:8px 14px;min-height:44px;cursor:pointer;margin-top:8px;}
+/* ── PARAMETERS TAB ── */
+.pr-grp{border:1px solid var(--border2);background:var(--surface);margin:0 0 6px;}
+.pr-grp>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;gap:10px;padding:8px 14px;font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;color:var(--text);}
+.pr-grp>summary .pr-n{color:var(--muted);font-family:var(--mono);font-size:12px;letter-spacing:1px;}
+.pr-grp[open]>summary{border-bottom:1px solid var(--border2);color:var(--accent);}
+.pr-table td{padding:7px 12px;font-size:13px;}
+.pr-table td:nth-child(2){white-space:nowrap;}
+.pr-star{color:var(--accent);font-weight:bold;}
+.pr-table a{color:var(--accent);}
+@media(max-width:600px){   /* phone: name + value on one line, the meaning below — no sideways scrolling */
+  .pr-table thead{display:none;}
+  .pr-table tr{display:block;border-bottom:1px solid var(--border);}
+  .pr-table td{display:inline-block;border-bottom:none;padding:6px 10px 2px;}
+  .pr-table td:nth-child(3){display:block;padding:0 10px 8px;font-size:12px;}
+}
 /* ── PRE-ARM / GLOSSARY SEARCH ── */
 .filter-input{width:100%;padding:12px 16px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;margin-bottom:18px;outline:none;min-height:44px;}
 .filter-input:focus{border-color:var(--accent);}
@@ -249,9 +265,10 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
     <span><strong>FW</strong> ArduPlane / QuadPlane</span>
     <span><strong>BATT</strong> 6S 7000mAh</span>
-    <span><strong>CRIT VOLT</strong> <span data-tok="settings.battCrtVolt">22.2</span>V</span>
+    <span><strong>LOW VOLT</strong> <span data-tok="settings.battLowVolt">22.0</span>V auto RTL</span>
+    <span><strong>CRIT VOLT</strong> <span data-tok="settings.battCrtVolt">21.0</span>V QLand here</span>
     <span><strong>RTL ALT</strong> 120m REL</span>
-    <span><strong>CRUISE</strong> 13 m/s</span>
+    <span><strong>CRUISE</strong> 12 m/s</span>
     <span><strong>CLIENT</strong> <span id="hdr-client">Reference client #1</span></span>
   </div>
 </header>
@@ -295,6 +312,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <button type="button" data-tab="comms" onclick="selectNavItem(this.dataset.tab,this,event)">RF &amp; Comms</button>
       <button type="button" data-tab="prearm" onclick="selectNavItem(this.dataset.tab,this,event)">Pre-Arm Ref</button>
       <button type="button" data-tab="abbrev" onclick="selectNavItem(this.dataset.tab,this,event)">Abbreviations</button>
+      <button type="button" data-tab="params" onclick="selectNavItem(this.dataset.tab,this,event)">Parameters</button>
     </div>
   </div>
 
@@ -312,6 +330,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 </div>
 
 <div class="content vf-zoom">
+<div id="man-notice" class="alert alert-warn" role="status" hidden></div>
 
 <!-- ═══ OVERVIEW ═══ -->
 <div id="tab-overview" class="tab-panel">
@@ -333,14 +352,16 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title">Key Performance Figures</div>
   <div class="two-col">
-    <div class="stat-box"><div class="stat-label">Cruise speed</div><div class="stat-val">13 m/s</div></div>
-    <div class="stat-box"><div class="stat-label">Min airspeed (stall prevent)</div><div class="stat-val warn">11 m/s</div></div>
+    <div class="stat-box"><div class="stat-label">Cruise speed</div><div class="stat-val">12 m/s (43.2 km/h)</div></div>
+    <div class="stat-box"><div class="stat-label">Min airspeed (stall prevent)</div><div class="stat-val warn">10 m/s</div></div>
     <div class="stat-box"><div class="stat-label">Max airspeed</div><div class="stat-val">22 m/s</div></div>
-    <div class="stat-box"><div class="stat-label">Critical battery voltage</div><div class="stat-val crit"><span data-tok="settings.battCrtVolt">22.2</span>V</div></div>
+    <div class="stat-box"><div class="stat-label">Arming minimum (BATT_ARM_VOLT)</div><div class="stat-val"><span data-tok="settings.battArmVolt">24.6</span>V</div></div>
+    <div class="stat-box"><div class="stat-label">Low battery → automatic RTL</div><div class="stat-val warn"><span data-tok="settings.battLowVolt">22.0</span>V</div></div>
+    <div class="stat-box"><div class="stat-label">Critical battery → QLand here</div><div class="stat-val crit"><span data-tok="settings.battCrtVolt">21.0</span>V</div></div>
     <div class="stat-box"><div class="stat-label">RTL altitude (fixed-wing)</div><div class="stat-val">120m REL</div></div>
-    <div class="stat-box"><div class="stat-label">VTOL RTL altitude</div><div class="stat-val">70m REL</div></div>
-    <div class="stat-box"><div class="stat-label">Hover thrust (learned)</div><div class="stat-val">27.2%</div></div>
-    <div class="stat-box"><div class="stat-label">Cruise throttle</div><div class="stat-val">35%</div></div>
+    <div class="stat-box"><div class="stat-label">VTOL RTL altitude (QRTL)</div><div class="stat-val">50m REL</div></div>
+    <div class="stat-box"><div class="stat-label">Hover thrust (learned, drifts)</div><div class="stat-val">≈35% (0.35)</div></div>
+    <div class="stat-box"><div class="stat-label">Cruise throttle</div><div class="stat-val">30%</div></div>
   </div>
   <div class="alert alert-info">REL = altitude above home (where the carrier was armed). Over rising terrain REL is not the height above the ground (AGL).</div>
 
@@ -362,7 +383,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </table></div>
   <div class="alert alert-info">Both pilots co-located — direct verbal comms. The bridge forwards the client's CRSF telemetry, so the GCS app can show client link quality, battery, GPS and flight mode — <strong>if the client sends telemetry</strong> (telemetry enabled on the client FC, non-zero ELRS telemetry ratio). Keep the verbal callouts as the primary method until the telemetry path is proven.</div>
 
-  <div class="alert alert-warn">BATT_LOW_VOLT is not set. No automated low-battery warning exists before the critical failsafe at <span data-tok="settings.battCrtVolt">22.2</span>V. Monitor carrier voltage manually. Use the Battery Log tool to determine your safe return trigger.</div>
+  <div class="alert alert-warn"><strong>Battery failsafes:</strong> at <span data-tok="settings.battLowVolt">22.0</span>V (<code>BATT_LOW_VOLT</code>) the carrier starts an <strong>automatic RTL</strong>; at <span data-tok="settings.battCrtVolt">21.0</span>V (<code>BATT_CRT_VOLT</code>) it does Loiter → <strong>QLand at the current position</strong>, not home. The pilot calls RTL earlier, at <span data-tok="settings.manualRtlVolt">23.0</span>V on the OSD. Every RTL ends with an <strong>automatic VTOL landing at home</strong> — keep the home landing zone clear for the whole flight. Ladder: Aircraft → Battery &amp; Power.</div>
 
 </div>
 
@@ -550,24 +571,26 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td>Nomad switch</td><td>Position 1</td><td><span class="mbadge m-qhov">QHOVER</span></td><td>Takeoff, landing, VTOL hold. Altitude locked. Default arm mode.</td></tr>
     <tr><td>Nomad switch</td><td>Position 2</td><td><span class="mbadge m-fbwb">FBWB</span></td><td>Fixed-wing cruise, altitude hold. Used for transition and pre-AUTO.</td></tr>
     <tr><td>Nomad switch</td><td>Position 3</td><td><span class="mbadge m-auto">AUTO</span></td><td>Mission execution. Activated after transition confirmed.</td></tr>
-    <tr><td>Nomad left button</td><td>Press (emergency)</td><td><span class="mbadge m-rtl">RTL</span></td><td>Return to home at RTL_ALTITUDE (120m REL). Only within close range.</td></tr>
+    <tr><td>Nomad left button</td><td>Press (emergency)</td><td><span class="mbadge m-rtl">RTL</span></td><td>Return to home at RTL_ALTITUDE (120m REL), automatic VTOL landing at home (<code>Q_RTL_MODE</code> = 2). Only within close range.</td></tr>
     <tr><td>GCS only</td><td>Mission Planner</td><td>GUIDED</td><td>Position-controlled flight. Carrier Pilot uses it for relay orbit adjustments.</td></tr>
     <tr><td>GCS only</td><td>Mission Planner</td><td>QLOITER / QLAND / RTL</td><td>Take-over modes when the 915 link is lost during a close-in manual phase (S-01a).</td></tr>
     </tbody>
   </table></div>
+  <p>Mode slots in the reference param file: <code>FLTMODE1</code> = 18 QHOVER, <code>FLTMODE2</code> = 11 <strong>RTL</strong> (not reachable from the 3-position switch — the earlier "QLOITER" label was wrong), <code>FLTMODE3</code> = 6 FBWB, <code>FLTMODE4</code> = 6 FBWB, <code>FLTMODE5</code> = 0 MANUAL, <code>FLTMODE6</code> = 10 AUTO.</p>
   <div class="alert alert-danger">MANUAL mode is accessible via GCS only. It removes all stabilisation. The T2 requires stabilisation to fly — MANUAL in flight will result in loss of control. Only use MANUAL on the ground for servo checks.</div>
 
   <div class="section-title" id="failsafe">Carrier Failsafe</div>
   <div id="fm-failsafe"></div>
-  <div class="diagram-slot" data-diagram="D7"><figure class="dg"><a href="img/diagrams/d07-carrier-failsafe.svg" target="_blank" rel="noopener"><img src="img/diagrams/d07-carrier-failsafe.svg" width="400" height="1216" loading="lazy" decoding="async" alt="Diagram D7: SIYI / MP link lost for 5 s in any mode → RTL; 915 MHz backup lost → no action (THR_FAILSAFE = 2), close-in take over in MP; battery critical 22.2 V → Loiter then QLand here; battery low not set, manual RTL at 23.0 V; transition fail after 4 s → QLand at the current position (VERIFY), pilot reverts to QHOVER within 3 s. Timeline: 0 s heartbeat lost, 5 s RTL, climb to 120 m REL and return, back-transition and land per Q settings (Q-mode behaviour TBD)."></a><figcaption><strong>D7</strong> · Carrier failsafe matrix and SIYI-loss timeline — replaces the old RC failsafe cascade. Only SIYI / GCS loss triggers a carrier failsafe. Tap to open full size.</figcaption></figure></div>
+  <div class="diagram-slot" data-diagram="D7"><figure class="dg"><a href="img/diagrams/d07-carrier-failsafe.svg" target="_blank" rel="noopener"><img src="img/diagrams/d07-carrier-failsafe.svg" width="400" height="1425" loading="lazy" decoding="async" alt="Diagram D7: SIYI / MP link lost for 5 s in any mode → RTL in fixed-wing modes, QRTL in VTOL modes, RTL ends with an automatic VTOL landing at home; 915 MHz backup lost → no action (THR_FAILSAFE = 2), QHOVER drifts with the wind, close-in take over in MP; battery low 22.0 V → automatic RTL (manual RTL at 23.0 V first); battery critical 21.0 V → Loiter then QLand here, not home; transition fail after 8 s → QRTL home, pilot reverts to QHOVER within 3 s. Timeline: 0 s heartbeat lost, 5 s RTL / QRTL, climb to 120 m REL, return, automatic VTOL landing at home."></a><figcaption><strong>D7</strong> · Carrier failsafe matrix and SIYI-loss timeline — replaces the old RC failsafe cascade. Only SIYI / GCS loss triggers a link failsafe (never the 915 MHz link); battery low → RTL, critical → QLand here. Tap to open full size.</figcaption></figure></div>
   <div class="card accent" id="siyi-loss">
     <div class="card-title">SIYI / GCS loss — what happens</div>
     <div class="proc-step"><span class="n">0 s</span><span class="t">GCS heartbeat lost: Mission Planner closed or crashed, laptop asleep or hibernating, Ethernet cable pulled, or HM30 link lost. Client RC and video are lost at the same moment (they also travel over the HM30) — the client fails safe too.</span></div>
-    <div class="proc-step"><span class="n">5 s</span><span class="t"><code>FS_LONG_TIMEOUT</code> = 5 → <code>FS_LONG_ACTN</code> = 1 → <span class="mbadge m-rtl">RTL</span>, in <strong>any</strong> mode (<code>FS_GCS_ENABL</code> = 2).</span></div>
-    <div class="proc-step"><span class="n">→</span><span class="t">Climb to <code>RTL_ALTITUDE</code> (120m REL, above home), return home, then back-transition and land per the Q settings. Behaviour when RTL triggers while in a Q-mode: <span class="warn-val">TBD — check Q_RTL_MODE / Q_OPTIONS in the param file, then SITL test (S-02)</span>.</span></div>
+    <div class="proc-step"><span class="n">5 s</span><span class="t"><code>FS_LONG_TIMEOUT</code> = 5 → <code>FS_LONG_ACTN</code> = 1, in <strong>any</strong> mode (<code>FS_GCS_ENABL</code> = 2): fixed-wing modes, including AUTO and GUIDED → <span class="mbadge m-rtl">RTL</span>; VTOL modes → <span class="mbadge m-rtl">QRTL</span> (<code>Q_OPTIONS</code> bit 5).</span></div>
+    <div class="proc-step"><span class="n">→</span><span class="t"><strong>RTL:</strong> home in fixed-wing at <code>RTL_ALTITUDE</code> (120m REL, above home), loiter down, airbrake approach and an <strong>automatic VTOL landing at home</strong> (<code>Q_RTL_MODE</code> = 2). <strong>QRTL:</strong> hover return home at <code>Q_RTL_ALT</code> (50m REL), vertical landing at home. <span class="warn-val">VERIFY — confirm the Q-mode case in SITL (S-02)</span>.</span></div>
+    <p><strong>Keep the home landing zone clear for the whole flight</strong> — every RTL ends there.</p>
     <p>The 915 MHz Nomad is used only within close range. The carrier camera is forced off with the GCS stream and does not help to watch the client return.</p>
   </div>
-  <div class="alert alert-danger">No low-battery warning is configured (BATT_LOW_VOLT=0). The first automated response is the critical failsafe at <span data-tok="settings.battCrtVolt">22.2</span>V → Loiter to QLand at current position. Aircraft will NOT return home. Initiate manual RTL at <span data-tok="settings.manualRtlVolt">23.0</span>V. Hard limit: do not let voltage reach <span data-tok="settings.hardLimitVolt">22.5</span>V before RTL is in progress.</div>
+  <div class="alert alert-danger" id="battery-failsafe"><strong>Battery failsafes.</strong> Initiate manual RTL at <span data-tok="settings.manualRtlVolt">23.0</span>V (OSD). Hard limit: RTL in progress before <span data-tok="settings.hardLimitVolt">22.5</span>V. At <span data-tok="settings.battLowVolt">22.0</span>V (<code>BATT_LOW_VOLT</code>, 10 s below) the carrier starts an <strong>automatic RTL</strong> (home at 120 m, automatic VTOL landing at home). At <span data-tok="settings.battCrtVolt">21.0</span>V (<code>BATT_CRT_VOLT</code>) it does Loiter → QLand at the current position — <strong>only at this critical stage does the aircraft NOT return home</strong>. The failsafes read the sag-compensated voltage (<code>BATT_FS_VOLTSRC</code> = 1); the OSD and MP show raw voltage, lower under load, so the pilot's 23.0V call comes well before the automatic 22.0V. If the low-battery RTL fires during a <strong>manual QHOVER landing</strong>, reselect QHOVER on the Nomad switch to finish the landing; it does not interrupt QLAND, QRTL or an AUTO VTOL landing.</div>
 
   <div class="section-title" id="gcs-heartbeat">Mission Planner Is the Heartbeat (S-02a, S-02b, S-02c)</div>
   <div class="card amber">
@@ -600,7 +623,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>THR_FAILSAFE</code></td><td class="val">2</td><td>EnabledNoFailsafe — RC ignored on RC loss, <strong>no action</strong> (by design)</td></tr>
     <tr><td><code>THR_FS_VALUE</code></td><td class="val">950</td><td>Throttle channel value below which RC loss is detected</td></tr>
     <tr><td><code>FS_SHORT_ACTN</code></td><td class="val">0</td><td><strong>CIRCLE / no change</strong> if already in AUTO, GUIDED or LOITER — <em>not</em> FBWA (FBWA is 2). Only reachable through an RC failsafe, which is disabled by design.</td></tr>
-    <tr><td><code>FS_LONG_ACTN</code></td><td class="val">1</td><td>RTL — used here as the <strong>GCS (SIYI) failsafe action</strong></td></tr>
+    <tr><td><code>FS_SHORT_TIMEOUT</code></td><td class="val">1.5 s</td><td>Short-failsafe delay — kept only as GCS-failsafe timing</td></tr>
+    <tr><td><code>FS_LONG_ACTN</code></td><td class="val">1</td><td>RTL — used here as the <strong>GCS (SIYI) failsafe action</strong> (QRTL in VTOL modes, <code>Q_OPTIONS</code> bit 5)</td></tr>
     <tr><td><code>FS_LONG_TIMEOUT</code></td><td class="val">5 s</td><td>Used here as the <strong>GCS (SIYI) failsafe delay</strong></td></tr>
     <tr><td><code>FS_GCS_ENABL</code></td><td class="val">2</td><td>HeartbeatAndREMRSSI — GCS failsafe in <strong>all modes</strong></td></tr>
     </tbody>
@@ -608,9 +632,9 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title" id="s01a">915 Loss in a Manual Phase (S-01a) — open test</div>
   <div class="card amber">
-    <p>What the aircraft does if the 915 link drops <strong>while the pilot flies it with the Nomad</strong> (QHOVER takeoff or landing) has not been tested. With <code>THR_FAILSAFE</code> = 2 the RC input is ignored; whether QHOVER then holds altitude and position or drifts is unknown.</p>
+    <p>If the 915 link drops <strong>while the pilot flies the carrier with the Nomad</strong> (QHOVER takeoff or landing), there is <strong>no failsafe action</strong> (<code>THR_FAILSAFE</code> = 2): the RC input is ignored, and in QHOVER the aircraft holds with centred sticks and <strong>drifts with the wind</strong> (plan §15.2). Take over in Mission Planner. The bench / SITL test below confirms it on this aircraft.</p>
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Test (props off, or SITL)</strong><p>QHOVER, armed. Switch the Nomad off. Record what MP shows: mode, throttle and attitude targets.</p></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Result</strong><p><span class="warn-val">TBD — S-01a bench/SITL result (Q15)</span></p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Result</strong><p>Expected: no mode change, holds with centred sticks, drifts with the wind. <span class="warn-val">VERIFY — S-01a bench/SITL result (Q15)</span></p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Pilot action until then</strong><p>Take over in Mission Planner: <span class="mbadge m-qhov">QLOITER</span> or <span class="mbadge m-rtl">QLAND</span>.</p></div></div>
   </div>
 
@@ -800,41 +824,41 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>Q_TILT_MASK</code></td><td class="val">3</td><td>Motors 1 &amp; 2 (wing motors) tilt</td></tr>
     <tr><td><code>Q_TILT_TYPE</code></td><td class="val">2</td><td>Tilt-rotor type</td></tr>
     <!-- Q_TILT_MAX: ArduPilot Plane docs, Tilt Rotor Planes (https://ardupilot.org/plane/docs/guide-tilt-rotor.html): the angle the rotors move to while waiting for the transition airspeed; in fixed-wing flight they tilt fully forward. -->
-    <tr><td><code>Q_TILT_MAX</code></td><td class="val">80°</td><td>Tilt angle held during the forward transition until the transition airspeed is reached; in fixed-wing flight the tilt motors go fully forward (ArduPilot tilt-rotor guide). <span class="warn-val">VERIFY — against the param file and firmware in use</span></td></tr>
-    <tr><td><code>Q_TILT_RATE_UP/DN</code></td><td class="val">40 deg/s</td><td>Tilt rotation speed</td></tr>
+    <tr><td><code>Q_TILT_MAX</code></td><td class="val">80°</td><td>Tilt angle held during the forward transition until the transition airspeed is reached; in fixed-wing flight the tilt motors go fully forward (ArduPilot tilt-rotor guide). <span class="warn-val">VERIFY — meaning against the firmware in use</span></td></tr>
+    <tr><td><code>Q_TILT_RATE_UP/DN</code></td><td class="val">45 deg/s</td><td>Tilt rotation speed</td></tr>
     <tr><td><code>Q_FRAME_CLASS</code></td><td class="val">7</td><td><strong>7 = Tri</strong> (M1, M2, M4)</td></tr>
     <tr><td><code>Q_FRAME_TYPE</code></td><td class="val">1</td><td>Frame type as set — <span class="warn-val">VERIFY meaning for frame class 7 against the param file</span></td></tr>
-    <tr><td><code>Q_M_THST_HOVER</code></td><td class="val">0.272</td><td>Learned hover thrust (~27.2% throttle)</td></tr>
+    <tr><td><code>Q_M_THST_HOVER</code></td><td class="val">0.35</td><td>Hover thrust (~35% throttle). <strong>Learned</strong> (<code>Q_M_HOVER_LEARN</code> = 2): the value keeps drifting — 0.35 in the reference param file of 2026-10-17</td></tr>
     </tbody>
   </table></div>
 
   <div class="dg-scroll">
-  <svg viewBox="0 0 640 384" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-560" role="img" aria-labelledby="svg-motors-t svg-motors-d"><title id="svg-motors-t">Heewing T2 Cruza motor configuration — top view and tilt side view</title><desc id="svg-motors-d">Three motors: M1 and M2 on the wings tilt about the spanwise tilt axis from 0° (vertical lift) forward; M4 on the tail gives VTOL lift only and stops after the transition. Propeller rotation directions: TBD, confirm on the airframe; the front pair must turn in opposite directions. Side view: 0° in VTOL, 80° = Q_TILT_MAX during the transition until airspeed, fully forward in fixed-wing flight; tilt rate 40°/s.</desc><defs><marker id="mot-ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--amber)"/></marker><marker id="mot-ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text)"/></marker><marker id="mot-ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--green)"/></marker><marker id="mot-ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker></defs><text x="16" y="22" font-size="14" fill="var(--muted)" letter-spacing="2">MOTORS — TOP VIEW</text><line x1="196" y1="44" x2="196" y2="30" stroke="var(--muted)" marker-end="url(#mot-ah-text)"/><text x="206" y="40" font-size="13" fill="var(--muted)">FWD</text><rect x="184" y="48" width="24" height="196" rx="10" fill="var(--surface2)" stroke="var(--dim)" stroke-width="1.5"/><polygon points="196,104 30,128 44,150 184,126 208,126 348,150 362,128" fill="var(--surface2)" stroke="var(--dim)" stroke-width="1.5"/><line x1="14" y1="128" x2="378" y2="128" stroke="var(--amber)" stroke-dasharray="6,4"/><text x="240" y="120" font-size="13" fill="var(--amber)">TILT AXIS</text><circle cx="60" cy="128" r="28" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><text x="60" y="126" font-size="15" fill="var(--accent)" text-anchor="middle" font-weight="bold">M1</text><text x="60" y="142" font-size="13" fill="var(--accent)" text-anchor="middle">TILT</text><path d="M30,104 A38,38 0 0,1 90,104" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><circle cx="332" cy="128" r="28" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><text x="332" y="126" font-size="15" fill="var(--accent)" text-anchor="middle" font-weight="bold">M2</text><text x="332" y="142" font-size="13" fill="var(--accent)" text-anchor="middle">TILT</text><path d="M302,104 A38,38 0 0,1 362,104" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><circle cx="196" cy="268" r="26" fill="var(--surface)" stroke="var(--text)" stroke-width="2"/><text x="196" y="266" font-size="15" fill="var(--text)" text-anchor="middle" font-weight="bold">M4</text><text x="196" y="282" font-size="13" fill="var(--text)" text-anchor="middle">LIFT</text><path d="M168,294 A38,38 0 0,0 224,294" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><text x="16" y="186" font-size="13" fill="var(--amber)">prop rotation</text><text x="16" y="202" font-size="13" fill="var(--amber)" font-weight="bold">CW / CCW: TBD</text><text x="16" y="218" font-size="13" fill="var(--amber)">confirm on the</text><text x="16" y="234" font-size="13" fill="var(--amber)">airframe</text><rect x="398" y="34" width="230" height="250" fill="var(--bg)" stroke="var(--border2)"/><text x="410" y="56" font-size="14" fill="var(--muted)" letter-spacing="1">TILT — SIDE VIEW</text><text x="612" y="56" font-size="13" fill="var(--muted)" text-anchor="end">FWD →</text><line x1="420" y1="214" x2="600" y2="214" stroke="var(--dim)" stroke-width="6" stroke-linecap="round"/><text x="424" y="240" font-size="13" fill="var(--muted)">wing</text><circle cx="470" cy="214" r="6" fill="var(--accent)"/><line x1="470" y1="214" x2="470" y2="100" stroke="var(--green)" stroke-width="3" marker-end="url(#mot-ah-green)"/><text x="480" y="96" font-size="13" fill="var(--green)" font-weight="bold">0° VTOL lift</text><line x1="470" y1="214" x2="578.3" y2="194.9" stroke="var(--amber)" stroke-width="3" marker-end="url(#mot-ah-amber)"/><text x="500" y="170" font-size="13" fill="var(--amber)" font-weight="bold">80° Q_TILT_MAX</text><text x="500" y="154" font-size="13" fill="var(--amber)">transition:</text><line x1="470" y1="214" x2="590" y2="214" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#mot-ah-accent)"/><text x="500" y="268" font-size="13" fill="var(--accent)">FW: fully forward</text><text x="410" y="128" font-size="13" fill="var(--muted)">rate</text><text x="410" y="144" font-size="13" fill="var(--muted)">40°/s</text><text x="16" y="316" font-size="13" fill="var(--text)">M1/M2 wing motors: VTOL lift (0°) and fixed-wing thrust.</text><text x="16" y="334" font-size="13" fill="var(--text)">M4 tail: VTOL lift only, stops when the transition is complete.</text><text x="16" y="352" font-size="13" fill="var(--muted)">Q_TILT_MAX = tilt held during the transition until airspeed</text><text x="16" y="370" font-size="13" fill="var(--amber)">(ArduPilot tilt-rotor guide) — VERIFY against the param file.</text></svg>
+  <svg viewBox="0 0 640 384" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-560" role="img" aria-labelledby="svg-motors-t svg-motors-d"><title id="svg-motors-t">Heewing T2 Cruza motor configuration — top view and tilt side view</title><desc id="svg-motors-d">Three motors: M1 and M2 on the wings tilt about the spanwise tilt axis from 0° (vertical lift) forward; M4 on the tail gives VTOL lift only and stops after the transition. Propeller rotation directions: TBD, confirm on the airframe; the front pair must turn in opposite directions. Side view: 0° in VTOL, 80° = Q_TILT_MAX during the transition until airspeed, fully forward in fixed-wing flight; tilt rate 45°/s (Q_TILT_RATE_UP / DN).</desc><defs><marker id="mot-ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--amber)"/></marker><marker id="mot-ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text)"/></marker><marker id="mot-ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--green)"/></marker><marker id="mot-ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker></defs><text x="16" y="22" font-size="14" fill="var(--muted)" letter-spacing="2">MOTORS — TOP VIEW</text><line x1="196" y1="44" x2="196" y2="30" stroke="var(--muted)" marker-end="url(#mot-ah-text)"/><text x="206" y="40" font-size="13" fill="var(--muted)">FWD</text><rect x="184" y="48" width="24" height="196" rx="10" fill="var(--surface2)" stroke="var(--dim)" stroke-width="1.5"/><polygon points="196,104 30,128 44,150 184,126 208,126 348,150 362,128" fill="var(--surface2)" stroke="var(--dim)" stroke-width="1.5"/><line x1="14" y1="128" x2="378" y2="128" stroke="var(--amber)" stroke-dasharray="6,4"/><text x="240" y="120" font-size="13" fill="var(--amber)">TILT AXIS</text><circle cx="60" cy="128" r="28" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><text x="60" y="126" font-size="15" fill="var(--accent)" text-anchor="middle" font-weight="bold">M1</text><text x="60" y="142" font-size="13" fill="var(--accent)" text-anchor="middle">TILT</text><path d="M30,104 A38,38 0 0,1 90,104" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><circle cx="332" cy="128" r="28" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><text x="332" y="126" font-size="15" fill="var(--accent)" text-anchor="middle" font-weight="bold">M2</text><text x="332" y="142" font-size="13" fill="var(--accent)" text-anchor="middle">TILT</text><path d="M302,104 A38,38 0 0,1 362,104" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><circle cx="196" cy="268" r="26" fill="var(--surface)" stroke="var(--text)" stroke-width="2"/><text x="196" y="266" font-size="15" fill="var(--text)" text-anchor="middle" font-weight="bold">M4</text><text x="196" y="282" font-size="13" fill="var(--text)" text-anchor="middle">LIFT</text><path d="M168,294 A38,38 0 0,0 224,294" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><text x="16" y="186" font-size="13" fill="var(--amber)">prop rotation</text><text x="16" y="202" font-size="13" fill="var(--amber)" font-weight="bold">CW / CCW: TBD</text><text x="16" y="218" font-size="13" fill="var(--amber)">confirm on the</text><text x="16" y="234" font-size="13" fill="var(--amber)">airframe</text><rect x="398" y="34" width="230" height="250" fill="var(--bg)" stroke="var(--border2)"/><text x="410" y="56" font-size="14" fill="var(--muted)" letter-spacing="1">TILT — SIDE VIEW</text><text x="612" y="56" font-size="13" fill="var(--muted)" text-anchor="end">FWD →</text><line x1="420" y1="214" x2="600" y2="214" stroke="var(--dim)" stroke-width="6" stroke-linecap="round"/><text x="424" y="240" font-size="13" fill="var(--muted)">wing</text><circle cx="470" cy="214" r="6" fill="var(--accent)"/><line x1="470" y1="214" x2="470" y2="100" stroke="var(--green)" stroke-width="3" marker-end="url(#mot-ah-green)"/><text x="480" y="96" font-size="13" fill="var(--green)" font-weight="bold">0° VTOL lift</text><line x1="470" y1="214" x2="578.3" y2="194.9" stroke="var(--amber)" stroke-width="3" marker-end="url(#mot-ah-amber)"/><text x="500" y="170" font-size="13" fill="var(--amber)" font-weight="bold">80° Q_TILT_MAX</text><text x="500" y="154" font-size="13" fill="var(--amber)">transition:</text><line x1="470" y1="214" x2="590" y2="214" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#mot-ah-accent)"/><text x="500" y="268" font-size="13" fill="var(--accent)">FW: fully forward</text><text x="410" y="128" font-size="13" fill="var(--muted)">rate</text><text x="410" y="144" font-size="13" fill="var(--muted)">45°/s</text><text x="16" y="316" font-size="13" fill="var(--text)">M1/M2 wing motors: VTOL lift (0°) and fixed-wing thrust.</text><text x="16" y="334" font-size="13" fill="var(--text)">M4 tail: VTOL lift only, stops when the transition is complete.</text><text x="16" y="352" font-size="13" fill="var(--muted)">Q_TILT_MAX = tilt held during the transition until airspeed</text><text x="16" y="370" font-size="13" fill="var(--amber)">(ArduPilot tilt-rotor guide) — VERIFY meaning vs firmware.</text></svg>
   <div class="dg-cap">Tri tilt-rotor (<code>Q_FRAME_CLASS</code> 7): M1/M2 tilt, M4 lift only. Prop directions: <span class="warn-val">TBD — confirm on the airframe</span> (ArduPilot: the front pair must turn in opposite directions, or roll and pitch inputs cause adverse yaw).</div></div>
 
-  <div class="section-title">Transition Parameters</div>
+  <div class="section-title" id="ac-transition">Transition Parameters</div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr></thead>
     <tbody>
-    <tr><td><code>Q_TRANSITION_MS</code></td><td class="val">3000 ms</td><td>Forward transition time window</td></tr>
-    <tr><td><code>Q_TRANS_FAIL</code></td><td class="warn-val">4s</td><td>Transition failure timeout if airspeed is not reached</td></tr>
-    <tr><td><code>Q_TRANS_FAIL_ACT</code></td><td class="val">0 = QLand</td><td>Automatic action on transition failure: <strong>QLand at the current position</strong> — not QHOVER (ArduPlane source: -1 warn only, 0 QLand, 1 QRTL). <span class="warn-val">VERIFY — against the firmware version in use</span></td></tr>
-    <tr><td><code>Q_BACKTRANS_MS</code></td><td class="val">10000 ms</td><td>Back-transition window (FW → VTOL)</td></tr>
+    <tr><td><code>Q_TRANSITION_MS</code></td><td class="val">3500 ms</td><td>Forward transition time window</td></tr>
+    <tr><td><code>Q_TRANS_FAIL</code></td><td class="warn-val">8 s</td><td>Transition timeout: if the transition has not completed, it is cancelled</td></tr>
+    <tr><td><code>Q_TRANS_FAIL_ACT</code></td><td class="val">1 = QRTL</td><td>Automatic action on transition timeout: <strong>QRTL home</strong> — hover return at <code>Q_RTL_ALT</code> (50 m REL) and a vertical landing at home (<code>Q_OPTIONS</code> bit 19 cleared). It never falls back to QHOVER (ArduPlane source: -1 warn only, 0 QLand, 1 QRTL). Keep the route WP2 → home clear.</td></tr>
+    <tr><td><code>Q_BACKTRANS_MS</code></td><td class="val">8000 ms</td><td>Back-transition window (FW → VTOL): ≈ 8 s × 12 m/s ≈ 100 m flown</td></tr>
     <tr><td><code>Q_ASSIST_SPEED</code></td><td class="warn-val">9 m/s</td><td>VTOL assist activates in FW modes below this speed</td></tr>
     <tr><td><code>Q_ASSIST_ALT</code></td><td class="val">25m</td><td>VTOL assist activates below this altitude (reference: <span class="warn-val">VERIFY</span>)</td></tr>
     </tbody>
   </table></div>
 
-  <div class="section-title">Fixed-Wing Performance</div>
+  <div class="section-title" id="ac-performance">Fixed-Wing Performance</div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr></thead>
     <tbody>
-    <tr><td><code>AIRSPEED_CRUISE</code></td><td class="val">13 m/s</td><td>Target cruise speed (46.8 km/h)</td></tr>
-    <tr><td><code>AIRSPEED_MIN</code></td><td class="warn-val">11 m/s</td><td>Stall prevention threshold</td></tr>
+    <tr><td><code>AIRSPEED_CRUISE</code></td><td class="val">12 m/s</td><td>Target cruise speed (43.2 km/h)</td></tr>
+    <tr><td><code>AIRSPEED_MIN</code></td><td class="warn-val">10 m/s</td><td>Stall prevention threshold</td></tr>
     <tr><td><code>AIRSPEED_MAX</code></td><td class="val">22 m/s</td><td>Maximum airspeed (79 km/h)</td></tr>
     <tr><td><code>TECS_CLMB_MAX</code></td><td class="val">5 m/s</td><td>Maximum climb rate</td></tr>
     <tr><td><code>TECS_SINK_MAX</code></td><td class="val">5 m/s</td><td>Maximum sink rate</td></tr>
-    <tr><td><code>TRIM_THROTTLE</code></td><td class="val">35%</td><td>Cruise throttle setting</td></tr>
+    <tr><td><code>TRIM_THROTTLE</code></td><td class="val">30%</td><td>Cruise throttle setting</td></tr>
     </tbody>
   </table></div>
 
@@ -850,19 +874,58 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </div>
   <div class="diagram-slot" data-diagram="D9"><figure class="dg"><a href="img/diagrams/d09-antenna-layout.svg" target="_blank" rel="noopener"><img src="img/diagrams/d09-antenna-layout.svg" width="400" height="1168" loading="lazy" decoding="async" alt="Diagram D9: schematic top and rear views; VRX patch 1 boresight horizontal right (90°), patch 2 right and 45° down (135°), orbit centre on the right (clockwise). Antennas: HM30 air unit, VRX patches, ELRS TX module, ELRS RX 915, GPS — positions TBD. Co-site test 7 TBD; 25 MHz harmonics near 5800 MHz and GPS L1."></a><figcaption><strong>D9</strong> · Carrier antenna layout — schematic; mounting positions and separations TBD (own photos, test 7). VRX patches face the right wing (inward). Tap to open full size.</figcaption></figure></div>
 
-  <div class="section-title">Battery &amp; Power</div>
+  <div class="section-title" id="ac-battery">Battery &amp; Power</div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Parameter</th><th>Value</th><th>Notes</th></tr></thead>
     <tbody>
     <tr><td>Carrier battery</td><td class="val">6S 7000mAh</td><td>Single pack powers all carrier systems: FC, ESCs, HM30 air unit, relay PCB, IP camera</td></tr>
     <tr><td>Mast battery</td><td class="val">6S 3000mAh</td><td>Powers HM30 ground unit only</td></tr>
-    <tr><td><code>BATT_CRT_VOLT</code></td><td class="crit-val">22.2V</td><td>3.7V/cell nominal — triggers Loiter→QLand</td></tr>
-    <tr><td><code>BATT_LOW_VOLT</code></td><td class="warn-val">0 — NOT SET</td><td>No warning voltage configured</td></tr>
+    <tr><td><code>BATT_LOW_VOLT</code></td><td class="warn-val">22.0V</td><td>3.67V/cell — low battery → <strong>automatic RTL</strong> after <code>BATT_LOW_TIMER</code> = 10 s below the threshold</td></tr>
+    <tr><td><code>BATT_FS_LOW_ACT</code></td><td class="val">1</td><td>RTL: home in fixed-wing at 120 m, then an automatic VTOL landing at home</td></tr>
+    <tr><td><code>BATT_CRT_VOLT</code></td><td class="crit-val">21.0V</td><td>3.50V/cell — critical battery</td></tr>
+    <tr><td><code>BATT_FS_CRT_ACT</code></td><td class="val">6</td><td>Loiter → QLand at the <strong>current position, not home</strong></td></tr>
+    <tr><td><code>BATT_FS_VOLTSRC</code></td><td class="val">1</td><td>The failsafes use the sag-compensated (resting) voltage estimate; the OSD and Mission Planner show raw voltage, which reads lower under load</td></tr>
+    <tr><td><code>BATT_ARM_VOLT</code></td><td class="val">24.6V</td><td>4.10V/cell — arming refused below: a part-used pack cannot be flown</td></tr>
+    <tr><td><code>Q_M_BAT_VOLT_MAX/MIN</code></td><td class="val">25.2 / 19.8V</td><td>VTOL motor battery-voltage compensation range</td></tr>
     <tr><td><code>RTL_ALTITUDE</code></td><td class="val">120m</td><td>Fixed-wing RTL altitude, above home (REL)</td></tr>
-    <tr><td><code>Q_RTL_ALT</code></td><td class="val">70m</td><td>VTOL RTL altitude (REL)</td></tr>
+    <tr><td><code>Q_RTL_MODE</code></td><td class="val">2</td><td>RTL flies home in fixed-wing at <code>RTL_ALTITUDE</code>, loiters down, then an <strong>automatic VTOL landing at home</strong>. Keep the home landing zone clear for the whole flight.</td></tr>
+    <tr><td><code>Q_OPTIONS</code></td><td class="val">426016</td><td>Bit 5 set: VTOL modes use QRTL for a failsafe RTL. Bit 19 cleared: a transition timeout QRTLs home (<code>Q_TRANS_FAIL_ACT</code> = 1)</td></tr>
+    <tr><td><code>Q_RTL_ALT</code></td><td class="val">50m</td><td>VTOL RTL (QRTL) altitude (REL)</td></tr>
     <tr><td><code>Q_RTL_ALT_MIN</code></td><td class="val">35m</td><td>Minimum VTOL RTL altitude (REL)</td></tr>
     </tbody>
   </table></div>
+
+  <div class="card accent" id="voltage-ladder">
+    <div class="card-title">Carrier voltage ladder — 6S 7000mAh (reference param file 2026-10-17)</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Threshold</th><th>Pack V</th><th>V/cell</th><th>What happens</th></tr></thead>
+      <tbody>
+      <tr><td>Full charge</td><td class="val">25.2</td><td>4.20</td><td>—</td></tr>
+      <tr><td>Arming minimum (<code>BATT_ARM_VOLT</code>)</td><td class="val">24.6</td><td>4.10</td><td>Arming refused below — fit a fully charged pack</td></tr>
+      <tr><td>Manual RTL trigger (pilot, OSD raw)</td><td class="val">23.0</td><td>3.83</td><td>Pilot initiates RTL — call "CARRIER BATT — RTL SOON"</td></tr>
+      <tr><td>Hard RTL limit (pilot discipline)</td><td class="warn-val">22.5</td><td>3.75</td><td>RTL must be active</td></tr>
+      <tr><td><code>BATT_LOW_VOLT</code></td><td class="warn-val">22.0</td><td>3.67</td><td><strong>Automatic RTL</strong> (10 s below, sag-compensated): home at 120 m, automatic VTOL landing at home</td></tr>
+      <tr><td><code>BATT_CRT_VOLT</code></td><td class="crit-val">21.0</td><td>3.50</td><td><strong>Automatic QLand here</strong> — Loiter → QLand at the current position, not home</td></tr>
+      <tr><td>Storage</td><td class="val">22.8</td><td>3.80</td><td>—</td></tr>
+      <tr><td>Hard floor</td><td class="crit-val">18.6</td><td>3.10</td><td>—</td></tr>
+      </tbody>
+    </table></div>
+    <div class="alert alert-info">The failsafes and the pilot read <strong>different voltages</strong>: <code>BATT_FS_VOLTSRC</code> = 1 means the failsafes use a sag-compensated (resting) estimate, while the OSD and Mission Planner show raw voltage, which reads lower under load. The pilot's 23.0V trigger on the OSD therefore comes well before the automatic 22.0V. If the low-battery RTL fires during a manual QHOVER landing, reselect QHOVER on the Nomad switch to finish the landing.</div>
+  </div>
+
+  <div class="section-title" id="ac-compass">GPS &amp; Compass</div>
+  <p>The GPS and the only compass in use are in the <strong>GPS-mast unit</strong>. The compass inside the flight controller is disabled.</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Item</th><th>Setting</th></tr></thead>
+    <tbody>
+    <tr><td>Primary compass</td><td>External <strong>IST8310</strong> on the GPS mast, DevID 658945, <strong>priority 1</strong></td></tr>
+    <tr><td>Internal / external flag</td><td><code>COMPASS_EXTERNAL</code> = 2 (forced external, so auto-detection cannot flip it back)</td></tr>
+    <tr><td>Internal compass</td><td>AK09916 in the flight controller, DevID 590114, <strong>disabled</strong> (<code>COMPASS_USE2</code> = 0)</td></tr>
+    <tr><td>Calibration fitness</td><td><code>COMPASS_CAL_FIT</code> = 16 (default). Never relax it to make a calibration pass.</td></tr>
+    <tr><td>Orientation</td><td><code>COMPASS_AUTO_ROT</code> = 2, detected during calibration</td></tr>
+    </tbody>
+  </table></div>
+  <div class="alert alert-warn"><strong>No backup compass:</strong> without the GPS-mast unit the aircraft will not arm (Pre-Arm Ref → "Compass not found / not healthy"). Calibration: Procedures → Compass Calibration. Record <code>COMPASS_OFS_X/Y/Z</code> after each calibration (Maintenance).</div>
 
   <div class="dg-gauge-wrap" id="ac-batt-gauge"><p class="warn-val">Battery gauge is drawn from the carrier pack profile — if this text stays, the page scripts did not load.</p></div>
 
@@ -875,14 +938,14 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <p>These 7 waypoints must be loaded and verified before every flight. The altitude profile below shows the intended flight path. All altitudes are REL (above home).</p>
 
   <div class="dg-scroll">
-  <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-780" role="img" aria-labelledby="svg-mission-t svg-mission-d"><title id="svg-mission-t">7-waypoint mission altitude profile (REL m), with distances, transition corridor, abort branch and back-transition</title><desc id="svg-mission-d">Altitude scale 0–150 m REL. WP1 VTOL_TAKEOFF 20–30 m at the launch point. Transition corridor WP1 to WP2, 100–200 m into wind, clear of obstacles to 60 m; WP2 WAYPOINT 50–80 m, 300 m or more clear beyond. Abort: no airspeed within 3 s → QHOVER; Q_TRANS_FAIL 4 s → automatic QLand (verify). WP3 LOITER_TO_ALT climbs to the relay altitude (60–140 m, per site); WP4 sortie-specific orbit centre at relay altitude; WP5 LOITER_TO_ALT 30–40 m, 400 m or more upwind of the landing zone; WP6 WAYPOINT 20–25 m; back-transition glide about 100–130 m (10 s); WP7 VTOL_LAND. Horizontal distances not to scale.</desc><defs><marker id="mis-ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--red)"/></marker><marker id="mis-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs><line x1="70" y1="300" x2="890" y2="300" stroke="var(--border2)" stroke-width="1.5"/><text x="62" y="304" font-size="13" fill="var(--muted)" text-anchor="end">0</text><line x1="70" y1="260" x2="890" y2="260" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="264" font-size="13" fill="var(--muted)" text-anchor="end">25</text><line x1="70" y1="220" x2="890" y2="220" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="224" font-size="13" fill="var(--muted)" text-anchor="end">50</text><line x1="70" y1="180" x2="890" y2="180" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="184" font-size="13" fill="var(--muted)" text-anchor="end">75</text><line x1="70" y1="140" x2="890" y2="140" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="144" font-size="13" fill="var(--muted)" text-anchor="end">100</text><line x1="70" y1="100" x2="890" y2="100" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="104" font-size="13" fill="var(--muted)" text-anchor="end">125</text><line x1="70" y1="60" x2="890" y2="60" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="64" font-size="13" fill="var(--muted)" text-anchor="end">150</text><text x="62" y="40" font-size="13" fill="var(--muted)" text-anchor="end">REL m</text><rect x="110" y="204" width="150" height="96" fill="var(--green)" fill-opacity="0.08" stroke="var(--green)" stroke-dasharray="4,4"/><text x="130" y="280.8" font-size="13" fill="var(--green)">corridor clear to 60 m</text><rect x="400" y="76" width="200" height="128" fill="var(--accent)" fill-opacity="0.07"/><text x="408" y="92" font-size="13" fill="var(--accent)">relay altitude 60–140 m</text><text x="408" y="108" font-size="13" fill="var(--muted)">(per site — relay table)</text><line x1="110" y1="300" x2="110" y2="260" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,3"/><polyline points="110,260 260,196 400,140 540,140 680,244 790,264.8" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/><line x1="790" y1="264.8" x2="860" y2="264.8" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="2,3"/><line x1="860" y1="264.8" x2="860" y2="300" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,3"/><line x1="96" y1="268" x2="96" y2="252" stroke="var(--amber)" stroke-width="4"/><line x1="274" y1="220" x2="274" y2="172" stroke="var(--amber)" stroke-width="4"/><line x1="694" y1="252" x2="694" y2="236" stroke="var(--amber)" stroke-width="4"/><line x1="776" y1="268" x2="776" y2="260" stroke="var(--amber)" stroke-width="4"/><circle cx="110" cy="300" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="260" cy="196" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="400" cy="140" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="540" cy="140" r="9" fill="var(--accent)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="680" cy="244" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="790" cy="264.8" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="860" cy="300" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><polyline points="190,225.9 180,92" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#mis-ah-red)"/><text x="84" y="64" font-size="13" fill="var(--red)" font-weight="bold">ABORT: no airspeed in 3 s → QHOVER</text><text x="84" y="82" font-size="13" fill="var(--amber)">(4 s: automatic QLand — VERIFY)</text><text x="110" y="286" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP1</text><text x="110" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">VTOL_TAKEOFF</text><text x="260" y="182" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP2</text><text x="260" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="400" y="126" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP3</text><text x="400" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">LOITER_TO_ALT</text><text x="540" y="126" font-size="14" fill="var(--text)" text-anchor="middle" font-weight="bold">WP4</text><text x="540" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="680" y="230" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP5</text><text x="680" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">LOITER_TO_ALT</text><text x="790" y="250.8" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP6</text><text x="790" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="860" y="286" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP7</text><text x="860" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">VTOL_LAND</text><text x="132" y="264" font-size="13" fill="var(--amber)">20–30 m</text><text x="282" y="168" font-size="13" fill="var(--amber)">50–80 m</text><text x="702" y="232" font-size="13" fill="var(--amber)">30–40 m</text><text x="768" y="252" font-size="13" fill="var(--amber)" text-anchor="end">20–25 m</text><text x="540" y="166" font-size="13" fill="var(--muted)" text-anchor="middle">sortie-specific</text><line x1="110" y1="352" x2="260" y2="352" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="185" y="368" font-size="13" fill="var(--muted)" text-anchor="middle">100–200 m into wind</text><line x1="260" y1="380" x2="380" y2="380" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="320" y="396" font-size="13" fill="var(--muted)" text-anchor="middle">300 m+ clear beyond</text><line x1="680" y1="352" x2="860" y2="352" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="770" y="368" font-size="13" fill="var(--muted)" text-anchor="middle">400 m+ upwind of LZ</text><line x1="790" y1="380" x2="860" y2="380" stroke="var(--accent)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="880" y="400" font-size="13" fill="var(--accent)" text-anchor="end">back-transition glide ≈100–130 m (10 s)</text><text x="890" y="26" font-size="13" fill="var(--muted)" text-anchor="end">horizontal: not to scale</text></svg>
+  <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-780" role="img" aria-labelledby="svg-mission-t svg-mission-d"><title id="svg-mission-t">7-waypoint mission altitude profile (REL m), with distances, transition corridor, abort branch and back-transition</title><desc id="svg-mission-d">Altitude scale 0–150 m REL. WP1 VTOL_TAKEOFF 20–30 m at the launch point. Transition corridor WP1 to WP2, 100–200 m into wind, clear of obstacles to 60 m; WP2 WAYPOINT 50–80 m, 300 m or more clear beyond. Abort: no airspeed within 3 s → QHOVER; Q_TRANS_FAIL 8 s → automatic QRTL: hover back to home at 50 m and land vertically there, so the route WP2 → home is the QRTL path and must be clear. WP3 LOITER_TO_ALT climbs to the relay altitude (60–140 m, per site); WP4 sortie-specific orbit centre at relay altitude; WP5 LOITER_TO_ALT 30–40 m, 400 m or more upwind of the landing zone; WP6 WAYPOINT 20–25 m; back-transition glide about 100 m (8 s at 12 m/s); WP7 VTOL_LAND. Horizontal distances not to scale.</desc><defs><marker id="mis-ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--red)"/></marker><marker id="mis-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker><marker id="mis-ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--amber)"/></marker></defs><line x1="70" y1="300" x2="890" y2="300" stroke="var(--border2)" stroke-width="1.5"/><text x="62" y="304" font-size="13" fill="var(--muted)" text-anchor="end">0</text><line x1="70" y1="260" x2="890" y2="260" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="264" font-size="13" fill="var(--muted)" text-anchor="end">25</text><line x1="70" y1="220" x2="890" y2="220" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="224" font-size="13" fill="var(--muted)" text-anchor="end">50</text><line x1="70" y1="180" x2="890" y2="180" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="184" font-size="13" fill="var(--muted)" text-anchor="end">75</text><line x1="70" y1="140" x2="890" y2="140" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="144" font-size="13" fill="var(--muted)" text-anchor="end">100</text><line x1="70" y1="100" x2="890" y2="100" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="104" font-size="13" fill="var(--muted)" text-anchor="end">125</text><line x1="70" y1="60" x2="890" y2="60" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="64" font-size="13" fill="var(--muted)" text-anchor="end">150</text><text x="62" y="40" font-size="13" fill="var(--muted)" text-anchor="end">REL m</text><rect x="110" y="204" width="150" height="96" fill="var(--green)" fill-opacity="0.08" stroke="var(--green)" stroke-dasharray="4,4"/><text x="130" y="280.8" font-size="13" fill="var(--green)">corridor clear to 60 m</text><rect x="400" y="76" width="200" height="128" fill="var(--accent)" fill-opacity="0.07"/><text x="408" y="92" font-size="13" fill="var(--accent)">relay altitude 60–140 m</text><text x="408" y="108" font-size="13" fill="var(--muted)">(per site — relay table)</text><line x1="110" y1="300" x2="110" y2="260" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,3"/><polyline points="110,260 260,196 400,140 540,140 680,244 790,264.8" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/><line x1="790" y1="264.8" x2="860" y2="264.8" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="2,3"/><line x1="860" y1="264.8" x2="860" y2="300" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,3"/><line x1="96" y1="268" x2="96" y2="252" stroke="var(--amber)" stroke-width="4"/><line x1="274" y1="220" x2="274" y2="172" stroke="var(--amber)" stroke-width="4"/><line x1="694" y1="252" x2="694" y2="236" stroke="var(--amber)" stroke-width="4"/><line x1="776" y1="268" x2="776" y2="260" stroke="var(--amber)" stroke-width="4"/><circle cx="110" cy="300" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="260" cy="196" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="400" cy="140" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="540" cy="140" r="9" fill="var(--accent)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="680" cy="244" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="790" cy="264.8" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="860" cy="300" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><polyline points="190,225.9 180,92" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#mis-ah-red)"/><text x="84" y="64" font-size="13" fill="var(--red)" font-weight="bold">ABORT: no airspeed in 3 s → QHOVER</text><text x="84" y="82" font-size="13" fill="var(--amber)">(8 s: automatic QRTL home)</text><polyline points="260,220 110,220 110,296" fill="none" stroke="var(--amber)" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#mis-ah-amber)"/><text x="204" y="110" font-size="13" fill="var(--amber)">amber: QRTL home at 50 m</text><text x="204" y="128" font-size="13" fill="var(--amber)">keep WP2 → home clear</text><text x="110" y="286" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP1</text><text x="110" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">VTOL_TAKEOFF</text><text x="260" y="182" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP2</text><text x="260" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="400" y="126" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP3</text><text x="400" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">LOITER_TO_ALT</text><text x="540" y="126" font-size="14" fill="var(--text)" text-anchor="middle" font-weight="bold">WP4</text><text x="540" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="680" y="230" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP5</text><text x="680" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">LOITER_TO_ALT</text><text x="790" y="250.8" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP6</text><text x="790" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="860" y="286" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP7</text><text x="860" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">VTOL_LAND</text><text x="132" y="264" font-size="13" fill="var(--amber)">20–30 m</text><text x="282" y="168" font-size="13" fill="var(--amber)">50–80 m</text><text x="702" y="232" font-size="13" fill="var(--amber)">30–40 m</text><text x="768" y="252" font-size="13" fill="var(--amber)" text-anchor="end">20–25 m</text><text x="540" y="166" font-size="13" fill="var(--muted)" text-anchor="middle">sortie-specific</text><line x1="110" y1="352" x2="260" y2="352" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="185" y="368" font-size="13" fill="var(--muted)" text-anchor="middle">100–200 m into wind</text><line x1="260" y1="380" x2="380" y2="380" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="320" y="396" font-size="13" fill="var(--muted)" text-anchor="middle">300 m+ clear beyond</text><line x1="680" y1="352" x2="860" y2="352" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="770" y="368" font-size="13" fill="var(--muted)" text-anchor="middle">400 m+ upwind of LZ</text><line x1="790" y1="380" x2="860" y2="380" stroke="var(--accent)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="880" y="400" font-size="13" fill="var(--accent)" text-anchor="end">back-transition glide ≈100 m (8 s)</text><text x="890" y="26" font-size="13" fill="var(--muted)" text-anchor="end">horizontal: not to scale</text></svg>
   <div class="dg-cap">Altitudes from the 7-WP template (Mission Planning). Relay altitude per site (relay-altitude table). Scroll sideways on a phone.</div></div>
 
   <div class="tbl-wrap"><table>
     <thead><tr><th>WP</th><th>Type</th><th>Purpose</th><th>Pilot action</th></tr></thead>
     <tbody>
     <tr><td>1</td><td>VTOL_TAKEOFF</td><td>Vertical takeoff</td><td>Arm, hold QHOVER until transition altitude achieved</td></tr>
-    <tr><td>2</td><td>WAYPOINT</td><td>Transition safety altitude</td><td>Co-pilot advances mission from WP1 once transition confirmed. Altitude must give clearance if transition is incomplete.</td></tr>
+    <tr><td>2</td><td>WAYPOINT</td><td>Transition safety altitude</td><td>Co-pilot advances mission from WP1 once transition confirmed. Altitude must give clearance if transition is incomplete. The route WP2 → home is the QRTL path after a transition timeout — keep it clear.</td></tr>
     <tr><td>3</td><td>LOITER_TO_ALT</td><td>Climb to relay altitude</td><td>Autonomous. Monitor airspeed and climb rate.</td></tr>
     <tr><td>4</td><td>WAYPOINT</td><td>Mission start point</td><td>Sortie-specific. Pilots configure this per flight before departure.</td></tr>
     <tr><td>5</td><td>LOITER_TO_ALT</td><td>Descend to approach altitude</td><td>Autonomous on return leg.</td></tr>
@@ -895,16 +958,16 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="tbl-wrap"><table>
     <thead><tr><th>Parameter</th><th class="ok">Normal</th><th class="bad">Abort (switch QHOVER)</th></tr></thead>
     <tbody>
-    <tr><td>Airspeed build</td><td>Reaches 13 m/s within 3s</td><td>No build within 3s → QHOVER. If nobody acts, Q_TRANS_FAIL (4s) → automatic QLand at the current position (<span class="warn-val">VERIFY</span>)</td></tr>
+    <tr><td>Airspeed build</td><td>Builds toward 12 m/s cruise, above 10 m/s (AIRSPEED_MIN)</td><td>No build within 3s → QHOVER. If nobody acts, Q_TRANS_FAIL (8 s) cancels the transition → automatic QRTL home (hover at 50 m REL, vertical landing at home)</td></tr>
     <tr><td>Altitude loss</td><td>Up to ~5m — expected and normal</td><td>Loss &gt;10m → QHOVER immediately</td></tr>
     <tr><td>Pitch attitude</td><td>Slight nose-down (1–3°) as speed builds</td><td>Aggressive dive → QHOVER immediately</td></tr>
     <tr><td>M1/M2 tilt</td><td>Smoothly rotate forward over ~3s</td><td>One-sided tilt, jerk, or stall sound → QHOVER</td></tr>
     <tr><td>M1/M2 forward thrust</td><td>Thrust builds audibly as the wing motors tilt forward</td><td>No thrust build → QHOVER, check ESCs</td></tr>
     <tr><td>Transition complete</td><td>M4 tail motor stops; M1/M2 fully forward. Aircraft in FW flight.</td><td>M4 still running at cruise alt → investigate</td></tr>
-    <tr><td>Back-transition</td><td>10s window, M1/M2 tilt smoothly back to vertical</td><td>Oscillation during back-transition → QHOVER override</td></tr>
+    <tr><td>Back-transition</td><td>8 s window (≈ 100 m at 12 m/s), M1/M2 tilt smoothly back to vertical</td><td>Oscillation during back-transition → QHOVER override</td></tr>
     </tbody>
   </table></div>
-  <div class="alert alert-warn">Do not wait for Q_TRANS_FAIL. If airspeed has not built within <strong>3s</strong>, or the transition looks wrong, switch QHOVER immediately. The automatic action at 4s is <strong>QLand at the current position</strong> (<span class="warn-val">VERIFY — against the firmware version in use</span>), not a hover. An aborted transition near transition altitude is recoverable — a stall is not. Transition <strong>into wind</strong>.</div>
+  <div class="alert alert-warn">Do not wait for Q_TRANS_FAIL. If airspeed has not built within <strong>3s</strong>, or the transition looks wrong, switch QHOVER immediately — the pilot (2–3 s) is faster than the timer. At 8 s ArduPlane cancels the transition and <strong>QRTLs home</strong> (hover return at 50 m REL, vertical landing at home); it never falls back to QHOVER. Keep the route WP2 → home clear: it is the QRTL path. An aborted transition near transition altitude is recoverable — a stall is not. Transition <strong>into wind</strong>.</div>
 
 </div>
 
@@ -930,16 +993,16 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="section-title">Takeoff — VTOL Phase</div>
   <div class="card accent">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Mode: <span class="mbadge m-qhov">QHOVER</span></strong><p>Nomad switch position 1. Confirm in Mission Planner HUD.</p></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Arm</strong><p>Stick arm (Nomad) or GCS arm. All 3 motors (M1, M2, M4) spool to min arm thrust. Confirm no pre-arm messages.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Arm</strong><p>Stick arm (Nomad) or GCS arm. All 3 motors (M1, M2, M4) spool to min arm thrust. Confirm no pre-arm messages. Arming is refused below <span data-tok="settings.battArmVolt">24.6</span>V (<code>BATT_ARM_VOLT</code>) — fit a fully charged pack.</p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Hover check at 2–3m</strong><p>Confirm stable hover, no oscillation. Confirm SIYI link (MP telemetry live) and 915 RSSI acceptable. Co-pilot confirms telemetry nominal in MP.</p></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Climb to transition altitude</strong><p>Climb in QHOVER to ≥25m REL. Wind vane active — aircraft weathervanes into wind automatically.</p></div></div>
   </div>
 
   <div class="section-title">Transition — VTOL → Fixed Wing</div>
-  <div class="alert alert-danger">Highest-risk phase. Transition into wind. If pitch-down is aggressive or airspeed does not build within 3s: revert to QHOVER immediately. Do not wait for Q_TRANS_FAIL (4s) — its automatic action is QLand at the current position (<span class="warn-val">VERIFY against the firmware</span>).</div>
+  <div class="alert alert-danger">Highest-risk phase. Transition into wind. If pitch-down is aggressive or airspeed does not build within 3s: revert to QHOVER immediately. Do not wait for Q_TRANS_FAIL (8 s) — at 8 s ArduPlane cancels the transition and QRTLs home (hover return at 50 m REL, vertical landing at home). Keep the route WP2 → home clear.</div>
   <div class="card amber">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Switch to <span class="mbadge m-fbwb">FBWB</span></strong><p>Nomad switch position 2. M1/M2 tilt motors begin rotating forward and build forward thrust.</p></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Monitor 3s transition window</strong><p>Target 13 m/s. Minimum 11 m/s. No airspeed build within 3s: QHOVER immediately.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Monitor the transition</strong><p>Target 12 m/s. Minimum 10 m/s. No airspeed build within 3s: QHOVER immediately.</p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Transition confirmed</strong><p>M4 tail motor stops. Aircraft in fixed-wing flight. Co-pilot advances mission to WP2.</p></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Switch to <span class="mbadge m-auto">AUTO</span></strong><p>Nomad switch position 3. Carrier Pilot takes over MP monitoring. Co-pilot clears to operate the client.</p></div></div>
   </div>
@@ -949,7 +1012,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Loiter established — client handover</strong><p>Carrier in AUTO loiter. Bridge RUN, client video in the viewer, client LQ shown in the app (if telemetry is enabled). FPV Pilot takes the EdgeTX radio and flies the client.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>GCS app status bar — FPV Pilot duty</strong><p>Watch the app status bar: <strong>RTT, client LQ, bridge state, camera state</strong>. Call <strong>"RC LINK DEGRADED"</strong> at the alarm thresholds (RTT threshold <span class="warn-val">TBD — inactive until the HM30 RTT is measured</span>; LQ &lt; 70 %). Every app alarm has a callout (Pre-Arm Ref → Relay &amp; GCS app).</p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Carrier Pilot: orbit management</strong><p>Primary duty — keep the client inside the relay coverage. Orbit around the client's operating area with the client on the near side. If the client approaches the coverage edge: call "RELAY EDGE" and vector the carrier in via GUIDED mode.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Battery discipline</strong><p>No BATT_LOW_VOLT configured — manual voltage monitoring only. Target RTL at <span class="warn-val"><span data-tok="settings.manualRtlVolt">23.0</span>V</span>. Hard limit: RTL in progress before <span class="crit-val"><span data-tok="settings.hardLimitVolt">22.5</span>V</span>. At <span data-tok="settings.battCrtVolt">22.2</span>V: automated Loiter→QLand at current position.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Battery discipline</strong><p>Target RTL at <span class="warn-val"><span data-tok="settings.manualRtlVolt">23.0</span>V</span> (OSD raw voltage). Hard limit: RTL in progress before <span class="crit-val"><span data-tok="settings.hardLimitVolt">22.5</span>V</span>. At <span data-tok="settings.battLowVolt">22.0</span>V: automatic RTL (failsafe, sag-compensated). At <span data-tok="settings.battCrtVolt">21.0</span>V: automatic Loiter→QLand at the current position.</p></div></div>
   </div>
   <div class="alert alert-warn">Verbal callouts stay the primary source of client status until the telemetry path is proven. Establish a call cadence: battery level, position, issues — every 2–3 minutes minimum.</div>
 
@@ -996,10 +1059,21 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="section-title">Recovery</div>
   <div class="card">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Recall client</strong><p>Co-pilot returns the client first where possible. Call "FPV LANDED" once landed and disarmed.</p></div></div>
-    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier return</strong><p>Mission WP5 → WP6 → WP7 (VTOL_LAND). Or RTL from Mission Planner; the Nomad left button only within close range.</p></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Back-transition</strong><p>10s window. M1/M2 tilt back to vertical. If oscillation appears: switch QHOVER manually.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>VTOL land</strong><p>Final descent at Q_LAND_FINAL_SPD = 0.2 m/s. Confirm landing zone clear. Disarm on touchdown.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier return</strong><p>Mission WP5 → WP6 → WP7 (VTOL_LAND). Or RTL from Mission Planner (it ends with an automatic VTOL landing at home); the Nomad left button only within close range.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Back-transition</strong><p>8 s window (≈ 100 m at 12 m/s). M1/M2 tilt back to vertical. If oscillation appears: switch QHOVER manually.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>VTOL land</strong><p>Final descent at Q_LAND_FINAL_SPD = 0.5 m/s. Confirm landing zone clear. Disarm on touchdown.</p></div></div>
     <div class="step"><div class="step-n">5</div><div class="step-body"><strong>After landing</strong><p>Save the GCS app session log (RC out, status, telemetry, alarms) for the debrief.</p></div></div>
+  </div>
+  <div class="alert alert-warn" id="lowbatt-qhover-landing"><strong>Low-battery RTL during a manual QHOVER landing:</strong> if <code>BATT_LOW_VOLT</code> (<span data-tok="settings.battLowVolt">22.0</span>V) fires while you land manually in QHOVER, the aircraft switches to RTL — a fixed-wing return and a climb to 120 m. <strong>Reselect QHOVER on the Nomad switch</strong> to finish the landing. The failsafe does not interrupt QLAND, QRTL or an AUTO VTOL landing.</div>
+
+  <div class="section-title" id="compass-cal">Compass Calibration</div>
+  <div class="card amber">
+    <div class="card-title">External IST8310 only — no backup compass</div>
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Check the compass setup first</strong><p>Mission Planner: Initial Setup → Mandatory Hardware → Compass. Confirm the IST8310 is <strong>priority 1</strong> and marked <strong>External</strong>, and that the internal compass is <strong>unticked</strong>.</p></div></div>
+    <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Outdoors, aircraft as flown</strong><p>Away from vehicles and metal, with the aircraft assembled as it flies. Start <strong>Onboard Mag Calibration</strong>.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Rotate, accept, reboot</strong><p>Rotate through all axes until it reports success, click <strong>Accept</strong>, then <strong>reboot</strong>.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Four-direction check</strong><p>Point the nose N, E, S and W. The Mission Planner heading must match a phone compass within 5–10°.</p></div></div>
+    <p>Never relax <code>COMPASS_CAL_FIT</code> to make a calibration pass. Record the new <code>COMPASS_OFS_X/Y/Z</code> (Maintenance).</p>
   </div>
 
 </div>
@@ -1018,15 +1092,16 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="section-title">Pre-Arm Error Reference</div>
   <p>Type any part of a message to filter all tables on this page.</p>
   <input type="search" id="prearm-search" class="filter-input" placeholder="Search error message or alarm..." aria-label="Filter the pre-arm and alarm tables" oninput="filterPrearm()">
-  <div class="alert alert-warn" id="param-verify-note">Values in this table (for example <code>ARSPD_TYPE=4</code>, <code>AHRS_GPS_MINSATS=6</code>, "≥6 sats", "HDOP &lt; 2.0") are generic and have <strong>not yet been checked against this aircraft's param file</strong>. Verify against param file — checked: <span data-ver="paramFile" class="warn-val">TBD</span>.</div>
+  <div class="alert alert-warn" id="param-verify-note">Parameter values in this table (for example <code>ARSPD_TYPE=4</code>, <code>AHRS_GPS_MINSATS=6</code>, <code>BATT_CRT_VOLT</code>, <code>BATT_ARM_VOLT</code>) are checked against the reference param file of 2026-10-17 (Reference → Parameters). Generic limits that are not parameters of this aircraft (for example "HDOP &lt; 2.0") stay marked VERIFY. Imported param file: <span data-ver="paramFile" class="warn-val">TBD</span>.</div>
   <div class="tbl-wrap"><table id="prearm-table" class="prearm-filter">
     <thead><tr><th>Message</th><th>Cause</th><th>Fix</th></tr></thead>
     <tbody>
     <tr><td><code>GPS: not healthy</code></td><td>No GPS signal or module not responding</td><td>Wait for GPS lock. Check GPS cable. Verify GPS_TYPE set correctly.</td></tr>
-    <tr><td><code>GPS: HDOP not acceptable</code></td><td>Position accuracy too low</td><td>Wait for better fix. Move away from buildings. AHRS_GPS_MINSATS=6 must be met (<span class="warn-val">VERIFY</span>).</td></tr>
+    <tr><td><code>GPS: HDOP not acceptable</code></td><td>Position accuracy too low</td><td>Wait for better fix. Move away from buildings. AHRS_GPS_MINSATS=6 must be met. HDOP limit: <span class="warn-val">VERIFY</span>.</td></tr>
     <tr><td><code>GPS: speed error too high</code></td><td>GPS velocity noise excessive</td><td>Wait for stable fix. Check for RF interference near GPS antenna — the relay's 25 MHz harmonics land close to GPS L1.</td></tr>
-    <tr><td><code>GPS: yaw error too high</code></td><td>GPS heading disagrees with compass</td><td>Re-do compass calibration. Check compass orientation parameter.</td></tr>
-    <tr><td><code>Compass not calibrated</code></td><td>Compass calibration never run</td><td>Initial Setup → Mandatory Hardware → Compass → Start. Rotate through all axes.</td></tr>
+    <tr><td><code>GPS: yaw error too high</code></td><td>GPS heading disagrees with compass</td><td>Re-do the compass calibration (Procedures → Compass Calibration), then the four-direction check.</td></tr>
+    <tr><td><code>Compass not found / not healthy</code></td><td>The external IST8310 (GPS-mast unit) is not detected</td><td>Check the GPS-mast connector. There is <strong>no backup compass</strong> (internal compass disabled, <code>COMPASS_USE2</code> = 0): the aircraft will not arm without the mast unit.</td></tr>
+    <tr><td><code>Compass not calibrated</code></td><td>Compass calibration never run</td><td>(1) Initial Setup → Mandatory Hardware → Compass: IST8310 priority 1 and External, internal compass unticked. (2) Outdoors, away from vehicles and metal, aircraft as flown: Onboard Mag Calibration. (3) Rotate through all axes until success, Accept, <strong>reboot</strong>. (4) Four-direction check: nose N/E/S/W, MP heading within 5–10° of a phone compass.</td></tr>
     <tr><td><code>Compass offsets too high</code></td><td>Large offsets — magnetic interference during calibration</td><td>Re-calibrate away from metal objects. Move compass away from power cables.</td></tr>
     <tr><td><code>Compass variance</code></td><td>Compass readings inconsistent</td><td>Move away from metal. Check current-carrying cables near compass location.</td></tr>
     <tr><td><code>INS not calibrated</code></td><td>Accelerometer calibration not done</td><td>Initial Setup → Mandatory Hardware → Accel Calibration.</td></tr>
@@ -1034,23 +1109,24 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>Gyros not calibrated</code></td><td>Gyro calibration failed at startup</td><td>Keep aircraft completely still during power-on gyro calibration. Re-power on flat surface.</td></tr>
     <tr><td><code>Gyros not healthy</code></td><td>Gyro errors</td><td>Power cycle. Check FC vibration isolation mounts.</td></tr>
     <tr><td><code>Barometer not healthy</code></td><td>Baro sensor failure</td><td>Power cycle. Check for blocked baro port or extreme temperature change.</td></tr>
-    <tr><td><code>Airspeed not healthy</code></td><td>Pitot sensor not responding</td><td>Check pitot tube connector. Verify ARSPD_TYPE=4 for your sensor (<span class="warn-val">VERIFY</span>).</td></tr>
+    <tr><td><code>Airspeed not healthy</code></td><td>Pitot sensor not responding</td><td>Check pitot tube connector. ARSPD_TYPE=4 on this aircraft (reference param file).</td></tr>
     <tr><td><code>Airspeed not calibrated</code></td><td>Pitot calibration not run this session</td><td>Preflight_Calibration → Do Action. Pitot cover must be on and no wind during calibration.</td></tr>
     <tr><td><code>Airspeed too high</code></td><td>Reads &gt;2 m/s at rest — wind or leak</td><td>Shield pitot from wind. Re-run calibration. Check for leak or blockage in pitot tube.</td></tr>
     <tr><td><code>RC not calibrated</code></td><td>RC calibration not done</td><td>Initial Setup → Mandatory Hardware → Radio Calibration.</td></tr>
     <tr><td><code>RC failsafe on</code></td><td>RC signal below THR_FS_VALUE — 915 Nomad not on yet or not linked</td><td>Switch the 915 Nomad on (power-up step 8) and confirm RC in MP. Or raise throttle above failsafe. THR_FS_VALUE=950.</td></tr>
     <tr><td><code>Throttle below failsafe</code></td><td>Throttle channel below THR_FS_VALUE</td><td>Move throttle up. Confirm the 915 Nomad is powered and bound to the aircraft.</td></tr>
-    <tr><td><code>Need 3D fix</code></td><td>GPS does not have 3D position lock</td><td>Wait for 3D fix (≥6 sats, <span class="warn-val">VERIFY</span>). Move to open sky away from structures.</td></tr>
+    <tr><td><code>Need 3D fix</code></td><td>GPS does not have 3D position lock</td><td>Wait for 3D fix (≥6 sats, AHRS_GPS_MINSATS). Move to open sky away from structures.</td></tr>
     <tr><td><code>EKF position variance</code></td><td>EKF position estimate uncertain</td><td>Stand completely still for 30–60s after power-on. Check GPS and compass health.</td></tr>
     <tr><td><code>EKF not started</code></td><td>EKF filter not initialised</td><td>Wait — usually resolves after GPS locks. Check AHRS_EKF_TYPE=3.</td></tr>
     <tr><td><code>Bad AHRS</code></td><td>Attitude/heading reference error</td><td>Power cycle. Keep completely still on power-up during initialisation.</td></tr>
     <tr><td><code>Hardware safety switch</code></td><td>Safety switch not pressed or activated</td><td>Press and hold safety switch until LED solid. Or set BRD_SAFETY_DEFLT=0 to disable.</td></tr>
     <tr><td><code>Logging failed</code></td><td>SD card missing, full, or corrupt</td><td>Insert/replace SD card. Format if full. Check LOG_BACKEND_TYPE setting.</td></tr>
-    <tr><td><code>Battery failsafe on</code></td><td>Battery voltage below threshold at startup</td><td>Charge battery. Verify BATT_CRT_VOLT=22.2V is correct for your pack.</td></tr>
+    <tr><td><code>Battery failsafe on</code></td><td>Battery voltage below a failsafe threshold at startup</td><td>Charge battery. BATT_CRT_VOLT=21.0V (critical), BATT_LOW_VOLT=22.0V (low) on this aircraft.</td></tr>
+    <tr><td><code>Battery below minimum arming voltage</code></td><td>Pack under BATT_ARM_VOLT = 24.6V (4.10V/cell)</td><td>Fit a fully charged pack. A part-used pack cannot be flown.</td></tr>
     <tr><td><code>Motors check failed</code></td><td>VTOL motor test not passed</td><td>Run motor test in Mission Planner (M1, M2, M4). Check ESC calibration and motor wiring.</td></tr>
     <tr><td><code>VTOL: not configured</code></td><td>Q_ENABLE not set to 1</td><td>Set Q_ENABLE=1 and reboot.</td></tr>
     <tr><td><code>VTOL: check frame class/type</code></td><td>Q_FRAME_CLASS or Q_FRAME_TYPE incorrect</td><td>Verify Q_FRAME_CLASS=7 (Tri), Q_FRAME_TYPE=1 for this aircraft.</td></tr>
-    <tr><td><code>Fence requires position</code></td><td>Geofence enabled but no GPS position yet</td><td>Wait for GPS lock, or temporarily disable fence with FENCE_ENABLE=0.</td></tr>
+    <tr id="prearm-fence"><td><code>Fence requires position</code></td><td>Geofence enabled but no GPS position yet. <strong>No geofence is configured on this aircraft</strong> (FENCE_ENABLE=0, FENCE_TYPE=0, FENCE_TOTAL=0), so this applies only if a fence is enabled in future.</td><td>Wait for GPS lock. Before any fence is enabled, document two conflicts: the leftover FENCE_ALT_MAX=100 is below RTL_ALTITUDE=120 (an RTL would climb into a breach), and FENCE_RADIUS=300 is smaller than the planning distances (up to 1 km).</td></tr>
     <tr><td><code>Mission library init failed</code></td><td>Mission storage corrupt or empty</td><td>Clear existing mission and reload in Mission Planner.</td></tr>
     </tbody>
   </table></div>
@@ -1155,10 +1231,11 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>FBWB</code></td><td>Fly-By-Wire B</td><td>Fixed-wing mode with altitude hold. Elevator controls climb/descent rate. Used for transition and cruise on this aircraft.</td></tr>
     <tr><td><code>AUTO</code></td><td>Autonomous Mission</td><td>Aircraft executes a pre-loaded waypoint mission. Used for relay loiter on this aircraft.</td></tr>
     <tr><td><code>GUIDED</code></td><td>Guided Mode</td><td>GCS sends real-time position targets. Carrier Pilot uses this for orbit adjustments during relay phase.</td></tr>
-    <tr><td><code>RTL</code></td><td>Return to Launch</td><td>Aircraft climbs to RTL_ALTITUDE (above home) and flies back to the home position. Triggered manually or by the SIYI / GCS failsafe.</td></tr>
+    <tr><td><code>RTL</code></td><td>Return to Launch</td><td>Aircraft climbs to RTL_ALTITUDE (above home), flies back in fixed-wing, loiters down and makes an automatic VTOL landing at home (Q_RTL_MODE = 2). Triggered manually, by the SIYI / GCS failsafe (fixed-wing modes) or by the low-battery failsafe (BATT_LOW_VOLT).</td></tr>
+    <tr><td><code>QRTL</code></td><td>Quadplane Return to Launch</td><td>VTOL return: hovers home at Q_RTL_ALT (above home) and lands vertically at home. Used by the SIYI / GCS failsafe in VTOL modes (Q_OPTIONS bit 5) and after a transition timeout (Q_TRANS_FAIL_ACT = 1).</td></tr>
     <tr><td><code>LOITER</code></td><td>Loiter</td><td>Fixed-wing mode. Aircraft circles a point at fixed altitude and radius.</td></tr>
     <tr><td><code>MANUAL</code></td><td>Manual</td><td>Direct RC passthrough — no stabilisation. Ground-only on this aircraft. Used for servo checks.</td></tr>
-    <tr><td><code>QLAND</code></td><td>Quadplane Land</td><td>VTOL auto-land at the current position. Triggered by the battery critical failsafe, and by a failed transition: Q_TRANS_FAIL_ACT = 0 → QLand per ArduPlane source (<span class="warn-val">VERIFY</span>).</td></tr>
+    <tr><td><code>QLAND</code></td><td>Quadplane Land</td><td>VTOL auto-land at the current position. Triggered by the battery critical failsafe (BATT_CRT_VOLT, Loiter → QLand). A failed transition does not QLand on this aircraft: Q_TRANS_FAIL_ACT = 1 → QRTL home.</td></tr>
     </tbody>
   </table></div>
 
@@ -1220,7 +1297,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>I2C</code></td><td>Inter-Integrated Circuit</td><td>Two-wire serial bus used for short-range peripherals such as compass and airspeed sensors.</td></tr>
     <tr><td><code>CAN</code></td><td>Controller Area Network</td><td>Robust serial bus used for ESCs (UAVCAN/DroneCAN) and advanced peripherals.</td></tr>
     <tr><td><code>LiPo</code></td><td>Lithium Polymer</td><td>Rechargeable battery chemistry used in UAVs. Nominal cell voltage 3.7V, full charge 4.2V, storage 3.8V.</td></tr>
-    <tr><td><code>6S</code></td><td>6-cell LiPo</td><td>Six LiPo cells in series. Nominal 22.2V, full 25.2V, critical 22.2V on this aircraft.</td></tr>
+    <tr><td><code>6S</code></td><td>6-cell LiPo</td><td>Six LiPo cells in series. Nominal 22.2V, full 25.2V. On this aircraft: arming minimum 24.6V, low-battery RTL 22.0V, critical 21.0V.</td></tr>
     <tr><td><code>mAh</code></td><td>Milliampere-hour</td><td>Battery capacity unit. Higher mAh = more energy stored.</td></tr>
     <tr><td><code>HDMI</code></td><td>High-Definition Multimedia Interface</td><td>Digital audio/video interface. Not part of the relay video chain (the video board encodes the CVBS signal directly); the FPV Pilot may use HDMI goggles on the GCS laptop.</td></tr>
     <tr><td><code>JST-GH</code></td><td>JST GH connector</td><td>Small locking connector used on the relay PCB for CRSF, camera and spare Ethernet (4-pin) and CVBS (2-pin).</td></tr>
@@ -1272,6 +1349,21 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </table></div>
 </div>
 
+
+<!-- ═══ PARAMETERS ═══ (reference param file, contract C1.6 — rendered from data/params-reference.js) -->
+<div id="tab-params" class="tab-panel">
+  <div class="section-title">Carrier Parameter Reference</div>
+  <div class="alert alert-info" id="params-head">Reference parameter file — if this text stays, the page scripts did not load.</div>
+  <p>The values the manual, the checklists and the emergency cards rely on are highlighted below, each with its meaning and the chapter that uses it. The full file follows, grouped by prefix. An imported <code>.param</code> file (Tools → PARAMS) is compared against this reference there.</p>
+
+  <div class="section-title" id="params-relied">Parameters the Manual Relies On</div>
+  <div id="params-relied-table"></div>
+
+  <div class="section-title" id="params-all">All Parameters</div>
+  <input type="search" id="params-search" class="filter-input" placeholder="Search parameter name or value (e.g. BATT_, Q_RTL, 21)..." aria-label="Search the reference parameter file" oninput="paramsFilter(this.value)">
+  <div id="params-results" aria-live="polite"></div>
+  <div id="params-groups"></div>
+</div>
 
 <!-- ═══ CREW TRAINING ═══ -->
 <div id="tab-crew" class="tab-panel">
@@ -1511,7 +1603,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <tr><td>Motor bell screws</td><td>Check prop mounting screws on all 3 motors are torqued. Apply fresh threadlock to any that have been repeatedly loosening.</td></tr>
       <tr><td>Tilt motor mounting frame</td><td>Inspect for cracks around screw holes. Check for heat discolouration on motor cans and ESC housings.</td></tr>
       <tr><td>Flight controller mount</td><td>Check foam dampeners — not crushed, split, or delaminating. All FC connector ports fully seated.</td></tr>
-      <tr><td>GPS module</td><td>Check GPS mast for physical damage. Verify compass calibration offsets are stable compared to previous records.</td></tr>
+      <tr><td>GPS module</td><td>Check GPS mast for physical damage and its connector (it carries the only compass). Verify compass calibration offsets are stable compared to previous records.</td></tr>
+      <tr id="maint-compass-ofs"><td>Compass offsets</td><td>After each compass calibration, record <code>COMPASS_OFS_X/Y/Z</code> as the reference for later checks. Reference param file 2026-10-17: X −10.10444, Y −16.05964, Z −70.66866.</td></tr>
       </tbody>
     </table></div>
   </div>
@@ -1558,7 +1651,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <thead><tr><th>When</th><th>Action</th></tr></thead>
       <tbody>
       <tr><td>After every flight</td><td>Inspect for puffing, heat, unusual smell. At rest (30 min after flight): all cells within 0.05V of each other.</td></tr>
-      <tr><td>Storage ≥48h</td><td>Store at <strong>22.8V (3.8V/cell)</strong> — optimal SoC for longevity. Never store below 21.0V (3.5V/cell) or above 25.2V (full charge). Note: 22.2V (BATT_CRT) is an operational voltage, not a storage target.</td></tr>
+      <tr><td>Storage ≥48h</td><td>Store at <strong>22.8V (3.8V/cell)</strong> — optimal SoC for longevity. Never store below 21.0V (3.5V/cell) or above 25.2V (full charge). Note: 21.0V (BATT_CRT_VOLT) and 22.0V (BATT_LOW_VOLT) are failsafe voltages, not storage targets.</td></tr>
       <tr><td>Charge rate</td><td>Maximum 1C (7A). Preferred 0.5C (3.5A) for longevity.</td></tr>
       <tr><td>Retire when</td><td>Any cell imbalance &gt;0.1V at rest, visible puffing at any state of charge, capacity below ~6000mAh measured, or any over-discharge below 19.8V (3.3V/cell).</td></tr>
       </tbody>
@@ -1624,7 +1717,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <tr><td>Airspace</td><td>NOTAMs checked. No active TFR, restricted area, or CTR conflict. Check for temporary airspace (events, emergency operations, glider areas).</td></tr>
       <tr><td>Radio spectrum</td><td>Bands and powers of every link permitted (Nkom) — <span class="warn-val">TBD (Q14)</span>; see RF &amp; Comms → Frequency table.</td></tr>
       <tr><td>Terrain</td><td>Identify the highest terrain between the launch site, the relay loiter point, and the client's operating area. Relay altitude must clear this by at least 30m. Mission altitudes are REL (above home): over rising terrain add the terrain height above the launch point.</td></tr>
-      <tr><td>Landing zone</td><td>Identify and mark the exact VTOL landing point. Clear 5m radius, level, firm surface. GPS accuracy is ±2m — size the marked zone accordingly.</td></tr>
+      <tr><td>Landing zone</td><td>Identify and mark the exact VTOL landing point. Clear 5m radius, level, firm surface. GPS accuracy is ±2m — size the marked zone accordingly. Every RTL ends with an automatic VTOL landing at home: the home landing zone must stay clear for the whole flight.</td></tr>
       <tr><td>Obstacles</td><td>Map any structures or trees near the mission path. The transition corridor from WP1 to WP2 must be free of obstacles up to at least 60m above the ground.</td></tr>
       <tr><td>Line of sight</td><td>Carrier Pilot must maintain VLOS to the carrier during takeoff and landing. Note where the carrier will disappear beyond visual range during relay phase.</td></tr>
       </tbody>
@@ -1687,8 +1780,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="card">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Transition into wind</strong><p>One rule: transition <strong>into wind</strong> — airspeed builds fastest. Avoid a tailwind transition. Place WP2 so that the WP1 → WP2 leg points into wind.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Obstacle clearance</strong><p>The corridor from WP1 to WP2 must be free of obstacles up to at least 60m above the ground. The aircraft gains altitude slowly during the VTOL→FW transition — this is the most vulnerable phase.</p></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Q_TRANS_FAIL = 4s</strong><p>If the transition has not completed within 4s, ArduPlane runs <code>Q_TRANS_FAIL_ACT</code> = 0: <strong>QLand at the current position</strong> (<span class="warn-val">VERIFY against the firmware version</span>). The pilot acts first: no airspeed build within 3s → QHOVER. Plan WP2 altitude so a QLand or QHOVER over the corridor is safe.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Back-transition glide (Q_BACKTRANS_MS=10s)</strong><p>The aircraft travels approximately 100–130m forward at cruise speed during the 10s back-transition. Plan WP5→WP6 to account for this before vertical VTOL descent begins at WP7.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Q_TRANS_FAIL = 8 s</strong><p>If the transition has not completed within 8 s, ArduPlane cancels it and runs <code>Q_TRANS_FAIL_ACT</code> = 1: <strong>QRTL home</strong> — hover return at 50 m REL and a vertical landing at home. The pilot acts first: no airspeed build within 3s → QHOVER. Raise WP2 altitude in a strong headwind, and <strong>keep the route from WP2 back to home clear</strong>: it is the QRTL path.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Back-transition glide (Q_BACKTRANS_MS=8000)</strong><p>The aircraft travels about 100m forward during the 8 s back-transition (8 s × 12 m/s cruise). Plan WP5→WP6 to account for this before vertical VTOL descent begins at WP7.</p></div></div>
   </div>
 
   <div class="section-title">Wind Considerations</div>
@@ -1731,6 +1824,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 <script src="js/store.js"></script>
 <script src="data/content.js"></script>
 <script src="js/render-content.js"></script>
+<script src="data/params-reference.js"></script>
 <script src="js/tools-core.js"></script>
 <script src="js/diagrams.js"></script>
 <script id="manual-core">
@@ -1758,6 +1852,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     { id: 'comms', label: 'RF & Comms', group: 'Reference' },
     { id: 'prearm', label: 'Pre-Arm Ref', group: 'Reference' },
     { id: 'abbrev', label: 'Abbreviations', group: 'Reference' },
+    { id: 'params', label: 'Parameters', group: 'Reference' },
     { id: 'emergency', label: 'Emergency', group: null }
   ];
   const TAB_IDS = TABS.map(t => t.id);
@@ -1939,9 +2034,26 @@ function fillTokens() {
   });
 }
 
+// Settings with the imported param file's BATT_CRT_VOLT / BATT_LOW_VOLT / BATT_ARM_VOLT taking precedence (contract C1.6).
+function effStore(st) {
+  if (!st || !self.ToolsCore) return st;
+  return Object.assign({}, st, { settings: ToolsCore.effectiveSettings(st.settings, st.paramFile) });
+}
+// One-time store notices (e.g. the Rev C threshold migration), shown until dismissed on any page.
+function renderNotices() {
+  var el = document.getElementById('man-notice');
+  if (!el || typeof VtolStore.notices !== 'function') return;
+  var list = VtolStore.notices();
+  el.hidden = !list.length;
+  el.innerHTML = list.map(function (n) {
+    return '<div>' + esc(n.text) + ' <button type="button" class="notice-btn" data-id="' + esc(n.id) + '" onclick="VtolStore.dismissNotice(this.dataset.id);renderNotices()">DISMISS</button></div>';
+  }).join('');
+}
+
 function renderManual() {
   manStore = VtolStore.load();
-  manCtx = VtolRender.ctxFrom(manStore);
+  manCtx = VtolRender.ctxFrom(effStore(manStore));
+  renderNotices();
   var C = VtolContent;
   document.getElementById('hdr-doc-id').textContent = 'DOC-RC-001 · REV ' + V.app + ' · ' + V.content + ' · ' + VtolRender.headerDocId(manCtx);
   document.getElementById('hdr-client').textContent = manCtx.client ? manCtx.client.name : 'TBD — no active client';
@@ -1960,7 +2072,80 @@ function renderManual() {
     + VtolRender.emergencies(C.emergencies, C.emergencyNotes, manCtx));
   setHTML('callouts-body', VtolRender.callouts(C.callouts, manCtx));
   renderDiagrams();
+  renderParamsTab();
   fillTokens();
+}
+
+// ── PARAMETERS TAB ── the reference param file (data/params-reference.js, global VtolParamsRef; contract C1.6).
+// All parameters, grouped by prefix (rows are built when a group is opened) and searchable; the parameters the
+// manual relies on (ToolsCore.PARAM_NOTES) are highlighted with their meaning and a link to the chapter using them.
+var PARAMS_MAX_RESULTS = 200;
+function paramsRef() { return self.VtolParamsRef && self.VtolParamsRef.params ? self.VtolParamsRef : null; }
+function paramGroup(name) { var k = name.split('_')[0], g = k.replace(/\d+$/, ''); return g.length >= 2 ? g : k; }
+function paramNotes() {
+  var m = {};
+  (self.ToolsCore ? ToolsCore.PARAM_NOTES : []).forEach(function (n) { m[n.name] = n; });
+  return m;
+}
+function paramChapter(tab) {
+  if (!tab) return '';
+  var t = tab.split('/');
+  return '<a href="' + esc(MC.hashFor(t[0], t[1])) + '">' + esc(MC.tabLabel(MC.resolveTab(t[0]) || t[0])) + '</a>';
+}
+function paramRow(name, value, notes) {
+  var n = notes[name];
+  return '<tr' + (n ? ' class="row-active"' : '') + '><td><code>' + esc(name) + '</code>' + (n ? ' <span class="pr-star" title="relied on by the manual">★</span>' : '') + '</td>'
+    + '<td class="val">' + esc(value) + (n && n.unit ? ' ' + esc(n.unit) : '') + '</td>'
+    + '<td>' + (n ? esc(n.meaning) + (n.tab ? ' · ' + paramChapter(n.tab) : '') : '') + '</td></tr>';
+}
+var PR_TABLE_HEAD = '<div class="tbl-wrap"><table class="pr-table"><thead><tr><th>Parameter</th><th>Value</th><th>Meaning · chapter</th></tr></thead><tbody>';
+function renderParamsTab() {
+  var ref = paramsRef(), head = document.getElementById('params-head');
+  if (!head) return;
+  if (!ref) {
+    head.className = 'alert alert-warn';
+    head.textContent = 'Reference parameter file not loaded (data/params-reference.js) — TBD.';
+    return;
+  }
+  var names = Object.keys(ref.params), notes = paramNotes();
+  head.innerHTML = 'Reference file <code>' + esc(ref.source.split('/').pop()) + '</code> · saved <strong>' + esc(ref.savedDate) + '</strong> · '
+    + esc(names.length) + ' parameters · source: the carrier\'s Mission Planner export (<code>' + esc(ref.source) + '</code>).';
+  var relied = self.ToolsCore ? ToolsCore.expectedParams(ref, true) : [];
+  setHTML('params-relied-table', PR_TABLE_HEAD + relied.map(function (r) {
+    return '<tr><td><code>' + esc(r.name) + '</code></td><td class="val">' + (r.value === null ? TBDH : esc(r.value) + (r.unit ? ' ' + esc(r.unit) : ''))
+      + '</td><td>' + esc(r.meaning) + (r.learned ? ' <span class="warn-val">(learned value — drifts)</span>' : '') + ' · ' + paramChapter(r.tab) + '</td></tr>';
+  }).join('') + '</tbody></table></div>');
+  var groups = {}, order = [];
+  names.forEach(function (n) { var g = paramGroup(n); if (!groups[g]) { groups[g] = []; order.push(g); } groups[g].push(n); });
+  order.sort();
+  setHTML('params-groups', order.map(function (g) {
+    var hl = groups[g].filter(function (n) { return notes[n]; }).length;
+    var tok = groups[g].map(function (n) { return n.split('_')[0]; });
+    var label = tok.every(function (k) { return k === tok[0]; }) ? tok[0] + '_' : g + '…';   // EK3_ / BATT…(BATT, BATT2…)
+    return '<details class="pr-grp" data-grp="' + esc(g) + '"><summary>' + esc(label) + ' <span class="pr-n">' + groups[g].length + ' param' + (groups[g].length !== 1 ? 's' : '')
+      + (hl ? ' · ' + hl + ' ★' : '') + '</span></summary><div class="pr-body"></div></details>';
+  }).join(''));
+  document.querySelectorAll('#params-groups .pr-grp').forEach(function (d) {
+    d.addEventListener('toggle', function () {
+      var body = d.querySelector('.pr-body');
+      if (!d.open || body.getAttribute('data-built')) return;
+      body.innerHTML = PR_TABLE_HEAD + groups[d.getAttribute('data-grp')].map(function (n) { return paramRow(n, ref.params[n], notes); }).join('') + '</tbody></table></div>';
+      body.setAttribute('data-built', '1');
+    });
+  });
+  var q = document.getElementById('params-search');
+  if (q && q.value) paramsFilter(q.value);
+}
+// Search: name contains the query (case-insensitive) or the value equals it; up to PARAMS_MAX_RESULTS rows.
+function paramsFilter(query) {
+  var ref = paramsRef(), out = document.getElementById('params-results'), groupsEl = document.getElementById('params-groups');
+  if (!ref || !out) return;
+  var q = String(query || '').trim().toUpperCase();
+  groupsEl.hidden = !!q;
+  if (!q) { out.innerHTML = ''; return; }
+  var notes = paramNotes(), hits = Object.keys(ref.params).filter(function (n) { return n.indexOf(q) >= 0 || String(ref.params[n]) === q; });
+  out.innerHTML = '<p>' + hits.length + ' match' + (hits.length !== 1 ? 'es' : '') + (hits.length > PARAMS_MAX_RESULTS ? ' — showing the first ' + PARAMS_MAX_RESULTS + ', refine the search' : '') + '</p>'
+    + (hits.length ? PR_TABLE_HEAD + hits.slice(0, PARAMS_MAX_RESULTS).map(function (n) { return paramRow(n, ref.params[n], notes); }).join('') + '</tbody></table></div>' : '');
 }
 
 // ── GENERATED DIAGRAMS ── (js/diagrams.js; plan §9.2, MAN-14)
@@ -1972,12 +2157,11 @@ function renderDiagrams() {
   var packs = live(manStore && manStore.packs);
   var pack = packs.filter(function (p) { return p.id === manCtx.settings.activeCarrierPackId; })[0]
     || packs.filter(function (p) { return p.role === 'carrier'; })[0] || VtolStore.defaults().packs[0];
-  // BATT_LOW_VOLT from an imported param file; without one it is "not set" (manual: BATT_LOW_VOLT = 0).
-  var pf = manStore && manStore.paramFile && manStore.paramFile.params;
-  var low = pf && typeof pf.BATT_LOW_VOLT === 'number' ? pf.BATT_LOW_VOLT : null;
-  setHTML('ac-batt-gauge', VtolDiagrams.batteryGauge(pack, manCtx.settings, { battLowVolt: low })
-    + '<div class="dg-cap">Drawn from the carrier pack profile “' + esc(pack.label) + '” and the settings (Tools → PROFILES)'
-    + (low !== null ? ' · BATT_LOW_VOLT from the imported param file' : '') + '.</div>');
+  // manCtx.settings: BATT_CRT_VOLT / BATT_LOW_VOLT / BATT_ARM_VOLT from an imported param file take precedence (C1.6).
+  var src = manCtx.settings.voltSource || {}, fromFile = Object.keys(src).filter(function (k) { return src[k] === 'file'; });
+  setHTML('ac-batt-gauge', VtolDiagrams.batteryGauge(pack, manCtx.settings)
+    + '<div class="dg-cap">Drawn from the carrier pack profile “' + esc(pack.label) + '” and the settings (Tools → PROFILES; defaults = reference param file)'
+    + (fromFile.length ? ' · BATT_CRT_VOLT / BATT_LOW_VOLT / BATT_ARM_VOLT from the imported param file “' + esc(manCtx.settings.voltFile) + '”' : '') + '.</div>');
   var ref = live(manStore && manStore.clients).filter(function (c) { return c.id === VtolStore.IDS.refClient; })[0] || null;
   var fsp = ref && ref.failsafe ? ref.failsafe : {};
   var p = Object.assign({ name: ref ? ref.name : 'Reference client #1', delayS: fsp.delayS, minSats: fsp.minSats }, REF_RESCUE);

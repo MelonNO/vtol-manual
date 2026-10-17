@@ -25,3 +25,6 @@
 
 # Vendored third-party files: store byte-for-byte (keeps the official SRI hashes valid).
 relay/vendor/** -text
+
+# Reference parameter files (docs/reference/*.param): byte-exact copies of the autopilot export (CRLF kept).
+docs/reference/*.param -text

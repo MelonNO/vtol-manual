@@ -16,6 +16,7 @@
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="../js/version.js"></script>
 <script src="../js/store.js"></script>
+<script src="../data/params-reference.js"></script>
 <script src="../js/gcs-client.js"></script>
 <script src="rfmodel.js"></script>
 <style>
@@ -59,7 +60,11 @@ body{height:100vh;display:flex;flex-direction:column;overflow:hidden;
 .nav-btn:hover{color:var(--accent);background:var(--surface2)}
 button.nav-btn{background:none;border:none;border-right:1px solid var(--border2);cursor:pointer;min-width:44px}
 button.nav-btn[aria-pressed="true"]{background:var(--text);color:var(--bg)}
-@media (max-width:600px){.hdr-title{white-space:normal;font-size:13px}.nav-btn{padding:0 10px}}
+@media (max-width:600px){.hdr-title{white-space:normal;font-size:13px}.nav-btn{padding:0 10px}
+  /* phone: the three header buttons (☀, TOOLS, MANUAL) stack in one narrow column, so the ☀ button does not
+     squeeze the title and the header keeps its height (WP09 verification F1) */
+  .nav-btns{flex-direction:column}.nav-btn{min-height:44px;justify-content:center;border-right:none;border-bottom:1px solid var(--border2)}
+  button.nav-btn{border-right:none;border-bottom:1px solid var(--border2)}}
 
 /* Map */
 #map{flex:1}
@@ -273,11 +278,11 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     <div class="fld">
       <div class="vtx-row">
         <label>Speed</label>
-        <input type="range" id="sim-speed" min="11" max="35" step="0.5" value="13"
+        <input type="range" id="sim-speed" min="10" max="35" step="0.5" value="12"
                oninput="document.getElementById('sim-spd-lbl').textContent=this.value+'m/s'">
-        <span id="sim-spd-lbl">13m/s</span>
+        <span id="sim-spd-lbl">12m/s</span>
       </div>
-      <div class="info-txt">Min 11 m/s = AIRSPEED_MIN · default 13 m/s = AIRSPEED_CRUISE</div>
+      <div class="info-txt" id="sim-spd-src">Min 10 m/s = AIRSPEED_MIN · default 12 m/s = AIRSPEED_CRUISE</div>
     </div>
     <div class="sim-tabs">
       <button type="button" class="btn" id="btn-straight" onclick="selectSimMode('straight')">Straight</button>
@@ -609,6 +614,32 @@ const model = mapState.model;
 // ─── Profiles: shared store (C1) when present, else map-local copies ─────────
 const hasStore = () => typeof VtolStore === 'object' && VtolStore && typeof VtolStore.load === 'function';
 let profiles = { links: [], clients: [], storeClientId: null };
+// ─── Simulation speeds (WP14 R11): AIRSPEED_MIN / AIRSPEED_CRUISE from the imported param file (store.paramFile),
+// else the reference param file (data/params-reference.js). TECS climb / sink stay 5 m/s (mission simulation).
+function simSpeedLimits() {
+  let pf = null;
+  if (hasStore()) { try { pf = VtolStore.load().paramFile || null; } catch {} }
+  const ref = self.VtolParamsRef && VtolParamsRef.params ? VtolParamsRef : null;
+  const get = (n, fb) => {
+    const v = pf && pf.params ? pf.params[n] : undefined;
+    if (typeof v === 'number' && isFinite(v) && v > 0) return { v, src: 'param file ' + pf.name };
+    const r = ref ? ref.params[n] : undefined;
+    if (typeof r === 'number' && isFinite(r) && r > 0) return { v: r, src: 'reference param file ' + ref.savedDate };
+    return { v: fb, src: 'TBD — no param file' };
+  };
+  return { min: get('AIRSPEED_MIN', 10), cruise: get('AIRSPEED_CRUISE', 12) };
+}
+function applySimSpeedLimits() {
+  const L = simSpeedLimits(), el = $('sim-speed');
+  if (!el) return;
+  const keep = parseFloat(el.value);
+  el.min = String(L.min.v);
+  const v = sim.mode ? Math.max(L.min.v, keep || L.cruise.v) : Math.max(L.min.v, L.cruise.v);
+  el.value = String(v);
+  $('sim-spd-lbl').textContent = el.value + 'm/s';
+  $('sim-spd-src').textContent = 'Min ' + L.min.v + ' m/s = AIRSPEED_MIN (' + L.min.src + ') · default ' + L.cruise.v + ' m/s = AIRSPEED_CRUISE (' + L.cruise.src + ')';
+}
+
 function loadProfiles() {
   let links = null, clients = null, storeClientId = null;
   if (hasStore()) {
@@ -705,7 +736,7 @@ const state = {
   cov: null, terrain_status: 'idle',
 };
 const sim = {
-  mode: null, speed_ms: 13.0, heading: 0.0,
+  mode: null, speed_ms: 12.0, heading: 0.0,   // AIRSPEED_CRUISE (applySimSpeedLimits)
   orbit_lat: null, orbit_lon: null,
   orbit_r: 200.0, orbit_angle: 0.0,
   mission: null, ms: null,
@@ -1381,7 +1412,7 @@ function setOrbitCenter(latlng) {
 function startSim() {
   if (!currentSimMode) { toast('Select Straight, Orbit, or Mission first', 3000); return; }
   if (state.lat === null && currentSimMode !== 'mission') { toast('Place the aircraft on the map first', 3000); return; }
-  sim.speed_ms = parseFloat($('sim-speed').value) || 13;
+  sim.speed_ms = parseFloat($('sim-speed').value) || simSpeedLimits().cruise.v;
   if (currentSimMode === 'straight') {
     sim.heading = parseFloat($('sim-hdg').value) || 0;
   } else if (currentSimMode === 'orbit') {
@@ -1939,7 +1970,7 @@ function profilesChanged() {
 }
 // The Tools page (or another tab) may change the shared store.
 window.addEventListener('storage', e => {
-  if (e.key === (hasStore() && VtolStore.KEY || 'vtol_store')) { loadProfiles(); renderProfileUi(); profilesChanged(); }
+  if (e.key === (hasStore() && VtolStore.KEY || 'vtol_store')) { loadProfiles(); renderProfileUi(); profilesChanged(); applySimSpeedLimits(); }
 });
 
 // ─── Live layer: GCS companion app (contract C2, plan §8.3) ──────────────────
@@ -2188,6 +2219,7 @@ function toggleSb() {
 
 // ─── Start-up: restore the last session, never a built-in site (MAP-09) ──────
 loadProfiles();
+applySimSpeedLimits();
 vtxFromProfiles();
 renderProfileUi();
 $('md-k').value = model.k; $('md-mrg').value = model.marginM; $('md-tree').value = model.treeH;

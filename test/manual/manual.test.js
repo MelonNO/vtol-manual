@@ -19,7 +19,8 @@ const FORBIDDEN = [
   /re-?bind/i, /sub-drone/i, /relay bind/i, /bind(ing)? every (pre)?flight/i, /required every (pre)?flight/i, /every preflight/i,
   /868\s?(MHz)?\s?(→|->)\s?2\.4/i, /2\.4\s?GHz relay/i, /FPV TX \(2\.4/i, /zero interface with ArduPlane/i,
   /\d\s?m AGL/i, /relative to home( point)? \(AGL\)/i,/all 4 motors/i, /props \(all 4\)/i, /rear (pair|motors?)/i, /cruise motor/i, /T2 Ranger/i, /T2 VTOL\b/,
-  /FS_SHORT_TIMEOUT/i, /AUTO (mode )?only/i, /do not touch TX/i, /0 = QHOVER/i, /aborts? to QHOVER/i, /falls back to QHOVER/i,
+  // FS_SHORT_TIMEOUT is allowed again (WP14): the owner's Rev C document keeps it as GCS-failsafe timing.
+  /AUTO (mode )?only/i, /do not touch TX/i, /0 = QHOVER/i, /aborts? to QHOVER/i, /(?<!never )falls back to QHOVER/i,
   /sets the home point/i, /Crosswind or slightly downwind/i, /Reversing the sequence/i, /Power TX before aircraft/i,
   /fpv_drone\.jpg/, /5-inch racing/i, /30\s?km/i, /1\.2\s?m wingspan/i, /REV A\b/, /TAKE OVER ONLY BY RESUME/
 ];
@@ -95,7 +96,7 @@ test('Flight Modes: design intent first, failsafe slot D7, old RC cascade remove
   assert.match(t, /usable only within close range/i);
   assert.match(t, /QHOVER.*FBWB.*AUTO/);
   assert.match(t, /left button/i);
-  assert.match(t, /S-01a/); assert.match(t, /TBD — S-01a/);
+  assert.match(t, /S-01a/); assert.match(t, /drifts with the wind/); assert.match(t, /VERIFY — S-01a/);   // WP14: plan §15.2 behaviour
   assert.match(t, /Never close Mission Planner in flight/);
   assert.match(t, /never sleep or hibernate/i);
   assert.match(t, /sysid 255/);
@@ -104,15 +105,16 @@ test('Flight Modes: design intent first, failsafe slot D7, old RC cascade remove
   assert.match(t, /not FBWA/);
 });
 
-test('Q_TRANS_FAIL_ACT = 0 is QLand everywhere, with a VERIFY marker (R11b a)', () => {
+// WP14 (plan §15.1 / §15.2, reference param file): Q_TRANS_FAIL = 8 s, Q_TRANS_FAIL_ACT = 1 → QRTL home (supersedes R11b a).
+test('Q_TRANS_FAIL_ACT = 1 is QRTL home everywhere, never QHOVER (Rev C)', () => {
   const t = stripTags(HTML);
   const qtf = [...t.matchAll(/[^.]{0,120}Q_TRANS_FAIL_ACT[^.]{0,160}/g)].map(m => m[0]);
   assert.ok(qtf.length >= 3, 'Q_TRANS_FAIL_ACT mentioned in aircraft, mission planning and glossary');
   for (const s of qtf) {
-    assert.match(s, /QLand/i, s);
-    assert.doesNotMatch(s, /= ?0 ?(→|=)? ?QHOVER/i, s);
+    assert.match(s, /QRTL|Q_TRANS_FAIL_ACT = 1\b/, s);
+    assert.doesNotMatch(s, /= ?0 ?(→|=)? ?(QHOVER|QLand)/i, s);
   }
-  assert.match(stripTags(panel('aircraft')), /0 = QLand .*VERIFY — against the firmware version in use/);
+  assert.match(stripTags(panel('aircraft')), /Q_TRANS_FAIL 8 s .*Q_TRANS_FAIL_ACT 1 = QRTL .*QRTL home/);
 });
 
 test('GCS app start paths: normal start on the ground, RESUME for an airborne client, never DISARMED airborne (R11b b)', () => {
