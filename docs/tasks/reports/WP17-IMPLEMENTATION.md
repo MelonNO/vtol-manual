@@ -112,11 +112,11 @@ The CI-like simulations above cover the console, window-station, stdin, process-
    - **`windows-2025`.** This is what `windows-latest` is today (runner-images README), so behaviour is unchanged. The build job's display name changed to "Build vtol-gcs (windows-2025)".
 
    Moving to a newer image should be a deliberate change.
-5. **Files outside my list:** none. Two files that are not mine now say something stale or incomplete:
-   - **`README.md:118`** still says "PyInstaller build on `windows-latest`";
-   - **`gcs/README.md` "Tests"** does not mention the `interactive_desktop` marker or `VTOLGCS_INTERACTIVE_TESTS`.
+5. **Files outside my original list (the PM allowed both later):**
+   - **`README.md` "CI"** now says `windows-2025` and `ubuntu-24.04` and why, lists the Node 24 action majors, and points to the test guards and M-16.
+   - **`gcs/README.md` "Tests"** has a new section, "Test guards and desktop-only tests (WP17)". It covers the per-test timeout, the process cleanup, the exit guard, live names, the `interactive_desktop` marker, `VTOLGCS_INTERACTIVE_TESTS`, and the pre-release desktop commands, consistent with M-16.
 
-   Both need a one-line update by whoever owns them.
+   A grep for `windows-latest`, `ubuntu-latest` and action versions in `*.md`, `*.html` and `*.js` outside `docs/tasks/` finds nothing else. The old mentions in `docs/tasks/` briefs and reports are history, and I left them alone. `check-links` passes.
 6. **The new conftest wraps `subprocess.Popen.__init__`** (test runs only) to record child PIDs. A leftover process is killed only if it descends from a process a test started, and its creation time is checked, so a reused PID is never touched.
 7. **Not run:** the two windowed UI smoke tests with `VTOLGCS_UI_SMOKE=1`, because they open Tk windows on the owner's desktop. They only gained a marker. M-16 lists them for the pre-release desktop run.
 8. **M-15:** the stalled-handshake race fixed here is a likely candidate for M-15's "1 failed, 681 passed". I left the M-15 row open until CI has run ×5 a few times.
