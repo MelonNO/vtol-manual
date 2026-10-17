@@ -559,33 +559,65 @@ def test_rate_limit_unit() -> None:
     assert sum(b.take() for _ in range(10)) == 3                             # never more than the burst
 
 
-def test_rate_limit_refuses_the_excess_with_a_warning(rig, caplog) -> None:
-    """R3: beyond the per-connection rate the commands are refused (not executed, not queued)."""
+class _FakeClock:
+    """The rate limit's clock in the tests below: time moves only when the test moves it."""
+
+    def __init__(self) -> None:
+        self.t = 0.0
+
+    def __call__(self) -> float:
+        return self.t
+
+
+def test_rate_limit_refuses_the_excess_with_a_warning(rig, caplog, monkeypatch) -> None:
+    """R3: beyond the per-connection rate the commands are refused (not executed, not queued), with a warning, and
+    the refusals are paced too.  WP19: the bucket runs on a fake clock, so every count is exact.  The wall-clock
+    version had a margin of about 10 ms, measured with ``time.monotonic`` (15.6 ms ticks on Windows), and failed
+    once in a desktop run (WP18 verification round 2, finding 3)."""
     import logging
-    r = rig(rate_per_s=20.0, rate_burst=5)
+    clock = _FakeClock()
+    r = rig(rate_per_s=20.0, rate_burst=5, rate_clock=clock)
+    pauses: list[float] = []
+    process = r.server._process
+
+    def recording(raw: bytes, bucket: object, stats: dict) -> tuple:
+        out = process(raw, bucket, stats)
+        pauses.append(out[2])                                                   # the pause before the next read
+        return out
+    monkeypatch.setattr(r.server, "_process", recording)
     caplog.set_level(logging.WARNING, logger="vtolgcs.control")
-    t0 = time.monotonic()
-    replies = [r.client.request("request_mode", mode="idle") for _ in range(30)]   # ids are checked per reply
-    elapsed = time.monotonic() - t0
-    done = [x for x in replies if x.get("ok")]
-    limited = [x for x in replies if "rate limit" in str(x.get("error"))]
-    assert len(done) + len(limited) == 30 and limited
-    assert len(done) <= 5 + 20 * elapsed + 1
-    assert len(limited) <= 20 * elapsed + 1                                  # refusals are paced too
+    t0 = time.perf_counter()
+    replies = [r.client.request("request_mode", mode="idle") for _ in range(15)]   # no time passes: no new token
+    took = time.perf_counter() - t0
+    assert [x.get("ok") for x in replies] == [True] * 5 + [False] * 10, replies     # exactly the burst ran
+    assert all("rate limit" in x["error"] and "not executed" in x["error"] for x in replies[5:]), replies
+    assert r.server.rate_limited == 10
     assert any("commands/s" in m for m in caplog.messages)
-    assert r.server.rate_limited == len(limited)
-    time.sleep(0.3)
-    assert r.client.request("ping")["ok"]                                     # the connection stays usable
+    # paced: after each refusal the server waits one token interval (50 ms) before it reads the next request.  Only a
+    # lower bound on the real time (a busy machine makes it longer, never shorter); 10 % for timer granularity.
+    assert pauses == [0.0] * 5 + [pytest.approx(0.05)] * 10, pauses
+    assert took >= 0.9 * 9 * 0.05, took
+    clock.t += 0.151                                                            # 3.02 token intervals later
+    assert [r.client.request("request_mode", mode="idle")["ok"] for _ in range(4)] == [True, True, True, False]
+    clock.t += 1.0
+    assert r.client.request("ping")["ok"]                                       # the connection stays usable
+    assert r.server.rate_limited == 11
 
 
 def test_ui_load_is_never_rate_limited(rig) -> None:
-    """The UI's own worst case (about 30 commands/s on one connection) stays below the default limit."""
-    r = rig()
-    replies = []
-    for _ in range(45):
-        replies.append(r.client.request("inputs"))
-        time.sleep(1 / 30)
-    assert all(x["ok"] for x in replies) and r.server.rate_limited == 0
+    """The UI's own worst case (about 30 commands/s on one connection) stays below the default limit, also when its
+    timers bunch up.  WP19: on a fake clock (10 s of UI time), so the result does not depend on the machine's speed;
+    the old wall-clock version sent 45 commands, fewer than the burst of 50, so it could not have failed at all."""
+    from vtolgcs.control import RATE_BURST, RATE_LIMIT_PER_S
+    assert RATE_LIMIT_PER_S > 30 and RATE_BURST >= 30                          # sustained 30/s never drains the bucket
+    clock = _FakeClock()
+    r = rig(rate_clock=clock)
+    for i in range(300):                                                        # a limit below 25/s fails here
+        clock.t += 1 / 30
+        assert r.client.request("inputs")["ok"], i
+    clock.t += 1.0                                                              # a 1 s stall, then its backlog at once
+    assert all(r.client.request("inputs")["ok"] for _ in range(30))
+    assert r.server.rate_limited == 0
 
 
 def test_nothing_changes_after_an_accepted_stop(rig) -> None:
@@ -650,10 +682,10 @@ def test_server_budget_bounds_the_work_of_many_connections(rig) -> None:
     info = ControlInfo.load(r.file)
     clients = [ControlClient(info) for _ in range(4)]
     counts = [0] * 4
-    t0 = time.monotonic()
+    t0 = time.perf_counter()                       # WP19: not monotonic (15.6 ms ticks on Windows)
 
     def flood(i: int) -> None:
-        while time.monotonic() - t0 < 1.5:
+        while time.perf_counter() - t0 < 1.5:
             assert clients[i].request("ping")["ok"]
             counts[i] += 1
     threads = [threading.Thread(target=flood, args=(i,), name=f"flood-{i}") for i in range(4)]
@@ -662,7 +694,7 @@ def test_server_budget_bounds_the_work_of_many_connections(rig) -> None:
             t.start()
         for t in threads:
             t.join(10)
-        elapsed = time.monotonic() - t0
+        elapsed = time.perf_counter() - t0
         assert sum(counts) <= 100 + 100 * elapsed + 4, (counts, elapsed)      # burst + rate
         assert min(counts) > 0                                               # every connection is served
     finally:

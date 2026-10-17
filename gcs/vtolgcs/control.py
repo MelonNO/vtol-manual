@@ -374,20 +374,22 @@ def _mode_result(r: Any) -> dict:
 class ControlServer:
     """Serves the control channel for one :class:`Runtime` (started after the runtime).
 
-    ``on_stop`` is called when an authorised client asks the process to stop.
+    ``on_stop`` is called when an authorised client asks the process to stop.  ``rate_clock`` is the clock of the
+    per-connection rate limit (tests pass a fake one, so the counts do not depend on the machine's speed: WP19).
     """
 
     def __init__(self, rt: Any, control_file: Path, *, on_stop: Callable[[], None] | None = None,
                  family: str | None = None, handshake_timeout_s: float = HANDSHAKE_TIMEOUT_S,
                  rate_per_s: float = RATE_LIMIT_PER_S, rate_burst: int = RATE_BURST,
-                 server_msgs_per_s: float = SERVER_MSGS_PER_S) -> None:
+                 server_msgs_per_s: float = SERVER_MSGS_PER_S,
+                 rate_clock: Callable[[], float] = time.perf_counter) -> None:
         self.rt = rt
         self.control_file = Path(control_file)
         self.on_stop = on_stop
         self.family = family or ("AF_PIPE" if sys.platform == "win32" else "AF_INET")
         self.token = secrets.token_hex(32)
         self.handshake_timeout_s = handshake_timeout_s
-        self.rate_per_s, self.rate_burst = rate_per_s, rate_burst
+        self.rate_per_s, self.rate_burst, self._rate_clock = rate_per_s, rate_burst, rate_clock
         self._listener: Any = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
@@ -526,7 +528,7 @@ class ControlServer:
         competes with the RC thread for the interpreter lock (WP13 R3: with eight busy connection threads
         the GIL hand-over alone delayed packets by many ms, at a fraction of one thread's command rate).
         """
-        bucket = RateLimit(self.rate_per_s, self.rate_burst)
+        bucket = RateLimit(self.rate_per_s, self.rate_burst, self._rate_clock)
         stats = {"refused": 0, "warned_at": -1e9}
         try:
             while not self._stop.is_set():

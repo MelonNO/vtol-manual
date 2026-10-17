@@ -529,13 +529,19 @@ def test_thread_rate_absolute_deadlines_and_stop() -> None:
     sender = Sender(cfg, FakeController(safe_channels()), lambda d: sent.append(time.perf_counter()))
     sender.start()
     try:
+        t_req = time.perf_counter()
         assert sender.request_mode(Mode.FPV).ok
         time.sleep(1.2)
         n = len(sent)
+        span_s = time.perf_counter() - t_req
         st = sender.state().stats
-        diag = (f"{n} packets in ~1.2 s; stats sent {st and st.sent}, skipped {st and st.skipped_slots}, "
+        diag = (f"{n} packets in {span_s:.3f} s; stats sent {st and st.sent}, skipped {st and st.skipped_slots}, "
                 f"p99 {st and st.p99_ms} ms, max {st and st.max_ms} ms, waiter {sender.state().waiter}")
-        assert 200 <= n <= 320, diag                     # ~250 Hz (generous for a loaded CI box)
+        assert n >= 200, diag                            # ~250 Hz (generous for a loaded CI box: ~400 ms of stalls)
+        # WP19: the upper bound is exact for the time that really passed (it was "n <= 320" after a 1.2 s sleep:
+        # 80 ms of late wake-up of this thread failed it).  Absolute deadlines never exceed the rate; after a stall
+        # the loop catches up at most 2 slots (more are skipped), +1 for the slot in progress.
+        assert n <= 250 * span_s + 3, diag
         # absolute deadlines: the long-run rate does not drift below the configured rate. 15 %: a shared CI VM
         # can deschedule the thread for tens of ms (WP10 R10b); a drifting (relative-sleep) loop shows up as a
         # rate well below 250 Hz over the whole span, and skipped slots are counted in the stats.
