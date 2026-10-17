@@ -56,7 +56,8 @@ The PM updates this table.
 | WP08a | done (1 rework) | APPROVED (round 2) | yes |
 | WP08b | done | APPROVED (round 1) | yes |
 | WP13 | done | APPROVED (round 1) | yes |
-| WP15 | done | in verification | |
+| WP15 | done | APPROVED (round 1) | yes |
+| WP16 | in progress (sender follow-ups) | | |
 | WP14 | in progress (carrier params Rev C + param reference) | | |
 | WP09 | done | APPROVED (round 1) | yes |
 | WP10 | | | |
