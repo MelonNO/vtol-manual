@@ -68,7 +68,7 @@ The PM updates this table.
 | WP10 | done (1 rework) | APPROVED (round 2) | yes |
 | WP11 | done (1 rework) | APPROVED (round 2) | yes |
 | WP12 | done (hotfix) | APPROVED (round 1) | yes |
-| WP17 | in progress (GitHub Windows runner hang) | | |
+| WP17 | done (1 rework) | APPROVED (round 2) | yes |
 
 **Final state (2026-10-17):** every work package is implemented, independently verified and merged; WP10 was the last
 one. The programme is complete. What remains is outside software or undecided, and is tracked
