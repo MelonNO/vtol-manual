@@ -58,8 +58,8 @@ The PM updates this table.
 | WP13 | done | APPROVED (round 1) | yes |
 | WP15 | done | APPROVED (round 1) | yes |
 | WP16 | done | APPROVED (round 1) | yes |
-| WP14 | in progress (carrier params Rev C + param reference) | | |
+| WP14 | done (2 reworks) | APPROVED (round 3) | yes |
 | WP09 | done | APPROVED (round 1) | yes |
-| WP10 | | | |
+| WP10 | in progress | | |
 | WP11 | done (1 rework) | APPROVED (round 2) | yes |
 | WP12 | done (hotfix) | APPROVED (round 1) | yes |
