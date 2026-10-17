@@ -39,12 +39,15 @@ from ..video import (GST_INSTALL_HELP, FanoutProcess, GstLocator, choose_standar
                      viewer_pipeline, write_sdp)
 from . import view
 from .hotkey import GlobalHotkey
-from .link import (RuntimeLink, child_env, fanout_command, frozen, package_root, passthrough_args, sender_command,
-                   sender_output_path, spawn_sender, tail_lines)
+from .link import (RuntimeLink, child_env, fanout_command, frozen, launch_dialog, launch_refusals, package_root,
+                   passthrough_args, prune_sender_outputs, sender_command, sender_output_path, spawn_sender,
+                   tail_lines)
 from .mapping import Calibration, apply_assignment, detect_moved, save_channel_map, update_config
 from .profiles import ClientChoice, ProfileError, load_profiles
 
 log = logging.getLogger("vtolgcs.ui")
+#: WP16 R2: how long the UI looks in a new sender's output for its answer to a launch dialog.
+LAUNCH_WATCH_S = 20.0
 
 POLL_MS = 100
 CRIT_REPEAT_S = 5.0
@@ -108,6 +111,7 @@ class App:
         self.passthrough = passthrough_args(argv)
         self.log_dir = Path(args.log_dir) if getattr(args, "log_dir", None) else config_mod.log_dir(self.cfg)
         self.sender_output: Path | None = None             # output file of the sender this UI started
+        self._launch_watch: tuple[tuple[str, str, str], float] | None = None   # WP16 R2: launch dialog answer
         self.q: queue.Queue = queue.Queue()
         self.status: dict | None = None
         self.link_state, self.link_detail = "connecting", ""
@@ -901,10 +905,34 @@ class App:
         self.sender_output = sender_output_path(self.log_dir)
         self.spawned = spawn_sender(sender_command(self.passthrough), self.sender_output)
         self.note(f"RC sender started (pid {self.spawned.pid}, no console window); output: {self.sender_output}")
+        removed = prune_sender_outputs(self.log_dir, self.sender_output, self.cfg.log.sender_output_keep,
+                                       self.cfg.log.sender_output_max_mb * 1e6)          # WP16 R5
+        if removed:
+            log.info("deleted %d old sender output file(s): %s", len(removed), ", ".join(p.name for p in removed))
+        dialog = launch_dialog(self.args)
+        self._launch_watch = (dialog, time.monotonic() + LAUNCH_WATCH_S) if dialog else None
+
+    def _check_launch_dialog(self) -> None:
+        """WP16 R2: a ``--resume`` / ``--mode carrier_only`` given to the UI reaches a sender without a
+        console, which refuses it.  Show its answer (with the reason) under Events, not only in its file."""
+        if self._launch_watch is None:
+            return
+        (prefix, flag, button), deadline = self._launch_watch
+        found = launch_refusals(tail_lines(self.sender_output, 1000, 1 << 16), prefix)
+        if found:
+            self._launch_watch = None
+            for line in found:
+                self.note(f"RC sender refused {flag} at launch: {line[:200]}")
+            self.note(f"Nothing was sent for {flag}. Use Flight -> {button}: the UI asks for the typed words.")
+        elif self.spawned is None or self.spawned.poll() is not None or time.monotonic() > deadline:
+            self._launch_watch = None
+            self.note(f"{flag} was passed to the RC sender, but its output shows no answer to it: check the mode "
+                      f"(Sender output).")
 
     def _watch_spawned(self) -> None:
         """When the sender this UI started exits, show its exit code and last output lines under Events
         (it has no console window to show them)."""
+        self._check_launch_dialog()
         proc = self.spawned
         if proc is None or proc.poll() is None:
             return
@@ -914,6 +942,7 @@ class App:
             self.note("  " + line[:200])
 
     def note(self, text: str) -> None:
+        self.events_log.append(text)
         self.txt_events.insert("end", time.strftime("%H:%M:%S ") + text + "\n")
         self.txt_events.see("end")
 
@@ -1019,8 +1048,10 @@ class App:
 
     def close(self) -> None:
         if self.link.up and not messagebox.askokcancel(
-                "Close", "The RC sender keeps running in the background (it has no window) and keeps streaming "
-                         "if it is. Start the UI again to control it, or use *Stop sender* first. Close the UI?"):
+                "Close", "The RC sender keeps running in the background"
+                         + (" (it has no window)" if self.spawned is not None else "")
+                         + " and keeps streaming if it is. Start the UI again to control it, or use *Stop sender* "
+                           "first. Close the UI?"):
             return
         if self.fanout is not None and self.fanout.running:
             if messagebox.askyesno("Close", "Stop the video fan-out too? (No = it keeps forwarding video.)"):
@@ -1159,6 +1190,8 @@ def main(args: Any, argv: list[str]) -> int:
         return 2
     if not args.attach_only and not _sender_reachable(control_file):
         app.start_sender_process()                                       # no console window (WP15 R1)
+    elif (dialog := launch_dialog(args)) is not None:                    # WP16 R2: say the flag did nothing
+        app.note(f"{dialog[1]} ignored: the UI attached to a running RC sender. Use Flight -> {dialog[2]}.")
     if getattr(args, "run_seconds", None):
         _smoke(app, args.run_seconds, getattr(args, "ui_smoke_out", None))
     root.mainloop()
@@ -1176,7 +1209,8 @@ def _smoke(app: App, seconds: float, out: str | None) -> None:
 
     def finish() -> None:
         if out:
-            Path(out).write_text(json.dumps({**app.smoke, "link_state": app.link_state}), encoding="utf-8")
+            Path(out).write_text(json.dumps({**app.smoke, "link_state": app.link_state, "notes": app.events_log}),
+                                 encoding="utf-8")
         if app.spawned is not None:
             try:
                 app.link.request("stop", typed=WORD_STOP)
