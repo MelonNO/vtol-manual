@@ -14,7 +14,8 @@
   :meth:`Sender.prepare_carrier_only` + :meth:`Sender.confirm_carrier_only`
   (``request_mode('carrier_only')`` always refuses): an explicit, single-use
   "no client powered or bound" confirmation, valid :data:`CONFIRM_S`; refused
-  while client telemetry was heard in the last :data:`CARRIER_ONLY_QUIET_S`;
+  while client telemetry was heard in the last :data:`CARRIER_ONLY_QUIET_S`
+  or while a connected radio's arm switch is ARMED;
   after any FPV stream in this session a second "client landed and disarmed"
   confirmation is required; only while nothing is being sent.
 * **Controller lost** (disconnected, or no fresh data for ``controller.stale_ms``)
@@ -143,7 +144,13 @@ class CarrierOnlyPreview:
         return self.fpv_this_session
 
     def text(self) -> str:
-        heard = "never" if self.client_heard_s is None else f"{self.client_heard_s:.0f} s ago"
+        if self.client_heard_s is None:
+            # WP08a verification m1: "never" read like evidence of no client.  The bridge forwards
+            # telemetry only to a GCS that streams, so silence since app start proves nothing.
+            heard = ("UNKNOWN since app start (nothing heard; the bridge forwards client telemetry "
+                     "only while this app streams)")
+        else:
+            heard = f"{self.client_heard_s:.0f} s ago"
         return (f"CARRIER-ONLY sends ARM = DISARM and throttle low to ANY bound client. "
                 f"Client telemetry last heard: {heard}. FPV streamed in this session: "
                 f"{'YES' if self.fpv_this_session else 'no'}")
@@ -169,6 +176,8 @@ class SenderStats:
     p50_ms: float | None
     p99_ms: float | None
     max_ms: float | None
+    #: packets sent more than ``alarms.send_late_max_ms`` after their deadline (WP08a verification m2)
+    late_count: int = 0
 
     @property
     def rate_hz(self) -> float:
@@ -251,8 +260,9 @@ def percentile(sorted_values: Sequence[float], p: float) -> float:
 class JitterWindow:
     """Collects per-packet lateness and closes a :class:`SenderStats` about once a second."""
 
-    def __init__(self, now: float, window_s: float = 1.0) -> None:
+    def __init__(self, now: float, window_s: float = 1.0, late_threshold_s: float | None = None) -> None:
         self.window_s = window_s
+        self.late_threshold_s = late_threshold_s
         self._start = now
         self._late: list[float] = []
         self._errors = 0
@@ -278,7 +288,9 @@ class JitterWindow:
                             skipped_slots=self._skipped,
                             p50_ms=percentile(ms, 0.50) if ms else None,
                             p99_ms=percentile(ms, 0.99) if ms else None,
-                            max_ms=ms[-1] if ms else None)
+                            max_ms=ms[-1] if ms else None,
+                            late_count=0 if self.late_threshold_s is None else
+                            sum(1 for v in late if v > self.late_threshold_s))
         self._start, self._late, self._errors, self._skipped = now, [], 0, 0
         return stats
 
@@ -341,7 +353,7 @@ class Sender:
         self._sent = 0
         self._errors = 0
         self._stats: SenderStats | None = None
-        self._window = JitterWindow(clock())
+        self._window = JitterWindow(clock(), late_threshold_s=cfg.alarms.send_late_max_ms / 1000)
         self._waiter_kind = "not started"
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
@@ -498,6 +510,12 @@ class Sender:
         if heard is not None and heard < CARRIER_ONLY_QUIET_S:
             problems.append(f"client telemetry heard {heard:.0f} s ago (< {CARRIER_ONLY_QUIET_S:.0f} s): "
                             "a client is bound - carrier-only would DISARM it")
+        snap = self.controller.snapshot()                       # WP08a verification m1
+        if (snap.connected and not controller_problems(snap, self._clock(), self.stale_s)
+                and snap.is_mapped(self.il.arm_channel) and not arm_switch_safe(snap, self.il)):
+            problems.append(f"the connected radio's arm switch is ARMED (CH{self.il.arm_channel} = "
+                            f"{snap.channel_us(self.il.arm_channel)} us): a client may be armed - "
+                            "set the switch to SAFE first")
         return heard, problems
 
     def prepare_carrier_only(self) -> CarrierOnlyPreview:

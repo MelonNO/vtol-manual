@@ -172,6 +172,8 @@ class RuleInputs:
     rtt_rising: bool
     on_battery: bool | None
     battery_saver: bool | None
+    #: packets later than ``send_late_max_ms`` in the last 1 s window (WP08a verification m2)
+    late_count: int = 0
 
 
 def evaluate_rules(inp: RuleInputs, cfg: AlarmConfig) -> dict[str, bool]:
@@ -199,8 +201,9 @@ def evaluate_rules(inp: RuleInputs, cfg: AlarmConfig) -> dict[str, bool]:
         "rtt_rising_camera": streaming and inp.rtt_rising,
         "camera_mismatch": status_ok and inp.bridge_state in ("START", "RUN") and inp.camera_reported is not None
                            and inp.camera_reported != inp.camera_requested,
-        "send_jitter_high": streaming and (inp.skipped_slots > 0 or (
-            inp.late_max_ms is not None and inp.late_max_ms > cfg.send_late_max_ms)),
+        # m2: one packet a few ms late only adds latency; N late packets per second, or any skipped
+        # slot (every stall longer than two send periods skips slots), is a real problem.
+        "send_jitter_high": streaming and (inp.skipped_slots > 0 or inp.late_count >= cfg.send_late_count),
         "gcs_on_battery": bool(inp.on_battery),
         "gcs_battery_saver": bool(inp.battery_saver),
     }

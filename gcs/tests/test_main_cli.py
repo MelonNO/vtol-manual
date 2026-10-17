@@ -78,14 +78,24 @@ def test_headless_sim_streams_then_failsafe_on_exit(tmp_path: Path) -> None:
         assert "bridge START after" in out                    # start_packets expectation reported
         with sim.lock:
             assert sim.core.visited(BridgeState.RUN)
-        t_end = time.time() + 5                     # the app is gone: the bridge must reach FAILSAFE
-        while time.time() < t_end:
+        # The app is gone: the bridge must reach FAILSAFE.  Poll with a generous deadline (PM, WP08b: a
+        # fixed 5 s failed once on a busy machine) and print diagnostics on timeout.
+        t_end = time.monotonic() + 15
+        reached = False
+        while not reached and time.monotonic() < t_end:
             with sim.lock:
-                if sim.core.visited(BridgeState.FAILSAFE):
-                    break
-            time.sleep(0.02)
-        with sim.lock:
-            assert sim.core.visited(BridgeState.FAILSAFE)
+                reached = sim.core.visited(BridgeState.FAILSAFE)
+            if not reached:
+                time.sleep(0.05)
+        if not reached:
+            with sim.lock:
+                core = sim.core
+                diag = (f"sim state {core.state.name}; transitions "
+                        f"{[(round(t, 3), a.name, b.name) for t, a, b in core.transitions]}; rx_ok {core.rx_ok}; "
+                        f"last valid rc_up {None if core.last_valid_time is None else round(sim.clock() - core.last_valid_time, 3)} s ago; "
+                        f"sim thread alive {sim._thread is not None and sim._thread.is_alive()}")
+            raise AssertionError("bridge never reached FAILSAFE within 15 s after the app exited:\n  " + diag
+                                 + "\n  app stdout tail:\n" + out[-2000:] + "\n  stderr tail:\n" + proc.stderr[-2000:])
         assert (tmp_path / "cfg.json").exists()       # config created with defaults
         logs = list(tmp_path.glob("session-*.jsonl"))
         assert len(logs) == 1
@@ -185,9 +195,36 @@ def test_config_error_exit_code(tmp_path: Path) -> None:
     assert proc.returncode == 2 and "sender.rate_hz" in proc.stderr
 
 
-def test_without_headless_is_a_usage_error() -> None:
-    proc = run_cli()
-    assert proc.returncode == 4 and "--headless" in proc.stderr
+def test_without_headless_starts_the_ui_process(monkeypatch) -> None:
+    """WP08b R0: no --headless = the UI process (it starts the sender separately); never the sender itself."""
+    import vtolgcs.ui.app as ui_app
+    from vtolgcs import __main__ as cli
+    seen = {}
+
+    def fake_ui(args, argv):
+        seen["args"], seen["argv"] = args, argv
+        return 0
+    monkeypatch.setattr(ui_app, "main", fake_ui)
+    monkeypatch.setattr(cli, "Runtime", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no sender in the UI")))
+    assert cli.main(["--sim", "--config", "x.json"]) == 0
+    assert seen["argv"] == ["--sim", "--config", "x.json"] and not seen["args"].headless
+
+
+def test_headless_serves_the_control_channel(tmp_path: Path) -> None:
+    """The sender writes control.json next to its config and removes it on exit."""
+    proc = run_cli("--headless", "--no-api", "--no-log", "--mavlink-port", "0", "--config", str(tmp_path / "c.json"),
+                   "--bridge", "127.0.0.1:9", "--run-seconds", "1")
+    assert proc.returncode == 0 and "control channel on" in proc.stdout, proc.stdout + proc.stderr
+    assert not (tmp_path / "control.json").exists()
+
+
+def test_old_config_is_migrated_with_a_notice(tmp_path: Path) -> None:
+    cfg = tmp_path / "c.json"
+    cfg.write_text(json.dumps({"alarms": {"jitter_p99_max_ms": 2.0}}))
+    proc = run_cli("--headless", "--no-api", "--no-log", "--mavlink-port", "0", "--config", str(cfg),
+                   "--bridge", "127.0.0.1:9", "--run-seconds", "0.5")
+    assert proc.returncode == 0 and "CONFIG MIGRATED" in proc.stderr, proc.stderr
+    assert "send_late_max_ms" in cfg.read_text()
 
 
 def test_instance_name_is_not_a_cli_flag() -> None:

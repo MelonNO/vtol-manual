@@ -107,3 +107,63 @@ def test_invalid_json_file(tmp_path: Path) -> None:
 def test_comment_keys_are_ignored() -> None:
     cfg = C.from_dict({"_comment": "x", "bridge": {"_note": "y", "ip": "10.0.0.1"}})
     assert cfg.bridge.ip == "10.0.0.1"
+
+
+# --------------------------------------------------------------------------- WP08b: migration (m4), S-02b sysid guard
+
+def test_old_jitter_key_is_migrated_with_a_notice(tmp_path: Path) -> None:
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"alarms": {"jitter_p99_max_ms": 3.5}}), encoding="utf-8")
+    notices: list[str] = []
+    cfg = C.load_config(path, notices=notices)
+    assert cfg.alarms.send_late_max_ms == 3.5
+    assert any("jitter_p99_max_ms renamed to alarms.send_late_max_ms" in n for n in notices)
+    assert any("pre-migration" in n for n in notices)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert "jitter_p99_max_ms" not in data["alarms"] and data["alarms"]["send_late_max_ms"] == 3.5
+    assert "jitter_p99_max_ms" in (tmp_path / "config.pre-migration.json").read_text(encoding="utf-8")
+    again: list[str] = []
+    assert C.load_config(path, notices=again) == cfg and again == []      # migrated once
+
+
+def test_old_and_new_jitter_keys_new_wins(tmp_path: Path) -> None:
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"alarms": {"jitter_p99_max_ms": 9, "send_late_max_ms": 2.5}}), encoding="utf-8")
+    notices: list[str] = []
+    assert C.load_config(path, notices=notices).alarms.send_late_max_ms == 2.5
+    assert "removed" in notices[0]
+
+
+def test_invalid_old_value_names_the_migration(tmp_path: Path) -> None:
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps({"alarms": {"jitter_p99_max_ms": -1}}), encoding="utf-8")
+    with pytest.raises(C.ConfigError) as err:
+        C.load_config(path)
+    assert "migrated" in str(err.value) and "send_late_max_ms" in str(err.value)
+    assert "jitter_p99_max_ms" in path.read_text(encoding="utf-8")          # not rewritten
+
+
+@pytest.mark.parametrize("sysid", [1, 255, 0, 256, -3])
+def test_mp_output_sysid_guard(sysid: int) -> None:
+    cfg = C.default_config()
+    cfg.mp_output.sysid = sysid
+    assert any(e.startswith("mp_output.sysid") for e in C.validate(cfg))
+
+
+def test_mp_output_defaults_and_loopback_only() -> None:
+    cfg = C.default_config()
+    assert (cfg.mp_output.sysid, cfg.mp_output.port, cfg.mp_output.host) == (2, 14560, "127.0.0.1")
+    assert C.mp_sysid_problems(2) == [] and C.mp_sysid_problems(254) == []
+    cfg.mp_output.host = "192.168.144.20"
+    assert any("loopback" in e for e in C.validate(cfg))
+    cfg = C.default_config()
+    cfg.mavlink.carrier_sysid = 2
+    assert any("carrier_sysid" in e for e in C.validate(cfg))
+
+
+def test_video_defaults_follow_c3() -> None:
+    v = C.default_config().video
+    assert (v.listen_port, v.fanout_ports) == (5600, [5601, 5602])
+    cfg = C.default_config()
+    cfg.video.fanout_ports = [5600]
+    assert any("loop" in e for e in C.validate(cfg))

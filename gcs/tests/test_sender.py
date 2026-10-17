@@ -348,6 +348,9 @@ def test_idle_then_carrier_only_bypass_is_closed(rig) -> None:
     n = len(rig.sent)
     assert not rig.sender.request_mode(Mode.CARRIER_ONLY).ok          # the old one-key route
     preview = rig.sender.prepare_carrier_only()
+    assert not preview.ok and "arm switch is ARMED" in preview.problems[0]   # m1: radio still ARMED
+    rig.ctl.set_channel_us(5, 1000)                                   # pilot sets the switch SAFE
+    preview = rig.sender.prepare_carrier_only()
     assert preview.ok and preview.needs_landed_confirm
     res = rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True)
     assert not res.ok and "LANDED" in res.reasons[0]
@@ -539,3 +542,46 @@ def test_thread_rate_absolute_deadlines_and_stop() -> None:
     n = len(sent)
     time.sleep(0.05)
     assert len(sent) == n                                # stop() means silence at once
+
+
+# --------------------------------------------------------------------------- WP08a verification m1
+
+def test_carrier_only_preview_says_unknown_since_app_start(rig) -> None:
+    preview = rig.sender.prepare_carrier_only()
+    assert preview.client_heard_s is None
+    assert "UNKNOWN since app start" in preview.text() and "never" not in preview.text()
+    rig.heard[0] = 42.0
+    assert "42 s ago" in rig.sender.prepare_carrier_only().text()
+
+
+def test_carrier_only_refused_while_connected_radio_is_armed(rig) -> None:
+    rig.ctl.set_channel_us(5, 2000)                                   # arm switch ARMED, fresh app
+    preview = rig.sender.prepare_carrier_only()
+    assert not preview.ok and "arm switch is ARMED (CH5 = 2000 us)" in preview.problems[0]
+    assert not rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True).ok
+    assert rig.slot(3) == [None] * 3 and not rig.sent
+
+
+def test_carrier_only_arm_switch_moved_to_armed_before_confirmation(rig) -> None:
+    preview = rig.sender.prepare_carrier_only()
+    assert preview.ok
+    rig.ctl.set_channel_us(5, 2000)
+    res = rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True)
+    assert not res.ok and "ARMED" in res.reasons[0] and not rig.sent
+
+
+def test_carrier_only_without_a_radio_still_possible(rig) -> None:
+    rig.ctl.disconnect()                                              # carrier-only needs no controller
+    preview = rig.sender.prepare_carrier_only()
+    assert preview.ok
+    assert rig.sender.confirm_carrier_only(preview.token, no_client_confirmed=True).ok
+
+
+def test_late_count_in_stats(rig) -> None:
+    """m2: the stats window counts packets later than alarms.send_late_max_ms."""
+    from vtolgcs.sender import JitterWindow
+    w = JitterWindow(0.0, late_threshold_s=0.002)
+    for late in (0.0001, 0.0021, 0.005, 0.002):
+        w.record(late)
+    stats = w.roll(1.0)
+    assert stats.late_count == 2 and stats.max_ms == 5.0

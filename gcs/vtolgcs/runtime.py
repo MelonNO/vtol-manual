@@ -20,6 +20,13 @@ UIs (WP08b) call :meth:`Runtime.request_mode` (normal FPV start / idle),
 operator confirmation before calling a ``confirm_*`` method; it must never call one by itself.
 UIs must not do heavy work on runtime threads or in listeners (they run on the RC sender's
 interpreter; see ``gcs/README.md`` "Timing limits").
+
+**WP08b (brief R0):** the windowed UI, video helper, Mission Planner output and ELRS menu run in a
+*separate process*.  They read state from the C2 API and send operator commands through the local
+control channel (:mod:`vtolgcs.control`), which calls the methods above plus the small hooks at the
+end of this class (:meth:`Runtime.send_crsf`, :meth:`Runtime.inputs`, :meth:`Runtime.report_video`,
+:meth:`Runtime.set_client_profile`, :meth:`Runtime.log_record`, :meth:`Runtime.add_crsf_listener`).
+Every safety check stays here and in :mod:`vtolgcs.sender`.
 """
 
 from __future__ import annotations
@@ -34,7 +41,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from . import __version__, config as config_mod, timing_win
+from . import __version__, config as config_mod, crsf, protocol, timing_win
 from .alarms import AlarmEngine, RttRiseDetector, RuleInputs, alarm_defs, evaluate_rules, iso_utc
 from .api import ApiServer, EventHub
 from .config import Config
@@ -56,6 +63,13 @@ POWER_PERIOD_S = 5.0
 GIL_SWITCH_INTERVAL_S = 0.0005
 #: API and SSE reuse a status object up to this old, so many clients cost one build.
 STATUS_CACHE_S = 0.1
+#: A video fan-out report older than this no longer fills C2 ``video.rx_kbps``.
+VIDEO_REPORT_MAX_AGE_S = 3.0
+#: crsf_pass frames per second the control channel may send (app default; the bridge has to fit
+#: them into free CRSF slots, plan §7.7).
+CRSF_PASS_MAX_PER_S = 50
+#: Frames the ELRS menu may send through crsf_pass (ping, parameter read, parameter write).
+CRSF_PASS_TYPES = (crsf.FrameType.DEVICE_PING, crsf.FrameType.PARAMETER_READ, crsf.FrameType.PARAMETER_WRITE)
 
 
 @dataclass(frozen=True)
@@ -125,6 +139,10 @@ class Runtime:
         self._stream_start_seq: int | None = None       # stream started: count packets until START
         self._status_cache: tuple[float, dict] | None = None
         self._status_lock = threading.Lock()
+        self._crsf_listeners: list[Callable[[crsf.CrsfFrame], None]] = []
+        self._last_flight_mode: str | None = None
+        self._video_report: tuple[float, float | None] | None = None
+        self._crsf_sent: list[float] = []
         self._stop = threading.Event()
         self._monitor: threading.Thread | None = None
         self._started = False
@@ -164,6 +182,7 @@ class Runtime:
                              on_stats=self._on_stats, client_heard_s=self.telemetry.heard_age_s)
         self.receiver = Receiver(cfg, sock, self.link, self.telemetry, clock=self._clock,
                                  on_state_change=self._on_bridge_state, on_telemetry=self._on_telemetry)
+        self.receiver.crsf_listeners.append(self._on_crsf_frame)
         self.controller.start()
         self.receiver.start()
         self.sender.start()
@@ -266,7 +285,8 @@ class Runtime:
         if st is not None and (st.streaming or stats.sent):
             self._log("sender", sent=stats.sent, rate_hz=round(stats.rate_hz, 2), send_errors=stats.send_errors,
                       skipped_slots=stats.skipped_slots, jitter_p50_ms=_r4(stats.p50_ms),
-                      jitter_p99_ms=_r4(stats.p99_ms), jitter_max_ms=_r4(stats.max_ms), waiter=st.waiter)
+                      jitter_p99_ms=_r4(stats.p99_ms), jitter_max_ms=_r4(stats.max_ms),
+                      late_count=stats.late_count, waiter=st.waiter)
 
     def _on_bridge_state(self, old: BridgeState | None, new: BridgeState, st: Status) -> None:
         data = {"from": old.name if old is not None else None, "to": new.name, "fw_version": fw_ver_str(st.fw_ver),
@@ -298,6 +318,18 @@ class Runtime:
         rec = describe(obj)
         if rec is not None:
             self._log("telemetry", **rec)
+        if isinstance(obj, crsf.FlightMode) and obj.text != self._last_flight_mode:
+            self._last_flight_mode = obj.text            # WP08b: failsafe timer, MP STATUSTEXT
+            st = obj.status
+            self._emit("client_flight_mode", {"raw": obj.text, "failsafe": st.failsafe, "armed": st.armed,
+                                              "t": self._clock()})
+
+    def _on_crsf_frame(self, frame: crsf.CrsfFrame) -> None:
+        for fn in list(self._crsf_listeners):
+            try:
+                fn(frame)
+            except Exception:
+                log.exception("CRSF listener failed")
 
     def _on_alarm(self, event: dict) -> None:
         self._log("alarm", **event)
@@ -451,6 +483,7 @@ class Runtime:
             controller_connected=connected, status_silence_s=silence, bridge_state=bridge_state,
             rtt_ms=bv.rtt_ms, late_max_ms=stats.max_ms if stats and st.streaming else None,
             skipped_slots=stats.skipped_slots if stats and st.streaming else 0,
+            late_count=stats.late_count if stats and st.streaming else 0,
             camera_requested=st.camera_requested, camera_reported=cam_reported,
             telemetry_silence_s=tl_silence, telemetry_relevant=relevant,
             lq_pct=tv.lq_pct, cell_v=tv.cell_v, sats=tv.sats, client_failsafe=tv.failsafe,
@@ -512,9 +545,117 @@ class Runtime:
             "video": {
                 "standard": ("NTSC" if s.std_ntsc else "PAL") if video_bits and s.decoder_lock else None,
                 "decoder_lock": s.decoder_lock if video_bits else None,
-                "rx_kbps": None,                # WP08b video fan-out fills this
+                "rx_kbps": self._video_kbps(now),          # reported by the WP08b video fan-out
             },
             "client": self.telemetry.to_c2(now),
             "carrier": self.carrier.to_c2(now),
             "alarms": self.alarms.active(),
         }
+
+    # ------------------------------------------------------------------ WP08b hooks (control channel)
+    def now(self) -> float:
+        """The runtime clock (event and RTT timestamps on the control channel use it)."""
+        return self._clock()
+
+    def add_crsf_listener(self, fn: Callable[[crsf.CrsfFrame], None]) -> None:
+        """``fn(frame)`` for every forwarded CRSF frame (runs on the receiver thread: keep it tiny)."""
+        self._crsf_listeners.append(fn)
+
+    def remove_crsf_listener(self, fn: Callable[[crsf.CrsfFrame], None]) -> None:
+        if fn in self._crsf_listeners:
+            self._crsf_listeners.remove(fn)
+
+    def _video_kbps(self, now: float) -> float | None:
+        rep = self._video_report
+        if rep is None or rep[1] is None or now - rep[0] > VIDEO_REPORT_MAX_AGE_S:
+            return None
+        return round(rep[1], 1)
+
+    def report_video(self, rx_kbps: float | None) -> None:
+        """The video fan-out (another process) reports its receive rate for C2 ``video.rx_kbps``."""
+        if rx_kbps is not None and (isinstance(rx_kbps, bool) or not isinstance(rx_kbps, (int, float))
+                                    or not 0 <= rx_kbps < 1e7):
+            raise ValueError("rx_kbps must be a number >= 0")
+        self._video_report = (self._clock(), None if rx_kbps is None else float(rx_kbps))
+
+    def set_client_profile(self, profile_id: str | None, cells: int | None = None) -> None:
+        """Client profile chosen in the UI: C2 ``client.profile_id`` and the cell count of the
+        per-cell battery alarm.  Nothing on the RC path changes."""
+        if profile_id is not None and (not isinstance(profile_id, str) or not 0 < len(profile_id) <= 64):
+            raise ValueError("profile_id must be a short string or null")
+        if cells is not None and (not isinstance(cells, int) or isinstance(cells, bool) or not 1 <= cells <= 16):
+            raise ValueError("cells must be 1..16")
+        self.cfg.client.profile_id = profile_id
+        if cells is not None:
+            self.cfg.client.cells = cells
+        self._log("client_profile", profile_id=profile_id, cells=self.cfg.client.cells)
+
+    def inputs(self) -> dict[str, Any]:
+        """Controller snapshot for the UI channel monitor and mapping wizard (raw values if available)."""
+        now = self._clock()
+        snap = self.controller.snapshot()
+        il = self.cfg.interlock
+        connected = snap.connected and now - snap.t <= self.cfg.controller.stale_ms / 1000
+        raw = getattr(self.controller, "raw", None)
+        return {
+            "connected": connected, "name": snap.name if connected else None,
+            "channels_us": list(snap.channels_us), "mapped": list(snap.mapped),
+            "arm_channel": il.arm_channel, "throttle_channel": il.throttle_channel,
+            "arm_switch_safe": arm_switch_safe(snap, il) if connected else None,
+            "throttle_low": throttle_low(snap, il) if connected else None,
+            "raw_axes": list(raw[0]) if raw else None, "raw_buttons": list(raw[1]) if raw else None,
+            "devices": list(getattr(self.controller, "devices", None) or []),
+        }
+
+    def rtt_samples(self, since: float | None = None) -> list[tuple[float, float]]:
+        """RTT samples ``(runtime time, ms)`` of the last 30 s, newer than ``since``."""
+        return [(t, v) for t, v in self.link.rtt_samples() if since is None or t > since]
+
+    def send_crsf(self, frame: bytes) -> tuple[bool, list[str]]:
+        """Send one CRSF frame to the TX module through ``crsf_pass`` (C3, firmware feature Q7a).
+
+        Only device ping / parameter read / parameter write from the handset (0xEA) to the module
+        (0xEE, or broadcast for the ping) pass; only while streaming (the bridge answers the current
+        GCS only); parameter writes are refused while the client may be armed
+        (``crsf_menu.allow_write_while_armed``); at most :data:`CRSF_PASS_MAX_PER_S` per second.
+        """
+        assert self.sender is not None and self.sock is not None, "runtime not started"
+        try:
+            f = crsf.parse_frame(frame)
+        except crsf.CrsfError as exc:
+            return False, [f"not a valid CRSF frame: {exc}"]
+        reasons = []
+        if f.type not in CRSF_PASS_TYPES:
+            reasons.append(f"frame type 0x{f.type:02X} is not allowed (ping, parameter read/write only)")
+        elif f.origin != crsf.Addr.RADIO_TRANSMITTER or f.dest not in (crsf.Addr.CRSF_TRANSMITTER,
+                                                                      crsf.Addr.BROADCAST):
+            reasons.append("frames must go from the handset (0xEA) to the TX module (0xEE) or broadcast")
+        if not self.sender.state().streaming:
+            reasons.append("no RC stream: the bridge answers only a GCS that streams (start FPV first)")
+        if f.type == crsf.FrameType.PARAMETER_WRITE and not self.cfg.crsf_menu.allow_write_while_armed:
+            armed = self.client_may_be_armed()
+            if armed:
+                reasons.append("parameter writes are refused while the client may be armed: " + "; ".join(armed))
+        now = self._clock()
+        self._crsf_sent = [t for t in self._crsf_sent if now - t < 1.0]
+        if len(self._crsf_sent) >= CRSF_PASS_MAX_PER_S:
+            reasons.append(f"more than {CRSF_PASS_MAX_PER_S} crsf_pass frames per second")
+        if reasons:
+            self._log("crsf_pass_refused", frame=f.raw.hex(), reasons=reasons)
+            return False, reasons
+        self._crsf_sent.append(now)
+        try:
+            self.sock.sendto(protocol.CrsfPass(f.raw).pack(), self.bridge_addr)
+        except OSError as exc:
+            return False, [f"send failed: {exc}"]
+        if f.type == crsf.FrameType.PARAMETER_WRITE:
+            self._log("crsf_write", frame=f.raw.hex(), param=f.body[0] if f.body else None)
+        return True, []
+
+    def log_record(self, rtype: str, fields: dict[str, Any]) -> None:
+        """Append a ``test_*`` record (WP08b test tools) to the session log."""
+        if not isinstance(rtype, str) or not rtype.startswith("test_") or len(rtype) > 40:
+            raise ValueError("only test_* record types may be logged through the control channel")
+        if not isinstance(fields, dict) or len(fields) > 64 or "type" in fields:
+            raise ValueError("fields must be a small object")
+        self._log(rtype, **{str(k): v for k, v in fields.items()})

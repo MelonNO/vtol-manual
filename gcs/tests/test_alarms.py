@@ -45,7 +45,7 @@ def test_healthy_inputs_raise_nothing() -> None:
     ({"cell_v": 3.49}, "client_batt_low"),
     ({"sats": 7}, "client_sats_low"),
     ({"client_rescue_not_ready": True}, "client_rescue_not_ready"),
-    ({"late_max_ms": 2.01}, "send_jitter_high"),
+    ({"late_max_ms": 4.0, "late_count": 3}, "send_jitter_high"),
     ({"skipped_slots": 1}, "send_jitter_high"),
     ({"sender_dead": True}, "rc_sender_dead"),
     ({"camera_requested": True}, "camera_mismatch"),
@@ -59,7 +59,16 @@ def test_each_rule(change: dict, alarm: str) -> None:
 
 def test_thresholds_are_strict() -> None:
     assert active(dataclasses.replace(OK, status_silence_s=0.300, lq_pct=70, cell_v=3.50, sats=8,
-                                      telemetry_silence_s=2.0, late_max_ms=2.0)) == set()
+                                      telemetry_silence_s=2.0, late_max_ms=2.0, late_count=2)) == set()
+
+
+def test_jitter_alarm_needs_several_late_packets_or_a_skipped_slot() -> None:
+    """WP08a verification m2: one packet a few ms late is latency, not a fault; N per second is."""
+    one_late = dataclasses.replace(OK, late_max_ms=9.0, late_count=1)
+    assert active(one_late) == set()
+    assert active(dataclasses.replace(one_late, late_count=CFG.send_late_count)) == {"send_jitter_high"}
+    assert active(dataclasses.replace(OK, skipped_slots=1, late_count=0)) == {"send_jitter_high"}
+    assert active(one_late, AlarmConfig(send_late_count=1)) == {"send_jitter_high"}
 
 
 def test_rtt_rule_needs_a_configured_threshold() -> None:
@@ -70,7 +79,7 @@ def test_rtt_rule_needs_a_configured_threshold() -> None:
 
 def test_stream_rules_inactive_when_idle() -> None:
     idle = dataclasses.replace(OK, mode="idle", streaming=False, status_silence_s=None, bridge_state=None,
-                               late_max_ms=9.0, skipped_slots=3, camera_requested=True, telemetry_silence_s=None,
+                               late_max_ms=9.0, late_count=50, skipped_slots=3, camera_requested=True, telemetry_silence_s=None,
                                telemetry_relevant=False, lq_pct=10, client_failsafe=True)
     assert active(idle) == set()
 

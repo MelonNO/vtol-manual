@@ -7,8 +7,21 @@ the coverage map. It replaces `relay/app.py` and the Linux RC sender of the rela
 > **The relay protocol is PROPOSAL v1** (`protocol/README.md`). Nothing here is flight-qualified until the
 > G0 bridge firmware implements it and the relay design's bench tests pass.
 
-This file covers the **headless runtime (WP08a)**. The windowed UI, video helper, Mission Planner client
-output, ELRS menu and packaging follow in WP08b.
+This file covers the RC sender runtime (WP08a) and the windowed UI, video helper, Mission Planner client
+output, ELRS menu, test tools and packaging (WP08b). **Field users: start with the [User guide](#user-guide).**
+
+## Two processes (WP08b R0)
+
+| Process | Program | Does |
+|---|---|---|
+| **RC sender** | `vtol-gcs-sender.exe` (built) / `python -m vtolgcs --headless` | controller, `rc_up` at 250 Hz, every interlock, bridge status, alarms, C2 API, session log, **control channel** |
+| **UI** | `vtol-gcs.exe` / `python -m vtolgcs` | status bar and main window, typed confirmations, Mission Planner client output, ELRS menu, test tools; starts the **video fan-out** helper process |
+
+Python work in the same process delays RC packets through the interpreter lock (WP08a report, "Timing under
+load"), so the UI never runs inside the RC sender. The UI reads state from the C2 API (read-only) and sends
+operator commands through the local control channel ("Control channel" below). The RC sender keeps every
+safety check; the UI can only ask. **If the UI dies, the RC sender keeps streaming** (start a new UI: it
+attaches). **If the RC sender dies, the UI shows `RC SENDER DOWN` in red** (status bar and main window).
 
 | Part | Module |
 |---|---|
@@ -24,6 +37,13 @@ output, ELRS menu and packaging follow in WP08b.
 | Session log (JSONL) | `vtolgcs/session_log.py` |
 | Runtime wiring | `vtolgcs/runtime.py`, `vtolgcs/__main__.py` |
 | Protocol / CRSF (WP03) | `vtolgcs/protocol.py`, `vtolgcs/crsf.py` |
+| Control channel (UI <-> RC sender) | `vtolgcs/control.py` |
+| Windowed UI (tkinter) | `vtolgcs/ui/` (`app.py`, `link.py`, `view.py`, `profiles.py`, `mapping.py`, `hotkey.py`) |
+| Video fan-out, GStreamer pipelines, SDP | `vtolgcs/video.py` |
+| Mission Planner client output (MAVLink) | `vtolgcs/mp_output.py` |
+| ELRS parameter menu, VTX Admin, VRX follow | `vtolgcs/crsf_menu.py` |
+| Test tools (RTT, failsafe timer, camera test, g2g clock) | `vtolgcs/testtools.py` |
+| Packaging | `packaging/vtol-gcs.spec`, `packaging/build.ps1`, `scripts/firewall.ps1` |
 
 ## Running
 
@@ -31,9 +51,15 @@ Python 3.12 with `pygame-ce` (controller input). Everything else is the standard
 
 ```
 cd gcs
-python -m vtolgcs --headless              # real controller, bridge from the config file
-python -m vtolgcs --headless --sim        # fake controller, bridge_sim on 127.0.0.1:5770
+python -m vtolgcs                         # the UI; it starts the RC sender in its own console window
+python -m vtolgcs --sim                   # the UI with a simulated sender (bridge_sim on 127.0.0.1:5770)
+python -m vtolgcs --headless              # the RC sender alone: real controller, bridge from the config file
+python -m vtolgcs --headless --sim        # the RC sender alone: fake controller, bridge_sim on 127.0.0.1:5770
 ```
+
+The UI passes its options (`--sim`, `--config`, `--bridge`, ...) on to the RC sender it starts. If an RC
+sender is already running (its control file answers), the UI attaches instead (`--attach-only`: never start
+one).
 
 For `--sim`, start the simulator first in a second console: `python gcs/tools/bridge_sim.py`.
 With `--sim` the app starts in **FPV** mode (normal start), so the simulator goes WAIT_GCS → START → RUN.
@@ -53,7 +79,9 @@ reach an airborne client with a non-pilot value needs a **typed confirmation on 
   session (see "Modes and interlocks").
 
 Options: `--config PATH`, `--bridge HOST:PORT`, `--api-port N`, `--no-api`, `--mavlink-port N`,
-`--log-dir DIR`, `--no-log`, `--mode idle|fpv|carrier_only`, `--resume`, `--camera on|off`, `-v`;
+`--log-dir DIR`, `--no-log`, `--mode idle|fpv|carrier_only`, `--resume`, `--camera on|off`, `-v`,
+`--control-file PATH` (default: `control.json` next to the config file), `--no-control` (sender: no UI can
+attach), `--attach-only` (UI);
 `--sim-armed` (with `--sim` only: the fake arm switch starts ARMED, throttle mid, to try RESUME).
 Exit codes: 0 normal, 2 configuration error or bad argument, 3 another instance is running, 4 usage
 (including `--sim` with a non-loopback bridge), 5 start-up failure (e.g. the local UDP port is taken).
@@ -103,6 +131,7 @@ every problem and exits with code 2. Keys missing from the file take the default
 | `camera.refuse_on_while_armed` | `true` | plan §7.5 optional interlock; plan Q13: camera off while the client is armed until test 9 is done |
 | `camera.on_in_carrier_only` | `true` | carrier-only mode requests the camera (plan §3.4-3) |
 | `alarms.*` | see "Alarms" | thresholds |
+| `alarms.send_late_count` | `3` | app default (WP08a verification m2): `SEND JITTER HIGH` needs this many packets later than `alarms.send_late_max_ms` in one 1 s window (any skipped slot raises it at once) |
 | `client.profile_id` | `null` | client profile id (contract C1.3), shown in C2 |
 | `client.cells`, `client.report_cell_voltage` | `6`, `false` | per-cell battery voltage = pack voltage / cells, or the value as sent when Betaflight `report_cell_voltage` is on |
 | `mavlink.enabled`, `listen_ip`, `listen_port` | `true`, `127.0.0.1`, `14551` | Mission Planner MAVLink Mirror input (read-only) |
@@ -111,6 +140,24 @@ every problem and exits with code 2. Keys missing from the file take the default
 | `api.enabled`, `api.port` | `true`, `47800` | contract C2 |
 | `log.enabled`, `log.dir` | `true`, `null` | `null` = `%APPDATA%\vtol-gcs\logs` |
 | `video.status_bits_min_fw_ver` | `null` | **TBD** — firmware version from which status bits 3/4 (decoder lock, NTSC) are valid; until then C2 `video.standard`/`decoder_lock` are `null` |
+| `video.listen_port`, `video.fanout_ports` | `5600`, `[5601, 5602]` | contract C3: N6 video in; fan-out to the viewer (5601) and the Mission Planner HUD (5602) |
+| `video.gst_launch_path` | `null` | `gst-launch-1.0.exe`; `null` = PATH, `GSTREAMER_1_0_ROOT_MSVC_X86_64`, the usual install folders |
+| `video.decoder` | `avdec_h264` | or `d3d11h264dec` (plan §7.4 hardware option; compare latency first) |
+| `mp_output.enabled`, `host`, `port` | `true`, `127.0.0.1`, `14560` | client vehicle for Mission Planner's second link; **loopback only** (config error otherwise) |
+| `mp_output.sysid`, `compid` | `2`, `1` | plan §14.4 example sysid; **1 and 255 are refused** (S-02b), and it must differ from `mavlink.carrier_sysid` |
+| `mp_output.mode` | `vehicle` | or `adsb` (an `ADSB_VEHICLE` traffic icon, brief R4); `adsb_icao` (`null` = sysid), `callsign` (`null` = `FPV<sysid>`) |
+| `crsf_menu.timeout_ms`, `retries` | `500`, `3` | app defaults for the ELRS menu requests |
+| `crsf_menu.allow_write_while_armed` | `false` | app default: parameter writes are refused while the client is or may be armed (a bind or packet-rate change drops the link) |
+| `crsf_menu.vrx_lock_timeout_s` | `10` | app default: VRX follow offers a revert when no decoder lock is reported within this time |
+| `ui.profiles_file` | `null` | the Tools-page profiles export the UI last opened (remembered) |
+| `ui.camera_hotkey`, `ui.global_hotkey` | `F9`, `true` | camera toggle; system-wide so it works while the video viewer has the focus |
+| `ui.status_bar`, `ui.sound` | `true`, `true` | always-on-top status bar; alarm sounds (`winsound`; mute in the UI) |
+
+**Config migration (release note).** Old key names are renamed when the file is loaded: today only
+`alarms.jitter_p99_max_ms` → `alarms.send_late_max_ms` (WP08a rework 1). The sender prints
+`CONFIG MIGRATED: ...` and logs it, keeps the old file as `config.pre-migration.json`, and saves the migrated
+file. A value that is invalid after the migration is reported as a config error that names the migration;
+the file is then not rewritten.
 
 To use the reference client's critical cell voltage instead of its warning level, set
 `alarms.cell_min_v` to `3.30` (`vbat_min_cell_voltage = 330`).
@@ -163,10 +210,14 @@ Rules (`vtolgcs/sender.py`):
    1. it never starts automatically or from a launch flag alone;
    2. the operator types `NOCLIENT` — no client is powered or bound (single use, valid 15 s);
    3. it is refused while any client telemetry was heard in the last **30 s** (a client frame, or link
-      statistics with LQ > 0), checked at the preview and again at the confirmation;
-   4. after any FPV stream (normal or RESUME) in this app session a second confirmation, `LANDED` — the
+      statistics with LQ > 0), checked at the preview and again at the confirmation. When nothing was heard
+      since the app started, the preview says client telemetry is **"UNKNOWN since app start"**: the bridge
+      forwards telemetry only to a GCS that streams, so silence after a restart proves nothing;
+   4. it is refused while a connected radio's arm switch is **ARMED** (outside the safe range), at the
+      preview and at the confirmation (WP08a verification m1). Without a radio it is still possible;
+   5. after any FPV stream (normal or RESUME) in this app session a second confirmation, `LANDED` — the
       client is landed and disarmed — is required;
-   5. it is possible only while nothing is being sent.
+   6. it is possible only while nothing is being sent.
 5. `idle` is always allowed (the operator's deliberate stop).
 6. An unexpected error while building a packet stops the stream (`RC STREAM STOPPED`); silence is the
    fail-safe output. If the sender thread itself dies (caught in the thread, plus a liveness check by the
@@ -186,7 +237,9 @@ Other protections:
   with a high-resolution waitable timer (`CreateWaitableTimerExW`, `CREATE_WAITABLE_TIMER_HIGH_RESOLUTION`)
   and a 0.3 ms spin; fallback `timeBeginPeriod(1)` + sleep + 0.5 ms spin. After a stall it skips missed
   slots instead of bursting. Per-packet lateness gives the p50/p99/max send jitter; any packet more than
-  2 ms late, or any skipped slot, raises `SEND JITTER HIGH`.
+  2 ms late in one second (`alarms.send_late_count`, 3), or any skipped slot, raises `SEND JITTER HIGH`.
+  A single late packet only adds latency (WP08a verification m2); every stall longer than two send periods
+  skips slots and still raises the alarm at once.
 - **Timing limits (Python):** the RC thread shares the interpreter (GIL) with every other thread of the
   process. The runtime keeps its own work small (switch interval 0.5 ms, status built at most every
   100 ms for the API, at most 4 event-stream clients), but **CPU-bound Python work in the same process
@@ -224,7 +277,7 @@ for *raise after* to raise and be false for *clear after* to clear (app defaults
 | `rtt_high` | warn | RC RTT HIGH | streaming and RTT > `alarms.rtt_max_ms` — **TBD: `null` (inactive) until the HM30 RTT is measured** (relay-design "UDP echo" test) | 1 / 2 s |
 | `rtt_rising_camera` | warn | RTT RISING - CAMERA ON | camera reported ON and the median RTT of the last `rtt_rise_window_s` (5 s) since then is above the 99th percentile of the 5 s before it (or above that median + `alarms.rtt_rise_ms` when set; **TBD after relay-design test 9**) | 0 / 2 s |
 | `camera_mismatch` | warn | CAMERA STATE MISMATCH | bridge in START/RUN and camera requested ≠ reported | `alarms.camera_mismatch_s` (1 s, plan §7.1) / 0.5 s |
-| `send_jitter_high` | warn | SEND JITTER HIGH | streaming and, in the last 1 s window, any packet sent more than `alarms.send_late_max_ms` (2 ms, plan §7.5) after its deadline, or any skipped slot | 0 / 2 s |
+| `send_jitter_high` | warn | SEND JITTER HIGH | streaming and, in the last 1 s window, at least `alarms.send_late_count` (3, app default) packets sent more than `alarms.send_late_max_ms` (2 ms, plan §7.5) after their deadline, or any skipped slot | 0 / 2 s |
 | `gcs_on_battery` | warn | GCS LAPTOP ON BATTERY | `GetSystemPowerStatus`: AC offline | 0 / 5 s |
 | `gcs_battery_saver` | warn | GCS BATTERY SAVER ON | `GetSystemPowerStatus`: battery saver on | 0 / 5 s |
 
@@ -256,8 +309,10 @@ Notes:
   Every response has `Cache-Control: no-store`. Every other method → 405.
 - A `Host` header other than `127.0.0.1`/`localhost` is rejected (DNS-rebinding guard).
 
-C2 fields that the runtime cannot fill yet are `null`: `video.rx_kbps` (WP08b fan-out),
-`video.standard`/`decoder_lock` (needs the firmware threshold above), `client.profile_id` unless configured.
+C2 fields that the runtime cannot fill yet are `null`: `video.rx_kbps` while no video fan-out reports
+(WP08b; the fan-out reports through the control channel, values older than 3 s are dropped),
+`video.standard`/`decoder_lock` (needs the firmware threshold above), `client.profile_id` until a profile is
+chosen in the UI or configured.
 `bridge.state` is `UNREACHABLE` when no status arrived within 300 ms — which is always the case before
 streaming, because the bridge only answers a GCS that streams.
 
@@ -294,7 +349,7 @@ exists). One JSON object per line. Every record has:
 |---|---|---|
 | `session_start` | `schema` (`vtol-gcs-session/1`), `version`, `config` (the full config) | first line |
 | `status` | `status`: the full C2 Status object (same shape as `/api/v1/status`) | 5 Hz |
-| `sender` | `sent`, `rate_hz`, `send_errors`, `skipped_slots`, `jitter_p50_ms`, `jitter_p99_ms`, `jitter_max_ms`, `waiter` (`high-res-timer` \| `timeBeginPeriod` \| `sleep`) | every second while sending |
+| `sender` | `sent`, `rate_hz`, `send_errors`, `skipped_slots`, `jitter_p50_ms`, `jitter_p99_ms`, `jitter_max_ms`, `late_count` (packets later than `alarms.send_late_max_ms`), `waiter` (`high-res-timer` \| `timeBeginPeriod` \| `sleep`) | every second while sending |
 | `telemetry` | `kind` + the decoded fields: `link` (`rssi1_dbm`, `rssi2_dbm`, `lq_pct`, `snr_db`, `active_antenna`, `rf_mode`, `tx_power_index`, `tx_power_mw`, `dl_rssi_dbm`, `dl_lq_pct`, `dl_snr_db`, `dl_rssi2_dbm`), `gps` (`lat_deg`, `lon_deg`, `gspd_kmh`, `hdg_deg`, `alt_m`, `sats`), `battery` (`voltage_v`, `current_a`, `used_mah`, `remaining_pct`), `attitude` (`pitch_rad`, `roll_rad`, `yaw_rad`), `flight_mode` (`raw`, `failsafe`, `armed`, `rescue_not_ready`), `vario` (`vspd_ms`), `baro` (`alt_m`, `vspd_ms`, `vspd_format`) | every decoded client CRSF frame |
 | `bridge_state` | `from`, `to` (state names), `fw_version`, `rx_ok`, `rx_bad_crc`, `rx_bad_seq` | the reported bridge state changed |
 | `mode` | `mode`, `from`, `resumed` (a stopped stream was restarted), `start_path` (`normal` \| `resume` \| `null` for idle), `arm_us`, `throttle_us` (live values at the start; absent when no controller is involved) | a mode change was accepted |
@@ -309,6 +364,14 @@ exists). One JSON object per line. Every record has:
 | `camera_refused` | `requested`, `reasons` | camera ON was refused (client may be armed) |
 | `camera_readback` | `reported` | the bridge's reported camera state changed |
 | `alarm` | `id`, `severity`, `text`, `since`, `active` | an alarm was raised (`active: true`) or cleared |
+| `client_profile` | `profile_id`, `cells` | a client profile was chosen in the UI |
+| `crsf_write` | `frame` (hex), `param` | an ELRS parameter write went out through `crsf_pass` |
+| `crsf_pass_refused` | `frame` (hex), `reasons` | a `crsf_pass` frame was refused (not streaming, client may be armed, type, rate) |
+| `control_stop` | `streaming` | the UI asked the RC sender to stop |
+| `test_rtt`, `test_failsafe`, `test_camera` | the test-tool result row (see "Test tools") | a test finished in the UI |
+
+`interlock_refused` records from the control channel carry `"via": "control"` (for example a typed word that
+did not match).
 | `session_end` | `dropped` (records lost to a full queue), `packets_sent`, `rx` (receiver counters) | last line |
 
 Writers append new record types or fields only; readers must ignore what they do not know.
@@ -322,3 +385,249 @@ python -m pytest gcs                 # from the repository root
 The end-to-end tests start `bridge_sim` in-process on a free localhost port and run the real runtime
 against it (WAIT_GCS → RUN, RTT, telemetry, camera read-back, FAILSAFE when sending stops, controller
 disconnect). `test_main_cli.py` runs `python -m vtolgcs --headless --sim` as a separate process.
+
+WP08b tests: `test_control.py` (every guard path through the control channel, user-only control file, wrong
+token), `test_mp_output.py` (byte-exact MAVLink against an independent reference, CRC_EXTRA computed from the
+message definitions, sysid guard, inbound ignored), `test_video.py` (PAL/NTSC pipelines, SDP, fan-out on
+localhost, helper process), `test_crsf_menu.py` (menu against the extended `bridge_sim` tree through the real
+path), `test_testtools.py`, `test_ui.py` (UI importable without a display; RC SENDER DOWN; the sender keeps
+streaming when a UI process dies), `test_packaging.py`. A windowed smoke run (UI + spawned sender + simulator,
+camera round trip) runs with `VTOLGCS_UI_SMOKE=1`.
+
+---
+
+## User guide
+
+### Install
+
+**Built version (recommended):** copy the folder `vtol-gcs\` (from a GitHub Release, or built with
+`gcs\packaging\build.ps1`) to the laptop, for example `C:\vtol-gcs\`. It contains:
+
+| File | What |
+|---|---|
+| `vtol-gcs.exe` | the UI (start this one) |
+| `vtol-gcs-sender.exe` | the RC sender; the UI starts it in its own console window. Also runs the video fan-out |
+| `scripts\firewall.ps1` | firewall rules (below) |
+| `README.md` | this guide |
+
+**From source:** Python 3.12 (64-bit) and `pip install pygame-ce`; run `python -m vtolgcs` in `gcs\`.
+
+**Build:** `powershell -ExecutionPolicy Bypass -File gcs\packaging\build.ps1 [-Python path\to\python.exe]`.
+It installs PyInstaller and pygame-ce into that Python, builds `gcs\dist\vtol-gcs\` and checks that the
+sender starts. Never commit `gcs\dist` or `gcs\build`. Antivirus programs sometimes flag PyInstaller builds:
+whitelist the folder rather than disabling protection.
+
+Laptop settings (plan S-02a): mains power plan, lid action "Do nothing", no sleep. The app warns on battery
+and battery saver.
+
+### First run
+
+1. Run the firewall script once (below) and set the HM30 network adapter to **Private**.
+2. Plug in the RadioMaster radio with the **GCS-RELAY** model (next section).
+3. Start `vtol-gcs.exe`. The first start creates `%APPDATA%\vtol-gcs\config.json` with the defaults.
+   The RC sender opens in its own console window; the status bar (always on top) and the main window open.
+   The sender starts **idle** and sends nothing.
+4. **Client tab:** *Open profiles file* → the profiles JSON exported from the Tools page (EXPORT) → select the
+   client → *Use this client*. This sets the client id in C2, the cell count of the battery alarm and the
+   video standard (if the profile has one). The file and the choice are remembered.
+5. **Controller tab:** check the channel monitor: sticks move CH1-4, the arm switch moves CH5 between SAFE
+   (≤ 1699 µs) and ARMED, throttle low is ≤ 1050 µs. Use the wizard only if the channels are wrong.
+6. Check the bridge IP (`bridge.ip`, plan §3.3 proposal, **open question Q3**) in the config file.
+7. **Flight tab:** *FPV - normal start* with the arm switch SAFE and the throttle low. The status bar shows
+   `BRIDGE RUN` in green.
+
+To try everything without hardware: `python gcs\tools\bridge_sim.py --crsf-pass --module elrs
+--report-video PAL --video-kbps 2000` in one console, then `python -m vtolgcs --sim` (`vtol-gcs.exe --sim`).
+
+### EdgeTX "GCS-RELAY" model (plan §7.3)
+
+1. On the RadioMaster radio create a model **GCS-RELAY**.
+2. **Internal RF: OFF. External RF: OFF.** The radio must never transmit; the relay's TX module flies the
+   client. (It also makes the joystick mixer faster.)
+3. USB mode **Joystick**, **Classic** (channels 1-8 → axes, 9+ → buttons). Unplug and replug USB after
+   changing joystick settings. On Windows the radio may show up only as "Joystick": that is expected.
+4. Mixer: AETR on CH1-4, the **arm switch on CH5** (ELRS takes the arm state from CH5), modes and beeper on
+   CH6-8. The app passes the channels straight through, so the client's channel order is set here.
+5. The arm switch must give ≤ 1699 µs when SAFE and ≥ 1700 µs when ARMED (reference client `aux 0 0 0 1700
+   2100`); throttle low must read ≤ 1050 µs (`min_check`). Check both in the channel monitor.
+6. Measure the HID update interval on the laptop when possible (relay design: 1-8 ms estimate).
+
+### Mission Planner
+
+**Carrier position for the app (read-only mirror):** see "Carrier position from Mission Planner" above:
+Ctrl+F → MAVLink Mirror → UDP Client `127.0.0.1:14551`, **Write access unticked**.
+
+**Client drone in Mission Planner (second link):** the UI sends the client's CRSF telemetry as a small
+MAVLink stream (sysid 2, never 1 or 255) to `127.0.0.1:14560`. In Mission Planner open a **second
+connection**: connection type **UDP**, *Connect*, port **14560** (names as in Mission Planner 1.3.x; verify on
+the laptop). The client appears as its own vehicle (quadrotor), or as a traffic icon when
+*Mission Planner tab → ADS-B traffic icon* is chosen. Whatever Mission Planner sends back on that link is
+dropped; the app never forwards anything to the bridge or the carrier.
+
+**Video in the HUD:** right-click the HUD → Video → Set GStreamer Source → paste the *Mission Planner HUD*
+pipeline from the Video tab (it reads port 5602 from the fan-out).
+
+### GStreamer
+
+The standalone viewer needs GStreamer for Windows:
+
+1. Download the **runtime** installer, **MSVC 64-bit**, from https://gstreamer.freedesktop.org/download/
+2. Install with **Complete** (the viewer needs the libav plugin for `avdec_h264`).
+3. Log off and on (the installer sets `GSTREAMER_1_0_ROOT_MSVC_X86_64`), or set `video.gst_launch_path` to
+   `...\gstreamer\1.0\msvc_x86_64\bin\gst-launch-1.0.exe`.
+
+The Video tab shows whether GStreamer was found and explains this when it was not. Mission Planner's HUD uses
+its own GStreamer and only needs the pipeline text.
+
+### Firewall
+
+Run once, as administrator, from the install folder:
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\firewall.ps1             # add the rules
+powershell -ExecutionPolicy Bypass -File scripts\firewall.ps1 -Uninstall  # remove them
+```
+
+It adds two inbound UDP rules (group `vtol-gcs`) for `vtol-gcs-sender.exe`, **Private profile only**, remote
+addresses `192.168.144.0/24` (the HM30 subnet): bridge status / CRSF, and client video on UDP 5600. Everything
+else the app uses is loopback. Then set the HM30 adapter to Private (`Get-NetConnectionProfile`;
+`Set-NetConnectionProfile -InterfaceAlias "<HM30 adapter>" -NetworkCategory Private`). For source runs pass
+`-Program <path to python.exe>`. Never expose port 5770 outside the HM30 subnet (relay design).
+
+### Troubleshooting
+
+| Symptom | Check |
+|---|---|
+| `RC SENDER DOWN` (red) | The RC sender process is gone or not answering. Flight tab → *Start sender*; look at its console window and the session log. A client in the air goes to its own failsafe after T_hold; use **RESUME (client airborne)** after restarting. |
+| Sender console: `NOT STARTED: another GCS runtime is running` | A sender is already running (single instance). Start the UI: it attaches. |
+| `CONFIG ERROR` / `CONFIG MIGRATED` | The sender lists every problem with its key; a migration notice names the renamed key and the backup file. |
+| Bridge `UNREACHABLE` while idle | Normal: the bridge only answers a GCS that streams. While streaming: bridge IP (Q3), HM30 link, firewall rule and **Private** network profile. |
+| `NO BRIDGE STATUS` / `BRIDGE NOT RUN` | HM30 link, bridge power, bridge IP; the console prints `bridge START after N packets` at each start. |
+| `SEND JITTER HIGH` | Close CPU-heavy programs and use mains power; see "Timing limits". The sender does not depend on window focus, so minimising its console is fine. |
+| `CONTROLLER DISCONNECTED` | USB cable; radio in Joystick mode with the GCS-RELAY model; `controller.prefer_names` / `device_name`. |
+| ELRS tab: `Not supported by bridge firmware (Q7a)` | The bridge does not implement `crsf_pass` yet (future firmware feature). |
+| ELRS tab: `no RC stream` | The menu works only while streaming (the bridge answers the current GCS only). |
+| ELRS write refused "client may be armed" | Writes are refused while the client is or may be armed (`crsf_menu.allow_write_while_armed`). |
+| Video fan-out: `cannot listen on UDP 5600` | Another program holds 5600. Often **Mission Planner itself**: its HUD video source defaults to `udpsrc port=5600` (seen on the WP08b test laptop). Set the HUD source to the *Mission Planner HUD* pipeline (port 5602), or stop MP video, then start the fan-out. Otherwise an old viewer or a fan-out left running. Viewers must read 5601, MP 5602. |
+| The client does not appear in Mission Planner | Second connection on UDP 14560; client telemetry must be arriving (FPV streaming); `mp_output.enabled`. |
+| F9 does nothing in the viewer | Another program took F9: set `ui.camera_hotkey` (F1-F24). |
+| Camera stays off | `CAMERA ON refused`: the client is or may be armed (`camera.refuse_on_while_armed`, plan Q13). |
+
+---
+
+## The UI (`vtol-gcs.exe`)
+
+- **Status bar** (always on top): mode, bridge state (colour), RTT, uplink loss, send jitter p99, client LQ
+  and RSSI, client battery, video standard and decoder lock (when reported), timing offset, **camera requested
+  vs reported** with the toggle, alarm count. `RC SENDER DOWN` in red when the sender is gone.
+- **Flight:** IDLE, FPV normal start, RESUME (client airborne), CARRIER-ONLY, camera; sender process
+  start/stop; status; alarm list with sound (`winsound`, critical alarms repeat every 5 s) and *Mute*; events;
+  *Open log folder*.
+- **Controller:** channel monitor (what the sender would send, arm/throttle marked), mapping/calibration
+  wizard (calibrate the travel, assign a channel by moving the control, save `controller.channel_map`; the
+  config is validated before it is written; the sender uses it after its next start, while idle).
+- **Client:** profiles from the Tools page export (file picker, remembered).
+- **Video:** fan-out, PAL/NTSC choice, pipelines with *Copy*, *Launch viewer*, `client-video.sdp`.
+- **Mission Planner:** client output on/off, vehicle or ADS-B, sysid, port.
+- **ELRS:** parameter tree, edit/write, commands, VTX Admin panel, VRX follow.
+- **Tests:** RTT test, failsafe timer, camera test, glass-to-glass clock, results and CSV export.
+
+**Confirmations.** Mode buttons ask before they act. RESUME asks for the typed word `RESUME` (and `THROTTLE`
+with the throttle at minimum), carrier-only for `NOCLIENT` (and `LANDED` after an FPV stream), stopping a
+streaming sender for `STOP`. The UI forwards what was typed **verbatim**; the RC sender compares it with the
+exact word and re-checks every interlock, so a UI bug cannot start a stream that the console would refuse.
+The previews show the live values the sender read (`CH5 arm = ... us`, "client telemetry UNKNOWN since app
+start", ...).
+
+## Control channel (UI ↔ RC sender, WP08b R0)
+
+- **Transport:** a Windows named pipe `\\.\pipe\vtol-gcs-ctl-<random>` (127.0.0.1 TCP on other systems, for the
+  tests) via `multiprocessing.connection`, authenticated with an HMAC challenge on a random **32-byte token**
+  that is new for every sender start. Browsers cannot open named pipes and nothing here speaks HTTP: the channel
+  is not reachable from web pages (no CORS). The C2 API stays read-only.
+- **Control file:** `control.json` next to the config file (default `%APPDATA%\vtol-gcs\control.json`):
+  `app`, `control_version` (1), `family`, `address`, `token`, `pid`, `api` (the C2 base URL), `version`. It is
+  created with an ACL that gives the current user (only) access, and deleted when the sender stops.
+- **Messages:** one JSON object per message. Request `{"id": n, "cmd": "...", ...}` → reply `{"id": n, "ok":
+  true|false, "result": {...}, "reasons": [...], "error": "..."}`. After `{"cmd": "subscribe"}` a connection
+  carries only events `{"event": kind, "t": <sender clock, s>, "data": {...}}` (a `keepalive` every second).
+
+| Command | Parameters | Result / notes |
+|---|---|---|
+| `hello` | — | `app`, `version`, `control_version`, `pid`, `t`, `api`, `bridge` |
+| `ping` | — | `t` (sender clock; the failsafe timer uses it) |
+| `status` | — | the C2 status object (when the HTTP API is off) |
+| `request_mode` | `mode`: `fpv` \| `idle` | normal start with the interlock, or stop. `carrier_only` is always refused here |
+| `prepare_resume` | — | preview: `token`, `ok`, `problems`, `text`, `arm_us`, `throttle_us`, `needs_throttle_confirm` (sends nothing) |
+| `confirm_resume` | `token`, `typed` (must be `RESUME`), `throttle_typed` (`THROTTLE` when the throttle is at minimum) | mode result |
+| `prepare_carrier_only` | — | preview: `token`, `ok`, `problems`, `text`, `client_heard_s`, `needs_landed_confirm` (sends nothing) |
+| `confirm_carrier_only` | `token`, `typed` (must be `NOCLIENT`), `landed_typed` (`LANDED` after an FPV stream) | mode result |
+| `set_camera` | `on` | refused while the client may be armed (camera interlock) |
+| `stop` | `typed` (`STOP` while streaming) | stops the sender process |
+| `inputs` | — | controller snapshot, raw axes/buttons, device names |
+| `rtt_samples` | `since` | `t`, `samples` `[[t, ms], ...]` of the last 30 s |
+| `crsf_send` | `frame` (hex) | `crsf_pass` to the bridge: ping / parameter read / write from 0xEA to 0xEE only; only while streaming; writes refused while the client may be armed; at most 50 frames/s |
+| `video_report` | `rx_kbps` | from the video fan-out; fills C2 `video.rx_kbps` for 3 s |
+| `set_client_profile` | `profile_id`, `cells` | C2 `client.profile_id`, battery-alarm cell count |
+| `log` | `type` (`test_*` only), `fields` | appends a test result to the session log |
+| `subscribe` | — | event stream: `mode`, `suspended`, `interlock_refused`, `resume_preview`, `carrier_only_preview`, `camera`, `camera_refused`, `alarm`, `bridge_state`, `failsafe_timing`, `start_timing`, `client_flight_mode`, `crsf` (forwarded extended CRSF frames, hex), `error` |
+
+Words are compared after stripping surrounding white space, case-sensitive. A wrong word is logged as
+`interlock_refused` (`"via": "control"`) and nothing is sent.
+
+## Video helper (plan §7.4)
+
+The **fan-out** is its own process (`vtol-gcs-sender.exe --video-fanout` / `python -m vtolgcs --video-fanout
+--listen 5600 --out 5601,5602 [--control-file F]`), started from the Video tab. It receives the N6's RTP on
+UDP 5600 and re-sends every datagram to `127.0.0.1:5601` (viewer) and `127.0.0.1:5602` (Mission Planner HUD),
+contract C3. It prints one stats line per second (packets, kbps, packets/s, largest gap) and reports `rx_kbps`
+to the RC sender (C2 `video.rx_kbps`). **It keeps forwarding if the UI dies** (the pilot keeps the picture);
+closing the UI normally asks whether to stop it.
+
+**Pipelines** (identical to `data/content.js`; no `rtpjitterbuffer`): PAL fields are scaled to 768x576, NTSC
+to 640x480. The standard comes from the bridge status flag when the firmware reports it (C2 `video.standard`),
+else from the client profile, else the operator chooses (a mismatch between the bridge and the profile is
+shown as a warning). The decoder can be switched to `d3d11h264dec` (`video.decoder`, plan §7.4 hardware
+option: **verify latency on the laptop first**). `client-video.sdp` (port 5601) is written next to the config
+for mpv; verify its latency against GStreamer before relying on it.
+
+## Mission Planner client output (plan §14.4, S-02b)
+
+`vtolgcs/mp_output.py`, in the UI process, about 5 Hz from the C2 status: `HEARTBEAT` (1 Hz; type quadrotor,
+autopilot generic; armed flag and state from the client flight mode), `GLOBAL_POSITION_INT` (lat/lon; the CRSF
+GPS altitude is used for both `alt` and `relative_alt` because CRSF has no home reference; velocity from
+ground speed and course), `ATTITUDE`, `SYS_STATUS` (battery voltage, current, remaining) and `STATUSTEXT` on
+every flight-mode change (critical for `!FS!`). In ADS-B mode: `HEARTBEAT` (type ADS-B, autopilot invalid) and
+`ADSB_VEHICLE` (callsign `FPV2`, emitter UAV). Position/attitude older than 3 s is not sent.
+
+Hand-written MAVLink 2 (CRC_EXTRA: HEARTBEAT 50, SYS_STATUS 124, ATTITUDE 39, GLOBAL_POSITION_INT 104,
+ADSB_VEHICLE 184, STATUSTEXT 83 from `common.xml`; the tests recompute them from the field definitions).
+**Guards:** the frame encoder itself refuses sysid 1 and 255; the config allows 2-254 only, never the carrier
+sysid, and a loopback destination only; inbound datagrams are read and dropped unparsed.
+
+## ELRS menu (plan §7.7, §14.3)
+
+The ELRS tab speaks the CRSF parameter protocol of the ELRS Lua script through `crsf_pass` (C3, **future bridge
+firmware feature Q7a**): ping → device info → parameters `1..field_count` (multi-chunk entries joined) → a
+folder tree; edit and write values (re-read after the write); run commands (with the module's confirmation
+step). Without Q7a in the bridge the tab says **"Not supported by bridge firmware (Q7a)"**. It needs a running
+RC stream, and writes are refused while the client may be armed.
+
+**VTX Admin** panel: the module's *VTX Administrator* folder (Band, Channel, Pwr Lvl, Send VTx). After *Apply*
+the tab shows **"VRX follow: via backpack (automatic if fitted) / via N6 (firmware TBD)"**. When the bridge
+reports decoder lock (status bit 3, needs `video.status_bits_min_fw_ver`), it waits for the lock and offers
+*Revert* after `crsf_menu.vrx_lock_timeout_s` (10 s, app default) without it.
+
+The simulator has a matching tree: `bridge_sim.py --crsf-pass --module elrs [--report-video PAL
+--no-vrx-follow]`.
+
+## Test tools (plan §7.8)
+
+| Tool | What it records (session-log `test_*` record and CSV row) |
+|---|---|
+| **RTT test** | min / mean / p99 / max RTT over N s, with the operator's video note (`video off`, `video full bitrate`, `camera on`) and the mean video rate. RTT includes up to one send period of waiting in the bridge |
+| **Failsafe timer** (relay-design test 6) | *Stop stream now + time* (cause "GCS app: stream stopped"), or *Start timer* for another cause (HM30 unplugged, G0 reset) at the moment you cause it; ends at the first client telemetry `!FS!` or the *STOP key* (F8, when the client's OSD shows failsafe). Records the cause, the time to client failsafe and to the bridge's FAILSAFE (sender clock) |
+| **Camera test** (relay-design test 9) | 5 s camera off, camera ON, 5 s camera on, camera OFF: RTT and client-video packets/s and largest gap per phase; time until the bridge reports ON and OFF; time until camera traffic stops at the laptop's network interface (`GetIfEntry` of the interface that routes to the bridge; rate back below baseline + 25 % of the camera's increment, app default; 20 ms samples, 100 ms window). Measured at the GCS, so it includes HM30 buffering |
+| **Glass-to-glass clock** (relay-design test 2) | a large `HH:MM:SS.mmm` clock window for the 240 fps camera |
+
+*Export CSV* writes all results of the session.
