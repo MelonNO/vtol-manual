@@ -98,8 +98,8 @@ Both were present in race-prone form at WP10 R10b (32b73f5), and both are fixed 
 
 | Candidate | Evidence | Fixed |
 |---|---|---|
-| `test_control.py::test_many_stalled_handshakes_time_out_and_free_their_slots` | Failed once in WP17's full CI-like local run (WP17-IMPLEMENTATION §1, R4 c), and 2 times in about 51 isolated runs before the fix. Race: a slot is freed just after its failure is counted. Its pre-fix form is in 32b73f5 | WP17 (331732c): 0 in 50 after the fix |
-| `test_control.py::test_rate_limit_refuses_the_excess_with_a_warning` | Failed once in the WP18 verifier's desktop run. Its margin was zero by construction: 12 server pauses of ≥ 50 ms give an elapsed time of ≈ 0.60 s, and the assertion needs `13 ≤ 20·elapsed + 1`. The slack was 9–13 ms against a 15.6 ms clock. It was added in WP13 (3244ff5) and is byte-identical in 32b73f5 | WP19: exact on a fake clock, 0 in 30 isolated repeats under 4-CPU affinity |
+| `test_control.py::test_many_stalled_handshakes_time_out_and_free_their_slots` | Failed once in WP17's full CI-like local run (WP17-IMPLEMENTATION §1, R4 c), and 1 time in 50 isolated runs before the fix (round 3: corrected from "2 in about 51", which counted that full run twice). Race: a slot is freed just after its failure is counted. Its pre-fix form is in 32b73f5 | WP17 (331732c): 0 in 50 after the fix |
+| `test_control.py::test_rate_limit_refuses_the_excess_with_a_warning` | Failed once in the WP18 verifier's desktop run. Its margin was zero by construction: 12 server pauses of ≥ 50 ms give an elapsed time of ≈ 0.60 s, and the assertion needs `13 ≤ 20·elapsed + 1`. The slack was 9–13 ms against a 15.6 ms clock. It was added in WP13 (3244ff5) and is byte-identical in 32b73f5 | WP19: exact on a fake clock, 0 in 30 isolated repeats under 4-CPU affinity, of both the round-1 and the final (round-2) form |
 
 **Verdict.** Either one could be WP10's failure, and which one cannot be told, because the WP10 test id was never
 kept. The row stays CLOSED because both known candidates are fixed (as are two more few-ms margins, §4), and
@@ -253,11 +253,12 @@ The F2 guard, in detail:
 - **Remaining limit:** a behaviour change within a listed release is caught only by the self-test, on the release CI
   installs. README, M-18 and §6 now state this.
 
-**Why a guard rather than a pin.**
-- The workflows are not in my files.
-- A pin covers only CI, while the guard also covers local venvs.
-- A pin would keep the suite from ever meeting a new pytest. The guard makes the first CI run on a new release fail
-  with a clear "re-verify" message, at the cost of one red CI run per new pytest minor release, by design.
+**Why a guard rather than a pin.** (Corrected in round 3. The round-2 reasoning was wrong.)
+- Round 2 said the guard costs "one red CI run per new pytest minor release". **That was false.** Without a pin,
+  every Windows CI run, and the `gcs-build` test step that gates every tagged GCS release, would have failed from
+  the day PyPI published pytest 9.2. They would have stayed red until a developer re-verified and pushed.
+- Round 3 pins pytest (PM decision). CI now stays on 9.1.x until someone upgrades on purpose. The guard remains for
+  local venvs. See §12.
 
 **Mutations** (fresh copies in `S\wp19\mut3`, `mut4`):
 
@@ -282,3 +283,34 @@ The F2 guard, in detail:
 The counts are round 1's 697 plus the new version test, giving 698. The check output went to `S\wp19\logs\chk.txt`.
 I stopped no process. The only background job left after round 1, a `tail -f` log monitor, was stopped by its task
 ID.
+
+## 12. Round 3: rework after verification round 2
+
+The verifier's findings are in `S\verify\WP19\VERIFY-round2.md`. The PM decided to pin pytest, and extended my files
+to the two workflows, `gcs/pyproject.toml` (the `dev` extra) and `test/ci/**`. Round 3 made no desktop run.
+
+| Item | Fix | Evidence |
+|---|---|---|
+| **F1 MAJOR / MUST 1:** pin pytest | `"pytest>=9.1,<9.2"` at the three CI install lines and in the `dev` extra. The `PYTEST_VERIFIED` guard stays for local venvs, and its failure message now says what to do. New test `test_the_pytest_pin_and_the_verified_release_agree`: all three CI install lines and the `dev` extra must carry the pin matching the newest `PYTEST_VERIFIED` entry. Mutations: changing one workflow pin alone fails it, and so does adding `(9, 2)` to `PYTEST_VERIFIED` alone (`S\wp19\mut5`). `workflows.test.js` does not assert the install lines; it stays 7/7 | `ci.yml:105,129`, `gcs-build.yml:49`, `gcs/pyproject.toml:14`, `gcs/conftest.py` (`PYTEST_VERIFIED` comment), `test_test_guards.py:742` |
+| **MUST 2:** correct §11 | Round 2's "one red CI run per new pytest minor release" was false. Without the pin, every Windows CI run and the `gcs-build` step that gates tagged releases would have stayed red until a developer acted. **With the pin:** a new pytest on PyPI changes nothing, and CI and the release build stay on 9.1.x until someone upgrades on purpose | §11 "Why a guard rather than a pin" (corrected) |
+| **MUST 3:** upgrade procedure in plain language | `gcs/README.md` "Upgrading pytest (WP19)" (4 steps) and the M-18 row. Nothing breaks on its own. To upgrade: install the new pytest in a venv; run the teardown self-test and the version test (the version test is expected to fail until the release is listed; the self-test must pass, else stay on the old pin); raise the four pins and `PYTEST_VERIFIED` together in one commit; run the suite | `gcs/README.md:512`, `docs/relay/OPEN-ITEMS.md` M-18 |
+| **MUST 4 / Finding 2:** stalled-handshake count | Now "1 time in 50 isolated runs", plus the one failure in WP17's full CI-like run (the round-2 "2 in about 51" counted that run twice) | M-15, §5 |
+| **Optional 5 / Note 3:** repeats of the final form | 30 isolated repeats of the round-2 form of the rate-limit test under `VTOLGCS_TEST_CPUS=4`: **30/30 passed** (`S\wp19\r3\`). M-15 and §5 now say the 30-repeat figure holds for both forms | — |
+
+**Regression (round 3):**
+
+| Run | Result |
+|---|---|
+| `pytest gcs/tests/test_test_guards.py` | 19 passed |
+| CI mode ×1 (`S\wp19\run.py … ci`: real Python, CI env, stdin NUL) | **699 passed, 7 deselected**, 137.4 s, exit 0. No LEAKED / TIMEOUT / FAILED / ERROR / INTERNALERROR line, no process left. The header shows the verified line (`S\wp19\r3ci\run.txt`) |
+| Node with jsdom | 310 pass, 0 fail, 0 skipped |
+| `VTOL_REQUIRE_WORKFLOW_TEST=1 VTOL_PYTHON=<venv> node --test test/ci/workflows.test.js` | 7/7 |
+| `--check` scripts, `check-links`, `check-images`, `check-colours`, `gen_test_vectors --check`, protocol self-test | all exit 0 |
+
+The count 699 is round 2's 698 plus the pin test.
+
+**Notes:**
+- No YAML parser is available offline here, so the edited install lines were not parsed as YAML. They use the
+  standard form `run: python -m pip install "pytest>=9.1,<9.2" …` with a trailing ` # comment`, which is a plain
+  scalar plus a comment. The first GitHub run will confirm it.
+- I stopped no process.
