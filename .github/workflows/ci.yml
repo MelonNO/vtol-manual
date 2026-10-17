@@ -173,8 +173,8 @@ jobs:
             if ($code -ne 0 -or $summary) {
               $failed += $i
               $log = "pytest-logs/run-$i.txt"
-              $found = @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ (FAILED|ERROR) \[[0-9:]+\] (.+) \((setup|call|teardown)\)$' | ForEach-Object { $_.Matches[0].Groups[2].Value })
-              if (-not $found.Count) { $found = @(Select-String -CaseSensitive -Path $log -Pattern '^(FAILED|ERROR) (\S+::\S+)' | ForEach-Object { $_.Matches[0].Groups[2].Value }) }
+              $found = @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ (FAILED|ERROR) \[[0-9:]+\] (.+) \((setup|call|teardown|collect)\)$' | ForEach-Object { $_.Matches[0].Groups[2].Value })
+              if (-not $found.Count) { $found = @(Select-String -CaseSensitive -Path $log -Pattern '^(FAILED|ERROR) (\S+)' | ForEach-Object { $_.Matches[0].Groups[2].Value }) }
               $found += @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ TIMEOUT \[[0-9:]+\] (.+) still running after' | ForEach-Object { $_.Matches[0].Groups[1].Value })
               $hang = Select-String -CaseSensitive -Path $log -Pattern 'Timeout \([0-9:.]+\)!|^\+\+\+ EXIT (GUARD|WATCHDOG)' | Select-Object -First 1
               if ($hang) {

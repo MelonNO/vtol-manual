@@ -276,6 +276,13 @@ test('pwsh step "pytest gcs protocol, five consecutive runs", verbatim as GitHub
   const p = run('def test_ok():\n    pass\n');
   assert.equal(p.status, 0, p.out);
   assert.equal(p.logs, 5);
+  // WP18 round 2 (verify F4): a collection error without the conftest (pytest's summary line only) names the path
+  const c = run('import no_such_module_wp18\n\ndef test_x():\n    pass\n');
+  assert.notEqual(c.status, 0, c.out);
+  assert.deepEqual(annotations(c.out), [
+    '::error::gcs/tests/test_f.py failed in run(s) 1, 2, 3, 4, 5 of 5',
+    '::error::pytest failed in run(s) 1, 2, 3, 4, 5 of 5 (1 distinct failing test id(s)); full logs: artifact pytest-logs-windows'
+  ], c.out);
 });
 
 test('pwsh step "Tests, headless-safe suite" of gcs-build.yml, verbatim: fails on a failing test, leaves out interactive_desktop tests', t => {
@@ -351,5 +358,10 @@ test('pwsh step "Tests, headless-safe suite" of gcs-build.yml, verbatim: fails o
     ...Array.from({ length: 7 }, (_, i) => `::error::gcs/tests/test_f.py::test_bad_${i} failed`),
     '::error::2 more failed test(s): gcs/tests/test_f.py::test_bad_7, gcs/tests/test_f.py::test_bad_8',
     '::error::pytest failed (exit code 1); full log: artifact pytest-logs-build'
+  ]);
+  // WP18 round 2 (verify F4): a file that cannot be collected is annotated by its path (an id without "::")
+  assert.deepEqual(annotations(run('import no_such_module_wp18\n\ndef test_x():\n    pass\n').out), [
+    '::error::gcs/tests/test_f.py failed',
+    '::error::pytest failed (exit code 2); full log: artifact pytest-logs-build'
   ]);
 });

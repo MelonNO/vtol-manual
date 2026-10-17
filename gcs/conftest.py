@@ -13,8 +13,12 @@ failure text nor slow down the tests after it.  What each layer covers:
    thread runs the test itself (inside its setup, call or teardown hook, where pytest turns any exception into
    that phase's report).  If the main thread is in pytest's own code instead (e.g. formatting a failure report),
    an exception there would end the session with ``INTERNALERROR`` and skip every teardown: the watchdog then
-   waits for the test's next phase and otherwise takes the hard-exit path.  If the test is still running
-   ``GRACE_S`` (``VTOLGCS_TEST_GRACE``) later, it dumps again and exits with status 1.  Covers every hang that
+   waits for the test's next phase and otherwise takes the hard-exit path.  A **teardown is never interrupted at
+   once** (round 2): it gets its own budget ``TEARDOWN_BUDGET_S`` (``VTOLGCS_TEST_TEARDOWN_BUDGET``, 30 s) from
+   the later of its start and the timeout, because pytest stops running the remaining finalisers when one raises
+   the ``BaseException`` ``TestTimeout``; only a teardown still running after its budget gets it.  If the test is
+   still running ``GRACE_S`` (``VTOLGCS_TEST_GRACE``) after the timeout (or after the teardown's budget), it dumps
+   again and exits with status 1 (the faulthandler backstop moves with it).  Covers every hang that
    releases the GIL: sleeps, waits on locks, threads, processes, sockets and pipes, polling loops.  **It cannot
    run while native code holds the GIL** (a C extension blocking without releasing it).
 2. **Per-test faulthandler backstop** (``faulthandler.dump_traceback_later(exit=True)``: a C thread that needs no
@@ -40,7 +44,8 @@ failure text nor slow down the tests after it.  What each layer covers:
    registers it with ``CHILDREN.keep(pid)``, which also keeps that process's descendants (e.g. the interpreter a
    venv launcher starts).  If ``pytest.main()`` runs inside a long-lived host process, that host joins the job
    for good: run pytest as its own process (``python -m pytest``), as CI and IDEs do.
-5. **Threads (WP18 R2)**: after each test's teardown, every thread started during the test that is still alive
+5. **Threads (WP18 R2)**: after each test's teardown (also when a finaliser raised), every thread started during the
+   test that is still alive
    after ``THREAD_GRACE_S`` (``VTOLGCS_TEST_THREAD_GRACE``, default 2 s) is a leak: ``+++ LEAKED THREADS`` with
    each thread's name, target and stack is printed at once (and to ``pytest-leaks.txt``), and the test gets a
    teardown ERROR naming it.  Then the leaked threads' owners are asked to stop (``stop()`` or ``close()`` of
@@ -88,11 +93,13 @@ GRACE_S = 20.0
 BACKSTOP_MARGIN_S = 10.0
 EXIT_GRACE_S = 60.0
 THREAD_GRACE_S = 2.0
+TEARDOWN_BUDGET_S = 30.0
 TIMEOUT_ENV = "VTOLGCS_TEST_TIMEOUT"
 GRACE_ENV = "VTOLGCS_TEST_GRACE"
 MARGIN_ENV = "VTOLGCS_TEST_BACKSTOP_MARGIN"
 EXIT_GRACE_ENV = "VTOLGCS_EXIT_GRACE"
 THREAD_GRACE_ENV = "VTOLGCS_TEST_THREAD_GRACE"
+TEARDOWN_BUDGET_ENV = "VTOLGCS_TEST_TEARDOWN_BUDGET"
 NO_FAULTHANDLER_ENV = "VTOLGCS_TEST_NO_FAULTHANDLER"       # self-tests only: proves the exit watcher alone
 DUMP_DIR_ENV = "VTOLGCS_TEST_DUMP_DIR"
 INTERACTIVE_ENV = "VTOLGCS_INTERACTIVE_TESTS"
@@ -502,21 +509,36 @@ def _async_raise(thread_id: int, exc: type[BaseException] | None) -> None:
 
 #: Guards the main thread's phase (WP18 R5) against the watchdog's decision to raise.
 _PHASE_LOCK = threading.Lock()
-_PHASE: dict[str, Any] = {"when": None, "wd": None}
+_PHASE: dict[str, Any] = {"when": None, "wd": None, "since": 0.0}
 
 
 class _Watchdog:
+    """The per-test timeout (module docstring, item 1).
+
+    After the timeout: ``TestTimeout`` goes into the test's setup or call when the main thread is in one of them.
+    A **teardown is never interrupted at once** (round 2, verify F1): it gets its own budget
+    (``VTOLGCS_TEST_TEARDOWN_BUDGET``, from the later of its start and the timeout), because ``TestTimeout`` is a
+    ``BaseException`` and pytest stops running the remaining finalisers when one raises it, which would leave
+    the test's runtimes running.  Only a teardown still running after its budget gets ``TestTimeout``.  While the
+    main thread is in pytest's own code nothing is raised.  The hard exit comes ``GRACE_S`` after the timeout, or
+    after the teardown's budget, whichever is later."""
+
     def __init__(self, nodeid: str, timeout: float) -> None:
         self.nodeid, self.timeout = nodeid, timeout
         self.main = threading.main_thread().ident or 0
         self.done = threading.Event()
         self.lock = _PHASE_LOCK
         self.fired = False
-        self.raised = False
+        self.raised_in: list[str] = []
         self.reported = False
         self.killed: list[tuple[int, str]] = []
         self.grace = _env_seconds(GRACE_ENV, GRACE_S)
+        self.teardown_budget = _env_seconds(TEARDOWN_BUDGET_ENV, TEARDOWN_BUDGET_S)
         self.thread = threading.Thread(target=self._run, name="test-watchdog", daemon=True)
+
+    @property
+    def raised(self) -> bool:
+        return bool(self.raised_in)
 
     def start(self) -> "_Watchdog":
         self.thread.start()
@@ -540,52 +562,85 @@ class _Watchdog:
               f"{self.timeout:.0f} s ({TIMEOUT_ENV} / @pytest.mark.timeout). Stacks of all threads:\n", dump=True)
         self.killed = CHILDREN.kill_all()
         _emit(f"+++ TIMEOUT: killed {len(self.killed)} process(es) started by the tests: {self.killed}\n")
-        end = time.monotonic() + self.grace
-        waiting_said = False
+        fired_at = time.monotonic()
+        end = fired_at + self.grace                    # the hard exit, unless the test ends first
+        td_since: float | None = None                  # start of the teardown that has a budget
+        td_raise_at = 0.0
+        said_outside = False
         while True:
+            note = ""
             with self.lock:
                 if self.done.is_set():
-                    _emit("+++ TIMEOUT: the test ended meanwhile; it is reported FAILED\n")
-                    return
-                if _PHASE["when"] is not None and _PHASE["wd"] is self:
-                    _async_raise(self.main, TestTimeout)          # inside the test's own hook: becomes its report
-                    self.raised = True
-                    when = _PHASE["when"]
+                    if not self.raised:
+                        note = "+++ TIMEOUT: the test ended meanwhile; it is reported FAILED\n"
                     break
-            if not waiting_said:
-                waiting_said = True
-                _emit("+++ TIMEOUT: the main thread is in pytest's own code, not in the test (an exception there "
-                      "would end the session with INTERNALERROR and skip every teardown): TestTimeout is not "
-                      f"raised there; waiting up to {self.grace:.0f} s for the test's next phase\n")
-            if time.monotonic() >= end:
+                now = time.monotonic()
+                when = _PHASE["when"] if _PHASE["wd"] is self else None
+                if when == "teardown":
+                    if td_since != _PHASE["since"]:
+                        td_since = _PHASE["since"]
+                        td_raise_at = max(td_since, fired_at) + self.teardown_budget
+                        end = max(end, td_raise_at + self.grace)
+                        _STATE["deadline"] = end + _env_seconds(MARGIN_ENV, BACKSTOP_MARGIN_S)
+                        _arm_backstop(_STATE["deadline"] - now)
+                        note = (f"+++ TIMEOUT: {shown} is in its teardown: not interrupted (its finalisers must run); "
+                                f"TestTimeout only if it is still running in {td_raise_at - now:.0f} s "
+                                f"({TEARDOWN_BUDGET_ENV}), hard exit {self.grace:.0f} s after that\n")
+                    elif now >= td_raise_at and "teardown" not in self.raised_in:
+                        _async_raise(self.main, TestTimeout)
+                        self.raised_in.append("teardown")
+                        note = (f"+++ TIMEOUT: TestTimeout raised in the main thread (teardown, still running after its "
+                                f"{self.teardown_budget:.0f} s budget); hard exit in {end - now:.0f} s if the test is "
+                                "still running\n")
+                elif when in ("setup", "call") and not self.raised:
+                    _async_raise(self.main, TestTimeout)   # inside the test's own hook: becomes its report
+                    self.raised_in.append(when)
+                    note = (f"+++ TIMEOUT: TestTimeout raised in the main thread ({when}); hard exit in "
+                            f"{end - now:.0f} s if the test is still running (its teardown gets its own budget)\n")
+                elif when is None and not self.raised and not said_outside:
+                    said_outside = True
+                    note = ("+++ TIMEOUT: the main thread is in pytest's own code, not in the test (an exception there "
+                            "would end the session with INTERNALERROR and skip every teardown): TestTimeout is not "
+                            f"raised there; waiting up to {end - now:.0f} s for the test's next phase\n")
+            if note:
+                _emit(note)
+            if self.done.is_set() or time.monotonic() >= end:
                 break
             self.done.wait(0.05)
-        if self.raised:
-            _emit(f"+++ TIMEOUT: TestTimeout raised in the main thread ({when}); hard exit in "
-                  f"{max(0.0, end - time.monotonic()):.0f} s if the test is still running\n")
-            if self.done.wait(max(0.0, end - time.monotonic())):
-                return
-        _emit(f"\n+++ TIMEOUT: {shown} is still running {self.grace:.0f} s later: hard exit (status 1). "
-              "Stacks of all threads:\n", dump=True)
+        if self.done.is_set():
+            return
+        _emit(f"\n+++ TIMEOUT: {shown} is still running {time.monotonic() - fired_at:.0f} s later: hard exit "
+              "(status 1). Stacks of all threads:\n", dump=True)
         CHILDREN.kill_all()
         os._exit(1)
 
 
-def _in_phase(item: pytest.Item, when: str, after: Any = None) -> Iterator[Any]:
-    """Run one of the item's own hooks (setup / call / teardown) with the phase marked (WP18 R5); ``after()`` runs
-    after the hook, still inside the phase (its exception becomes that phase's report)."""
+def _in_phase(item: pytest.Item, when: str, after: Any = None, always: bool = False) -> Iterator[Any]:
+    """Run one of the item's own hooks (setup / call / teardown) with the phase marked (WP18 R5).
+
+    ``after()`` runs after the hook, still inside the phase (its exception becomes that phase's report); with
+    ``always`` also when the hook raised (round 2, verify F2: the leak check must run when a finaliser raised),
+    chained to the hook's exception."""
     wd = item.stash.get(_WATCHDOG, None)
     with _PHASE_LOCK:
-        _PHASE["when"], _PHASE["wd"] = when, wd
+        _PHASE["when"], _PHASE["wd"], _PHASE["since"] = when, wd, time.monotonic()
     try:
-        result = yield
+        try:
+            result = yield
+        except BaseException as exc:
+            if after is not None and always:
+                try:
+                    after()
+                except Exception as extra:
+                    raise extra from exc
+            raise
         if after is not None:
             after()
         return result
     finally:
         with _PHASE_LOCK:
             _PHASE["when"], _PHASE["wd"] = None, None
-            if wd is not None and wd.raised:
+            if wd is not None and wd.fired:
                 _async_raise(wd.main, None)            # not delivered inside the phase: never in pytest's code
 
 
@@ -813,7 +868,7 @@ def pytest_runtest_call(item: pytest.Item):
 
 @pytest.hookimpl(wrapper=True, tryfirst=True)
 def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None):
-    return (yield from _in_phase(item, "teardown", lambda: _check_threads(item)))   # after every fixture finaliser
+    return (yield from _in_phase(item, "teardown", lambda: _check_threads(item), always=True))   # after the finalisers
 
 
 @pytest.hookimpl(trylast=True)
@@ -840,15 +895,23 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
 
 def pytest_runtest_logreport(report: pytest.TestReport) -> None:
     """WP18 R4: a failure's full text goes out when that phase ends, not only in the end-of-session summary."""
-    if not report.failed:
-        return
-    kind = "FAILED" if report.when == "call" else "ERROR"
+    if report.failed:
+        _emit_failure("FAILED" if report.when == "call" else "ERROR", report, report.when)
+
+
+def pytest_collectreport(report: pytest.CollectReport) -> None:
+    """The same for a file that cannot be collected (its id is the path: ``+++ ERROR [time] <path> (collect)``)."""
+    if report.failed:
+        _emit_failure("ERROR", report, "collect")
+
+
+def _emit_failure(kind: str, report: Any, when: str) -> None:
     try:
         text = report.longreprtext
     except Exception as exc:  # pragma: no cover - best effort
         text = f"(failure text unavailable: {exc!r})"
     shown = _display_id(report.nodeid)
-    _emit(f"\n+++ {kind} [{time.strftime('%H:%M:%S')}] {shown} ({report.when})\n{text}\n+++ END {kind} {shown}\n",
+    _emit(f"\n+++ {kind} [{time.strftime('%H:%M:%S')}] {shown} ({when})\n{text}\n+++ END {kind} {shown}\n",
           file="pytest-failures.txt")
 
 

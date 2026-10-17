@@ -74,8 +74,8 @@ jobs:
             # when the test fails, so they survive a session that dies later), else from pytest's summary lines,
             # plus the watchdog's timeouts. GitHub shows at most 10 annotations per step: 7 ids, then the rest in one.
             $ids = [System.Collections.Generic.List[string]]::new()
-            $found = @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ (FAILED|ERROR) \[[0-9:]+\] (.+) \((setup|call|teardown)\)$' | ForEach-Object { $_.Matches[0].Groups[2].Value })
-            if (-not $found.Count) { $found = @(Select-String -CaseSensitive -Path $log -Pattern '^(FAILED|ERROR) (\S+::\S+)' | ForEach-Object { $_.Matches[0].Groups[2].Value }) }
+            $found = @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ (FAILED|ERROR) \[[0-9:]+\] (.+) \((setup|call|teardown|collect)\)$' | ForEach-Object { $_.Matches[0].Groups[2].Value })
+            if (-not $found.Count) { $found = @(Select-String -CaseSensitive -Path $log -Pattern '^(FAILED|ERROR) (\S+)' | ForEach-Object { $_.Matches[0].Groups[2].Value }) }
             $found += @(Select-String -CaseSensitive -Path $log -Pattern '^\+\+\+ TIMEOUT \[[0-9:]+\] (.+) still running after' | ForEach-Object { $_.Matches[0].Groups[1].Value })
             foreach ($id in $found) { $id = $id -replace '\\', '/'; if (-not $ids.Contains($id)) { $ids.Add($id) } }
             $n = 0
