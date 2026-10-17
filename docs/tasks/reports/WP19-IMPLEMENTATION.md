@@ -19,8 +19,12 @@ My tools and logs are in `S\wp19\`.
   - `monotonic` in the server-budget test.
   - The other timing-sensitive tests are listed with their margins (§4).
   - 150/150 isolated repeats under 4-CPU affinity passed.
-- **M-15 is closed with a probable cause, not a proof.** The rate-limit test is the only test seen failing in a full
-  local run since WP10. It and the limiter were byte-identical at the time of WP10's batch (§5).
+- **M-15 is closed: two known candidates, both now fixed, and which one caused WP10's failure cannot be told** (§5,
+  corrected in round 2).
+  - WP17's stalled-handshake race.
+  - This rate-limit test.
+
+  Both existed in race-prone form at WP10, and both later failed in full local runs.
 - **R2, design (b).** After a teardown `TestTimeout`, the conftest runs the finalisers pytest skipped and finishes
   the teardown, so later tests get fresh fixtures. If pytest's internals are not as expected, it takes the hard exit
   instead.
@@ -38,7 +42,7 @@ My tools and logs are in `S\wp19\`.
 | R1 deterministic rate-limit test | DONE | `gcs/vtolgcs/control.py:377,385,392,531`; `gcs/tests/test_control.py:562` `_FakeClock`, `:572`, `:607` | Security property kept: excess refused (not executed), warning logged, refusals paced (≥ 1 token interval, recorded per request, plus a wall-clock lower bound), the connection stays usable, UI load never limited. Mutations caught: no pause, refused commands executed, bucket ignoring the clock, limit 25/s |
 | R1 scan of other tests | DONE | Fixed: `test_runtime_e2e.py:154-170`, `test_sender.py:530-544`, `test_control.py:685` (+ the two above). Listed: §4 | — |
 | R1 stability | DONE | `S\wp19\r1\SUMMARY.txt` (150 logs beside it) | 5 tests × 30 isolated pytest processes, `VTOLGCS_TEST_CPUS=4`: **0 failures** |
-| R1 M-15 | DONE | `docs/relay/OPEN-ITEMS.md` M-15 | CLOSED, probable cause (not provable: the WP10 id was never kept) |
+| R1 M-15 | DONE | `docs/relay/OPEN-ITEMS.md` M-15 | CLOSED. Two known candidates (WP17's stalled handshakes, this rate-limit test), both fixed; which one failed in WP10 cannot be told (round 2) |
 | R2 stale fixtures | DONE, option (b) | `gcs/conftest.py:802` `_finaliser_lists`, `:824` `_finish_teardown`, `:642-652` `_in_phase(on_timeout=…)`, `:993` teardown hook, `:629` `_hard_exit` | Self-test `test_test_guards.py:674` (fails on the old conftest, passes now); the fallback path probed by hand (§7) |
 | R3 bounds | DONE | `conftest.py:34` docstring, `:680` `worst_case_s`, `:912-918` header; `gcs/README.md` watchdog row and "Time bounds (WP19)" | Header: `… a teardown gets 30 s more, hard exit 20 s after the timeout or that budget, faulthandler backstop 10 s after the hard exit; worst case per hanging test 190 s (200 s with the GIL held)`. Tests: `test_test_guards.py:696` (190/200 with the defaults, docstring and README agree), the R2 self-test checks the header with its own settings (20 / 30 s) |
 | R4 all green | DONE | §6 | M-18 CLOSED |
@@ -86,22 +90,21 @@ wide, and they are the property under test:
   `test_runtime_e2e.py:434` against a 1 ms cache age.
 - **Polling loops** with generous deadlines (`expect`, `_wait`, `_wait_for`: 5–20 s).
 
-## 5. M-15
+## 5. M-15 (corrected in round 2, verify F1)
 
-- **The test existed then.** `test_rate_limit_refuses_the_excess_with_a_warning` and `RateLimit` were added in
-  WP13 (3244ff5). They are byte-identical in WP10 R10b (32b73f5), which is when the unidentified "1 failed, 681
-  passed" happened.
-- **Its margin was zero by construction.** The 13 refusals are separated by 12 server pauses of ≥ 50 ms each. That
-  gives an elapsed time of ≈ 0.60 s, and the assertion needs `13 ≤ 20·elapsed + 1`, i.e. elapsed ≥ 0.60 s. The only
-  slack is the round-trip overhead, measured as 9–13 ms, against a 15.6 ms clock.
-- **The failure rate fits.**
-  - Since WP10 it is the only test seen failing in a full local run (WP18 verification round 2, a desktop run).
-  - WP10 saw 1 failure in 11 runs.
-  - The WP18 verifier saw 0 failures in 15 plain repeats, plus 1 failure in a full run.
+In round 1 I wrote that the rate-limit test was "the only test seen failing in a full local run since WP10". That
+is false: WP17 saw another one. There are **two known candidates** for WP10's unidentified "1 failed, 681 passed".
+Both were present in race-prone form at WP10 R10b (32b73f5), and both are fixed now:
 
-  So "about 1 in 10 full runs, rarer alone" fits both observations.
-- **Verdict.** This is the most likely explanation. It is not a proof, because the test id was never kept. The row is
-  CLOSED, with what to do if a full-suite failure recurs: the WP18 `+++ FAILED` line names it, then open a new row.
+| Candidate | Evidence | Fixed |
+|---|---|---|
+| `test_control.py::test_many_stalled_handshakes_time_out_and_free_their_slots` | Failed once in WP17's full CI-like local run (WP17-IMPLEMENTATION §1, R4 c), and 2 times in about 51 isolated runs before the fix. Race: a slot is freed just after its failure is counted. Its pre-fix form is in 32b73f5 | WP17 (331732c): 0 in 50 after the fix |
+| `test_control.py::test_rate_limit_refuses_the_excess_with_a_warning` | Failed once in the WP18 verifier's desktop run. Its margin was zero by construction: 12 server pauses of ≥ 50 ms give an elapsed time of ≈ 0.60 s, and the assertion needs `13 ≤ 20·elapsed + 1`. The slack was 9–13 ms against a 15.6 ms clock. It was added in WP13 (3244ff5) and is byte-identical in 32b73f5 | WP19: exact on a fake clock, 0 in 30 isolated repeats under 4-CPU affinity |
+
+**Verdict.** Either one could be WP10's failure, and which one cannot be told, because the WP10 test id was never
+kept. The row stays CLOSED because both known candidates are fixed (as are two more few-ms margins, §4), and
+nothing known is left open. If a full-suite failure recurs, the WP18 `+++ FAILED` line names it, and a new row
+should be opened for that test.
 
 ## 6. R2 design choice: (b), finish the teardown
 
@@ -134,7 +137,16 @@ message naming the test and the reason, so a stale fixture can never reach a lat
 
 **Relies on pytest internals.** `Session._setupstate.stack`, `SetupState.teardown_exact`, and
 `FixtureDef.cached_result` / `_finalizers` / `scope`. These were read from pytest 9.1.1 (`runner.py:551`,
-`fixtures.py:1146-1210`). The fallback covers a change to them.
+`fixtures.py:1146-1210`).
+
+Coverage, corrected in round 2 (verify F2):
+- In round 1, the fallback covered only **structural** changes, where attributes are missing.
+- Since round 2, the recovery runs only on a pytest release listed in `PYTEST_VERIFIED`, currently (9, 1). Any
+  other release takes the hard exit, the header warns, and a self-test fails, asking for re-verification.
+- A behaviour change **within** a listed release is not detected by the conftest. The R2 self-test catches it on
+  the release CI installs: it asserts fresh fixtures, plus every finaliser exactly once.
+
+See Round 2.
 
 ## 7. Tests and results
 
@@ -215,3 +227,58 @@ I did not change the workflows (not my files). The README and this report carry 
     self-test: it fails with the stale serial.
   - The verifier's round-2 probe B-loop, with `outer_busy`, should now show a fresh instance in the next test.
 - **R3:** the header line of any run; `worst_case_s()`; `gcs/README.md` "Time bounds (WP19)".
+
+## 11. Round 2: rework after verification round 1
+
+The verifier's findings are in `S\verify\WP19\VERIFY-round1.md`. The code verdict was positive. The rework fixes the
+reporting error (F1) and both MINOR findings (F2, F3). Round 2 made no desktop run.
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 MAJOR:** M-15 claimed the rate-limit test was "the only test seen failing in a full local run since WP10" | False, and corrected. Two candidates are named with their evidence, and both are fixed. The row stays CLOSED on that basis, and does not single out one cause | `docs/relay/OPEN-ITEMS.md` M-15; this report §1, §2 (R1 M-15 row) and §5 |
+| **F2 MINOR:** pytest is unpinned; the guard covered only structural changes | **Chosen: a guard in the conftest, not a pin** (reasons below). See the list after this table | `gcs/conftest.py:808` `PYTEST_VERIFIED`, `:811`, `:855`, header `:938-942`; `test_test_guards.py:715` (exactly once), `:719`; README watchdog row; M-18; §6 |
+| **F3 MINOR:** a refused command that ran anyway went unnoticed | The 10 refused commands are now `request_mode fpv`, which would start the RC stream. A spy on `ControlServer.handle` records every executed command. The test asserts `handled == ["request_mode"] * 5`, and that the sender stays idle with `rx_ok == 0`. As a positive control, the same FPV start is accepted once a token is available, and the stream begins | `test_control.py:572-611` (`:602`) |
+
+The F2 guard, in detail:
+- **The recovery runs only on verified releases.** `PYTEST_VERIFIED = ((9, 1),)`. On any other pytest release
+  `_finish_teardown` takes the hard exit ("cannot be run safely (pytest X is not a release this recovery was
+  verified for …)").
+- **The header says which applies.** `a teardown interrupted after its budget: the finalisers pytest skipped are run
+  (pytest 9.1.1, verified)`, or a WARNING on another release.
+- **A self-test forces re-verification.** `test_the_teardown_recovery_was_verified_for_this_pytest` fails with
+  "re-verify … then add it to PYTEST_VERIFIED".
+- **The R2 self-test now checks run counts.** It asserts that every finaliser ran exactly once. That includes a node
+  finaliser that ran before the hang, which would run twice if pytest stopped popping its lists. Before, it only
+  checked fresh fixtures.
+- **Remaining limit:** a behaviour change within a listed release is caught only by the self-test, on the release CI
+  installs. README, M-18 and §6 now state this.
+
+**Why a guard rather than a pin.**
+- The workflows are not in my files.
+- A pin covers only CI, while the guard also covers local venvs.
+- A pin would keep the suite from ever meeting a new pytest. The guard makes the first CI run on a new release fail
+  with a clear "re-verify" message, at the cost of one red CI run per new pytest minor release, by design.
+
+**Mutations** (fresh copies in `S\wp19\mut3`, `mut4`):
+
+| Mutation | Test | Round 2 result | Round 1 result |
+|---|---|---|---|
+| refused command executed through `self.handle(req)`, the reply still "refused" | rate | **FAIL** (`handled` list) | passes |
+| refused command executed directly through `self._cmd_request_mode(req)` (bypasses the spy) | rate | **FAIL** (sender mode `fpv`) | — |
+| finaliser lists copied instead of referenced (= lists not popped in place) | R2 self-test | **FAIL**: `node-fin` ran twice | — |
+| `PYTEST_VERIFIED = ((9, 0),)` | R2 self-test + version test | **FAIL** both. The inner run's header shows the WARNING, and the hang takes the hard exit with the reason | — |
+| no mutation | — | pass | — |
+
+**Regression (round 2):**
+
+| Run | Result |
+|---|---|
+| `pytest gcs/tests/test_test_guards.py gcs/tests/test_control.py` | 46 passed |
+| CI mode ×1 (`S\wp19\run.py … ci`: real Python, CI env, stdin NUL) | **698 passed, 7 deselected**, 137.0 s, exit 0. No LEAKED / TIMEOUT / FAILED / ERROR / INTERNALERROR line, no process left. The header shows the verified line (`S\wp19\r2ci\run.txt`) |
+| Node with jsdom | 310 pass, 0 fail, 0 skipped |
+| Check scripts (all of §7) | all exit 0 |
+| `workflows.test.js` | not rerun: workflows untouched |
+
+The counts are round 1's 697 plus the new version test, giving 698. The check output went to `S\wp19\logs\chk.txt`.
+I stopped no process. The only background job left after round 1, a `tail -f` log monitor, was stopped by its task
+ID.
