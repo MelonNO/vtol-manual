@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 655" width="400" height="655" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
+<title id="title">D8 — Bandwidth budget: HM30 capacity split in FPV mode (camera off) and camera mode (camera at its P3 cap)</title>
+<desc id="desc">Not to scale; all values TBD until the HM30 capacity is measured (open question Q13). FPV mode: N6 client video at a constant bitrate below the HM30 capacity (TBD), RC uplink about 100–130 kbit/s, MAVLink TBD, margin TBD, camera off (P3 disabled or at minimum). Camera mode: the same plus the IP camera at its P3 ingress cap (TBD); the total must stay below the HM30 capacity. The HM30 radio, not the 100 Mbit cable, is the bottleneck: switch priorities (RC, then video, then camera) only order packets on the cable. Until measured the camera is off while the client is armed; relay-design test 9 must show unchanged FPV latency with the camera at its cap, otherwise the rule becomes camera off whenever the client is airborne.</desc>
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+     Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
+     #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
+     #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->
+<!-- Sources: plan §6.1.4 bandwidth budget, §3.4 item 1; relay design &quot;Bandwidth and failsafe&quot; (RC 64 B × 200–250 Hz), &quot;Camera on/off&quot;, test 9; manual RF &amp; Comms bandwidth table. -->
+<defs><marker id="ah-bg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f0f0f"/></marker><marker id="ah-surf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a1a1a"/></marker><marker id="ah-surf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker><marker id="ah-border" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2a2a2a"/></marker><marker id="ah-border2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker><marker id="ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker><marker id="ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#777777"/></marker><marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f97316"/></marker><marker id="ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#facc15"/></marker><marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker><marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker><marker id="ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444444"/></marker></defs>
+<rect width="400" height="655" fill="#1a1a1a"/>
+<text x="14" y="28" font-size="17" fill="#f97316" font-weight="bold">D8 · BANDWIDTH BUDGET</text>
+<text x="14" y="50" fill="#777777">HM30 capacity split · FPV vs camera mode</text>
+<text x="18" y="80" fill="#facc15" font-weight="bold">NOT TO SCALE — values TBD until the</text><text x="18" y="98" fill="#facc15">HM30 capacity is measured (Q13).</text>
+<line x1="18" y1="114" x2="50" y2="114" stroke="#e8e8e8" stroke-width="2" stroke-dasharray="3,3"/>
+<text x="58" y="119">= HM30 capacity (TBD)</text>
+<text x="18" y="150" font-weight="bold">FPV MODE — camera off</text>
+<rect x="18" y="162" width="190" height="40" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="113" y="187" text-anchor="middle">N6 video</text>
+<rect x="208" y="162" width="26" height="40" fill="#f97316" fill-opacity="0.35" stroke="#f97316"/>
+<text x="221" y="187" text-anchor="middle">RC</text>
+<rect x="234" y="162" width="44" height="40" fill="#22c55e" fill-opacity="0.35" stroke="#22c55e"/>
+<text x="256" y="187" text-anchor="middle">MAV</text>
+<rect x="278" y="162" width="104" height="40" fill="#777777" fill-opacity="0.12" stroke="#777777" stroke-dasharray="4,3"/>
+<text x="330" y="187" text-anchor="middle">margin</text>
+<line x1="382" y1="154" x2="382" y2="210" stroke="#e8e8e8" stroke-width="2" stroke-dasharray="3,3"/>
+<text x="18" y="214" fill="#ef4444">N6 CBR: TBD (below HM30 capacity)</text><text x="18" y="232" fill="#f97316">RC uplink ≈ 100–130 kbit/s</text><text x="18" y="250" fill="#22c55e">MAVLink: TBD · margin: TBD</text><text x="18" y="268" fill="#facc15">camera: OFF (P3 disabled / minimum)</text>
+<text x="18" y="308" font-weight="bold">CAMERA MODE — camera on at its cap</text>
+<rect x="18" y="320" width="150" height="40" fill="#ef4444" fill-opacity="0.35" stroke="#ef4444"/>
+<text x="93" y="345" text-anchor="middle">N6 video</text>
+<rect x="168" y="320" width="96" height="40" fill="#facc15" fill-opacity="0.35" stroke="#facc15"/>
+<text x="216" y="345" text-anchor="middle">camera</text>
+<rect x="264" y="320" width="26" height="40" fill="#f97316" fill-opacity="0.35" stroke="#f97316"/>
+<text x="277" y="345" text-anchor="middle">RC</text>
+<rect x="290" y="320" width="44" height="40" fill="#22c55e" fill-opacity="0.35" stroke="#22c55e"/>
+<text x="312" y="345" text-anchor="middle">MAV</text>
+<rect x="334" y="320" width="48" height="40" fill="#777777" fill-opacity="0.12" stroke="#777777" stroke-dasharray="4,3"/>
+<line x1="382" y1="312" x2="382" y2="368" stroke="#e8e8e8" stroke-width="2" stroke-dasharray="3,3"/>
+<text x="18" y="372" fill="#facc15">camera: P3 ingress cap TBD (Q13)</text><text x="18" y="390">everything ≤ HM30 capacity (TBD)</text>
+<text x="18" y="434" font-weight="bold">The HM30 radio is the bottleneck,</text><text x="18" y="453">not the 100 Mbit cable: switch</text><text x="18" y="472">priorities only order packets on</text><text x="18" y="491">the cable (RC → video → camera).</text><text x="18" y="510"></text><text x="18" y="529" fill="#facc15">Until measured: camera OFF while the</text><text x="18" y="548" fill="#facc15">client is armed. Test 9 must show</text><text x="18" y="567" fill="#facc15">FPV latency unchanged with the</text><text x="18" y="586" fill="#facc15">camera at its cap — if it fails:</text><text x="18" y="605" fill="#facc15">camera off whenever the client is</text><text x="18" y="624" fill="#facc15">airborne.</text>
+</svg>

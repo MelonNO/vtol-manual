@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 1262" width="400" height="1262" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
+<title id="title">D1 — System overview: ground station, carrier and client with all four links</title>
+<desc id="desc">Windows laptop with the EdgeTX radio (USB joystick, RF off), the GCS companion app (rc_up on UDP 5770), Mission Planner (UDPCI 192.168.144.12:19856) and the video viewer (UDP 5601, MP HUD 5602), Ethernet to the HM30 ground unit on the mast. The HM30 IP link is the only GCS link and carries MAVLink, RC UDP, client video RTP and the camera stream. A 915 MHz Nomad is the carrier's close-range backup to an ELRS RX on the ArduPlane FC. On the carrier the HM30 air unit connects to the FC (MAVLink, not through the relay) and to switch port P1 of the relay PCB (KSZ8795): P2 net/RC board (W5500 + STM32G030) drives the ELRS TX module over CRSF, P5 video board (STM32N657) takes CVBS from the VRX, P3 the IP camera (gated by CAM_ENABLE), P4 spare. Client RC: ELRS 868/915/2.4 GHz or Gemini to the client ELRS RX and FC. Client video: analog VTX, band per client (5.8 GHz default), to the carrier VRX. HM30 band: TBD (link profile).</desc>
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as :root in manual.html / index.html.
+     Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
+     #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
+     #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->
+<!-- Sources: plan §3.1 (diagram draft), §3.2 (links), §3.3 (addresses); relay design &quot;System overview&quot;, &quot;Ethernet&quot;. -->
+<defs><marker id="ah-bg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f0f0f"/></marker><marker id="ah-surf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a1a1a"/></marker><marker id="ah-surf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker><marker id="ah-border" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2a2a2a"/></marker><marker id="ah-border2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker><marker id="ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker><marker id="ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#777777"/></marker><marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f97316"/></marker><marker id="ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#facc15"/></marker><marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker><marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker><marker id="ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444444"/></marker></defs>
+<rect width="400" height="1262" fill="#1a1a1a"/>
+<text x="14" y="28" font-size="17" fill="#f97316" font-weight="bold">D1 · SYSTEM OVERVIEW</text>
+<text x="14" y="50" fill="#777777">GCS ↔ HM30 ↔ carrier ↔ client</text>
+<rect x="8" y="62" width="384" height="196" rx="4" fill="none" stroke="#444444"/><text x="16" y="82" fill="#777777" font-weight="bold">GROUND STATION — WINDOWS LAPTOP</text>
+<rect x="18" y="92" width="168" height="66" rx="3" fill="#222222" stroke="#333333"/><text x="102" y="109.2" text-anchor="middle" font-weight="bold">EdgeTX radio</text><text x="102" y="127.2" text-anchor="middle">USB joystick</text><text x="102" y="145.2" text-anchor="middle">RF modules OFF</text>
+<rect x="214" y="92" width="168" height="66" rx="3" fill="#222222" stroke="#f97316"/><text x="298" y="109.2" text-anchor="middle" font-weight="bold">GCS app</text><text x="298" y="127.2" text-anchor="middle">RC sender + status</text><text x="298" y="145.2" text-anchor="middle">rc_up · UDP 5770</text>
+<polyline points="186,125 212,125" fill="none" stroke="#444444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-dim)"/>
+<rect x="18" y="174" width="168" height="72" rx="3" fill="#222222" stroke="#22c55e"/><text x="102" y="194.2" text-anchor="middle" font-weight="bold">Mission Planner</text><text x="102" y="212.2" text-anchor="middle">MAVLink UDPCI</text><text x="102" y="230.2" text-anchor="middle">.12 : 19856</text>
+<rect x="214" y="174" width="168" height="72" rx="3" fill="#222222" stroke="#ef4444"/><text x="298" y="194.2" text-anchor="middle" font-weight="bold">Video viewer</text><text x="298" y="212.2" text-anchor="middle">UDP 5601 viewer</text><text x="298" y="230.2" text-anchor="middle">UDP 5602 MP HUD</text>
+<polyline points="102,258 102,286" fill="none" stroke="#444444" stroke-width="2" stroke-linejoin="round"/>
+<text x="110" y="278" fill="#777777">Ethernet</text>
+<rect x="18" y="288" width="168" height="52" rx="3" fill="#222222" stroke="#333333"/><text x="102" y="307.2" text-anchor="middle" font-weight="bold">HM30 ground unit</text><text x="102" y="325.2" text-anchor="middle">on the mast</text>
+<rect x="250" y="288" width="132" height="52" rx="3" fill="#222222" stroke="#777777"/><text x="316" y="307.2" text-anchor="middle" font-weight="bold">Nomad 915</text><text x="316" y="325.2" text-anchor="middle">backup TX</text>
+<polyline points="102,340 102,448" fill="none" stroke="#e8e8e8" stroke-width="4" stroke-linejoin="round" marker-end="url(#ah-text)" marker-start="url(#ah-text)"/>
+<text x="112" y="366" font-weight="bold">HM30 IP LINK</text><text x="112" y="384">MAVLink · RC UDP</text><text x="112" y="402">client video RTP</text><text x="112" y="420">camera stream</text><text x="112" y="438" fill="#777777">HM30 band: TBD</text>
+<polyline points="316,340 316,448" fill="none" stroke="#777777" stroke-width="2" stroke-dasharray="6,5" stroke-linejoin="round" marker-end="url(#ah-muted)"/>
+<text x="324" y="370" fill="#777777" font-weight="bold">ELRS</text><text x="324" y="388" fill="#777777">915 MHz</text><text x="324" y="406" fill="#777777">close</text><text x="324" y="424" fill="#777777">range</text>
+<rect x="8" y="450" width="384" height="450" rx="4" fill="none" stroke="#444444"/><text x="16" y="470" fill="#777777" font-weight="bold">CARRIER — HEEWING T2 CRUZA</text>
+<rect x="18" y="476" width="168" height="50" rx="3" fill="#222222" stroke="#333333"/><text x="102" y="494.2" text-anchor="middle" font-weight="bold">HM30 air unit</text><text x="102" y="512.2" text-anchor="middle">192.168.144.11</text>
+<rect x="234" y="476" width="148" height="50" rx="3" fill="#222222" stroke="#777777"/><text x="308" y="494.2" text-anchor="middle" font-weight="bold">ELRS RX 915</text><text x="308" y="512.2" text-anchor="middle">backup RC</text>
+<rect x="234" y="556" width="148" height="50" rx="3" fill="#222222" stroke="#22c55e"/><text x="308" y="574.2" text-anchor="middle" font-weight="bold">ArduPlane FC</text><text x="308" y="592.2" text-anchor="middle">QuadPlane</text>
+<polyline points="308,526 308,554" fill="none" stroke="#777777" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-muted)"/>
+<polyline points="186,500 208,500 208,590 232,590" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)" marker-start="url(#ah-green)"/>
+<text x="212" y="622" fill="#22c55e">MAVLink</text>
+<text x="212" y="640" fill="#777777">(not via relay)</text>
+<polyline points="102,526 102,666" fill="none" stroke="#e8e8e8" stroke-width="3" stroke-linejoin="round" marker-end="url(#ah-text)" marker-start="url(#ah-text)"/>
+<text x="110" y="600" font-weight="bold">P1</text>
+<rect x="18" y="668" width="364" height="132" rx="4" fill="none" stroke="#f97316"/><text x="26" y="688" fill="#f97316" font-weight="bold">RELAY PCB</text>
+<rect x="28" y="696" width="344" height="30" rx="2" fill="#222222" stroke="#333333"/><text x="200" y="713.2" text-anchor="middle" font-weight="bold">KSZ8795 5-port switch · VLANs</text>
+<rect x="28" y="746" width="112" height="44" rx="3" fill="#222222" stroke="#f97316"/><text x="84" y="762.2" text-anchor="middle">Net/RC</text><text x="84" y="779.2" text-anchor="middle">W5500 + G0</text>
+<rect x="150" y="746" width="112" height="44" rx="3" fill="#222222" stroke="#ef4444"/><text x="206" y="762.2" text-anchor="middle">Video N6</text><text x="206" y="779.2" text-anchor="middle">STM32N657</text>
+<polyline points="84,726 84,744" fill="none" stroke="#444444" stroke-width="2" stroke-linejoin="round"/>
+<text x="90" y="740" fill="#777777">P2</text>
+<polyline points="206,726 206,744" fill="none" stroke="#444444" stroke-width="2" stroke-linejoin="round"/>
+<text x="212" y="740" fill="#777777">P5</text>
+<polyline points="290,728 290,818" fill="none" stroke="#facc15" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-amber)" marker-start="url(#ah-amber)"/>
+<text x="296" y="760" fill="#facc15">P3</text>
+<polyline points="350,726 350,744" fill="none" stroke="#777777" stroke-width="2" stroke-linejoin="round"/>
+<text x="338" y="762" fill="#777777">P4</text>
+<text x="322" y="780" fill="#777777">spare</text>
+<polyline points="84,790 84,818" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-accent)"/>
+<text x="90" y="810" fill="#f97316">CRSF</text>
+<rect x="18" y="820" width="132" height="66" rx="3" fill="#222222" stroke="#f97316"/><text x="84" y="837.2" text-anchor="middle" font-weight="bold">ELRS TX</text><text x="84" y="855.2" text-anchor="middle">module</text><text x="84" y="873.2" text-anchor="middle">868/915/2.4</text>
+<rect x="160" y="820" width="104" height="66" rx="3" fill="#222222" stroke="#ef4444"/><text x="212" y="837.2" text-anchor="middle" font-weight="bold">VRX</text><text x="212" y="855.2" text-anchor="middle">band per</text><text x="212" y="873.2" text-anchor="middle">client</text>
+<polyline points="206,818 206,792" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="212" y="812" fill="#ef4444">CVBS</text>
+<rect x="274" y="820" width="108" height="66" rx="3" fill="#222222" stroke="#facc15"/><text x="328" y="837.2" text-anchor="middle" font-weight="bold">IP camera</text><text x="328" y="855.2" text-anchor="middle">.26 · RTSP</text><text x="328" y="873.2" text-anchor="middle">CAM_ENABLE</text>
+<polyline points="84,886 84,1004" fill="none" stroke="#f97316" stroke-width="2.5" stroke-dasharray="7,5" stroke-linejoin="round" marker-end="url(#ah-accent)"/>
+<polyline points="212,1004 212,888" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="7,5" stroke-linejoin="round" marker-end="url(#ah-red)"/>
+<text x="92" y="918" fill="#f97316" font-weight="bold">CLIENT RC</text><text x="92" y="936" fill="#f97316">ELRS 868 /</text><text x="92" y="954" fill="#f97316">915 / 2.4</text><text x="92" y="972" fill="#f97316">or Gemini</text>
+<text x="220" y="918" fill="#ef4444" font-weight="bold">CLIENT VIDEO</text><text x="220" y="936" fill="#ef4444">analog, band</text><text x="220" y="954" fill="#ef4444">per client</text><text x="220" y="972" fill="#ef4444">(5.8 GHz default)</text>
+<rect x="8" y="1006" width="384" height="116" rx="4" fill="none" stroke="#444444"/><text x="16" y="1026" fill="#777777" font-weight="bold">CLIENT — ANY ANALOG FPV DRONE</text>
+<rect x="18" y="1034" width="132" height="50" rx="3" fill="#222222" stroke="#f97316"/><text x="84" y="1052.2" text-anchor="middle" font-weight="bold">ELRS RX</text><text x="84" y="1070.2" text-anchor="middle">CRSF</text>
+<rect x="160" y="1034" width="104" height="50" rx="3" fill="#222222" stroke="#ef4444"/><text x="212" y="1052.2" text-anchor="middle" font-weight="bold">Analog</text><text x="212" y="1070.2" text-anchor="middle">VTX</text>
+<rect x="274" y="1034" width="108" height="50" rx="3" fill="#222222" stroke="#333333"/><text x="328" y="1052.2" text-anchor="middle" font-weight="bold">FC</text><text x="328" y="1070.2" text-anchor="middle">e.g. BF</text>
+<polyline points="84,1084 84,1104 328,1104 328,1086" fill="none" stroke="#444444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-dim)"/>
+<polyline points="18,1150 52,1150" fill="none" stroke="#e8e8e8" stroke-width="4" stroke-linejoin="round"/>
+<text x="60" y="1155">HM30 IP link (only GCS link)</text>
+<polyline points="18,1172 52,1172" fill="none" stroke="#f97316" stroke-width="2" stroke-dasharray="7,5" stroke-linejoin="round"/>
+<text x="60" y="1177">client RC (ELRS)</text>
+<polyline points="18,1194 52,1194" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="7,5" stroke-linejoin="round"/>
+<text x="60" y="1199">client video (analog)</text>
+<polyline points="18,1216 52,1216" fill="none" stroke="#777777" stroke-width="2" stroke-dasharray="6,5" stroke-linejoin="round"/>
+<text x="60" y="1221">carrier backup, close range only</text>
+<text x="18" y="1248" fill="#777777">Carrier failsafe: SIYI / GCS loss only.</text>
+</svg>

@@ -67,30 +67,31 @@
         { id: 'site-wind', s: 'Wind within limits', t: 'Wind within limits — crosswind acceptable for VTOL.', n: 'Wind vane active — carrier will weathervane into wind automatically.' },
         { id: 'site-lz', s: 'Landing zone clear', t: 'VTOL landing zone clear — 5m radius, level, no obstacles.' }
       ] },
-      { id: 'B', name: 'VTOL BUILD & POWER-ON', items: [
+      { id: 'B', name: 'VTOL BUILD', items: [
         { id: 'build-airframe', s: 'Airframe inspected', t: 'Carrier drone (Heewing T2 Cruza) assembled and inspected — no cracks at tilt motor mounts or wing joins.' },
         { id: 'build-pitot-cover', s: 'Pitot cover on', t: 'Pitot cover installed.', n: 'Leave on until pitot calibration step.', w: true },
         { id: 'build-relay-pcb', s: 'Relay PCB secured', t: 'Relay PCB mount secure, connectors locked (JST-GH, HM30 Ethernet, XT30, CRSF lead). Antennas: VRX patches facing inward, ELRS TX module antenna fitted.', n: 'Never plug goggles in parallel with the relay on one VRX output (CVBS lead).', w: true },
-        { id: 'build-battery-power', s: 'Battery secured & power on', t: 'Battery secured — strap tight, no movement. Connect the carrier battery at power-up **step 4**: after the HM30 ground unit (1), the laptop and GCS app — arm switch DISARMED, throttle low (2) and the client (3); the 915 Nomad comes last (8). Allow GPS fix time after step 4, before arming.', n: 'Power-up order: Manual → Procedures → Power-Up Sequence. Do not arm yet. The relay bridge stays silent (WAIT_GCS) until the GCS app stream arrives — it never sends default sticks. Final power-up order with the relay: [[TBD — confirm by bench test, plan §6.1.6]].' },
         { id: 'build-props', s: 'Props tight, rotation correct', t: 'All props tight — correct rotation direction confirmed for all 3 motors (M1/M2 tilt, M4 tail).', n: 'M1/M2: wing tilt-motor props. M4: tail lift-motor prop (VTOL only).', w: true }
       ] },
-      { id: 'C', name: 'GROUND STATION', items: [
+      { id: 'C', name: 'GROUND STATION & POWER-UP', items: [
+        { id: 'gs-charged', s: 'All devices charged', t: 'All controllers, TX units and EcoFlow charged and ready.' },
         { id: 'gs-mast', s: 'Mast up and powered', t: 'HM30 mast erected and powered — 6S 3000mAh secured to mast.' },
         { id: 'gs-ethernet', s: 'Ethernet connected', t: 'Ethernet cable connected mast → laptop.' },
         { id: 'gs-hm30-link', s: 'HM30 linked, battery OK', t: 'HM30 ground unit linked — verify LED is blue. Check mast battery voltage.' },
         { id: 'gs-subnet', s: 'Laptop IP verified', t: 'Ethernet network adapter: static IP on the HM30 subnet.', n: 'IP `192.168.144.X`, mask `255.255.255.0`. X must not clash with any relay address (suggested `.100`; final address [[TBD — decide at bring-up]]).' },
         { id: 'gs-laptop-sleep', s: 'Laptop will not sleep', t: 'Power plan: never sleep or hibernate, on battery or mains. Lid-close action "do nothing". Laptop on mains where possible.', n: 'Mission Planner is the carrier\'s GCS heartbeat: closing MP, sleep/hibernate or a pulled cable = carrier RTL after 5 s (FS_GCS_ENABL = 2).', w: true },
         { id: 'gs-app', s: 'GCS app started', t: 'GCS companion app running. Controller detected, arm switch DISARMED, throttle low, bridge reachable (RTT shown).', n: 'The FPV pilot\'s EdgeTX radio is a USB joystick only: internal and external RF modules OFF in the GCS-RELAY model. A radio transmitting ELRS could fight the relay for the client.', w: true, auto: 'app-controller-safe' },
+        { id: 'fpv-battery', s: 'Client battery connected', t: 'Client battery connected — voltage nominal (power-up step 3: VTX on, ELRS RX waiting).' },
+        { id: 'build-battery-power', s: 'Battery secured & power on', t: 'Battery secured — strap tight, no movement. Connect the carrier battery at power-up **step 4**: after the HM30 ground unit (1), the laptop and GCS app — arm switch DISARMED, throttle low (2) and the client (3); the 915 Nomad comes last (8). Allow GPS fix time after step 4, before arming.', n: 'Power-up order: Manual → Procedures → Power-Up Sequence. Do not arm yet. The relay bridge stays silent (WAIT_GCS) until the GCS app stream arrives — it never sends default sticks. Final power-up order with the relay: [[TBD — confirm by bench test, plan §6.1.6]].' },
         { id: 'gs-mp-connect', s: 'Mission Planner connected', t: 'Mission Planner open — second screen via USB-C. Select **UDPCI** in MP connection dropdown. Never close MP in flight.', n: 'No other program may send MAVLink as GCS sysid 255 on this network (S-02b) — it would mask the SIYI failsafe.', extras: [{ label: 'IP', val: '192.168.144.12' }, { label: 'Port', val: '19856' }] },
-        { id: 'gs-client-video', s: 'Client video viewer', t: 'Client video arrives as RTP/UDP. The GCS app receives UDP 5600 and re-sends it to `127.0.0.1:5601` (standalone viewer) and `127.0.0.1:5602` (MP HUD: right-click avionics screen → Video → Set GStreamer Source). Use the variant for the client\'s video standard: **{client.videoStandard}**.', n: 'Windows GStreamer pipelines from plan §7.4 — verify on the target laptop. No rtpjitterbuffer. mpv with the .sdp file: verify its latency matches GStreamer before relying on it.', w: true, extras: [
+        { id: 'gs-client-video', s: 'Client video viewer', t: 'Client video arrives as RTP/UDP. The GCS app receives UDP 5600 and re-sends it to `127.0.0.1:5601` (standalone viewer) and `127.0.0.1:5602` (MP HUD: right-click avionics screen → Video → Set GStreamer Source). Use the variant for the client\'s video standard: **{client.videoStandard}**.', n: 'Mission Planner holds UDP 5600 by default: while the app\'s fan-out runs, MP must NOT listen on 5600 — its HUD source uses port 5602, the standalone viewer 5601. Windows GStreamer pipelines from plan §7.4 — verify on the target laptop. No rtpjitterbuffer. mpv with the .sdp file: verify its latency matches GStreamer before relying on it.', w: true, extras: [
           { label: 'VIEWER · PAL (UDP 5601)', val: PIPE.viewerPal },
           { label: 'VIEWER · NTSC (UDP 5601)', val: PIPE.viewerNtsc },
           { label: 'MP HUD · PAL (UDP 5602)', val: PIPE.mpHudPal },
           { label: 'MP HUD · NTSC (UDP 5602)', val: PIPE.mpHudNtsc },
           { label: 'client-video.sdp (mpv)', val: SDP }
         ] },
-        { id: 'gs-carrier-camera', s: 'Carrier camera (GStreamer in MP)', t: 'Carrier IP camera (`.26`, via relay switch P3). **Switch the camera on in the GCS app first** (default OFF). Verify the picture, then set it to the state planned for the sortie. MP\'s HUD takes one GStreamer source at a time.', n: PIPE.carrierCamera, copy: true, w: true },
-        { id: 'gs-charged', s: 'All devices charged', t: 'All controllers, TX units and EcoFlow charged and ready.' }
+        { id: 'gs-carrier-camera', s: 'Carrier camera (GStreamer in MP)', t: 'Carrier IP camera (`.26`, via relay switch P3). **Switch the camera on in the GCS app first** (default OFF). Verify the picture, then set it to the state planned for the sortie. MP\'s HUD takes one GStreamer source at a time.', n: PIPE.carrierCamera, copy: true, w: true }
       ] },
       { id: 'D', name: 'CARRIER DRONE', items: [
         { id: 'carrier-compass', s: 'Compass calibrated', t: 'Compass calibration — Mission Planner: Initial Setup → Mandatory Hardware → Compass → Start. Rotate through all axes. Verify no compass errors.' },
@@ -106,7 +107,6 @@
       ] },
       { id: 'E', name: 'CLIENT', items: [
         { id: 'client-profile', s: 'Client profile selected', t: 'Active client profile: **{client.name}** ({client.fc}, {client.firmware}). It drives the VTX, ELRS, failsafe and battery values below — change it on the PROFILES tab.' },
-        { id: 'fpv-battery', s: 'Client battery connected', t: 'Client battery connected — voltage nominal.' },
         { id: 'fpv-props', s: 'Client props checked', t: 'Client props tight — correct rotation direction.', n: 'Check motor bell screws and prop nuts.' },
         { id: 'client-vtx', s: 'VTX on, correct band/channel', t: 'Client VTX on **{client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz · {client.vtx.powerMw} mW**. Video visible in the viewer, decoder lock LED on.', n: 'Must show live view — not static or blank. Expected video standard: {client.videoStandard}.', w: true, auto: 'video-lock' },
         { id: 'client-elrs', s: 'ELRS link up', t: 'Client ELRS RX ({client.elrs.band}) linked to the relay\'s ELRS TX module by binding phrase / model match — set once per client, nothing to do before each flight. The app shows client LQ/RSSI if telemetry is enabled; otherwise read LQ on the client OSD.', n: 'Telemetry needs telemetry enabled on the client FC and a non-zero ELRS telemetry ratio (profile: {client.elrs.telemetryRatio}).', w: true, auto: 'client-link' },
@@ -203,7 +203,7 @@
       ],
       cleanup: [
         'Diagnose from the GCS app status: no packets out → app or controller · RTT gone → HM30 link · bridge FAILSAFE → bridge watchdog / T_hold (start value 250 ms) · LQ low with bridge RUN → ELRS RF: range, band, orbit geometry.',
-        'Client failsafe ({client.failsafe.type}, delay {client.failsafe.delayS} s, needs {client.failsafe.minSats}+ sats). Reference client #1 GPS Rescue: climbs 30m, cruises home at 100m / 7.5 m/s, landing phase from 4 m (gps_rescue_landing_alt) [[VERIFY — Betaflight 4.5 docs: landing-phase altitude, not a confirmed motor cut]].',
+        'Client failsafe ({client.failsafe.type}, delay {client.failsafe.delayS} s, needs {client.failsafe.minSats}+ sats). Reference client #1 GPS Rescue: climbs 30m, cruises home at 100m / 7.5 m/s [[VERIFY — Betaflight 4.5: with altitude mode CURRENT_ALT the 100 m return altitude may not apply (it is the FIXED_ALT value)]], landing phase from 4 m (gps_rescue_landing_alt) [[VERIFY — Betaflight 4.5 docs: landing-phase altitude, not a confirmed motor cut]].',
         'The carrier camera is forced off if the GCS stream was lost; re-enable it only once the stream is back.',
         'Keep the carrier on station until the client has landed — it may be returning toward its home point.',
         'Confirm the client is disarmed before anyone approaches it on the ground.',
@@ -368,7 +368,7 @@
       { id: 'net-spare', device: 'Spare port', ip: '—', port: '—', dir: '—', notes: 'Switch **P4** (JST-GH). VLAN: reaches only P1. What may be connected and its bandwidth cap: [[TBD]].' },
       { id: 'net-n6', device: 'N6 video board', ip: '[[TBD — e.g. .20]]', port: 'RTP/UDP **5600** at the GCS', dir: 'carrier → GCS', notes: 'Destination IP and port stored in N6 flash' },
       { id: 'net-bridge', device: 'RC bridge (W5500)', ip: '[[TBD — e.g. .21]]', port: 'UDP **5770** at the bridge', dir: 'GCS → carrier (RC); carrier → GCS (status + CRSF telemetry)', notes: '36-byte `rc_up` packets at 200–250 Hz; replies go to the source IP:port of the latest valid `rc_up`' },
-      { id: 'net-fanout', device: 'GCS app video fan-out', ip: '`127.0.0.1`', port: 'UDP **5601** (viewer) · **5602** (MP HUD)', dir: 'app → local viewers', notes: 'Only one Windows process can bind UDP 5600: the GCS app receives it and re-sends locally.' },
+      { id: 'net-fanout', device: 'GCS app video fan-out', ip: '`127.0.0.1`', port: 'UDP **5601** (viewer) · **5602** (MP HUD)', dir: 'app → local viewers', notes: 'Only one Windows process can bind UDP 5600: the GCS app receives it and re-sends locally. Mission Planner must not listen on 5600 while the fan-out runs (MP HUD on 5602).' },
       { id: 'net-api', device: 'GCS app local API', ip: '`127.0.0.1`', port: 'HTTP **47800** (`/api/v1/…`)', dir: 'app → browser', notes: 'Read-only status for the Tools Link tab and the map' }
     ]
   };
@@ -408,7 +408,7 @@
         { id: 'co-fpv-batt', trigger: 'Client battery at its low threshold (Reference client #1: 21.0V, 3.5V/cell)', who: 'FPV Pilot', call: 'FPV BATT LOW — RETURNING', note: 'Begin return immediately' },
         { id: 'co-sats-low', trigger: 'Client GPS sats below {client.failsafe.minSats}', who: 'FPV Pilot', call: 'FPV SATS LOW', note: 'GPS Rescue may not work' },
         { id: 'co-fpv-rth', trigger: 'Client flight mode RTH (GPS Rescue / return active)', who: 'FPV Pilot', call: 'FPV RTH' },
-        { id: 'co-telemetry-lost', trigger: 'No client telemetry for > 2 s while the bridge is in RUN', who: 'FPV Pilot', call: 'FPV TELEMETRY LOST' },
+        { id: 'co-telemetry-lost', trigger: 'No client telemetry for > 2 s while the app streams RC in FPV mode', who: 'FPV Pilot', call: 'FPV TELEMETRY LOST' },
         { id: 'co-camera-on', trigger: 'Carrier camera switched on — Carrier Pilot requests, FPV Pilot confirms the client is in a stable hover or landed', who: 'Carrier Pilot', call: 'CAMERA ON' },
         { id: 'co-camera-off', trigger: 'Carrier camera switched off', who: 'Carrier Pilot', call: 'CAMERA OFF' },
         { id: 'co-carrier-batt', trigger: 'Carrier battery at {settings.manualRtlVolt}V', who: 'Carrier Pilot', call: 'CARRIER BATT — RTL SOON', note: 'FPV Pilot initiates the client return' },

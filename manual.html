@@ -162,8 +162,8 @@ th.bad{color:var(--red);}
 .emerg-cu-step .t{color:var(--text);line-height:1.55;}
 /* shared content (js/render-content.js) — same classes as index.html */
 .emerg-pills{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px;}
-.emerg-pill{background:#1f0a0a;border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer;min-height:44px;}
-.emerg-pill.primary{background:var(--red);color:#fff;}
+.emerg-pill{background:var(--surface);border:1px solid var(--red);color:var(--red);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1px;padding:7px 13px;cursor:pointer;min-height:44px;}
+.emerg-pill.primary{background:var(--red);color:var(--text);}
 .emerg-pill.note{background:#1f1a08;border-color:var(--amber);color:var(--amber);}
 .emerg-card{margin-top:14px;}
 .emerg-primary{border:1px solid var(--red);border-left-width:4px;}
@@ -174,14 +174,26 @@ th.bad{color:var(--red);}
 .emerg-note-close .emerg-imm-step{border-bottom:none;}
 .fs-primary td{background:#1a0e0e;}
 .design-intent p{color:var(--text);}
-/* diagram slots (filled by WP07) */
-.diagram-slot{border:1px dashed var(--border2);background:var(--surface);color:var(--muted);padding:14px 18px;margin:16px 0;font-size:12px;letter-spacing:1px;}
-.diagram-slot::before{content:'DIAGRAM ' attr(data-diagram) ' · ';color:var(--accent);font-family:var(--head);font-weight:700;letter-spacing:2px;}
-/* inline SVG diagrams */
-.man-svg{width:100%;display:block;margin:20px 0;font-family:var(--mono);}
-.man-svg.m16{margin:16px 0;}
-.man-svg.ov{overflow:visible;}
-.man-svg.w860{max-width:860px;}
+/* diagrams D1–D15 (img/diagrams/*.svg, 400 units wide, text ≥ 14 units → ≥ 11 px at a 360 px viewport) */
+.diagram-slot{margin:16px 0;}
+.dg{margin:0;background:var(--surface);border:1px solid var(--border2);}
+.dg a{display:block;}
+.dg img{display:block;width:100%;max-width:560px;height:auto;margin:0 auto;}
+.dg figcaption,.dg-cap{padding:8px 14px;font-size:12px;color:var(--muted);letter-spacing:1px;border-top:1px solid var(--border2);}
+.dg figcaption strong,.dg-cap strong{color:var(--accent);font-family:var(--head);letter-spacing:2px;}
+/* inline SVG diagrams: drawn in viewBox units with text ≥ 13 units; min-width keeps that ≥ 11 px, the wrapper scrolls on a phone */
+.dg-scroll{overflow-x:auto;margin:16px 0;background:var(--surface);border:1px solid var(--border2);}
+.dg-scroll .dg-cap{position:sticky;left:0;}
+.man-svg{width:100%;display:block;margin:0;font-family:var(--mono);}
+.mw-560{min-width:560px;}
+.mw-600{min-width:600px;}
+.mw-780{min-width:780px;}
+.dg-gauge-wrap{margin:16px 0;background:var(--surface);border:1px solid var(--border2);}
+.dg-gauge-wrap svg{display:block;width:100%;max-width:560px;margin:0 auto;font-family:var(--mono);}
+svg .warn-val{fill:var(--amber);}
+.sprite{position:absolute;width:0;height:0;overflow:hidden;}
+.q-accent{color:var(--accent);}
+.q-green{color:var(--green);}
 .copy-block{display:block;background:var(--surface2);border:1px solid var(--border2);padding:10px 12px;margin:4px 0 12px;font-family:var(--mono);font-size:12px;color:var(--accent);white-space:pre-wrap;word-break:break-all;}
 .copy-label{font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
 /* ── PRE-ARM / GLOSSARY SEARCH ── */
@@ -217,6 +229,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 </style>
 </head>
 <body>
+<!-- Shared SVG symbols (plan §9.2: one quad icon, used with <use href="#sym-quad">; colour from the use element via currentColor) -->
+<svg class="sprite" aria-hidden="true" focusable="false"><symbol id="sym-quad" viewBox="-12 -12 24 24"><g stroke="currentColor" fill="currentColor"><line x1="-7" y1="-7" x2="7" y2="7" stroke-width="1.8"/><line x1="7" y1="-7" x2="-7" y2="7" stroke-width="1.8"/><circle cx="-8" cy="-8" r="2.8" stroke="none"/><circle cx="8" cy="-8" r="2.8" stroke="none"/><circle cx="-8" cy="8" r="2.8" stroke="none"/><circle cx="8" cy="8" r="2.8" stroke="none"/><circle cx="0" cy="0" r="3.2" fill="var(--bg)" stroke-width="1.5"/></g></symbol></svg>
 
 <header>
   <div class="hdr-top">
@@ -352,7 +366,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 <div id="tab-comms" class="tab-panel">
 
   <div class="section-title">System Overview</div>
-  <div class="diagram-slot" data-diagram="D1">System overview — GCS ↔ HM30 ↔ carrier ↔ client, all four links with bands (plan §3.1, §9.3)</div>
+  <div class="diagram-slot" data-diagram="D1"><figure class="dg"><a href="img/diagrams/d01-system-overview.svg" target="_blank" rel="noopener"><img src="img/diagrams/d01-system-overview.svg" width="400" height="1262" loading="lazy" decoding="async" alt="Diagram D1: the Windows ground station (EdgeTX radio as USB joystick, GCS app sending rc_up to UDP 5770, Mission Planner UDPCI, video viewer on UDP 5601 and MP HUD on 5602) reaches the carrier only over the HM30 IP link. On the carrier the HM30 air unit feeds the FC (MAVLink) and relay switch port P1; P2 net/RC board drives the ELRS TX module over CRSF, P5 video board takes CVBS from the VRX, P3 is the IP camera, P4 spare. Client RC on ELRS 868/915/2.4 GHz; client video analog, band per client. The 915 MHz Nomad is close-range backup only."></a><figcaption><strong>D1</strong> · System overview — ground station, HM30, carrier and client with all four links. The carrier fails safe only on SIYI / GCS loss. Tap to open full size.</figcaption></figure></div>
   <div class="tbl-wrap"><table id="comms-links">
     <thead><tr><th>Link</th><th>From → To</th><th>Medium</th><th>Carries</th></tr></thead>
     <tbody>
@@ -409,7 +423,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <div class="cn"><span class="cl">GCS laptop</span><span class="cv">GStreamer viewer / MP HUD</span></div>
     </div>
   </div>
-  <p>The video board decodes the VRX's composite signal and encodes <strong>each field as one H.264 picture</strong>, slice by slice, sending RTP on UDP 5600 the moment each slice is ready. Only one Windows process can bind UDP 5600, so the GCS app receives it and re-sends it to <code>127.0.0.1:5601</code> (standalone viewer) and <code>127.0.0.1:5602</code> (Mission Planner HUD). Expected video standard of the active client: <strong><span data-tok="client.videoStandard">TBD</span></strong> (PAL and NTSC are both supported). No <code>rtpjitterbuffer</code> in the viewer: its default buffering would swamp the latency the relay saves.</p>
+  <p>The video board decodes the VRX's composite signal and encodes <strong>each field as one H.264 picture</strong>, slice by slice, sending RTP on UDP 5600 the moment each slice is ready. Only one Windows process can bind UDP 5600, so the GCS app receives it and re-sends it to <code>127.0.0.1:5601</code> (standalone viewer) and <code>127.0.0.1:5602</code> (Mission Planner HUD). Mission Planner holds UDP 5600 by default: while the app's fan-out runs, MP must <strong>not</strong> listen on 5600 — set its HUD source to port <strong>5602</strong> and the standalone viewer to <strong>5601</strong>. Expected video standard of the active client: <strong><span data-tok="client.videoStandard">TBD</span></strong> (PAL and NTSC are both supported). No <code>rtpjitterbuffer</code> in the viewer: its default buffering would swamp the latency the relay saves.</p>
   <div id="comms-pipelines"></div>
 
   <div class="section-title" id="camera-chain">Carrier Camera</div>
@@ -468,7 +482,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title" id="network-map">Network and Port Map</div>
   <div id="comms-network"></div>
-  <div class="diagram-slot" data-diagram="D3">Network / IP and port map — every IP, port, protocol and direction (plan §3.3)</div>
+  <div class="diagram-slot" data-diagram="D3"><figure class="dg"><a href="img/diagrams/d03-network-map.svg" target="_blank" rel="noopener"><img src="img/diagrams/d03-network-map.svg" width="400" height="1085" loading="lazy" decoding="async" alt="Diagram D3: laptop 192.168.144.X with the local fan-out of UDP 5600 to 5601 (viewer) and 5602 (MP HUD) and the read-only API on 47800; HM30 ground .12 with UDP 19856 MAVLink; HM30 air .11 to switch P1; P5 N6 sends RTP to 5600 at the GCS; P2 RC bridge on UDP 5770 receives rc_up and returns status and telemetry; P3 camera .26 RTSP 8554 only while CAM_ENABLE = 1; P4 spare. Mission Planner must not listen on UDP 5600 while the fan-out runs."></a><figcaption><strong>D3</strong> · Network and port map — every IP, port, protocol and direction (proposed; confirm before flight). Tap to open full size.</figcaption></figure></div>
   <p>Mission Planner connection: <strong>UDPCI</strong>, IP <code>192.168.144.12</code>, port <code>19856</code>. Laptop Ethernet adapter: static IP <code>192.168.144.X</code> / <code>255.255.255.0</code>.</p>
 
   <div class="section-title" id="bandwidth">Bandwidth Budget</div>
@@ -541,7 +555,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title" id="failsafe">Carrier Failsafe</div>
   <div id="fm-failsafe"></div>
-  <div class="diagram-slot" data-diagram="D7">Corrected carrier failsafe matrix and SIYI-loss timeline (replaces the old RC failsafe cascade; plan §9.2)</div>
+  <div class="diagram-slot" data-diagram="D7"><figure class="dg"><a href="img/diagrams/d07-carrier-failsafe.svg" target="_blank" rel="noopener"><img src="img/diagrams/d07-carrier-failsafe.svg" width="400" height="1216" loading="lazy" decoding="async" alt="Diagram D7: SIYI / MP link lost for 5 s in any mode → RTL; 915 MHz backup lost → no action (THR_FAILSAFE = 2), close-in take over in MP; battery critical 22.2 V → Loiter then QLand here; battery low not set, manual RTL at 23.0 V; transition fail after 4 s → QLand at the current position (VERIFY), pilot reverts to QHOVER within 3 s. Timeline: 0 s heartbeat lost, 5 s RTL, climb to 120 m REL and return, back-transition and land per Q settings (Q-mode behaviour TBD)."></a><figcaption><strong>D7</strong> · Carrier failsafe matrix and SIYI-loss timeline — replaces the old RC failsafe cascade. Only SIYI / GCS loss triggers a carrier failsafe. Tap to open full size.</figcaption></figure></div>
   <div class="card accent" id="siyi-loss">
     <div class="card-title">SIYI / GCS loss — what happens</div>
     <div class="proc-step"><span class="n">0 s</span><span class="t">GCS heartbeat lost: Mission Planner closed or crashed, laptop asleep or hibernating, Ethernet cable pulled, or HM30 link lost. Client RC and video are lost at the same moment (they also travel over the HM30) — the client fails safe too.</span></div>
@@ -563,7 +577,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </div>
   <div class="card amber">
     <div class="card-title">S-02b — no other program as the primary GCS</div>
-    <p>No other program may send GCS heartbeats as MAVLink <strong>sysid 255</strong> (the Mission Planner default, the primary GCS id). It would keep the carrier "happy" while MP — the real control path — is dead, and mask the SIYI failsafe. The GCS companion app <strong>never sends MAVLink</strong>: it only reads a copy of MP's stream (MAVLink Mirror, write access off).</p>
+    <p>No other program may send GCS heartbeats as MAVLink <strong>sysid 255</strong> (the Mission Planner default, the primary GCS id). It would keep the carrier "happy" while MP — the real control path — is dead, and mask the SIYI failsafe. The GCS companion app <strong>never sends MAVLink to the carrier</strong>: it reads a copy of MP's stream (MAVLink Mirror, write access off), and it may send a display-only client stream to Mission Planner with its own sysid (never 1 or 255).</p>
   </div>
   <div class="card amber">
     <div class="card-title">S-02c — does the HM30 send RADIO_STATUS?</div>
@@ -598,7 +612,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title" id="client-failsafe">Client Failsafe Chain</div>
   <div id="fm-client-chain"></div>
-  <div class="diagram-slot" data-diagram="D6">Client failsafe timeline — stream stops → T_hold → TX module → RX failsafe → client FC failsafe, with measured times per cause</div>
+  <div class="diagram-slot" data-diagram="D6"><figure class="dg"><a href="img/diagrams/d06-client-failsafe.svg" target="_blank" rel="noopener"><img src="img/diagrams/d06-client-failsafe.svg" width="400" height="1055" loading="lazy" decoding="async" alt="Diagram D6: causes (app stops, controller unplugged, HM30 lost, bridge watchdog); bridge silent after T_hold (start 250 ms); ELRS TX module reaction TBD; client RX failsafe timeout TBD; client FC failsafe per profile (Reference client #1: GPS Rescue after 2.5 s); total per cause TBD from relay-design test 6."></a><figcaption><strong>D6</strong> · Client failsafe timeline — stream stops → T_hold → TX module → RX failsafe → client FC failsafe. Measured times per cause: TBD (test 6). Tap to open full size.</figcaption></figure></div>
 
   <div class="section-title">VTOL Assist</div>
   <p>VTOL assist activates automatically in fixed-wing modes when airspeed drops below <span class="val">9 m/s</span> (<code>Q_ASSIST_SPEED</code>) or when altitude is below <span class="val">25m</span> (<code>Q_ASSIST_ALT</code>; altitude reference <span class="warn-val">VERIFY — ArduPlane docs, S-04</span>). If VTOL assist triggers unexpectedly during cruise, check for airspeed sensor failure or gusty conditions.</p>
@@ -611,7 +625,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="alert alert-warn">The relay PCB and its firmware are being built. Everything here follows the relay design document; values marked <span class="warn-val">TBD</span> come from bench tests or firmware that do not exist yet. The relay UDP protocol is <strong>PROPOSAL v1</strong> until the bridge firmware implements it.</div>
 
   <div class="section-title" id="relay-boards">Boards and the Independence Rule</div>
-  <div class="diagram-slot" data-diagram="D2">Relay electronics block diagram — two boards, KSZ8795 5-port switch, P1–P5 with the VLAN map, CVBS, CRSF, power domains, LED positions</div>
+  <div class="diagram-slot" data-diagram="D2"><figure class="dg"><a href="img/diagrams/d02-relay-electronics.svg" target="_blank" rel="noopener"><img src="img/diagrams/d02-relay-electronics.svg" width="400" height="1626" loading="lazy" decoding="async" alt="Diagram D2: VIN 6–26 V through fuse, reverse FET and TVS; 3.3V_RC and VBAT_TX bucks; KSZ8795 switch with P1 HM30, P2 W5500 (capacitor-coupled), P3 IP camera and P4 spare on JST-GH 4-pin, P5 RMII to the N6; G0 talks SPI to the W5500 and the switch (CAM_ENABLE) and drives CRSF at 400 kbaud to the ELRS TX module; VLANs keep P3/P4 away from P2; P1 egress priority RC, video, camera; video board CVBS → TVP5150/TW9900 → BT.656 → N6 H.264 → RTP 5600; LEDs PG8, PG10, PG0."></a><figcaption><strong>D2</strong> · Relay PCB — net/RC board (KSZ8795, W5500, STM32G030), video board (decoder, STM32N657), ports P1–P5, VLAN map, power, LEDs. Tap to open full size.</figcaption></figure></div>
   <div class="tbl-wrap"><table>
     <thead><tr><th>Board</th><th>Main parts</th><th>Job</th></tr></thead>
     <tbody>
@@ -665,8 +679,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     </table></div>
     <p>Until this firmware change exists, a carrier-only flight has <strong>no camera unless the GCS app streams</strong> in its carrier-only mode — see <em>Procedures → Carrier-only flights</em> for its hazard.</p>
   </div>
-  <div class="diagram-slot" data-diagram="D8b">Camera on/off logic — CAM_ENABLE from the GCS → G0 → P3 enable/limit; default off, forced off on stream loss, reported in status</div>
-  <div class="diagram-slot" data-diagram="D8">Bandwidth budget bar — HM30 capacity split in FPV mode (camera off) vs camera mode (camera at its P3 cap)</div>
+  <div class="diagram-slot" data-diagram="D8b"><figure class="dg"><a href="img/diagrams/d08b-camera-logic.svg" target="_blank" rel="noopener"><img src="img/diagrams/d08b-camera-logic.svg" width="400" height="1049" loading="lazy" decoding="async" alt="Diagram D8b: the app request (key k, default off) travels as CAM_ENABLE bit 0 in every rc_up; the G0 applies it within one packet: P3 enabled and capped, or disabled / at minimum; the G0 reads the switch back and reports the actual state in the 10 Hz status; the app compares requested and reported (mismatch after 1 s). Off at power-up, forced off when the GCS stream is lost. Proposed variant (not implemented): on with no stream since boot, off after a lost stream."></a><figcaption><strong>D8b</strong> · Camera on/off — CAM_ENABLE from the GCS app → G0 → switch P3, with read-back; the client-gated variant is a firmware request. Tap to open full size.</figcaption></figure></div>
+  <div class="diagram-slot" data-diagram="D8"><figure class="dg"><a href="img/diagrams/d08-bandwidth-budget.svg" target="_blank" rel="noopener"><img src="img/diagrams/d08-bandwidth-budget.svg" width="400" height="655" loading="lazy" decoding="async" alt="Diagram D8: two bars, not to scale. FPV mode: N6 video CBR, RC uplink about 100–130 kbit/s, MAVLink, margin, camera off. Camera mode adds the IP camera at its P3 ingress cap. Everything must stay below the measured HM30 capacity (TBD). Until test 9 passes: camera off while the client is armed."></a><figcaption><strong>D8</strong> · Bandwidth budget — HM30 capacity split in FPV mode (camera off) and camera mode (camera at its P3 cap). Not to scale; values TBD (Q13). Tap to open full size.</figcaption></figure></div>
 
   <div class="section-title" id="relay-bridge">RC Bridge (G0) — States</div>
   <div class="tbl-wrap"><table id="relay-bridge-states">
@@ -680,8 +694,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     </tbody>
   </table></div>
   <p>A packet is valid only with the right magic, version, CRC, source IP and an increasing sequence number. The bridge locks its CRSF timing to the ELRS module's timing frame (<code>0x3A</code>), so each RC frame arrives just before the module's next RF transmission. A watchdog (about 100 ms) resets the G0 if its scheduler or the W5500 stops. The bridge reports every forwarded CRSF frame plus a 10 Hz status packet (state, counters, echoed time stamp for RTT, sync period and offset, camera read-back) to the GCS.</p>
-  <div class="diagram-slot" data-diagram="D5">Bridge state machine — BOOT / WAIT_GCS / START / RUN / FAILSAFE with the LED pattern per state</div>
-  <div class="diagram-slot" data-diagram="D4">RC path timeline — controller → app → HM30 → bridge → CRSF slot → ELRS → client, with the latency of each stage</div>
+  <div class="diagram-slot" data-diagram="D5"><figure class="dg"><a href="img/diagrams/d05-bridge-states.svg" target="_blank" rel="noopener"><img src="img/diagrams/d05-bridge-states.svg" width="400" height="840" loading="lazy" decoding="async" alt="Diagram D5: BOOT (no CRSF) to WAIT_GCS when the peripherals and W5500 are up; WAIT_GCS to START after 5 consecutive valid packets; START sends ModelID three times then RUN; RUN sends RC frames every tick and goes to FAILSAFE when no valid packet arrives for T_hold (start 250 ms); FAILSAFE is silent and returns immediately to WAIT_GCS. Watchdog about 100 ms resets to BOOT. App shows UNREACHABLE without status for 300 ms. LED patterns TBD."></a><figcaption><strong>D5</strong> · Bridge state machine — BOOT → WAIT_GCS → START → RUN → FAILSAFE → WAIT_GCS. LED patterns: TBD (firmware). Tap to open full size.</figcaption></figure></div>
+  <div class="diagram-slot" data-diagram="D4"><figure class="dg"><a href="img/diagrams/d04-rc-path-timeline.svg" target="_blank" rel="noopener"><img src="img/diagrams/d04-rc-path-timeline.svg" width="400" height="994" loading="lazy" decoding="async" alt="Diagram D4: stage latencies — controller to app 1–8 ms (estimate); rc_up every 4–5 ms; HM30 uplink unknown (measure); switch, W5500 and G0 under 1 ms; wait for the CRSF slot up to one CRSF period; 26-byte CRSF frame about 0.65 ms; one ELRS packet interval to the client; 10 Hz status and telemetry back. End-to-end TBD."></a><figcaption><strong>D4</strong> · RC path — controller → GCS app → HM30 → bridge → CRSF slot → ELRS → client, with the latency of each stage. Tap to open full size.</figcaption></figure></div>
 
   <div class="section-title" id="relay-video">Video Board (N6) — Fields and Slices</div>
   <div class="tbl-wrap"><table>
@@ -692,7 +706,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     </tbody>
   </table></div>
   <p>Each field is one H.264 picture, encoded slice by slice and sent the moment each slice is finished, so the relay adds about one field time. H.264 Baseline at a constant bitrate below the HM30's measured capacity (<span class="warn-val">TBD — Q13</span>). If no field arrives for 25 ms the last field is re-sent; if the decoder loses lock for more than 1 s it is reset. Encoder stability and recovery are relay-design tests 3 and 4.</p>
-  <div class="diagram-slot" data-diagram="D15">Video field timing — one PAL/NTSC field → slices → packets; why the relay adds about one field time</div>
+  <div class="diagram-slot" data-diagram="D15"><figure class="dg"><a href="img/diagrams/d15-video-field-timing.svg" target="_blank" rel="noopener"><img src="img/diagrams/d15-video-field-timing.svg" width="400" height="894" loading="lazy" decoding="async" alt="Diagram D15: a PAL field arrives over 18.4 ms as 9 slices of 32 lines (NTSC 7 slices, 15.3 ms); each slice is encoded and sent as soon as it is complete, the last packet at most 3 ms after the last active line (test 1). Relay electronics add about 20 ms; the HM30 and the GCS dominate."></a><figcaption><strong>D15</strong> · Video field timing — one PAL/NTSC field → slices → packets; the relay adds about one field time. Tap to open full size.</figcaption></figure></div>
 
   <div class="section-title" id="relay-indicators">Indicators</div>
   <div class="tbl-wrap"><table>
@@ -725,7 +739,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     </tbody>
   </table></div>
   <div class="alert alert-warn">The camera cable must be <strong>re-terminated to the JST-GH TX+ / TX− / RX+ / RX− pinout</strong> (twisted pairs kept intact). <strong>Never plug goggles in parallel with the relay on one VRX output</strong> — the CVBS input is terminated on the board.</div>
-  <div class="diagram-slot" data-diagram="D11">Carrier wiring harness — battery → FC/ESC, XT30 to the relay PCB, Ethernet runs, CRSF lead, CVBS lead</div>
+  <div class="diagram-slot" data-diagram="D11"><figure class="dg"><a href="img/diagrams/d11-wiring-harness.svg" target="_blank" rel="noopener"><img src="img/diagrams/d11-wiring-harness.svg" width="400" height="1062" loading="lazy" decoding="async" alt="Diagram D11: the 6S 7000 mAh pack powers FC and ESCs, HM30 air unit (supply TBD), relay PCB via XT30 (6–26 V), IP camera and VRX (supplies TBD). Signal runs: HM30 to P1; camera to P3 and spare to P4 on JST-GH 4-pin; CRSF JST-GH (VBAT_TX, GND, CRSF, spare) to the ELRS TX module, Nomad 6–16.8 V; VRX to the CVBS input, never goggles in parallel; HM30 to FC MAVLink; ELRS RX 915 and GPS to the FC."></a><figcaption><strong>D11</strong> · Carrier wiring harness — power taps from the 6S pack and every signal run (Ethernet, CRSF, CVBS, MAVLink). Unknown supplies TBD. Tap to open full size.</figcaption></figure></div>
 
   <div class="section-title" id="relay-power">Power</div>
   <div class="tbl-wrap"><table>
@@ -789,54 +803,9 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     </tbody>
   </table></div>
 
-  <!-- Motor configuration top-down: 2 tilting wing motors + 1 tail lift motor -->
-  <svg viewBox="0 0 700 180" xmlns="http://www.w3.org/2000/svg" class="man-svg">
-    <text x="350" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">HEEWING T2 — MOTOR CONFIGURATION (TOP VIEW)</text>
-
-    <!-- Fuselage -->
-    <rect x="338" y="22" width="24" height="140" rx="10" fill="#1c1c1c" stroke="#444" stroke-width="1.5"/>
-    <!-- Nose -->
-    <polygon points="338,22 362,22 350,8" fill="#222" stroke="#444" stroke-width="1"/>
-    <!-- Tail pod (wider, houses pusher motor mount) -->
-    <rect x="326" y="148" width="48" height="20" rx="5" fill="#1c1c1c" stroke="#444" stroke-width="1.5"/>
-
-    <!-- Main wing -->
-    <polygon points="350,65 112,90 136,112 338,85 362,85 564,112 588,90" fill="#1c1c1c" stroke="#444" stroke-width="1.5"/>
-
-    <!-- M1 — left wing tilt motor (orange) -->
-    <circle cx="122" cy="90" r="27" fill="#1a0d04" stroke="#f97316" stroke-width="2.5"/>
-    <text x="122" y="87" fill="#f97316" font-size="8" text-anchor="middle" font-weight="700">M1</text>
-    <text x="122" y="99" fill="#f97316" font-size="7" text-anchor="middle">TILT</text>
-    <path d="M 104,74 A 20,20 0 0,1 141,74" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
-    <polygon points="141,74 135,67 144,69" fill="#f97316" opacity="0.8"/>
-    <text x="122" y="61" fill="#f97316" font-size="7" text-anchor="middle" opacity="0.8">0°→80°</text>
-
-    <!-- M2 — right wing tilt motor (orange) -->
-    <circle cx="578" cy="90" r="27" fill="#1a0d04" stroke="#f97316" stroke-width="2.5"/>
-    <text x="578" y="87" fill="#f97316" font-size="8" text-anchor="middle" font-weight="700">M2</text>
-    <text x="578" y="99" fill="#f97316" font-size="7" text-anchor="middle">TILT</text>
-    <path d="M 559,74 A 20,20 0 0,0 597,74" fill="none" stroke="#f97316" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.8"/>
-    <polygon points="559,74 565,67 556,69" fill="#f97316" opacity="0.8"/>
-    <text x="578" y="61" fill="#f97316" font-size="7" text-anchor="middle" opacity="0.8">0°→80°</text>
-
-    <!-- M4 — tail vertical lift motor (grey, fixed upward, VTOL only) -->
-    <circle cx="350" cy="158" r="22" fill="#191919" stroke="#888" stroke-width="1.5"/>
-    <text x="350" y="155" fill="#999" font-size="8" text-anchor="middle" font-weight="700">M4</text>
-    <text x="350" y="166" fill="#777" font-size="7" text-anchor="middle">LIFT ONLY</text>
-    <!-- Vertical prop arc (horizontal rotation, fixed upward) -->
-    <path d="M 330,158 A 22,22 0 0,1 370,158" fill="none" stroke="#888" stroke-width="1.5" stroke-dasharray="3,2" opacity="0.6"/>
-
-    <!-- FWD arrow -->
-    <line x1="350" y1="22" x2="350" y2="4" stroke="#444" stroke-width="1" stroke-dasharray="2,3"/>
-    <polygon points="350,0 345,8 355,8" fill="#444"/>
-    <text x="364" y="8" fill="#444" font-size="7">FWD</text>
-
-    <!-- Legend -->
-    <rect x="18" y="154" width="8" height="8" fill="#1a0d04" stroke="#f97316" stroke-width="1.5"/>
-    <text x="30" y="162" fill="#f97316" font-size="8">M1/M2 — wing tilt motors · VTOL: vertical lift (0°) · FW cruise: forward thrust (80°)</text>
-    <rect x="18" y="167" width="8" height="8" fill="#191919" stroke="#888" stroke-width="1.5"/>
-    <text x="30" y="175" fill="#777" font-size="8">M4 — tail vertical lift · fixed upward · VTOL lift only · stops when FW transition complete</text>
-  </svg>
+  <div class="dg-scroll">
+  <svg viewBox="0 0 640 384" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-560" role="img" aria-labelledby="svg-motors-t svg-motors-d"><title id="svg-motors-t">Heewing T2 Cruza motor configuration — top view and tilt side view</title><desc id="svg-motors-d">Three motors: M1 and M2 on the wings tilt about the spanwise tilt axis from 0° (vertical lift) forward; M4 on the tail gives VTOL lift only and stops after the transition. Propeller rotation directions: TBD, confirm on the airframe; the front pair must turn in opposite directions. Side view: 0° in VTOL, 80° = Q_TILT_MAX during the transition until airspeed, fully forward in fixed-wing flight; tilt rate 40°/s.</desc><defs><marker id="mot-ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--amber)"/></marker><marker id="mot-ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--text)"/></marker><marker id="mot-ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--green)"/></marker><marker id="mot-ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker></defs><text x="16" y="22" font-size="14" fill="var(--muted)" letter-spacing="2">MOTORS — TOP VIEW</text><line x1="196" y1="44" x2="196" y2="30" stroke="var(--muted)" marker-end="url(#mot-ah-text)"/><text x="206" y="40" font-size="13" fill="var(--muted)">FWD</text><rect x="184" y="48" width="24" height="196" rx="10" fill="var(--surface2)" stroke="var(--dim)" stroke-width="1.5"/><polygon points="196,104 30,128 44,150 184,126 208,126 348,150 362,128" fill="var(--surface2)" stroke="var(--dim)" stroke-width="1.5"/><line x1="14" y1="128" x2="378" y2="128" stroke="var(--amber)" stroke-dasharray="6,4"/><text x="240" y="120" font-size="13" fill="var(--amber)">TILT AXIS</text><circle cx="60" cy="128" r="28" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><text x="60" y="126" font-size="15" fill="var(--accent)" text-anchor="middle" font-weight="bold">M1</text><text x="60" y="142" font-size="13" fill="var(--accent)" text-anchor="middle">TILT</text><path d="M30,104 A38,38 0 0,1 90,104" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><circle cx="332" cy="128" r="28" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/><text x="332" y="126" font-size="15" fill="var(--accent)" text-anchor="middle" font-weight="bold">M2</text><text x="332" y="142" font-size="13" fill="var(--accent)" text-anchor="middle">TILT</text><path d="M302,104 A38,38 0 0,1 362,104" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><circle cx="196" cy="268" r="26" fill="var(--surface)" stroke="var(--text)" stroke-width="2"/><text x="196" y="266" font-size="15" fill="var(--text)" text-anchor="middle" font-weight="bold">M4</text><text x="196" y="282" font-size="13" fill="var(--text)" text-anchor="middle">LIFT</text><path d="M168,294 A38,38 0 0,0 224,294" fill="none" stroke="var(--amber)" stroke-width="1.5" stroke-dasharray="4,3" marker-start="url(#mot-ah-amber)" marker-end="url(#mot-ah-amber)"/><text x="16" y="186" font-size="13" fill="var(--amber)">prop rotation</text><text x="16" y="202" font-size="13" fill="var(--amber)" font-weight="bold">CW / CCW: TBD</text><text x="16" y="218" font-size="13" fill="var(--amber)">confirm on the</text><text x="16" y="234" font-size="13" fill="var(--amber)">airframe</text><rect x="398" y="34" width="230" height="250" fill="var(--bg)" stroke="var(--border2)"/><text x="410" y="56" font-size="14" fill="var(--muted)" letter-spacing="1">TILT — SIDE VIEW</text><text x="612" y="56" font-size="13" fill="var(--muted)" text-anchor="end">FWD →</text><line x1="420" y1="214" x2="600" y2="214" stroke="var(--dim)" stroke-width="6" stroke-linecap="round"/><text x="424" y="240" font-size="13" fill="var(--muted)">wing</text><circle cx="470" cy="214" r="6" fill="var(--accent)"/><line x1="470" y1="214" x2="470" y2="100" stroke="var(--green)" stroke-width="3" marker-end="url(#mot-ah-green)"/><text x="480" y="96" font-size="13" fill="var(--green)" font-weight="bold">0° VTOL lift</text><line x1="470" y1="214" x2="578.3" y2="194.9" stroke="var(--amber)" stroke-width="3" marker-end="url(#mot-ah-amber)"/><text x="500" y="170" font-size="13" fill="var(--amber)" font-weight="bold">80° Q_TILT_MAX</text><text x="500" y="154" font-size="13" fill="var(--amber)">transition:</text><line x1="470" y1="214" x2="590" y2="214" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#mot-ah-accent)"/><text x="500" y="268" font-size="13" fill="var(--accent)">FW: fully forward</text><text x="410" y="128" font-size="13" fill="var(--muted)">rate</text><text x="410" y="144" font-size="13" fill="var(--muted)">40°/s</text><text x="16" y="316" font-size="13" fill="var(--text)">M1/M2 wing motors: VTOL lift (0°) and fixed-wing thrust.</text><text x="16" y="334" font-size="13" fill="var(--text)">M4 tail: VTOL lift only, stops when the transition is complete.</text><text x="16" y="352" font-size="13" fill="var(--muted)">Q_TILT_MAX = tilt held during the transition until airspeed</text><text x="16" y="370" font-size="13" fill="var(--muted)">(ArduPilot tilt-rotor guide) — VERIFY against the param file.</text></svg>
+  <div class="dg-cap">Tri tilt-rotor (<code>Q_FRAME_CLASS</code> 7): M1/M2 tilt, M4 lift only. Prop directions: <span class="warn-val">TBD — confirm on the airframe</span> (ArduPilot: the front pair must turn in opposite directions, or roll and pitch inputs cause adverse yaw).</div></div>
 
   <div class="section-title">Transition Parameters</div>
   <div class="tbl-wrap"><table>
@@ -874,7 +843,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <figcaption>T2 Cruza — vendor render · ArduPlane / QuadPlane · own annotated photos to follow</figcaption>
     </figure>
   </div>
-  <div class="diagram-slot" data-diagram="D9">Carrier antenna layout — HM30 antennas, VRX patches (inward), ELRS module antenna, GPS, 915 RX; separation distances (co-site)</div>
+  <div class="diagram-slot" data-diagram="D9"><figure class="dg"><a href="img/diagrams/d09-antenna-layout.svg" target="_blank" rel="noopener"><img src="img/diagrams/d09-antenna-layout.svg" width="400" height="1168" loading="lazy" decoding="async" alt="Diagram D9: schematic top and rear views; VRX patch 1 boresight horizontal right (90°), patch 2 right and 45° down (135°), orbit centre on the right (clockwise). Antennas: HM30 air unit, VRX patches, ELRS TX module, ELRS RX 915, GPS — positions TBD. Co-site test 7 TBD; 25 MHz harmonics near 5800 MHz and GPS L1."></a><figcaption><strong>D9</strong> · Carrier antenna layout — schematic; mounting positions and separations TBD (own photos, test 7). VRX patches face the right wing (inward). Tap to open full size.</figcaption></figure></div>
 
   <div class="section-title">Battery &amp; Power</div>
   <div class="tbl-wrap"><table>
@@ -890,43 +859,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     </tbody>
   </table></div>
 
-  <!-- Voltage scale: 19.8–25.2V = x 40–660 (620px). x = 40 + (V-19.8)/5.4 × 620
-       22.2V → x=315  |  23.0V → x=407  |  24.6V → x=591  |  25.2V → x=660 -->
-  <svg viewBox="0 0 700 100" xmlns="http://www.w3.org/2000/svg" class="man-svg ov">
-    <text x="350" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">CARRIER BATTERY — 6S LiPo VOLTAGE REFERENCE</text>
-    <!-- colour zones -->
-    <rect x="40"  y="24" width="275" height="26" fill="#ef444422"/><!-- CRITICAL: 19.8–22.2V -->
-    <rect x="315" y="24" width="92"  height="26" fill="#facc1522"/><!-- RETURN NOW: 22.2–23.0V -->
-    <rect x="407" y="24" width="115" height="26" fill="#22c55e14"/><!-- NORMAL: 23.0–24.0V -->
-    <rect x="522" y="24" width="138" height="26" fill="#22c55e28"/><!-- GOOD: 24.0–25.2V -->
-    <rect x="40"  y="24" width="620" height="26" fill="none" stroke="#333" stroke-width="1"/>
-    <line x1="315" y1="24" x2="315" y2="50" stroke="#2a2a2a" stroke-width="1"/>
-    <line x1="407" y1="24" x2="407" y2="50" stroke="#2a2a2a" stroke-width="1"/>
-    <line x1="522" y1="24" x2="522" y2="50" stroke="#2a2a2a" stroke-width="1"/>
-    <!-- zone labels inside bar -->
-    <text x="177" y="41" fill="#ef4444" font-size="8" text-anchor="middle" letter-spacing="1">CRITICAL</text>
-    <text x="361" y="41" fill="#facc15" font-size="8" text-anchor="middle" letter-spacing="1">RETURN</text>
-    <text x="464" y="41" fill="#22c55e" font-size="8" text-anchor="middle" letter-spacing="1">NORMAL</text>
-    <text x="591" y="41" fill="#22c55e" font-size="8" text-anchor="middle" letter-spacing="1">GOOD</text>
-    <!-- tick marks -->
-    <line x1="40"  y1="50" x2="40"  y2="58" stroke="#ef4444" stroke-width="1.5"/>
-    <line x1="315" y1="50" x2="315" y2="58" stroke="#ef4444" stroke-width="2"/>
-    <line x1="407" y1="50" x2="407" y2="58" stroke="#facc15" stroke-width="2"/>
-    <line x1="591" y1="50" x2="591" y2="58" stroke="#22c55e" stroke-width="1.5"/>
-    <line x1="660" y1="50" x2="660" y2="58" stroke="#22c55e" stroke-width="1.5"/>
-    <!-- voltage values -->
-    <text x="40"  y="69" fill="#ef4444" font-size="9" text-anchor="middle">19.8V</text>
-    <text x="315" y="69" fill="#ef4444" font-size="9" text-anchor="middle">22.2V</text>
-    <text x="407" y="69" fill="#facc15" font-size="9" text-anchor="middle">23.0V</text>
-    <text x="591" y="69" fill="#22c55e" font-size="9" text-anchor="middle">24.6V</text>
-    <text x="660" y="69" fill="#22c55e" font-size="9" text-anchor="middle">25.2V</text>
-    <!-- sub-labels -->
-    <text x="40"  y="81" fill="#ef444466" font-size="7" text-anchor="middle">3.3V/cell</text>
-    <text x="315" y="81" fill="#ef444466" font-size="7" text-anchor="middle">BATT_CRT → QLAND</text>
-    <text x="407" y="81" fill="#facc1566" font-size="7" text-anchor="middle">MANUAL RTL</text>
-    <text x="591" y="81" fill="#22c55e66" font-size="7" text-anchor="middle">4.1V/cell charged</text>
-    <text x="660" y="81" fill="#22c55e66" font-size="7" text-anchor="middle">4.2V/cell</text>
-  </svg>
+  <div class="dg-gauge-wrap" id="ac-batt-gauge"><p class="warn-val">Battery gauge is drawn from the carrier pack profile — if this text stays, the page scripts did not load.</p></div>
 
 </div>
 
@@ -936,65 +869,9 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="section-title">Minimum Mission Structure</div>
   <p>These 7 waypoints must be loaded and verified before every flight. The altitude profile below shows the intended flight path. All altitudes are REL (above home).</p>
 
-  <svg viewBox="0 0 860 315" xmlns="http://www.w3.org/2000/svg" class="man-svg w860">
-
-    <!-- Altitude reference lines -->
-    <line x1="46" y1="265" x2="845" y2="265" stroke="#2a2a2a" stroke-width="1"/>
-    <line x1="46" y1="205" x2="845" y2="205" stroke="#1e1e1e" stroke-width="0.5" stroke-dasharray="3,7"/>
-    <line x1="46" y1="65"  x2="845" y2="65"  stroke="#1e1e1e" stroke-width="0.5" stroke-dasharray="3,7"/>
-
-    <!-- Y-axis labels -->
-    <text x="42" y="269" fill="#555" font-size="9" text-anchor="end">GND</text>
-    <text x="42" y="209" fill="#555" font-size="9" text-anchor="end">~30m</text>
-    <text x="42" y="69"  fill="#555" font-size="9" text-anchor="end">relay</text>
-
-    <!-- VTOL takeoff: dashed vertical from ground up to transition alt, then short horizontal to WP2 -->
-    <line x1="90" y1="265" x2="90"  y2="205" stroke="#f97316" stroke-width="2" stroke-dasharray="5,3"/>
-    <line x1="90" y1="205" x2="185" y2="205" stroke="#f97316" stroke-width="2.5"/>
-
-    <!-- Main fixed-wing path: WP2 → WP3 → WP4 → WP5 → WP6, then short horizontal to WP7 x-pos -->
-    <polyline points="185,205 335,65 500,65 635,155 750,220 810,220" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round"/>
-
-    <!-- VTOL landing: short horizontal at approach alt into WP7, then dashed vertical to ground -->
-    <line x1="810" y1="220" x2="810" y2="265" stroke="#f97316" stroke-width="2" stroke-dasharray="5,3"/>
-
-    <!-- WP circles — 7 total -->
-    <circle cx="90"  cy="265" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2.5"/>
-    <circle cx="185" cy="205" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2.5"/>
-    <circle cx="335" cy="65"  r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2.5"/>
-    <circle cx="500" cy="65"  r="9" fill="#f97316" stroke="#f97316" stroke-width="2"/>
-    <circle cx="635" cy="155" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2.5"/>
-    <circle cx="750" cy="220" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2.5"/>
-    <circle cx="810" cy="265" r="7" fill="#0f0f0f" stroke="#f97316" stroke-width="2.5"/>
-
-    <!-- WP number labels -->
-    <text x="90"  y="283" fill="#f97316" font-size="10" text-anchor="middle" font-weight="bold">WP1</text>
-    <text x="185" y="191" fill="#f97316" font-size="10" text-anchor="middle" font-weight="bold">WP2</text>
-    <text x="335" y="51"  fill="#f97316" font-size="10" text-anchor="middle" font-weight="bold">WP3</text>
-    <text x="500" y="51"  fill="#fff"    font-size="11" text-anchor="middle" font-weight="bold">WP4</text>
-    <text x="635" y="141" fill="#f97316" font-size="10" text-anchor="middle" font-weight="bold">WP5</text>
-    <text x="750" y="206" fill="#f97316" font-size="10" text-anchor="middle" font-weight="bold">WP6</text>
-    <text x="810" y="283" fill="#f97316" font-size="10" text-anchor="middle" font-weight="bold">WP7</text>
-
-    <!-- WP type labels (below ground line) -->
-    <text x="90"  y="298" fill="#555" font-size="8" text-anchor="middle">VTOL_TAKEOFF</text>
-    <text x="185" y="298" fill="#555" font-size="8" text-anchor="middle">WAYPOINT</text>
-    <text x="335" y="298" fill="#555" font-size="8" text-anchor="middle">LOITER_TO_ALT</text>
-    <text x="500" y="298" fill="#999" font-size="8" text-anchor="middle">WAYPOINT</text>
-    <text x="500" y="308" fill="#666" font-size="7" text-anchor="middle" font-style="italic">sortie-specific</text>
-    <text x="635" y="298" fill="#555" font-size="8" text-anchor="middle">LOITER_TO_ALT</text>
-    <text x="750" y="298" fill="#555" font-size="8" text-anchor="middle">WAYPOINT</text>
-    <text x="810" y="298" fill="#555" font-size="8" text-anchor="middle">VTOL_LAND</text>
-
-    <!-- VTOL phase annotations -->
-    <text x="74"  y="237" fill="#555" font-size="8" text-anchor="middle" transform="rotate(-90,74,237)">VTOL↑</text>
-    <text x="826" y="244" fill="#555" font-size="8" text-anchor="middle" transform="rotate(-90,826,244)">VTOL↓</text>
-
-    <!-- LOITER_TO_ALT orbit annotations -->
-    <text x="335" y="80" fill="#666" font-size="8" text-anchor="middle">↺ climb to relay alt</text>
-    <text x="635" y="170" fill="#666" font-size="8" text-anchor="middle">↺ descend to approach</text>
-
-  </svg>
+  <div class="dg-scroll">
+  <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-780" role="img" aria-labelledby="svg-mission-t svg-mission-d"><title id="svg-mission-t">7-waypoint mission altitude profile (REL m), with distances, transition corridor, abort branch and back-transition</title><desc id="svg-mission-d">Altitude scale 0–150 m REL. WP1 VTOL_TAKEOFF 20–30 m at the launch point. Transition corridor WP1 to WP2, 100–200 m into wind, clear of obstacles to 60 m; WP2 WAYPOINT 50–80 m, 300 m or more clear beyond. Abort: no airspeed within 3 s → QHOVER; Q_TRANS_FAIL 4 s → automatic QLand (verify). WP3 LOITER_TO_ALT climbs to the relay altitude (60–140 m, per site); WP4 sortie-specific orbit centre at relay altitude; WP5 LOITER_TO_ALT 30–40 m, 400 m or more upwind of the landing zone; WP6 WAYPOINT 20–25 m; back-transition glide about 100–130 m (10 s); WP7 VTOL_LAND. Horizontal distances not to scale.</desc><defs><marker id="mis-ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--red)"/></marker><marker id="mis-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs><line x1="70" y1="300" x2="890" y2="300" stroke="var(--border2)" stroke-width="1.5"/><text x="62" y="304" font-size="13" fill="var(--muted)" text-anchor="end">0</text><line x1="70" y1="260" x2="890" y2="260" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="264" font-size="13" fill="var(--muted)" text-anchor="end">25</text><line x1="70" y1="220" x2="890" y2="220" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="224" font-size="13" fill="var(--muted)" text-anchor="end">50</text><line x1="70" y1="180" x2="890" y2="180" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="184" font-size="13" fill="var(--muted)" text-anchor="end">75</text><line x1="70" y1="140" x2="890" y2="140" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="144" font-size="13" fill="var(--muted)" text-anchor="end">100</text><line x1="70" y1="100" x2="890" y2="100" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="104" font-size="13" fill="var(--muted)" text-anchor="end">125</text><line x1="70" y1="60" x2="890" y2="60" stroke="var(--border2)" stroke-width="0.5" stroke-dasharray="3,6"/><text x="62" y="64" font-size="13" fill="var(--muted)" text-anchor="end">150</text><text x="62" y="40" font-size="13" fill="var(--muted)" text-anchor="end">REL m</text><rect x="110" y="204" width="150" height="96" fill="var(--green)" fill-opacity="0.08" stroke="var(--green)" stroke-dasharray="4,4"/><text x="130" y="280.8" font-size="13" fill="var(--green)">corridor clear to 60 m</text><rect x="400" y="76" width="200" height="128" fill="var(--accent)" fill-opacity="0.07"/><text x="408" y="92" font-size="13" fill="var(--accent)">relay altitude 60–140 m</text><text x="408" y="108" font-size="13" fill="var(--muted)">(per site — relay table)</text><line x1="110" y1="300" x2="110" y2="260" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,3"/><polyline points="110,260 260,196 400,140 540,140 680,244 790,264.8" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/><line x1="790" y1="264.8" x2="860" y2="264.8" stroke="var(--accent)" stroke-width="2.5" stroke-dasharray="2,3"/><line x1="860" y1="264.8" x2="860" y2="300" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5,3"/><line x1="96" y1="268" x2="96" y2="252" stroke="var(--amber)" stroke-width="4"/><line x1="274" y1="220" x2="274" y2="172" stroke="var(--amber)" stroke-width="4"/><line x1="694" y1="252" x2="694" y2="236" stroke="var(--amber)" stroke-width="4"/><line x1="776" y1="268" x2="776" y2="260" stroke="var(--amber)" stroke-width="4"/><circle cx="110" cy="300" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="260" cy="196" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="400" cy="140" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="540" cy="140" r="9" fill="var(--accent)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="680" cy="244" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="790" cy="264.8" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="860" cy="300" r="7" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/><polyline points="190,225.9 180,92" fill="none" stroke="var(--red)" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#mis-ah-red)"/><text x="84" y="64" font-size="13" fill="var(--red)" font-weight="bold">ABORT: no airspeed in 3 s → QHOVER</text><text x="84" y="82" font-size="13" fill="var(--red)">(4 s: automatic QLand — VERIFY)</text><text x="110" y="286" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP1</text><text x="110" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">VTOL_TAKEOFF</text><text x="260" y="182" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP2</text><text x="260" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="400" y="126" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP3</text><text x="400" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">LOITER_TO_ALT</text><text x="540" y="126" font-size="14" fill="var(--text)" text-anchor="middle" font-weight="bold">WP4</text><text x="540" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="680" y="230" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP5</text><text x="680" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">LOITER_TO_ALT</text><text x="790" y="250.8" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP6</text><text x="790" y="333" font-size="13" fill="var(--muted)" text-anchor="middle">WAYPOINT</text><text x="860" y="286" font-size="14" fill="var(--accent)" text-anchor="middle" font-weight="bold">WP7</text><text x="860" y="318" font-size="13" fill="var(--muted)" text-anchor="middle">VTOL_LAND</text><text x="132" y="264" font-size="13" fill="var(--amber)">20–30 m</text><text x="282" y="168" font-size="13" fill="var(--amber)">50–80 m</text><text x="702" y="232" font-size="13" fill="var(--amber)">30–40 m</text><text x="768" y="252" font-size="13" fill="var(--amber)" text-anchor="end">20–25 m</text><text x="540" y="166" font-size="13" fill="var(--muted)" text-anchor="middle">sortie-specific</text><line x1="110" y1="352" x2="260" y2="352" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="185" y="368" font-size="13" fill="var(--muted)" text-anchor="middle">100–200 m into wind</text><line x1="260" y1="380" x2="380" y2="380" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="320" y="396" font-size="13" fill="var(--muted)" text-anchor="middle">300 m+ clear beyond</text><line x1="680" y1="352" x2="860" y2="352" stroke="var(--muted)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="770" y="368" font-size="13" fill="var(--muted)" text-anchor="middle">400 m+ upwind of LZ</text><line x1="790" y1="380" x2="860" y2="380" stroke="var(--accent)" marker-start="url(#mis-ah-muted)" marker-end="url(#mis-ah-muted)"/><text x="880" y="400" font-size="13" fill="var(--accent)" text-anchor="end">back-transition glide ≈100–130 m (10 s)</text><text x="890" y="26" font-size="13" fill="var(--muted)" text-anchor="end">horizontal: not to scale</text></svg>
+  <div class="dg-cap">Altitudes from the 7-WP template (Mission Planning). Relay altitude per site (relay-altitude table). Scroll sideways on a phone.</div></div>
 
   <div class="tbl-wrap"><table>
     <thead><tr><th>WP</th><th>Type</th><th>Purpose</th><th>Pilot action</th></tr></thead>
@@ -1022,7 +899,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td>Back-transition</td><td>10s window, M1/M2 tilt smoothly back to vertical</td><td>Oscillation during back-transition → QHOVER override</td></tr>
     </tbody>
   </table></div>
-  <div class="alert alert-warn">Do not wait for Q_TRANS_FAIL. If airspeed has not built within <strong>3s</strong>, or the transition looks wrong, switch QHOVER immediately. The automatic action at 4s is <strong>QLand at the current position</strong>, not a hover. An aborted transition near transition altitude is recoverable — a stall is not. Transition <strong>into wind</strong>.</div>
+  <div class="alert alert-warn">Do not wait for Q_TRANS_FAIL. If airspeed has not built within <strong>3s</strong>, or the transition looks wrong, switch QHOVER immediately. The automatic action at 4s is <strong>QLand at the current position</strong> (<span class="warn-val">VERIFY — against the firmware version in use</span>), not a hover. An aborted transition near transition altitude is recoverable — a stall is not. Transition <strong>into wind</strong>.</div>
 
 </div>
 
@@ -1041,7 +918,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="step"><div class="step-n">7</div><div class="step-body"><strong>Camera check</strong><p>Switch the camera on in the GCS app → carrier camera RTSP picture shows → the app reports camera ON (read-back). Then set it to the state planned for the sortie — normally <strong>OFF</strong> before the client launches, unless relay-design test 9 has passed.</p></div></div>
     <div class="step"><div class="step-n">8</div><div class="step-body"><strong>915 MHz Nomad (last)</strong><p>Power the Nomad. RC visible in Mission Planner, no pre-arm errors.</p></div></div>
   </div>
-  <div class="diagram-slot" data-diagram="D10">Ground station layout — mast + HM30, laptop, screens, controller, crew positions, cable routing</div>
+  <div class="diagram-slot" data-diagram="D10"><figure class="dg"><a href="img/diagrams/d10-ground-station.svg" target="_blank" rel="noopener"><img src="img/diagrams/d10-ground-station.svg" width="400" height="840" loading="lazy" decoding="async" alt="Diagram D10: HM30 ground unit on the mast (6S 3000 mAh), Ethernet to the Windows laptop; screen A Mission Planner, screen B over USB-C client video and GCS app status (per crew agreement); laptop on mains, never sleeps; Carrier Pilot with MP and the Nomad 915 for close range; FPV Pilot with the EdgeTX radio as USB joystick, RF off; both co-located, verbal calls only."></a><figcaption><strong>D10</strong> · Ground station layout — mast with the HM30, GCS laptop and second screen, EdgeTX radio, crew positions and cables. Tap to open full size.</figcaption></figure></div>
 
   <div class="alert alert-info" id="carrier-only"><strong>Carrier-only flights:</strong> with the proposed firmware change (camera ON until a client RC stream starts) the camera works without the GCS app. Until then the carrier camera needs the app's <strong>carrier-only mode</strong>. Carrier-only mode sends the arm channel at <strong>DISARM</strong> to whatever ELRS receiver is bound to the relay's TX module — it would disarm a flying client. The app therefore allows it only after a typed <code>NOCLIENT</code> confirmation (no client powered or bound), refuses it while any client telemetry was heard in the last 30 s, and asks for <code>LANDED</code> as well after any FPV stream in the same app session.</div>
 
@@ -1054,7 +931,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   </div>
 
   <div class="section-title">Transition — VTOL → Fixed Wing</div>
-  <div class="alert alert-danger">Highest-risk phase. Transition into wind. If pitch-down is aggressive or airspeed does not build within 3s: revert to QHOVER immediately. Do not wait for Q_TRANS_FAIL (4s) — its automatic action is QLand at the current position (VERIFY against the firmware).</div>
+  <div class="alert alert-danger">Highest-risk phase. Transition into wind. If pitch-down is aggressive or airspeed does not build within 3s: revert to QHOVER immediately. Do not wait for Q_TRANS_FAIL (4s) — its automatic action is QLand at the current position (<span class="warn-val">VERIFY against the firmware</span>).</div>
   <div class="card amber">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Switch to <span class="mbadge m-fbwb">FBWB</span></strong><p>Nomad switch position 2. M1/M2 tilt motors begin rotating forward and build forward thrust.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Monitor 3s transition window</strong><p>Target 13 m/s. Minimum 11 m/s. No airspeed build within 3s: QHOVER immediately.</p></div></div>
@@ -1185,13 +1062,13 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>BRIDGE NOT RUN</code> (<code>bridge_not_run</code>)</td><td class="crit-val">CRIT</td><td>Streaming and the bridge reports a state other than RUN</td><td>FAILSAFE → "BRIDGE FAILSAFE". Emergency cards CLIENT RC LOSS / RELAY PCB.</td></tr>
     <tr><td><code>FPV FAILSAFE</code> (<code>client_failsafe</code>)</td><td class="crit-val">CRIT</td><td>Client flight mode contains <code>!FS!</code></td><td>"FPV FAILSAFE" — FPV Pilot hands off, carrier holds orbit.</td></tr>
     <tr><td><code>FPV RTH</code> (<code>client_rth</code>)</td><td class="crit-val">CRIT</td><td>Client flight mode <code>RTH</code></td><td>"FPV RTH". Keep the carrier on station until the client has landed.</td></tr>
-    <tr><td><code>FPV TELEMETRY LOST</code> (<code>client_telemetry_stale</code>)</td><td class="crit-val">CRIT</td><td>In FPV mode, no client telemetry for &gt; 2 s</td><td>"FPV TELEMETRY LOST". <strong>The primary client-loss alarm</strong>: a real ELRS TX module may stop telemetry when its input stops, so "FPV FAILSAFE" may never arrive. Values shown are then old.</td></tr>
+    <tr><td><code>FPV TELEMETRY LOST</code> (<code>client_telemetry_stale</code>)</td><td class="crit-val">CRIT</td><td>No client telemetry for &gt; 2 s while the app streams RC in FPV mode</td><td>"FPV TELEMETRY LOST". <strong>The primary client-loss alarm</strong>: a real ELRS TX module may stop telemetry when its input stops, so "FPV FAILSAFE" may never arrive. Values shown are then old.</td></tr>
     <tr><td><code>FPV LINK WEAK</code> (<code>client_link_weak</code>)</td><td>WARN</td><td>Client uplink LQ &lt; 70 %</td><td>"FPV LINK WEAK" — bring the client closer or move the orbit.</td></tr>
     <tr><td><code>FPV BATT LOW</code> (<code>client_batt_low</code>)</td><td>WARN</td><td>Client per-cell voltage &lt; 3.50 V (reference client warning level)</td><td>"FPV BATT LOW — RETURNING".</td></tr>
     <tr><td><code>FPV SATS LOW</code> (<code>client_sats_low</code>)</td><td>WARN</td><td>Client satellites &lt; 8 (reference client GPS Rescue minimum)</td><td>"FPV SATS LOW" — GPS Rescue may not work.</td></tr>
     <tr><td><code>FPV RESCUE NOT READY</code> (<code>client_rescue_not_ready</code>)</td><td>WARN</td><td>Disarmed flight-mode suffix <code>?</code> — GPS Rescue configured, no fix</td><td>Do not launch the client (checklist E).</td></tr>
     <tr><td><code>RC RTT HIGH</code> (<code>rtt_high</code>)</td><td>WARN</td><td>Streaming and RTT above the threshold — <span class="warn-val">TBD, inactive until the HM30 RTT is measured</span></td><td>"RC LINK DEGRADED".</td></tr>
-    <tr><td><code>RTT RISING - CAMERA ON</code> (<code>rtt_rising_camera</code>)</td><td>WARN</td><td>Camera reported ON and RTT rising compared with before (threshold <span class="warn-val">TBD — after relay-design test 9</span>)</td><td>HM30 saturating — camera OFF, "CAMERA OFF".</td></tr>
+    <tr><td><code>RTT RISING - CAMERA ON</code> (<code>rtt_rising_camera</code>)</td><td>WARN</td><td>Camera reported ON and the median RTT of the last 5 s since then is above the 99th percentile of the 5 s before it (or above that median + <code>alarms.rtt_rise_ms</code> when set: <span class="warn-val">TBD — after relay-design test 9</span>)</td><td>HM30 saturating — camera OFF, "CAMERA OFF".</td></tr>
     <tr><td><code>CAMERA STATE MISMATCH</code> (<code>camera_mismatch</code>)</td><td>WARN</td><td>Bridge in START/RUN and camera requested ≠ reported for &gt; 1 s</td><td>Emergency card CAMERA LOSS.</td></tr>
     <tr><td><code>SEND JITTER HIGH</code> (<code>send_jitter_high</code>)</td><td>WARN</td><td>Streaming and a packet sent more than 2 ms late, or a skipped send slot, in the last second</td><td>Laptop timing problem — check the power plan and close heavy programs. "RC LINK DEGRADED" if it persists.</td></tr>
     <tr><td><code>GCS LAPTOP ON BATTERY</code> (<code>gcs_on_battery</code>)</td><td>WARN</td><td>Laptop not on mains</td><td>Connect mains (S-02a).</td></tr>
@@ -1210,7 +1087,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>UNREACHABLE</code></td><td>App side: no bridge status within 300 ms</td><td>Always the case before streaming — the bridge only answers a GCS that streams</td></tr>
     </tbody>
   </table></div>
-  <div class="diagram-slot" data-diagram="D5">Bridge state machine (also on the Relay Electronics tab)</div>
+  <div class="diagram-slot" data-diagram="D5"><figure class="dg"><a href="img/diagrams/d05-bridge-states.svg" target="_blank" rel="noopener"><img src="img/diagrams/d05-bridge-states.svg" width="400" height="840" loading="lazy" decoding="async" alt="Diagram D5: BOOT (no CRSF) to WAIT_GCS when the peripherals and W5500 are up; WAIT_GCS to START after 5 consecutive valid packets; START sends ModelID three times then RUN; RUN sends RC frames every tick and goes to FAILSAFE when no valid packet arrives for T_hold (start 250 ms); FAILSAFE is silent and returns immediately to WAIT_GCS. Watchdog about 100 ms resets to BOOT. App shows UNREACHABLE without status for 300 ms. LED patterns TBD."></a><figcaption><strong>D5</strong> · Bridge state machine — BOOT → WAIT_GCS → START → RUN → FAILSAFE → WAIT_GCS. LED patterns: TBD (firmware). Tap to open full size.</figcaption></figure></div>
 
   <div class="tbl-wrap"><table id="prearm-app" class="prearm-filter">
     <thead><tr><th>App message / exit code</th><th>Cause</th><th>Fix</th></tr></thead>
@@ -1225,7 +1102,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td>Exit code 5</td><td>Start-up failure (e.g. the local UDP port is taken)</td><td>Close the program holding the port</td></tr>
     </tbody>
   </table></div>
-  <div class="diagram-slot" data-diagram="D12">Troubleshooting trees — "No client video" and "No client RC", using the app status and LEDs</div>
+  <div class="diagram-slot" data-diagram="D12"><figure class="dg"><a href="img/diagrams/d12-troubleshooting.svg" target="_blank" rel="noopener"><img src="img/diagrams/d12-troubleshooting.svg" width="400" height="1426" loading="lazy" decoding="async" alt="Diagram D12: no client RC — app sending? bridge status and RTT shown? bridge RUN? client LQ at least 70 %? each &quot;no&quot; leads to app/controller, HM30 link, bridge failsafe or ELRS RF. No client video — clean picture? decoder locked? RTT and MP telemetry OK? viewer on the right port (5601, MP HUD 5602, MP not on 5600)?"></a><figcaption><strong>D12</strong> · Troubleshooting trees — &quot;No client RC&quot; and &quot;No client video&quot;, from the GCS app status and the relay LEDs. Tap to open full size.</figcaption></figure></div>
 </div>
 
 <!-- ═══ ABBREVIATIONS ═══ -->
@@ -1397,7 +1274,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
   <div class="section-title">Role Overview</div>
   <p>This system requires <strong>two trained operators</strong> working co-located with verbal communications only. No radio or earpiece between pilots — both must be within normal speaking distance throughout the sortie.</p>
   <div class="alert alert-warn">Neither role may be filled by an untrained operator. A solo Carrier Pilot sortie is permitted only for carrier-only test flights with no relay operations.</div>
-  <div class="diagram-slot" data-diagram="D14">Crew swim-lane per phase — Carrier Pilot vs FPV Pilot actions and calls</div>
+  <div class="diagram-slot" data-diagram="D14"><figure class="dg"><a href="img/diagrams/d14-crew-swimlane.svg" target="_blank" rel="noopener"><img src="img/diagrams/d14-crew-swimlane.svg" width="400" height="983" loading="lazy" decoding="async" alt="Diagram D14: two lanes, Carrier Pilot and FPV Pilot, for setup and pre-arm, takeoff and transition, relay operations and recovery, with the actions and the callout phrases of each phase; either pilot may call ABORT ABORT ABORT."></a><figcaption><strong>D14</strong> · Crew swim-lane — Carrier Pilot and FPV Pilot actions and callouts per phase (phrases as on the Callouts tab). Tap to open full size.</figcaption></figure></div>
 
   <div class="section-title">Carrier Pilot — Prerequisites</div>
   <div class="card accent">
@@ -1432,7 +1309,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <tr><td>GCS companion app</td><td>Knows the start interlocks (normal start: arm switch DISARMED, throttle low), the <strong>two start paths</strong> (normal start for a client on the ground; <strong>RESUME (client airborne)</strong> with the arm switch ARMED and typed confirmations — never a normal start for an airborne client), how to read the status bar (bridge state, RTT, LQ, camera), and the callout for every app alarm.</td></tr>
       <tr><td>EdgeTX radio</td><td>Can set up and check the GCS-RELAY model: internal and external RF modules OFF, USB joystick, arm switch on the agreed channel.</td></tr>
       <tr><td>OSD literacy</td><td>Can read and respond to all OSD elements without hesitation: battery voltage, GPS sats, RSSI / link quality, home distance/direction, altitude, flight mode.</td></tr>
-      <tr><td>Client failsafe awareness</td><td>Knows the active client's failsafe (Reference client #1: GPS Rescue — activates after 2.5s link loss, climbs 30m, returns home at 100m REL at 7.5 m/s). Keeps hands off during a rescue; when the link returns, stick input above the threshold ends the rescue — only ever deliberately.</td></tr>
+      <tr><td>Client failsafe awareness</td><td>Knows the active client's failsafe (Reference client #1: GPS Rescue — activates after 2.5s link loss, climbs 30m, returns home at 100m REL at 7.5 m/s — return altitude with CURRENT_ALT: <span class="warn-val">VERIFY</span>). Keeps hands off during a rescue; when the link returns, stick input above the threshold ends the rescue — only ever deliberately.</td></tr>
       <tr><td>Callout discipline</td><td>Has practised all callouts with the Carrier Pilot on the ground. Calls must be timely and use agreed phrasing — no improvisation during flight.</td></tr>
       <tr><td>Link check</td><td>Can confirm, solo, before carrier takeoff: GCS app normal start, bridge RUN, client linked (binding phrase / model match), video in the viewer.</td></tr>
       </tbody>
@@ -1549,8 +1426,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <tbody>
       <tr><td>Activation delay</td><td class="warn-val">2.5s</td><td>1.5s stage 1 + 1s stage 2 before rescue triggers — plus the relay part (T_hold, TX module reaction): total <span class="warn-val">TBD — test 6</span></td></tr>
       <tr><td>Minimum satellites</td><td class="warn-val">8</td><td>Below 8 sats, GPS Rescue will NOT activate — client descends on failsafe throttle instead</td></tr>
-      <tr><td>Altitude mode</td><td>CURRENT_ALT</td><td>Climbs 30m above wherever the client is when the link is lost</td></tr>
-      <tr><td>Return altitude</td><td>100m</td><td>Cruises home at 100m above the client's launch point</td></tr>
+      <tr><td>Altitude mode</td><td>CURRENT_ALT</td><td>Climbs 30m above wherever the client is when the link is lost. <span class="warn-val">VERIFY — Betaflight 4.5 docs: the return altitude below applies to FIXED_ALT</span></td></tr>
+      <tr><td>Return altitude</td><td>100m</td><td>Cruises home at 100m above the client's launch point (<span class="warn-val">VERIFY — with CURRENT_ALT this may not apply</span>)</td></tr>
       <tr><td>Return speed</td><td>7.5 m/s</td><td>Horizontal return ground speed</td></tr>
       <tr><td>Descent start</td><td>20m from home</td><td>Begins descent when within 20m of home horizontally</td></tr>
       <tr><td>Descent rate</td><td>1.5 m/s</td><td>Slow controlled descent</td></tr>
@@ -1562,47 +1439,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="alert alert-danger">During a rescue the link is lost, so the sticks cannot reach the client. <strong>When the link returns, stick input above the threshold (30%) ends the rescue</strong> — only do so deliberately, to take back control.</div>
   </div>
 
-  <!-- GPS Rescue trajectory diagram (Reference client #1) -->
-  <svg viewBox="0 0 720 195" xmlns="http://www.w3.org/2000/svg" class="man-svg m16">
-    <rect x="0" y="158" width="720" height="37" fill="#1a1a1a"/>
-    <line x1="35" y1="158" x2="685" y2="158" stroke="#333" stroke-width="1"/>
-    <line x1="35" y1="22" x2="685" y2="22" stroke="#222" stroke-width="0.5" stroke-dasharray="4,7"/>
-    <text x="31" y="26" fill="#444" font-size="9" text-anchor="end">100m</text>
-    <text x="31" y="161" fill="#444" font-size="9" text-anchor="end">GND</text>
-    <text x="31" y="108" fill="#444" font-size="9" text-anchor="end">~50m</text>
-    <line x1="33" y1="106" x2="38" y2="106" stroke="#444" stroke-width="1"/>
-    <line x1="655" y1="158" x2="655" y2="130" stroke="#555" stroke-width="1.5"/>
-    <polygon points="655,130 672,137 655,144" fill="#444"/>
-    <text x="655" y="173" fill="#555" font-size="9" text-anchor="middle">HOME</text>
-    <line x1="618" y1="158" x2="618" y2="150" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
-    <text x="618" y="148" fill="#444" font-size="7" text-anchor="middle">20m</text>
-    <line x1="640" y1="158" x2="640" y2="152" stroke="#ef444488" stroke-width="1"/>
-    <text x="640" y="150" fill="#ef444488" font-size="7" text-anchor="middle">4m</text>
-    <g transform="translate(90,106)">
-      <line x1="-7" y1="-7" x2="7" y2="7" stroke="#f97316" stroke-width="1.5"/>
-      <line x1="7" y1="-7" x2="-7" y2="7" stroke="#f97316" stroke-width="1.5"/>
-      <circle cx="-8" cy="-8" r="2.5" fill="#f97316" opacity="0.8"/>
-      <circle cx="8" cy="-8" r="2.5" fill="#f97316" opacity="0.8"/>
-      <circle cx="-8" cy="8" r="2.5" fill="#f97316" opacity="0.8"/>
-      <circle cx="8" cy="8" r="2.5" fill="#f97316" opacity="0.8"/>
-      <circle cx="0" cy="0" r="3" fill="#0f0f0f" stroke="#f97316" stroke-width="1.5"/>
-    </g>
-    <text x="90" y="96" fill="#ef4444" font-size="9" text-anchor="middle" letter-spacing="1">LINK LOST</text>
-    <text x="90" y="188" fill="#ef444466" font-size="8" text-anchor="middle">2.5s delay</text>
-    <polyline points="90,106 90,22 612,22" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    <polyline points="612,22 638,152" fill="none" stroke="#f97316" stroke-width="2"/>
-    <line x1="638" y1="152" x2="652" y2="158" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,2"/>
-    <circle cx="638" cy="152" r="3" fill="#ef4444"/>
-    <line x1="70" y1="106" x2="70" y2="64" stroke="#facc15" stroke-width="1" opacity="0.7"/>
-    <line x1="66" y1="106" x2="74" y2="106" stroke="#facc15" stroke-width="1" opacity="0.7"/>
-    <line x1="66" y1="64"  x2="74" y2="64"  stroke="#facc15" stroke-width="1" opacity="0.7"/>
-    <text x="58" y="87" fill="#facc15" font-size="8" text-anchor="middle" transform="rotate(-90,58,87)" opacity="0.9">+30m</text>
-    <text x="62" y="48" fill="#f97316" font-size="8" text-anchor="middle" transform="rotate(-90,62,48)">CLIMB</text>
-    <text x="350" y="16" fill="#f97316" font-size="9" text-anchor="middle" letter-spacing="1">CRUISE HOME — 7.5 m/s AT 100m REL</text>
-    <text x="636" y="85" fill="#f97316" font-size="8" text-anchor="start" transform="rotate(72,626,85)">DESCENT</text>
-    <text x="643" y="150" fill="#ef4444" font-size="8" text-anchor="start">LANDING PHASE</text>
-    <text x="360" y="188" fill="#ef444455" font-size="8" text-anchor="middle" letter-spacing="1">REQUIRES 8+ GPS SATS TO ACTIVATE</text>
-  </svg>
+  <div class="dg-scroll" id="ref-rescue-svg"><p class="warn-val">GPS Rescue diagram is drawn from the client profile — if this text stays, the page scripts did not load.</p></div>
 
   <div class="section-title">OSD Layout — Key Elements</div>
   <div class="card">
@@ -1791,7 +1628,7 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title">Operating Area — Video ∩ RC</div>
   <p>The client's operating area must lie inside <strong>both</strong> the client video coverage and the client RC coverage around the carrier's orbit — the intersection of the two. Each depends on its band, power and antennas (client profile and link profiles). Use the coverage MAP for both, per site.</p>
-  <div class="diagram-slot" data-diagram="D13">Coverage intersection — video polygon ∩ RC polygon = operating area; orbit-sweep inner zone</div>
+  <div class="diagram-slot" data-diagram="D13"><figure class="dg"><a href="img/diagrams/d13-coverage-intersection.svg" target="_blank" rel="noopener"><img src="img/diagrams/d13-coverage-intersection.svg" width="400" height="878" loading="lazy" decoding="async" alt="Diagram D13: overlapping video and RC coverage polygons with the operating area at their intersection; below, the orbit sweep with the always-covered inner zone (worst case over a full orbit) and the best-case union outside it."></a><figcaption><strong>D13</strong> · Coverage intersection — operating area = video ∩ RC; the orbit sweep's inner zone is covered at every point of the orbit. Illustrative: use the MAP. Tap to open full size.</figcaption></figure></div>
 
   <div class="section-title">Relay Altitude &amp; Orbit Geometry</div>
   <p>The carrier must maintain RF line-of-sight <strong>simultaneously</strong> to the ground station and to the client's operating area. Altitude is the primary tool.</p>
@@ -1809,63 +1646,9 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="alert alert-warn">The guidance depends on the bands in use. Lower bands (868 / 915 MHz) diffract more around obstacles but need a larger Fresnel-zone clearance; 2.4 GHz and the 5.8 GHz video need a clearer line of sight. Client RC and client video may be on different bands — the more demanding link sets the altitude. If the link budget is the constraint, increase relay altitude first before adjusting orbit radius, and check both links on the MAP.</div>
   </div>
 
-  <!-- Side-view LOS diagram: why altitude matters -->
-  <svg viewBox="0 0 700 185" xmlns="http://www.w3.org/2000/svg" class="man-svg m16">
-    <text x="350" y="12" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">RF LINE-OF-SIGHT — WHY RELAY ALTITUDE MATTERS</text>
-    <!-- Ground -->
-    <rect x="0" y="150" width="700" height="35" fill="#1a1a1a"/>
-    <line x1="20" y1="150" x2="680" y2="150" stroke="#333" stroke-width="1"/>
-    <!-- Terrain hump -->
-    <polygon points="155,150 220,95 310,75 400,95 460,150" fill="#222" stroke="#333" stroke-width="1"/>
-    <text x="310" y="92" fill="#444" font-size="8" text-anchor="middle">TERRAIN</text>
-    <!-- Ground station (left) -->
-    <rect x="22" y="130" width="70" height="20" rx="1" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
-    <text x="57" y="144" fill="#666" font-size="8" text-anchor="middle">GND STATION</text>
-    <line x1="57" y1="130" x2="57" y2="112" stroke="#555" stroke-width="1.5"/>
-    <line x1="44" y1="120" x2="57" y2="112" stroke="#555" stroke-width="1"/>
-    <line x1="70" y1="120" x2="57" y2="112" stroke="#555" stroke-width="1"/>
-    <!-- client drone (right) -->
-    <g transform="translate(620,120)">
-      <line x1="-6" y1="-6" x2="6" y2="6" stroke="#22c55e" stroke-width="1.5"/>
-      <line x1="6" y1="-6" x2="-6" y2="6" stroke="#22c55e" stroke-width="1.5"/>
-      <circle cx="-7" cy="-7" r="2" fill="#22c55e" opacity="0.8"/>
-      <circle cx="7" cy="-7" r="2" fill="#22c55e" opacity="0.8"/>
-      <circle cx="-7" cy="7" r="2" fill="#22c55e" opacity="0.8"/>
-      <circle cx="7" cy="7" r="2" fill="#22c55e" opacity="0.8"/>
-      <circle cx="0" cy="0" r="3" fill="#0f0f0f" stroke="#22c55e" stroke-width="1.5"/>
-    </g>
-    <text x="620" y="141" fill="#22c55e" font-size="8" text-anchor="middle">FPV</text>
-    <!-- CARRIER LOW (blocked) -->
-    <rect x="190" y="114" width="18" height="8" rx="1" fill="#f97316" opacity="0.6"/>
-    <polygon points="199,114 194,107 204,107" fill="#f97316" opacity="0.6"/>
-    <text x="199" y="104" fill="#f97316" font-size="8" text-anchor="middle" opacity="0.8">LOW</text>
-    <!-- LOS low: carrier→FPV — BLOCKED (red, behind terrain) -->
-    <line x1="208" y1="118" x2="614" y2="120" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,4" opacity="0.6"/>
-    <!-- Terrain intersection marker (X) at approx hill peak projection -->
-    <line x1="304" y1="79" x2="316" y2="91" stroke="#ef4444" stroke-width="2"/>
-    <line x1="316" y1="79" x2="304" y2="91" stroke="#ef4444" stroke-width="2"/>
-    <text x="330" y="80" fill="#ef4444" font-size="8">BLOCKED</text>
-    <!-- GS to carrier low: clear -->
-    <line x1="88" y1="140" x2="190" y2="120" stroke="#f97316" stroke-width="1" stroke-dasharray="3,4" opacity="0.4"/>
-    <!-- CARRIER HIGH (clear) -->
-    <rect x="190" y="38" width="18" height="8" rx="1" fill="#f97316"/>
-    <polygon points="199,38 194,31 204,31" fill="#f97316"/>
-    <text x="199" y="28" fill="#f97316" font-size="8" text-anchor="middle">HIGH</text>
-    <!-- LOS high: carrier→FPV — CLEAR (green) -->
-    <line x1="208" y1="42" x2="614" y2="118" stroke="#22c55e" stroke-width="1.5" opacity="0.8"/>
-    <!-- checkmark near FPV end -->
-    <text x="580" y="80" fill="#22c55e" font-size="11">✓</text>
-    <text x="572" y="90" fill="#22c55e" font-size="7">CLEAR</text>
-    <!-- GS to carrier high: clear -->
-    <line x1="88" y1="138" x2="190" y2="44" stroke="#22c55e" stroke-width="1" opacity="0.5"/>
-    <!-- Vertical arrow between low and high carrier -->
-    <line x1="215" y1="114" x2="215" y2="50" stroke="#555" stroke-width="1" stroke-dasharray="2,3"/>
-    <polygon points="215,48 211,57 219,57" fill="#555"/>
-    <text x="228" y="84" fill="#555" font-size="8">ALTITUDE</text>
-    <!-- Y-axis altitude labels -->
-    <text x="16" y="45" fill="#444" font-size="8" text-anchor="end">high</text>
-    <text x="16" y="122" fill="#444" font-size="8" text-anchor="end">low</text>
-  </svg>
+  <div class="dg-scroll">
+  <svg viewBox="0 0 700 392" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-600" role="img" aria-labelledby="svg-los-t svg-los-d"><title id="svg-los-t">RF line of sight and Fresnel zone — why relay altitude matters, for both links</title><desc id="svg-los-d">Two links: the HM30 IP link between the ground station mast and the carrier, and the client links (ELRS RC and analog video) between the carrier and the client. With the carrier low, the straight line to the client just clears the terrain but the first Fresnel zone is obstructed, so the link fades. With the carrier high, the line and the Fresnel zone are clear. Keep at least 60 % of the first Fresnel zone radius clear; lower bands need a larger zone.</desc><rect x="0" y="270" width="700" height="122" fill="var(--surface)"/><line x1="10" y1="270" x2="690" y2="270" stroke="var(--border2)"/><ellipse cx="420" cy="221" rx="221.4" ry="26" transform="rotate(6.5 420 221)" fill="var(--red)" fill-opacity="0.12" stroke="var(--red)" stroke-dasharray="5,4"/><ellipse cx="420" cy="156" rx="237.7" ry="26" transform="rotate(22.2 420 156)" fill="var(--green)" fill-opacity="0.08" stroke="var(--green)" stroke-dasharray="5,4"/><polygon points="230,270 300,232 340,216 380,232 450,270" fill="var(--surface2)" stroke="var(--dim)"/><text x="340" y="256" font-size="13" fill="var(--muted)" text-anchor="middle">TERRAIN</text><path d="M318,224 L340,216 L362,224 L352,214 L340,206 L328,214 Z" fill="var(--red)" fill-opacity="0.45"/><line x1="64" y1="270" x2="64" y2="196" stroke="var(--text)" stroke-width="2"/><text x="64" y="288" font-size="13" fill="var(--muted)" text-anchor="middle">GCS MAST</text><line x1="64" y1="196" x2="200" y2="196" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="6,4"/><line x1="64" y1="196" x2="200" y2="66" stroke="var(--text)" stroke-width="2"/><text x="108" y="116" font-size="13" fill="var(--text)" font-weight="bold" transform="rotate(-44 108 116)">HM30</text><line x1="200" y1="196" x2="640" y2="246" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="6,4"/><line x1="200" y1="66" x2="640" y2="246" stroke="var(--green)" stroke-width="2"/><polygon points="186,66 214,66 218,62 190,62" fill="var(--accent)"/><line x1="190" y1="64" x2="186" y2="54" stroke="var(--accent)" stroke-width="3"/><text x="200" y="48" font-size="13" fill="var(--accent)" text-anchor="middle" font-weight="bold">CARRIER HIGH</text><polygon points="186,196 214,196 218,192 190,192" fill="var(--accent)"/><line x1="190" y1="194" x2="186" y2="184" stroke="var(--accent)" stroke-width="3"/><text x="196" y="218" font-size="13" fill="var(--accent)" text-anchor="middle" font-weight="bold">CARRIER LOW</text><use href="#sym-quad" x="626" y="232" width="28" height="28" class="q-green"/><text x="640" y="276" font-size="13" fill="var(--green)" text-anchor="middle" font-weight="bold">CLIENT</text><text x="410" y="120" font-size="13" fill="var(--green)" font-weight="bold">HIGH: line and Fresnel zone clear</text><text x="430" y="296" font-size="13" fill="var(--red)" font-weight="bold">LOW: line clears, but the</text><text x="430" y="312" font-size="13" fill="var(--red)">Fresnel zone is blocked → fades</text><text x="16" y="340" font-size="13" fill="var(--text)">Client links: RC ELRS <tspan data-tok="client.elrs.band">2.4 GHz</tspan> · video <tspan data-tok="client.vtx.freqMHz">5806</tspan> MHz · GCS link: HM30.</text><text x="16" y="360" font-size="13" fill="var(--muted)">1st Fresnel radius r1 = √(λ·d1·d2 / (d1 + d2)); keep ≥ 60 % of r1 clear (map k = 0.6).</text><text x="16" y="380" font-size="13" fill="var(--muted)">Lower bands (868 / 915 MHz) need a larger zone; the more demanding link sets the altitude.</text></svg>
+  <div class="dg-cap">Both links need line of sight <strong>and</strong> a clear Fresnel zone. Bands come from the active client profile.</div></div>
   <div class="card">
     <div class="card-title">Orbit Geometry</div>
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Orbit radius</strong><p>150–250m loiter radius works well for relay geometry while allowing orbit adjustments. Smaller radii tighten turns and increase bank angle — reduce radius in calm conditions only. Check the radius against the coverage MAP for the client's VTX power.</p></div></div>
@@ -1873,87 +1656,9 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Avoid body-shadowing geometry</strong><p>If the carrier passes directly between the ground station and the client, both RF links may experience a brief null. Plan orbit direction to minimise time in this geometry.</p></div></div>
   </div>
 
-  <!-- Top-down orbit geometry diagram — client INSIDE orbit -->
-  <svg viewBox="0 0 700 265" xmlns="http://www.w3.org/2000/svg" class="man-svg m16">
-    <text x="350" y="13" fill="#555" font-size="9" text-anchor="middle" letter-spacing="2">RELAY ORBIT GEOMETRY — TOP-DOWN VIEW</text>
-
-    <!-- Ground station (lower-left) -->
-    <rect x="18" y="192" width="108" height="42" rx="1" fill="#1a1a1a" stroke="#444" stroke-width="1"/>
-    <text x="72" y="209" fill="#777" font-size="9" text-anchor="middle" letter-spacing="1">GROUND</text>
-    <text x="72" y="222" fill="#777" font-size="9" text-anchor="middle" letter-spacing="1">STATION</text>
-    <line x1="72" y1="192" x2="72" y2="174" stroke="#555" stroke-width="1.5"/>
-    <line x1="56" y1="183" x2="72" y2="174" stroke="#555" stroke-width="1"/>
-    <line x1="88" y1="183" x2="72" y2="174" stroke="#555" stroke-width="1"/>
-
-    <!-- Outside-orbit danger zone (subtle red tint OUTSIDE the orbit) -->
-    <!-- Drawn as a large circle clipped by the outer region — use a rect fill minus the orbit -->
-    <text x="584" y="55" fill="#ef444450" font-size="9" text-anchor="middle">OUTSIDE ORBIT</text>
-    <text x="584" y="68" fill="#ef444450" font-size="9" text-anchor="middle">= LINK LOSS</text>
-    <line x1="490" y1="76" x2="516" y2="92" stroke="#ef444430" stroke-width="1" stroke-dasharray="3,3"/>
-
-    <!-- Relay coverage fill — INSIDE orbit is the coverage zone -->
-    <circle cx="365" cy="128" r="95" fill="#22c55e0c"/>
-
-    <!-- Orbit circle — this is the relay link boundary -->
-    <circle cx="365" cy="128" r="95" fill="none" stroke="#f97316" stroke-width="2" stroke-dasharray="7,5" opacity="0.7"/>
-
-    <!-- Orbit direction arrows (clockwise) -->
-    <polygon points="365,33 374,46 356,46" fill="#f97316" opacity="0.6" transform="rotate(90,365,33)"/>
-    <polygon points="460,128 448,120 448,136" fill="#f97316" opacity="0.6"/>
-
-    <!-- Carrier airplane at upper-left of orbit (~296, 58) -->
-    <g transform="translate(296,58) rotate(135)">
-      <polygon points="0,-13 -6,7 0,3 6,7" fill="#f97316"/>
-    </g>
-    <text x="270" y="46" fill="#f97316" font-size="9" text-anchor="middle">CARRIER</text>
-
-    <!-- Inward-pointing antenna arrow on carrier (direction toward orbit center 365,128) -->
-    <!-- Vector from (296,58) to (365,128): dx=69 dy=70, normalised ≈ (0.70, 0.71) -->
-    <line x1="300" y1="63" x2="316" y2="79" stroke="#facc15" stroke-width="2" opacity="0.9"/>
-    <polygon points="316,79 308,68 320,69" fill="#facc15" opacity="0.9"/>
-    <text x="336" y="64" fill="#facc15" font-size="7.5" opacity="0.9">ANTENNA</text>
-    <text x="336" y="75" fill="#facc15" font-size="7.5" opacity="0.9">INWARD →</text>
-
-    <!-- FPV operating area — INSIDE the orbit -->
-    <text x="365" y="112" fill="#22c55e" font-size="9" text-anchor="middle" opacity="0.6" letter-spacing="1">FPV OPERATING</text>
-    <text x="365" y="125" fill="#22c55e" font-size="9" text-anchor="middle" opacity="0.6" letter-spacing="1">AREA</text>
-
-    <!-- FPV quad icon inside orbit -->
-    <g transform="translate(365,157)">
-      <line x1="-7" y1="-7" x2="7" y2="7" stroke="#22c55e" stroke-width="2"/>
-      <line x1="7" y1="-7" x2="-7" y2="7" stroke="#22c55e" stroke-width="2"/>
-      <circle cx="-8" cy="-8" r="2.5" fill="#22c55e" opacity="0.8"/>
-      <circle cx="8" cy="-8" r="2.5" fill="#22c55e" opacity="0.8"/>
-      <circle cx="-8" cy="8" r="2.5" fill="#22c55e" opacity="0.8"/>
-      <circle cx="8" cy="8" r="2.5" fill="#22c55e" opacity="0.8"/>
-      <circle cx="0" cy="0" r="3" fill="#0f0f0f" stroke="#22c55e" stroke-width="1.5"/>
-    </g>
-
-    <!-- HM30 link: ground station → carrier -->
-    <line x1="126" y1="200" x2="291" y2="68" stroke="#f97316" stroke-width="1.5" stroke-dasharray="7,4" opacity="0.7"/>
-    <text x="194" y="152" fill="#f97316" font-size="8" text-anchor="middle" transform="rotate(-52,194,152)" opacity="0.85">HM30 · MAVLink · RC · video</text>
-
-    <!-- client RC + client video: carrier → client (inside orbit) -->
-    <line x1="305" y1="65" x2="358" y2="148" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="7,4" opacity="0.7"/>
-    <text x="314" y="100" fill="#22c55e" font-size="8" text-anchor="middle" transform="rotate(55,314,100)" opacity="0.85">client RC · client video</text>
-
-    <!-- Orbit radius label -->
-    <line x1="365" y1="128" x2="460" y2="128" stroke="#555" stroke-width="0.5" stroke-dasharray="2,4"/>
-    <text x="415" y="123" fill="#555" font-size="8" text-anchor="middle">150–250m</text>
-
-    <!-- Key rule callout -->
-    <text x="365" y="240" fill="#22c55e" font-size="8.5" text-anchor="middle" opacity="0.8" letter-spacing="1">FPV MUST STAY INSIDE ORBIT — RELAY ANTENNAS FACE INWARD</text>
-
-    <!-- Legend -->
-    <line x1="22" y1="255" x2="46" y2="255" stroke="#f97316" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.7"/>
-    <text x="52" y="258" fill="#777" font-size="8">Ground link</text>
-    <line x1="148" y1="255" x2="172" y2="255" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.7"/>
-    <text x="178" y="258" fill="#777" font-size="8">Client links</text>
-    <circle cx="310" cy="255" r="5" fill="#22c55e0c" stroke="#f97316" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>
-    <text x="320" y="258" fill="#777" font-size="8">Relay coverage zone (inside orbit)</text>
-    <line x1="532" y1="255" x2="556" y2="255" stroke="#facc15" stroke-width="2" opacity="0.8"/>
-    <text x="562" y="258" fill="#777" font-size="8">Antenna direction</text>
-  </svg>
+  <div class="dg-scroll">
+  <svg viewBox="0 0 640 520" xmlns="http://www.w3.org/2000/svg" class="man-svg mw-560" role="img" aria-labelledby="svg-orbit-t svg-orbit-d"><title id="svg-orbit-t">Relay orbit geometry, top view: links, patch beam, always-covered inner zone, body shadow and wind drift</title><desc id="svg-orbit-d">The carrier flies a clockwise orbit (150–250 m radius, check on the map) around the client's operating area. Its two VRX patches face the right wing, inward, with a beam of about 70°. The HM30 link (MAVLink, RC, video) runs from the ground station to the carrier; the client video and client RC run between the carrier and the client. The inner zone from the map's orbit sweep is covered at every point of the orbit: keep the client there, inside the orbit. Where the carrier passes between the ground station and the client, the airframe can shadow both links for a moment. Wind makes the orbit drift downwind.</desc><defs><marker id="orb-ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker><marker id="orb-ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs><circle cx="380" cy="214" r="140" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="8,6"/><circle cx="380" cy="214" r="66" fill="var(--green)" fill-opacity="0.2" stroke="var(--green)" stroke-width="1.5"/><text x="402" y="196" font-size="13" fill="var(--green)" text-anchor="middle" font-weight="bold">ALWAYS</text><text x="402" y="212" font-size="13" fill="var(--green)" text-anchor="middle" font-weight="bold">COVERED</text><line x1="520" y1="204" x2="520" y2="224" stroke="var(--accent)" stroke-width="2" marker-end="url(#orb-ah-accent)"/><line x1="390" y1="354" x2="370" y2="354" stroke="var(--accent)" stroke-width="2" marker-end="url(#orb-ah-accent)"/><line x1="240" y1="224" x2="240" y2="204" stroke="var(--accent)" stroke-width="2" marker-end="url(#orb-ah-accent)"/><polygon points="281,115 438.6,142.8 308.8,272.6" fill="var(--amber)" fill-opacity="0.12" stroke="var(--amber)" stroke-dasharray="3,3"/><text x="300" y="140" font-size="13" fill="var(--amber)">patch beam</text><text x="300" y="156" font-size="13" fill="var(--amber)">≈70°</text><g transform="translate(281,115) rotate(45)"><polygon points="0,-15 -7,8 0,4 7,8" fill="var(--accent)"/></g><text x="269" y="97" font-size="13" fill="var(--accent)" text-anchor="end" font-weight="bold">CARRIER</text><use href="#sym-quad" x="337" y="237" width="26" height="26" class="q-green"/><text x="328" y="255" font-size="13" fill="var(--green)" text-anchor="end" font-weight="bold">CLIENT</text><rect x="20" y="396" width="100" height="40" fill="var(--surface2)" stroke="var(--dim)"/><text x="70" y="421" font-size="13" fill="var(--text)" text-anchor="middle" font-weight="bold">GCS</text><line x1="70" y1="396" x2="281" y2="115" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="7,4"/><text x="150" y="272" font-size="13" fill="var(--text)" transform="rotate(-58.5 150 272)">HM30 · MAVLink · RC · video</text><line x1="281" y1="115" x2="350" y2="250" stroke="var(--red)" stroke-width="1.5" stroke-dasharray="7,4"/><circle cx="260.3" cy="286.6" r="8" fill="none" stroke="var(--amber)" stroke-width="2"/><line x1="260.3" y1="294.6" x2="260.3" y2="376" stroke="var(--amber)" stroke-dasharray="2,3"/><text x="240.3" y="392" font-size="13" fill="var(--amber)" font-weight="bold">⚠ BODY SHADOW: carrier between</text><text x="240.3" y="408" font-size="13" fill="var(--amber)">GCS and client — brief null</text><line x1="380" y1="214" x2="520" y2="214" stroke="var(--muted)" stroke-dasharray="2,4"/><text x="450" y="232" font-size="13" fill="var(--muted)" text-anchor="middle">150–250 m</text><line x1="470" y1="40" x2="560" y2="40" stroke="var(--muted)" stroke-width="2" marker-end="url(#orb-ah-muted)"/><text x="470" y="30" font-size="13" fill="var(--muted)" font-weight="bold">WIND</text><text x="470" y="62" font-size="13" fill="var(--muted)">orbit drifts downwind</text><text x="16" y="26" font-size="14" fill="var(--muted)" letter-spacing="2">RELAY ORBIT — TOP VIEW</text><text x="16" y="46" font-size="13" fill="var(--muted)">clockwise: patches face inward</text><text x="16" y="470" font-size="13" fill="var(--text)">Client links: video <tspan data-tok="client.vtx.freqMHz">5806</tspan> MHz · RC ELRS <tspan data-tok="client.elrs.band">2.4 GHz</tspan>.</text><text x="16" y="490" font-size="13" fill="var(--green)" font-weight="bold">Keep the client inside the orbit, in the inner zone (map orbit sweep).</text><text x="16" y="510" font-size="13" fill="var(--muted)">Ground link — white dashed · client links — red dashed · patch beam — amber.</text></svg>
+  <div class="dg-cap">Inner zone from the coverage MAP's orbit sweep (worst case over one orbit). Bands come from the active client profile.</div></div>
 
   <div class="section-title">Waypoint Planning — 7-WP Template</div>
   <p>All altitudes are <strong>REL — relative to home</strong> unless stated otherwise. ArduPilot sets home <strong>when the carrier is armed</strong>, so arm at the physical launch point. Over rising terrain REL is not the height above the ground. Verify in Mission Planner 3D view before upload.</p>
@@ -2021,6 +1726,8 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 <script src="js/store.js"></script>
 <script src="data/content.js"></script>
 <script src="js/render-content.js"></script>
+<script src="js/tools-core.js"></script>
+<script src="js/diagrams.js"></script>
 <script id="manual-core">
 // Manual navigation helpers — pure functions, no DOM (global ManualCore; test/manual/ loads this block in Node).
 (function (root, factory) {
@@ -2247,7 +1954,35 @@ function renderManual() {
   setHTML('emerg-list', VtolRender.designIntent(C.designIntent, manCtx)
     + VtolRender.emergencies(C.emergencies, C.emergencyNotes, manCtx));
   setHTML('callouts-body', VtolRender.callouts(C.callouts, manCtx));
+  renderDiagrams();
   fillTokens();
+}
+
+// ── GENERATED DIAGRAMS ── (js/diagrams.js; plan §9.2, MAN-14)
+// Reference client #1 GPS Rescue values from its Betaflight configuration (docs/FPV_betaflight_dump.txt: gps_rescue_*);
+// the failsafe delay and the minimum satellites come from its client profile.
+var REF_RESCUE = { climbM: 30, returnAltM: 100, speedMs: 7.5, descentDistM: 20, descentRateMs: 1.5, landingAltM: 4, minDistM: 15, altMode: 'CURRENT_ALT' };
+function renderDiagrams() {
+  if (!self.VtolDiagrams || !self.ToolsCore) return;
+  var packs = live(manStore && manStore.packs);
+  var pack = packs.filter(function (p) { return p.id === manCtx.settings.activeCarrierPackId; })[0]
+    || packs.filter(function (p) { return p.role === 'carrier'; })[0] || VtolStore.defaults().packs[0];
+  // BATT_LOW_VOLT from an imported param file; without one it is "not set" (manual: BATT_LOW_VOLT = 0).
+  var pf = manStore && manStore.paramFile && manStore.paramFile.params;
+  var low = pf && typeof pf.BATT_LOW_VOLT === 'number' ? pf.BATT_LOW_VOLT : null;
+  setHTML('ac-batt-gauge', VtolDiagrams.batteryGauge(pack, manCtx.settings, { battLowVolt: low })
+    + '<div class="dg-cap">Drawn from the carrier pack profile “' + esc(pack.label) + '” and the settings (Tools → PROFILES)'
+    + (low !== null ? ' · BATT_LOW_VOLT from the imported param file' : '') + '.</div>');
+  var ref = live(manStore && manStore.clients).filter(function (c) { return c.id === VtolStore.IDS.refClient; })[0] || null;
+  var fsp = ref && ref.failsafe ? ref.failsafe : {};
+  var p = Object.assign({ name: ref ? ref.name : 'Reference client #1', delayS: fsp.delayS, minSats: fsp.minSats }, REF_RESCUE);
+  var active = manCtx.client;
+  var note = !ref ? '<span class="warn-val">Reference client #1 profile not found — delay and satellites TBD.</span> '
+    : (fsp.type && fsp.type !== 'gps_rescue' ? '<span class="warn-val">Its profile failsafe type is not GPS Rescue — check the profile.</span> ' : '');
+  if (active && (!ref || active.id !== ref.id)) note += 'The active client (' + esc(active.name) + ') has its own failsafe: ' + tv('client.failsafe.type') + ', delay ' + tv('client.failsafe.delayS') + ' s. ';
+  setHTML('ref-rescue-svg', VtolDiagrams.gpsRescue(p)
+    + '<div class="dg-cap">Reference client #1 — delay and minimum satellites from its client profile, the rest from its Betaflight configuration. ' + note
+    + 'CURRENT_ALT with a 100 m return altitude: <span class="warn-val">VERIFY — Betaflight 4.5 docs (the return altitude applies to FIXED_ALT)</span>.</div>');
 }
 
 // ── NAVIGATION ──
@@ -2282,7 +2017,6 @@ function showTab(name, anchor, opts) {
   else if (!opts.keepScroll) window.scrollTo(0, 0);
   return tab;
 }
-function switchTab(name) { return showTab(name); }   // kept for old links / bookmarks in other pages
 function selectNavItem(name, btn, e) { if (e) e.stopPropagation(); return showTab(name); }
 
 function toggleNavGroup(btn) {
@@ -2377,7 +2111,6 @@ function markHit(node, start, length) {
   return mark;
 }
 function manGoTo(k) {
-  if (typeof k === 'string') { document.getElementById('man-search').value = ''; manSearch(''); return showTab(k); }
   var hit = searchHits[k], node = hit ? searchNodes[hit.index] : null;
   document.getElementById('man-search').value = '';
   document.getElementById('man-search-wrap').hidden = true;
