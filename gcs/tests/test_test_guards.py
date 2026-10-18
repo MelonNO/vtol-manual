@@ -717,9 +717,10 @@ def test_a_hung_teardown_leaves_no_stale_fixture_for_later_tests(tmp_path: Path)
 
 
 def test_the_teardown_recovery_was_verified_for_this_pytest() -> None:
-    """WP19 round 2 (verify F2): pytest is not pinned.  ``_finish_teardown`` relies on how this pytest tears down;
-    on a release it was not checked against it takes the hard exit, and this test fails until someone re-checks it
-    against the new ``SetupState.teardown_exact`` / ``FixtureDef.finish`` and adds the release to PYTEST_VERIFIED."""
+    """WP19 round 2 (verify F2), round 3: CI installs pytest pinned to the release in PYTEST_VERIFIED (see
+    ``test_the_pytest_pin_and_the_verified_release_agree``), so this passes there.  It catches a local venv with
+    another release, where ``_finish_teardown`` would take the hard exit: install the pinned one, or upgrade as in
+    gcs/README.md, "Upgrading pytest" (list the release first, then run the self-test)."""
     g = _guards()
     assert g.teardown_recovery_verified(), (f"this venv has pytest {pytest.__version__}, CI uses the pinned "
                                             f"release {g.PYTEST_VERIFIED}: install that one (pip install -e "

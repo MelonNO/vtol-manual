@@ -292,8 +292,8 @@ to the two workflows, `gcs/pyproject.toml` (the `dev` extra) and `test/ci/**`. R
 | Item | Fix | Evidence |
 |---|---|---|
 | **F1 MAJOR / MUST 1:** pin pytest | `"pytest>=9.1,<9.2"` at the three CI install lines and in the `dev` extra. The `PYTEST_VERIFIED` guard stays for local venvs, and its failure message now says what to do. New test `test_the_pytest_pin_and_the_verified_release_agree`: all three CI install lines and the `dev` extra must carry the pin matching the newest `PYTEST_VERIFIED` entry. Mutations: changing one workflow pin alone fails it, and so does adding `(9, 2)` to `PYTEST_VERIFIED` alone (`S\wp19\mut5`). `workflows.test.js` does not assert the install lines; it stays 7/7 | `ci.yml:105,129`, `gcs-build.yml:49`, `gcs/pyproject.toml:14`, `gcs/conftest.py` (`PYTEST_VERIFIED` comment), `test_test_guards.py:742` |
-| **MUST 2:** correct §11 | Round 2's "one red CI run per new pytest minor release" was false. Without the pin, every Windows CI run and the `gcs-build` step that gates tagged releases would have stayed red until a developer acted. **With the pin:** a new pytest on PyPI changes nothing, and CI and the release build stay on 9.1.x until someone upgrades on purpose | §11 "Why a guard rather than a pin" (corrected) |
-| **MUST 3:** upgrade procedure in plain language | `gcs/README.md` "Upgrading pytest (WP19)" (4 steps) and the M-18 row. Nothing breaks on its own. To upgrade: install the new pytest in a venv; run the teardown self-test and the version test (the version test is expected to fail until the release is listed; the self-test must pass, else stay on the old pin); raise the four pins and `PYTEST_VERIFIED` together in one commit; run the suite | `gcs/README.md:512`, `docs/relay/OPEN-ITEMS.md` M-18 |
+| **MUST 2:** correct §11 | Round 2's "one red CI run per new pytest minor release" was false. Without the pin, every Windows CI run and the `gcs-build` step that gates tagged releases would have stayed red until a developer acted. **With the pin:** a new pytest minor release (9.2+) changes nothing; 9.1.x patch releases are taken automatically (wording corrected in round 4), and CI and the release build stay on 9.1.x until someone upgrades on purpose | §11 "Why a guard rather than a pin" (corrected) |
+| **MUST 3:** upgrade procedure in plain language | **Superseded in round 4 (§13): the round-3 order could never succeed.** It ran the teardown self-test before the new release was in `PYTEST_VERIFIED`, and the conftest deliberately refuses its recovery on an unlisted release, so the self-test always failed. The corrected procedure lists the release first | `gcs/README.md` "Upgrading pytest (WP19)", `docs/relay/OPEN-ITEMS.md` M-18 |
 | **MUST 4 / Finding 2:** stalled-handshake count | Now "1 time in 50 isolated runs", plus the one failure in WP17's full CI-like run (the round-2 "2 in about 51" counted that run twice) | M-15, §5 |
 | **Optional 5 / Note 3:** repeats of the final form | 30 isolated repeats of the round-2 form of the rate-limit test under `VTOLGCS_TEST_CPUS=4`: **30/30 passed** (`S\wp19\r3\`). M-15 and §5 now say the 30-repeat figure holds for both forms | — |
 
@@ -314,3 +314,53 @@ The count 699 is round 2's 698 plus the pin test.
   standard form `run: python -m pip install "pytest>=9.1,<9.2" …` with a trailing ` # comment`, which is a plain
   scalar plus a comment. The first GitHub run will confirm it.
 - I stopped no process.
+
+## 13. Round 4: rework after verification round 3
+
+The verifier's findings are in `S\verify\WP19\VERIFY-round3.md`. Round 4 changes documentation only:
+`gcs/README.md`, the M-18 row, one test docstring, and this report. No code changed, and no desktop run was made.
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 MAJOR:** the round-3 upgrade procedure could never succeed | The steps are reordered, in plain language. See the list after this table | `gcs/README.md` "Upgrading pytest (WP19)"; M-18; §12 MUST 3 row marked superseded |
+| **F2 MINOR:** the stale "pytest is not pinned" docstring | `test_the_teardown_recovery_was_verified_for_this_pytest` now says that CI is pinned, so the test passes there. It catches a local venv on another release, and points to the README procedure (list the release first) | `gcs/tests/test_test_guards.py:720` |
+| **F3 MINOR:** "a new pytest release changes nothing" was overstated | The text now says: a new **minor** release (9.2+) changes nothing; 9.1.x patch releases are still installed automatically, and the teardown self-test checks them on every CI run | README, M-18, §12 MUST 2 row |
+
+The corrected upgrade procedure:
+1. Install the new release in a separate venv. It goes next to the repository folder, so it cannot be committed;
+   `.venv-new` would not have been ignored by `.gitignore`.
+2. Add the release to `PYTEST_VERIFIED` **first**, and say why: on an unlisted release the conftest deliberately
+   refuses its teardown recovery.
+3. Run the teardown self-test and the version test. Both must pass.
+4. If both pass, raise the four pins in the same change, run the whole suite (it includes the pin/verified drift
+   test), and commit everything as one commit.
+5. If the self-test fails, undo the `PYTEST_VERIFIED` edit and change nothing else. CI keeps working on the old pin,
+   and a developer looks at `_finish_teardown`.
+
+**End-to-end demonstration with a real pytest 9.0.3** (a released version that is not listed, standing in for a
+future 9.2, which is not on PyPI yet):
+- The venv is throw-away: `S\wp19\upgrade\venv903`, real Python 3.12, `pip install pytest==9.0.3`, later
+  `pygame-ce`. That was a PyPI read only.
+- The trees are `git archive HEAD` copies in `S\wp19\upgrade\`.
+
+| Order | What was run | Result |
+|---|---|---|
+| **Round-3 order** (checks before listing) | `pytest gcs/tests/test_test_guards.py -k "stale_fixture or verified_for" -v` on an unchanged copy | **2 failed.** The header says `WARNING pytest 9.0.3 is not verified …`. The self-test fails because the inner run takes the hard exit ("cannot be run safely (pytest 9.0.3 is not a release this recovery was verified for …)"). This reproduces the verifier's finding (`old_order.txt`) |
+| **Corrected order**, step 2 | `PYTEST_VERIFIED = ((9, 1), (9, 0))` in the copy's `gcs/conftest.py` | — |
+| step 3 | the same two checks | **2 passed.** Header: `… the finalisers pytest skipped are run (pytest 9.0.3, verified)` (`new_order.txt`) |
+| step 4 (whole suite) | `pytest gcs protocol` with 9.0.3, interactive tests off | 698 passed, 7 skipped, plus 1 failed: `test_video.py::test_pipelines_match_the_shared_content_file`, `FileNotFoundError` for `data/content.js`, because my extract left out `data/`. With `data/` added, `test_video.py` plus the drift test gave 14 passed. So the suite runs on 9.0.3 once the release is listed (`new_order_suite.txt`) |
+
+The 9.0 stand-in is a downgrade, so the pins were not changed in step 4. `max(PYTEST_VERIFIED)` stays (9, 1), and the
+drift test still expects the 9.1 pin. In a real upgrade to 9.2, `max` becomes (9, 2), and the drift test requires
+the four raised pins.
+
+**Regression (round 4):**
+
+| Run | Result |
+|---|---|
+| `pytest gcs/tests/test_test_guards.py` | 19 passed |
+| CI mode ×1 (`S\wp19un.py … ci`: real Python, CI env, stdin NUL) | **699 passed, 7 deselected**, 136.7 s, exit 0. No LEAKED / TIMEOUT / FAILED / ERROR / INTERNALERROR line, no process left (`S\wp194ciun.txt`) |
+| Node with jsdom | 310 pass, 0 fail, 0 skipped |
+| `check-links` | OK |
+
+No process was stopped. The throw-away venv is left in the scratchpad.

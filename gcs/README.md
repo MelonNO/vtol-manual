@@ -509,18 +509,13 @@ Against the workflow step timeouts (a full CI-mode run takes about 130 s, on the
   step then times out, but the logs are still uploaded, because the step timeout is below the 45-minute job timeout.
 - `gcs-build.yml`, one 15-minute step (900 s): 130 + 200 ≈ 330 s with one hang, and up to three hanging tests fit.
 
-**Upgrading pytest (WP19).** CI installs pytest **pinned** to `"pytest>=9.1,<9.2"`. The pin is in both workflows (`ci.yml` twice, `gcs-build.yml` once) and in the `dev` extra of `gcs/pyproject.toml`. A new pytest release on PyPI therefore changes nothing: CI and the release build keep using 9.1.x and stay green. Nothing breaks on its own. Upgrading is a deliberate change:
+**Upgrading pytest (WP19).** CI installs pytest **pinned** to `"pytest>=9.1,<9.2"`. The pin is in both workflows (`ci.yml` twice, `gcs-build.yml` once) and in the `dev` extra of `gcs/pyproject.toml`. So a new pytest **minor** release (9.2 or later) on PyPI changes nothing: CI and the release build keep using 9.1 and stay green. Nothing breaks on its own. New 9.1.x patch releases are still installed automatically, and the teardown self-test checks them on every CI run. Moving to a new minor release is a deliberate change, done on a PC, in this order:
 
-1. In a venv, install the new release, e.g. `python -m pip install "pytest>=9.2,<9.3"`.
-2. Run the teardown self-test and the version test:
-   `python -m pytest gcs/tests/test_test_guards.py -k "stale_fixture or verified_for" -v`.
-   The version test fails at this point, as expected (the new release is not listed yet). The self-test must pass. If it fails, stay on the old pin: the conftest's teardown recovery needs a developer first.
-3. If it passed, raise **all of these together, in one commit**:
-   - the four pins;
-   - `PYTEST_VERIFIED` in `gcs/conftest.py`, e.g. add `(9, 2)`.
-
-   `test_the_pytest_pin_and_the_verified_release_agree` fails if they differ.
-4. Run the whole suite once (`python -m pytest gcs protocol`), then push.
+1. **Install the new release in a separate venv.** From the repository root: `python -m venv ..\pytest-upgrade` (a folder next to the repository folder, so it can never be committed), then `..\pytest-upgrade\Scripts\python -m pip install "pytest>=9.2,<9.3" pygame-ce` (put in the release you want).
+2. **Tell the conftest about the release.** In `gcs/conftest.py`, add it to `PYTEST_VERIFIED`, e.g. `PYTEST_VERIFIED = ((9, 1), (9, 2))`. Do this first: on a release that is not listed, the conftest deliberately refuses its teardown recovery, so the test in step 3 cannot pass before this edit.
+3. **Run the two checks:** `..\pytest-upgrade\Scripts\python -m pytest gcs/tests/test_test_guards.py -k "stale_fixture or verified_for" -v`. Both must say PASSED. The first checks that the conftest's teardown recovery still works with the new pytest. The second checks that the release is listed.
+4. **If both passed:** in the same change, raise the four pins to the new range, e.g. `"pytest>=9.2,<9.3"`. Then run the whole suite once with that venv (`..\pytest-upgrade\Scripts\python -m pytest gcs protocol`; it includes `test_the_pytest_pin_and_the_verified_release_agree`, which fails if the pins and `PYTEST_VERIFIED` do not match). Commit everything as one commit, and push.
+5. **If the first check failed:** undo the edit from step 2 and change nothing else. CI stays on the old pin and keeps working. The new pytest changed something the teardown recovery relies on, so a developer has to look at `_finish_teardown` in `gcs/conftest.py` first.
 
 **Writing tests that start things (WP18).** Every test or fixture that starts a `Runtime`, `Sender`, `Receiver`,
 `ControlServer`, `SessionLog` or `BridgeSim` registers its stop as soon as it exists, so a failure, an assertion
