@@ -51,3 +51,9 @@ request-fold table and the screenshot list.
 
 - Map, desktop width: the "⊕ Use My Location" label is 10 px wider than its button and touches the border (phones fine) — fix in `relay/map.html` page CSS or via the shared button rule; WP28 may touch this one rule in `relay/map.html`.
 - Fold in the WP27 report §6 requests (M3 shell height 1 px, sunlight borders for map overlays, shared patterns: unit-suffix input, segmented choice, helper line, icon button).
+
+## Carried over from the WP25 verification (MINOR)
+
+- Tools phone: a tap outside the open "More" menu also activates whatever is under it — swallow that first outside tap (closing only), or use a backdrop. WP28 may touch this listener in `index.html`.
+- Remove the WP25 `!important` overrides of the inline section colours (render the section accent through a class or CSS variable in `js/render-content.js`) and fold `body>#nav.tn-has-sub` into the shell section (WP25 report §6).
+- Tools phone: the fixed EMERGENCY button covers the right end of checklist rows (detail zone) while scrolling (pre-existing). Reserve space for it (e.g. bottom padding plus a narrower button, or place it inside the bottom nav row) without making it less visible.
