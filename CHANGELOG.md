@@ -4,17 +4,21 @@ The procedures in this suite are safety documents, so every release that changes
 listed here (plan Q-5). Format: newest first; each entry says what changed for the crew, then for developers.
 
 Versions: the web suite's version is `VTOL_VERSION.app` in `js/version.js` (shown in every page footer, with the
-content date and the parameter file). The GCS companion app has its own version (`gcs/vtolgcs/__init__.py`).
+content date and the parameter file). The GCS companion app has its own version (`gcs/vtolgcs/__init__.py` and
+`gcs/pyproject.toml`; shown in the app's window title, its console and `/api/v1/health`).
 
-## [2.0.0] — 2026-10-17
+## [2.0.0] — 2026-10-18
 
-`js/version.js` says `app: '2.0.0'`. The git tag `v2.0.0` is set by the owner (README "Tagging a release").
+`js/version.js` says `app: '2.0.0'`, and the **GCS app version is now 2.0.0** too (was 0.1.0), matching the suite
+release and the tag the GCS build attaches its zip to. The owner approved the tag `v2.0.0` on 2026-10-18; the PM
+sets it on `main` (README "Tagging a release").
 
 The whole suite was rewritten for the **new two-board relay** (the old Nomad 868 → DBR4 → Nomad 2.4 and
 CVBS → HDMI → SIYI chain is removed), for the owner's **failsafe intent** (the carrier fails safe only on SIYI/GCS
 link loss; the 915 MHz Nomad is close-range backup) and for the **carrier parameter file of 2026-10-17** (Rev C).
-Source of every requirement: `docs/SOFTWARE-IMPROVEMENT-PLAN.md` (Rev B + §15 Rev C). Work was done in 17 work
-packages (WP01–WP16, WP08 in two parts), each independently verified (`docs/tasks/`).
+Source of every requirement: `docs/SOFTWARE-IMPROVEMENT-PLAN.md` (Rev B + §15 Rev C). Work was done in 22 work
+packages (WP01–WP19, WP21, WP22; WP08 in two parts), each independently verified (`docs/tasks/`). WP20, a git
+history rewrite, was prepared and verified, then cancelled (OPEN-ITEMS O-5).
 
 ### Safety content (crew-facing)
 
@@ -71,6 +75,14 @@ packages (WP01–WP16, WP08 in two parts), each independently verified (`docs/ta
   RELOAD" prompt, installable web app (manifest, icons), screen wake lock, sunlight/high-contrast mode, print
   kneeboard, emergency-only mode (`index.html#emergency-only`), QR code to the suite. Footers show the app version,
   the content date and the parameter file.
+- **Photos (WP22):** two openly licensed representative photos, both CC BY-SA: an analog FPV quad in Client Drones
+  (Wikimedia Commons) and a pitot-static tube in Maintenance (ArduPilot docs). Their caption and alt text say
+  "Representative image", and the caption carries a credit line (author, licence, source link). The manual has a
+  visible "Image Credits" section (Reference ▾ Abbreviations, `manual.html#abbrev/image-credits`) with a row for
+  every photo it uses, and `img/README.md` has a credits table (author, licence, source page, file URL, date
+  checked). The four vendor marketing images (`t2_vtol`, `t2_vtol2`, `matek_f405`, `siyi_hm30`) stay, captioned as
+  vendor images, with their licence marked "not recorded", until the owner's own photos (shot list in
+  `img/README.md`) replace them.
 
 ### GCS companion app (new, `gcs/`)
 
@@ -87,6 +99,11 @@ packages (WP01–WP16, WP08 in two parts), each independently verified (`docs/ta
   RC stream.
 - **Relay UDP protocol v1** (`protocol/README.md`, **PROPOSAL — agree with the G0 firmware before flight**),
   byte-exact test vectors, CRSF reference code with cited sources, and a bridge simulator.
+- **Late product changes (WP18, WP19):** the runtime's GIL switch interval went from 0.5 ms to **1 ms**. Below 1 ms
+  Windows polls for the GIL, which starved the 250 Hz RC sender on 2–4 CPUs, as on a small laptop or a CI runner.
+  At 1 ms it holds 250 Hz with a p99 lateness of about 0.6 ms. CRC-16 is now table-driven, with the same results
+  and about 8× faster. The control channel's rate limiter takes an injectable clock (`ControlServer(rate_clock=…)`,
+  default `perf_counter`), so its tests are exact; the limits themselves are unchanged.
 
 ### Removed / retired
 
@@ -95,7 +112,8 @@ packages (WP01–WP16, WP08 in two parts), each independently verified (`docs/ta
   Planner — which could mask the SIYI failsafe (S-02b). The static map and the GCS companion app replace it; the
   last version is in the git history before this release.
 - Gist cloud sync (and its stored GitHub token), the old RC-failsafe timeline graphic, the obsolete relay-chain
-  content, `img/fpv_drone.jpg` (EXIF GPS block). The archived single-file manual carries an OBSOLETE banner and
+  content, `img/fpv_drone.jpg` (it showed a different aircraft; it stays in the git history, OPEN-ITEMS O-5). The
+  archived single-file manual carries an OBSOLETE banner and
   `noindex`.
 - The `ai/` working notes moved to `docs/history/` (historical, partly outdated; `PROJECT_CONTEXT.txt` starts with a
   note pointing to the reference parameter file and plan §15).
@@ -115,6 +133,13 @@ packages (WP01–WP16, WP08 in two parts), each independently verified (`docs/ta
   GitHub Release on `v*` tags. `.nojekyll` for GitHub Pages.
 - Line endings forced to LF (`.gitattributes`); `watch-push.ps1` and `git-setup.ps1` fixed; images stripped of
   metadata and optimised.
+- **CI and test reliability (WP17–WP19):** every GCS test has a hard timeout with a stack dump. A hang that holds the
+  GIL ends through faulthandler, and a hang at interpreter exit has its own guard. Failures are written as they
+  happen and annotated by test id. A leaked thread fails its test; processes a test started are stopped by PID.
+  Tests that need a real desktop are marked `interactive_desktop` and run before each release (OPEN-ITEMS M-16).
+  The racy or few-ms-margin tests (stalled handshakes, rate limit, FAILSAFE timing, sender rate) are race-free or
+  run on a fake clock. After a teardown timeout, later tests still get fresh fixtures. pytest is pinned to
+  `>=9.1,<9.2` (`gcs/README.md` "Upgrading pytest").
 - Docs: `README.md`, `CLAUDE.md`, `CONTRIBUTING.md` (content-review checklist), this changelog, `docs/relay/` (IP
   plan, firmware requests, open items, test-results template).
 

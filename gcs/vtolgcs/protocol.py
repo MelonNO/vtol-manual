@@ -110,7 +110,7 @@ def _crc16_bitwise(data: bytes | bytearray | memoryview, init: int = 0xFFFF) -> 
     return crc
 
 
-#: One entry per byte value: the CRC register after shifting that byte in (WP18: table-driven, about 6x faster
+#: One entry per byte value: the CRC register after shifting that byte in (WP18: table-driven, about 8x faster
 #: per packet than bit by bit; same results).
 _CRC16_TABLE = tuple(_crc16_bitwise(bytes((i,)), 0) for i in range(256))
 

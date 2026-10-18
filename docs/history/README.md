@@ -29,5 +29,5 @@ still describe:
 | Relay open items, firmware requests, test results | [`docs/relay/`](../relay/README.md) |
 
 **Privacy note.** `CONVERSATION_LOG.txt` contains personal working notes (plan REP-05). Moving it here does not remove
-it from the public repository or its git history. Whether to delete it, and whether to purge it from the history, is
-an owner decision; see [`docs/relay/OPEN-ITEMS.md`](../relay/OPEN-ITEMS.md).
+it from the public repository or its git history. The owner decided on 2026-10-18 to keep it as it is: no deletion,
+no history purge ([`docs/relay/OPEN-ITEMS.md`](../relay/OPEN-ITEMS.md) O-6, closed).

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import http.client
 import json
+import re
+import tomllib
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -50,6 +53,14 @@ def test_health(runtime) -> None:
     code, h, body = request(runtime, "GET", "/api/v1/health")
     assert code == 200 and json.loads(body) == {"ok": True, "app": "vtol-gcs", "version": __version__}
     assert h["cache-control"] == "no-store" and h["content-type"] == "application/json"
+
+
+def test_version_is_x_y_z_and_matches_pyproject() -> None:
+    """C2 ``"version": "x.y.z"``; ``gcs/pyproject.toml`` (the package) says the same as ``vtolgcs.__version__``
+    (the API, the console, the window title, the session log and the control channel) - WP21: 2.0.0."""
+    project = tomllib.loads((Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8"))
+    assert re.fullmatch(r"\d+\.\d+\.\d+", __version__)
+    assert project["project"]["version"] == __version__
 
 
 def test_status_shape_matches_c2_exactly(runtime) -> None:
