@@ -32,3 +32,8 @@ Worktree: `S/wt/WP25`, branch `wp/25`. WP26 and WP27 run in parallel with you. T
 
 `docs/tasks/reports/WP25-IMPLEMENTATION.md`, per `01-COMMON-CONTEXT.md` §5, plus the safety-token output, the
 screenshot list and any `css/base.css` change requests for WP28.
+
+## Carried over from the WP23 verification (MINOR)
+
+- M1: the pre-flight progress label ("0 / 36 ITEMS COMPLETE") wraps onto two lines at 1366 px (page rule) — fix in R2.
+- M5: some page rules in `index.html` still use `--dim` for text-like glyphs; `--dim` is non-text only (contrast < 4.5:1) — use `--muted`.

@@ -101,8 +101,8 @@ direction: `04-REDESIGN-CONTEXT.md`. The PM pushes `main` once the whole program
 
 | WP | Impl | Verify | Merged |
 |---|---|---|---|
-| WP23 | in progress | — | no |
-| WP24 | not started | — | no |
+| WP23 | done | APPROVED (round 1) | yes |
+| WP24 | in progress | — | no |
 | WP25 | not started | — | no |
 | WP26 | not started | — | no |
 | WP27 | not started | — | no |

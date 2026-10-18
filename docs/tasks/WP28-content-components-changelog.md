@@ -32,3 +32,9 @@ Worktree: `S/wt/WP28`, branch `wp/28`.
 
 `docs/tasks/reports/WP28-IMPLEMENTATION.md`, per `01-COMMON-CONTEXT.md` §5, plus the safety-token output, the
 request-fold table and the screenshot list.
+
+## Carried over from the WP23 verification (MINOR)
+
+- M2: `docs/design/styleguide.html`'s contrast script throws in jsdom (works in Firefox) — make it robust.
+- M3: the tint-contrast test does not cover `--surface2` — extend it.
+- M4: a comment in `css/print.css` is stale — correct it.

@@ -29,3 +29,8 @@ Worktree: `S/wt/WP27`, branch `wp/27`. WP25 and WP26 run in parallel with you.
 
 `docs/tasks/reports/WP27-IMPLEMENTATION.md`, per `01-COMMON-CONTEXT.md` §5, plus the safety-token output, the
 screenshot list and `css/base.css` requests.
+
+## Carried over from the WP23 verification (MINOR)
+
+- M5: page rules in `relay/map.html` still use `--dim` for text-like glyphs; `--dim` is non-text only — use `--muted`.
+- The map sidebar grew taller in WP23 (44 px controls); R1 should make it compact again through grouping and disclosures, not by shrinking tap targets.
