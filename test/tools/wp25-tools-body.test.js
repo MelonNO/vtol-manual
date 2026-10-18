@@ -39,6 +39,9 @@ test('R2: checklist toolbar — title is a direct child of .cl-hdr (kneeboard pr
   assert.match(style, /\.cl-progress-label\{[^}]*white-space:nowrap/, 'M1: progress label on one line');
   // rows: the title takes the width, detail zone ≥ 44 px, rows ≥ 50 px, checkbox 24 × 24
   assert.match(style, /\.ci\{[^}]*min-height:52px/);
+  assert.match(style, /\.ci\.done\{min-height:52px;\}/, 'ticked rows stay ≥ 50 px');
+  assert.match(style, /\.cl-more-btn,\.cl-more-cb\{display:none;\}/, 'More checkbox not in the desktop tab order');
+  assert.match(HTML, /modal\.scrollTop \+= el\.getBoundingClientRect\(\)\.top - \(hdr \? hdr\.getBoundingClientRect\(\)\.bottom/, 'emergJump offsets by the sticky header');
   assert.match(style, /\.ci-left\{flex:1;/);
   assert.match(style, /\.ci-right\{flex:0 0 120px;/);
   assert.match(style, /\.ci-right\{flex-basis:52px;/);
@@ -114,8 +117,23 @@ test('R7 (jsdom): tick an item, open a detail, save a battery entry, switch ever
   const list = d.getElementById('emerg-list');
   assert.ok(list.firstElementChild.classList.contains('emerg-card'), 'first child is an emergency card');
   assert.ok(list.lastElementChild.classList.contains('design-intent'), 'design intent last');
+  // Rework round 1 F1: a jump puts the card top (title + IMMEDIATE badge) just below the sticky header.
+  // jsdom has no layout: stub the rectangles (header bottom 95 px, card top 1200 px on screen, modal at 0).
+  const modal = d.getElementById('emerg-modal'), hdr = modal.querySelector('.emerg-modal-hdr');
+  const card = d.getElementById(list.querySelector('.emerg-card:last-of-type') ? [...list.querySelectorAll('.emerg-card')].pop().id : list.firstElementChild.id);
+  hdr.getBoundingClientRect = () => ({ top: 0, bottom: 95, left: 0, right: 390, height: 95, width: 390 });
+  card.getBoundingClientRect = () => ({ top: 1200, bottom: 1600, left: 0, right: 390, height: 400, width: 390 });
+  modal.scrollTop = 0;
+  w.emergJump(card.id);
+  assert.equal(modal.scrollTop, 1200 - 95 - 16, 'card top lands 16 px under the header, never under it');
   w.closeEmerg();
   assert.equal(w.emergIsOpen(), false);
+  // Rework round 1: the phone More menu closes after an action, on an outside tap and on Escape
+  const cb = d.getElementById('cl-more-pf');
+  cb.checked = true; d.querySelector('#tab-preflight .cl-tools button').click(); assert.equal(cb.checked, false, 'closed after an action');
+  cb.checked = true; d.querySelector('#cl-container .ci-right').click(); assert.equal(cb.checked, false, 'closed by a tap outside');
+  cb.checked = true; d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape' })); assert.equal(cb.checked, false, 'closed on Escape');
+  d.querySelector('label[for="cl-more-pf"]').click(); assert.equal(cb.checked, true, 'the label still opens it');
   assert.deepEqual(errors, []);
   } finally { w.close(); }
 });

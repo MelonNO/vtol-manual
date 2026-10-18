@@ -164,3 +164,21 @@ html-validate index.html manual.html relay/map.html tools/latency-clock.html
 - Phone More menu: tap **More ▾**; it is a hidden checkbox (`#cl-more-pf` / `#cl-more-ta`).
 - Kneeboard print: the `.cl-hdr-title` is still a direct child of `.cl-hdr`, and `#emerg-modal > div` / `.emerg-modal-hdr`
   still exist; a page `@media print` rule resets the sticky header's negative margins.
+
+## Rework round 1
+
+Verifier report: `S/verify/WP25/VERIFY-round1.md` (REJECTED for F1).
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 MAJOR** — after a pill jump the card title and IMMEDIATE badge sat under the sticky modal header | The header stays sticky. `emergJump(id)` now scrolls by the on-screen distance between the card top and the header bottom, minus 16 px: `modal.scrollTop += el.getBoundingClientRect().top - hdr.getBoundingClientRect().bottom - 16`. It is measured on screen, so it also holds when the header wraps to two rows on a phone and with the sunlight zoom. No other change to the function | jsdom test in `test/tools/wp25-tools-body.test.js` (stubbed rectangles: the card top lands 16 px below a 95 px header) + a static regex guard. Screenshots `S/shots/WP25/rework1/jump-{emerg-video,emerg-trans,emerg-batt,note-915-lost}-{1366,390,360}.png` and `jump-emerg-trans-sun-390.png`. Each shows the red header, then the scenario title, the IMMEDIATE — FROM MEMORY badge and the first steps. This includes the last scenario card (`emerg-batt`) and the last card overall (`note-915-lost`) |
+| MINOR — ticked rows 44 px | `.ci.done{min-height:52px}`: every row state is ≥ 50 px | `S/shots/WP25/rework1/preflight-done-390.png`; static test |
+| MINOR — More menu stays open; its checkbox is in the desktop tab order | `.cl-more-btn,.cl-more-cb{display:none}` outside the phone media query; the phone block shows them (the checkbox is still `.sr-only`, so it stays focusable with the focus ring on the label). A small capture-phase click listener closes an open menu after an action in it, or on a tap anywhere else. Capture phase is needed because the checklist rows stop propagation. A keydown listener closes it on Escape. Only new code, no existing function changed. On a phone the More label is also pushed to the right | jsdom test: closes after an action, on a tap outside and on Escape; the label still opens it |
+| MINOR — stale `.htmlvalidate.cjs` comments | Comment-only edit: index.html has no inline styles, untyped buttons or tbody case any more. Rules and severities are unchanged | `node -e "require('./.htmlvalidate.cjs')"` ok; html-validate unchanged at 0 errors / 42 warnings |
+| `!important`, `body>#nav` | Left for WP28, as the PM decided | — |
+
+Checks after the rework (`VTOL_JSDOM` set):
+- `node --test test/`: 339 / 339 pass.
+- precache (regenerated), diagrams and params `--check`, links, images and colours: all green.
+- html-validate: 0 errors, 42 warnings (index.html: 0).
+- Safety-token diff: unchanged from §3 (LOST `AUTO` ×2 and `MANUAL` ×2 from the label case, NEW `RTL` ×1 in the intro; explained there).

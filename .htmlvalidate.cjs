@@ -11,17 +11,17 @@
 module.exports = {
   extends: ['html-validate:recommended'],
   rules: {
-    // Small layout tweaks (gap, margin, flex, min-width) written inline in the existing markup style of index.html
-    // (95), relay/map.html (39) and tools/latency-clock.html (2). Colours never come from these: they use CSS
-    // variables, and scripts/check-colours.mjs fails on a hex colour in an inline style. manual.html has none.
+    // Small layout tweaks (gap, margin, flex, min-width) written inline in the existing markup of relay/map.html (39)
+    // and tools/latency-clock.html (2). Colours never come from these: they use CSS variables, and
+    // scripts/check-colours.mjs fails on a hex colour in an inline style. index.html (since WP25) and manual.html have none.
     'no-inline-style': 'warn',
 
-    // index.html (31 buttons): none of them is inside a <form>, so the implicit type="submit" has no effect.
-    // New buttons should still carry type="button" (manual.html and relay/map.html have no such warning).
+    // No page has such a warning any more (index.html: every button typed since WP25). Kept as a warning: no page
+    // has a <form>, so an implicit type="submit" would have no effect. New buttons should still carry type="button".
     'no-implicit-button-type': 'warn',
 
-    // index.html: the battery flight-log table (#bl-log-table) has its header row directly under <table>, and the page
-    // script appends the log rows; browsers insert the <tbody> themselves, so the rendered table is identical.
+    // No page has such a warning any more (index.html: #bl-log-table is empty in the markup and the page script
+    // writes <thead> / <tbody> since WP25). Kept as a warning: browsers insert a missing <tbody> themselves.
     'prefer-tbody': 'warn',
 
     // relay/map.html: the "Alt (m REL)" <label> wraps the three altitude-mode buttons (Rel / AGL / AMSL) of one

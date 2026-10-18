@@ -100,7 +100,7 @@ input[type=number].bl-input::placeholder{font-family:var(--sans);}
 #pf-start-btn{min-width:76px;}
 #pf-start-btn.running{background:var(--surface2);border-color:var(--dim);color:var(--text);}
 .cl-hdr .btn{min-height:40px;}
-.cl-more-btn{display:none;}
+.cl-more-btn,.cl-more-cb{display:none;}   /* the More menu exists on a phone only (not in the desktop tab order) */
 .cl-tools{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1);margin-left:auto;}
 .cl-notice{margin-top:0;}
 .cl-section{margin-bottom:var(--sp-6);}
@@ -128,7 +128,7 @@ input[type=number].bl-input::placeholder{font-family:var(--sans);}
 .ci-auto.fail{color:var(--red-fg);border-color:var(--red-line);background:var(--red-bg);}
 .ci-auto[hidden]{display:none;}
 .ci-ts{display:none;flex-shrink:0;font-family:var(--mono);font-size:var(--fs-xs);color:var(--muted);white-space:nowrap;}
-.ci.done{min-height:44px;}
+.ci.done{min-height:52px;}   /* every row state ≥ 50 px */
 .ci.done .ci-left{padding-top:var(--sp-1);padding-bottom:var(--sp-1);}
 .ci.done .ci-right,.ci.done .ci-warn-dot{display:none;}
 .ci.done .ci-ts{display:inline;}
@@ -327,7 +327,8 @@ td:is(.s-go,.s-caution,.s-nogo,.s-none),.wx-status{font-family:var(--head);font-
   .cl-hdr-title{order:1;flex:1 1 auto;}
   .cl-timer{order:2;gap:var(--sp-1);}
   .cl-progress-wrap{order:3;flex:1 1 55%;min-width:0;}
-  .cl-more-btn{order:4;display:inline-flex;}
+  .cl-more-btn{order:4;display:inline-flex;margin-left:auto;}
+  .cl-more-cb{display:block;}
   .cl-tools{order:5;display:none;position:absolute;right:0;top:100%;z-index:110;flex-direction:column;align-items:stretch;gap:var(--sp-1);min-width:220px;margin:0;padding:var(--sp-2);background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);box-shadow:0 8px 24px var(--shadow);}
   .cl-more-cb:checked~.cl-tools{display:flex;}
   .cl-more-cb:checked~.cl-more-btn{border-color:var(--accent);color:var(--accent);}
@@ -2853,11 +2854,24 @@ function navTabOrder() {
   }, { passive: true });
 })();
 
+// ── CHECKLIST "MORE" MENU (phone, .cl-more-cb) ── closes after an action, on a tap outside it and on Escape.
+document.addEventListener('click', e => {
+  document.querySelectorAll('.cl-more-cb:checked').forEach(cb => {
+    const hdr = cb.closest('.cl-hdr'), t = e.target;
+    if (t === cb || (t.closest && t.closest('.cl-more-btn') && hdr.contains(t))) return;   // the toggle itself
+    cb.checked = false;   // an action in the menu, or a tap anywhere else
+  });
+}, true);   // capture: row handlers stop propagation
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.cl-more-cb:checked').forEach(cb => { cb.checked = false; }); });
+
 // ── EMERGENCY QUICK-JUMP ──
 function emergJump(id) {
   const el = document.getElementById(id);
   const modal = document.getElementById('emerg-modal');
-  if (el && modal) modal.scrollTop = el.offsetTop - 16;
+  // The modal header is sticky: put the card's top (title + IMMEDIATE badge) just below it, measured on screen
+  // (works with the sunlight zoom and a header that wraps to two rows on a phone).
+  const hdr = modal ? modal.querySelector('.emerg-modal-hdr') : null;
+  if (el && modal) modal.scrollTop += el.getBoundingClientRect().top - (hdr ? hdr.getBoundingClientRect().bottom : modal.getBoundingClientRect().top) - 16;
 }
 
 // Initialise on load
