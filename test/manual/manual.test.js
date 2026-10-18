@@ -196,6 +196,57 @@ test('Client Drones, Overview, photos and defects (R2, R6, R10)', () => {
   assert.match(HTML, /'DOC-RC-001 · REV ' \+ V\.app/);
 });
 
+test('image credits: every photo has a credits row; representative images say so (WP22 R1, R2, R5)', () => {
+  const readme = fs.readFileSync(path.join(ROOT, 'img', 'README.md'), 'utf8');
+  const photos = [...new Set([...HTML.matchAll(/<img [^>]*src="img\/([^"/]+\.jpg)"/g)].map(m => m[1]))];
+  assert.ok(photos.length >= 6, 'photos found: ' + photos.join(', '));
+  for (const f of photos) assert.match(readme, new RegExp('^\\| `' + f.replace(/\./g, '\\.') + '`', 'm'), f + ' has a credits row');
+  const reps = [...HTML.matchAll(/<img [^>]*src="img\/(rep_[^"]+)"[^>]*>/g)];
+  assert.ok(reps.length >= 2);
+  for (const m of reps) assert.match(m[0], /alt="Representative image, not /, m[1] + ' alt text says representative');
+  // The manual's Image Credits table (Reference ▾ Abbreviations) has a row for every photo, vendor images included.
+  assert.match(panel('abbrev'), /id="image-credits"[\s\S]*<table id="image-credits-table">/);
+  const table = HTML.slice(HTML.indexOf('<table id="image-credits-table">'), HTML.indexOf('</table>', HTML.indexOf('<table id="image-credits-table">')));
+  const rows = [...table.matchAll(/<tr data-img="([^"]+)">([\s\S]*?)<\/tr>/g)].map(m => ({ imgs: m[1].split(' '), html: m[2] }));
+  for (const f of photos) assert.ok(rows.some(r => r.imgs.includes(f.replace(/\.jpg$/, ''))), f + ' has a row in the Image Credits table');
+  // Visible attribution of each representative image: caption credit line and credits row name the README's author and licence.
+  for (const m of reps) {
+    const f = m[1].replace(/\.jpg$/, ''), at = HTML.indexOf('img/' + f + '.jpg');
+    const cells = readme.split(/\r?\n/).find(l => l.startsWith('| `' + f + '.jpg`')).split(' | ');
+    const author = cells[2].replace(/\s*\(.*$/, ''), licence = cells[3].match(/CC BY(-SA)? \d\.\d/)[0];
+    const fig = HTML.slice(HTML.lastIndexOf('<figure', at), HTML.indexOf('</figure>', at));
+    const credit = (fig.match(/<span class="credit">([\s\S]*?)<\/span><\/figcaption>/) || [])[1] || '';
+    assert.match(fig, /<figcaption>Representative image:/, f + ' caption says representative');
+    for (const s of [author, licence, 'href="#abbrev/image-credits"']) assert.ok(credit.includes(s), f + ' caption credit names ' + s);
+    const row = rows.find(r => r.imgs.includes(f));
+    for (const s of [author, licence]) assert.ok(row.html.includes(s), f + ' credits row names ' + s);
+  }
+});
+
+test('image credits: attribution links are legible — token colour, contrast ≥ 4.5:1 in normal and sunlight mode (WP22 R5)', () => {
+  // The links in the caption credit lines and in the Image Credits table must not fall back to the UA link blue.
+  const style = HTML.slice(HTML.indexOf('<style>'), HTML.indexOf('</style>'));
+  const rule = [...style.matchAll(/([^{}]+)\{([^}]*)\}/g)].find(m => {
+    const sel = m[1].split(',').map(s => s.trim());
+    return sel.includes('.man-photo figcaption a') && sel.includes('#image-credits-table a') && /(^|;)color:var\(--[\w-]+\)/.test(m[2]);
+  });
+  assert.ok(rule, 'a color:var(--token) rule for ".man-photo figcaption a" and "#image-credits-table a"');
+  const token = rule[2].match(/(?:^|;)color:var\((--[\w-]+)\)/)[1];
+  // Token values from css/base.css: :root, then the sunlight overrides of :root[data-sun].
+  const css = fs.readFileSync(path.join(ROOT, 'css', 'base.css'), 'utf8');
+  const block = sel => { const m = css.match(new RegExp(sel.replace(/[[\]]/g, '\\$&') + '\\s*\\{([^}]*)\\}')); return Object.fromEntries([...m[1].matchAll(/(--[\w-]+):\s*(#[0-9a-f]{3,6})/gi)].map(x => [x[1], x[2]])); };
+  const normal = block(':root'), sun = { ...normal, ...block(':root[data-sun]') };
+  const lum = hex => { let h = hex.slice(1); if (h.length === 3) h = h.replace(/./g, c => c + c);
+    const [r, g, b] = [0, 2, 4].map(i => { const c = parseInt(h.slice(i, i + 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  // Captions sit on .man-photo (--surface2), the credits table on the page (--bg).
+  for (const [name, t] of [['normal', normal], ['sunlight', sun]]) for (const bg of ['--surface2', '--bg']) {
+    const r = ratio(t[token], t[bg]);
+    assert.ok(r >= 4.5, name + ': ' + token + ' ' + t[token] + ' on ' + bg + ' ' + t[bg] + ' = ' + r.toFixed(2) + ':1');
+  }
+});
+
 test('Pre-Arm Ref: Relay & GCS app section lists every app alarm and bridge state (R8)', () => {
   const t = stripTags(panel('prearm'));
   const alarms = ['rc_sender_dead', 'rc_stream_stopped', 'controller_disconnected', 'bridge_no_status', 'bridge_not_run', 'client_failsafe', 'client_rth', 'client_telemetry_stale', 'client_link_weak', 'client_batt_low', 'client_sats_low', 'client_rescue_not_ready', 'rtt_high', 'rtt_rising_camera', 'camera_mismatch', 'send_jitter_high', 'gcs_on_battery', 'gcs_battery_saver'];
