@@ -139,15 +139,28 @@ or cached. **Stable states are tagged and listed in `CHANGELOG.md`.** Never rewr
 ### Tagging a release
 
 ```bash
-# 1. js/version.js: set app to the release version (e.g. '2.0.0'); update the content date if content changed
-node scripts/gen-precache.mjs && node --test test/      # 2. regenerate, test, commit, push to main
-git tag -a v2.0.0 -m "v2.0.0 — short description"       # 3. tag the commit on main
-git push origin v2.0.0
+# 1. Versions: js/version.js app (e.g. '2.0.0'; update the content date if content changed), the GCS app's
+#    __version__ in gcs/vtolgcs/__init__.py and version in gcs/pyproject.toml (a test keeps these two equal),
+#    and the CHANGELOG.md entry
+# 2. On a desktop PC: the GCS tests that CI cannot run (gcs/README.md "Tests", OPEN-ITEMS M-16)
+node scripts/gen-precache.mjs && node --test test/      # 3. regenerate, test, commit, push to main; CI green
+git switch main && git pull --ff-only                   # 4. tag exactly the commit that is on origin/main
+git tag -a v2.0.0 -m "v2.0.0 — short description"
+git push origin v2.0.0                                  # pushes the tag only
 ```
 
-The GCS build workflow then builds the Windows app and attaches `vtol-gcs-v2.0.0-windows-x64.zip` to the release
-(it creates the release if it does not exist yet; edit the notes from `CHANGELOG.md`, or create the release first
-with `gh release create v2.0.0 --notes-file <notes>`).
+For `v2.0.0`, step 1 is done: `js/version.js` says `'2.0.0'` (WP10) and the GCS app is 2.0.0 (WP21).
+
+The tag push starts the GCS build workflow (`.github/workflows/gcs-build.yml`). Its `build` job runs the
+headless-safe tests, builds with `gcs/packaging/build.ps1` and zips `gcs\dist\vtol-gcs` as
+`vtol-gcs-v2.0.0-windows-x64.zip`; the name comes from the tag. Its `release` job then creates the GitHub Release
+`v2.0.0` if it does not exist yet (`--verify-tag`, so only for a pushed tag) and uploads the zip (`--clobber`
+replaces an earlier upload of the same file). For release notes from `CHANGELOG.md`, either create the release
+yourself right after pushing the tag, `gh release create v2.0.0 --verify-tag --title v2.0.0 --notes-file <notes>`,
+or edit the notes afterwards, `gh release edit v2.0.0 --notes-file <notes>`. Do not create the release before the
+tag is pushed: `gh release create` would then make the tag itself, on whatever `main` is at that moment. Never move
+or re-push a published tag. If the tag's build fails for a reason outside the code, re-run the failed jobs in the
+Actions tab; if the code is wrong, fix it on `main` and tag the next version (e.g. `v2.0.1`).
 
 ### Rolling back
 

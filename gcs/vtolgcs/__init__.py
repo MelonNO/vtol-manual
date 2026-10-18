@@ -21,4 +21,4 @@ The protocol is a **PROPOSAL v1** that must be agreed with the G0 bridge
 firmware before flight; see ``protocol/README.md`` in the repository.
 """
 
-__version__ = "0.1.0"
+__version__ = "2.0.0"
