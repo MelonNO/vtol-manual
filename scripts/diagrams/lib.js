@@ -1,7 +1,8 @@
 'use strict';
 // Tiny SVG authoring helpers for img/diagrams/*.svg (WP07). Output is plain, hand-editable SVG.
-const P = { bg: '#0f0f0f', surf: '#1a1a1a', surf2: '#222222', border: '#2a2a2a', border2: '#333333', text: '#e8e8e8',
-  muted: '#777777', accent: '#f97316', amber: '#facc15', red: '#ef4444', green: '#22c55e', dim: '#444444' };
+// Palette = the :root tokens of css/base.css (redesign WP23 neutrals; WP26): muted text ≥ 4.5:1, dim lines ≥ 3:1 on surf.
+const P = { bg: '#0f0f0f', surf: '#171717', surf2: '#1f1f1f', border: '#262626', border2: '#333333', text: '#e8e8e8',
+  muted: '#a0a0a0', accent: '#f97316', amber: '#facc15', red: '#ef4444', green: '#22c55e', dim: '#6e6e6e' };
 const NAME = Object.fromEntries(Object.entries(P).map(([k, v]) => [v, k]));
 const CW = 0.6;          // monospace advance estimate (em)
 const MINF = 14;         // minimum font size in these 400-wide diagrams
@@ -74,10 +75,10 @@ function markers() {
     '<marker id="ah-' + k + '" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="' + v + '"/></marker>').join('') + '</defs>';
 }
 
-const PALETTE_COMMENT = '<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css (muted: the manual value).\n'
+const PALETTE_COMMENT = '<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css.\n'
   + '     Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):\n'
-  + '     #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border\n'
-  +'     #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->';
+  + '     #0f0f0f = bg · #171717 = surface · #1f1f1f = surface2 · #333333 = border2 · #6e6e6e = dim · #262626 = border\n'
+  +'     #e8e8e8 = text · #a0a0a0 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->';
 
 function doc(file, o) {
   const w = o.w || 400, h = o.h;
@@ -86,7 +87,7 @@ function doc(file, o) {
     + '<title id="title">' + esc(o.title) + '</title>\n<desc id="desc">' + esc(o.desc) + '</desc>\n' + PALETTE_COMMENT + '\n'
     + '<!-- ' + esc(o.source || '') + ' -->\n'
     + markers() + '\n<rect width="' + w + '" height="' + h + '" fill="' + P.surf + '"/>\n'
-    + t(14, 28, o.heading, { size: 17, weight: 'bold', fill: P.accent, maxw: w - 28 }) + '\n'
+    + t(14, 28, o.heading, { size: 17, weight: 'bold', maxw: w - 28 }) + '\n'
     + (o.sub ? lines(14, 50, [].concat(o.sub), { fill: P.muted, maxw: w - 28 }) + '\n' : '')
     + o.body.join('\n') + '\n</svg>\n';
 }

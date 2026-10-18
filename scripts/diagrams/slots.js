@@ -54,9 +54,9 @@ function apply(html, svgs) {
     n++;
     return '<div class="diagram-slot" data-diagram="' + d + '"><figure class="dg"><a href="img/diagrams/' + s[0] + '.svg" target="_blank" rel="noopener">'
       + '<img src="img/diagrams/' + s[0] + '.svg" width="' + w + '" height="' + h + '" loading="lazy" decoding="async" alt="' + esc(s[2]) + '"></a>'
-      + '<figcaption><strong>' + d + '</strong> · ' + esc(s[1]) + ' Tap to open full size.</figcaption></figure></div>';
+      + '<figcaption><strong>' + d + '</strong> · ' + esc(s[1]) + ' <a href="img/diagrams/' + s[0] + '.svg" target="_blank" rel="noopener">Full size</a></figcaption></figure></div>';
   });
-  if (n !== 17) throw new Error('expected 17 diagram slots, found ' + n);
+  if (n !== 16) throw new Error('expected 16 diagram slots, found ' + n);   // one per diagram (D5 was also on Pre-Arm Ref until WP26)
   return html;
 }
 

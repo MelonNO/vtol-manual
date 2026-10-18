@@ -67,7 +67,7 @@ test('R12(d): build.js --check with a missing slot prints a clean ERROR line (no
     fs.writeFileSync(path.join(tmp, 'manual.html'), manual.replace('<div class="diagram-slot" data-diagram="D3">', '<div class="diagram-slot-removed" data-diagram="D3">'));
     const r = spawnSync(process.execPath, [path.join(tmp, 'scripts', 'diagrams', 'build.js'), '--check'], { encoding: 'utf8' });
     assert.equal(r.status, 1);
-    assert.match(r.stdout, /^ERROR expected 17 diagram slots, found 16$/m);
+    assert.match(r.stdout, /^ERROR expected 16 diagram slots, found 15$/m);   // WP26: one slot per diagram
     assert.doesNotMatch(r.stdout + r.stderr, /\n\s+at /, 'no stack trace');
     // the intact copy passes
     fs.writeFileSync(path.join(tmp, 'manual.html'), manual);

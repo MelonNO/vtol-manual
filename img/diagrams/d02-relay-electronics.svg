@@ -1,74 +1,74 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 1626" width="400" height="1626" role="img" aria-labelledby="title desc" font-family="'Share Tech Mono', Consolas, 'DejaVu Sans Mono', Menlo, monospace" font-size="14" fill="#e8e8e8">
 <title id="title">D2 — Relay electronics block diagram: net/RC board, video board, KSZ8795 switch ports P1–P5, VLANs, power, LEDs</title>
 <desc id="desc">VIN 6–26 V from the carrier battery bus (XT30) through fuse, reverse-polarity FET and TVS on the net/RC board, then the 3.3V_RC buck (switch, W5500, G0), the VBAT_TX buck (ELRS TX module) and VIN through the board-to-board connector to the video board. KSZ8795 switch: P1 HM30 air unit (transformer), P2 W5500 RC bridge (capacitor-coupled), P3 IP camera (JST-GH 4-pin), P4 spare (JST-GH 4-pin), P5 RMII to the N6. W5500 (UDP 5770) to STM32G030 bridge over SPI 32 MHz; G0 configures the switch over SPI and applies CAM_ENABLE to P3; G0 drives the ELRS TX module over single-wire CRSF at 400 kbaud (JST-GH VBAT_TX, GND, CRSF, spare). VLANs: P2 to P1 only; P3 and P4 to P1 (and P5 if needed). P1 egress priority: RC status, client video, camera. Video board: CVBS (SMA + JST-GH 2-pin) → TVP5150 / TW9900 → BT.656 → STM32N657 H.264, RTP to UDP 5600 → RMII P5. LEDs PG8 heartbeat, PG10 decoder lock, PG0 Ethernet link; bridge LEDs RC state and link, patterns TBD.</desc>
-<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css (muted: the manual value).
+<!-- Palette: standalone SVG cannot read the page CSS variables, so it uses the same values as the :root tokens in css/base.css.
      Token names below are the CSS custom properties without their two leading dashes (XML comments may not contain a double dash):
-     #0f0f0f = bg · #1a1a1a = surface · #222222 = surface2 · #333333 = border2 · #444444 = dim · #2a2a2a = border
-     #e8e8e8 = text · #777777 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->
+     #0f0f0f = bg · #171717 = surface · #1f1f1f = surface2 · #333333 = border2 · #6e6e6e = dim · #262626 = border
+     #e8e8e8 = text · #a0a0a0 = muted · #f97316 = accent · #facc15 = amber · #ef4444 = red · #22c55e = green -->
 <!-- Sources: plan §9.3 D2 draft, §3.4 item 1; relay design &quot;Relay electronics&quot;, &quot;Power tree&quot;, &quot;Ethernet&quot;, &quot;Control output to the TX module&quot;, &quot;MCU core&quot; (LEDs), &quot;Connectors&quot;. -->
-<defs><marker id="ah-bg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f0f0f"/></marker><marker id="ah-surf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1a1a1a"/></marker><marker id="ah-surf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#222222"/></marker><marker id="ah-border" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2a2a2a"/></marker><marker id="ah-border2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker><marker id="ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker><marker id="ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#777777"/></marker><marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f97316"/></marker><marker id="ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#facc15"/></marker><marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker><marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker><marker id="ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#444444"/></marker></defs>
-<rect width="400" height="1626" fill="#1a1a1a"/>
-<text x="14" y="28" font-size="17" fill="#f97316" font-weight="bold">D2 · RELAY ELECTRONICS</text>
-<text x="14" y="50" fill="#777777">Two boards · KSZ8795 · ports P1–P5</text>
-<rect x="18" y="66" width="364" height="44" rx="3" fill="#222222" stroke="#22c55e"/><text x="200" y="90.2" text-anchor="middle" font-weight="bold">Carrier battery bus · VIN 6–26 V</text>
+<defs><marker id="ah-bg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0f0f0f"/></marker><marker id="ah-surf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#171717"/></marker><marker id="ah-surf2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f1f1f"/></marker><marker id="ah-border" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#262626"/></marker><marker id="ah-border2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#333333"/></marker><marker id="ah-text" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e8e8e8"/></marker><marker id="ah-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a0a0a0"/></marker><marker id="ah-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f97316"/></marker><marker id="ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#facc15"/></marker><marker id="ah-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ef4444"/></marker><marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker><marker id="ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6e6e6e"/></marker></defs>
+<rect width="400" height="1626" fill="#171717"/>
+<text x="14" y="28" font-size="17" font-weight="bold">D2 · RELAY ELECTRONICS</text>
+<text x="14" y="50" fill="#a0a0a0">Two boards · KSZ8795 · ports P1–P5</text>
+<rect x="18" y="66" width="364" height="44" rx="3" fill="#1f1f1f" stroke="#22c55e"/><text x="200" y="90.2" text-anchor="middle" font-weight="bold">Carrier battery bus · VIN 6–26 V</text>
 <polyline points="200,110 200,130" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
 <text x="208" y="126" fill="#22c55e">XT30</text>
 <rect x="8" y="132" width="384" height="470" rx="4" fill="none" stroke="#f97316"/><text x="16" y="152" fill="#f97316" font-weight="bold">NET/RC BOARD</text>
-<rect x="18" y="160" width="364" height="44" rx="3" fill="#222222" stroke="#22c55e"/><text x="200" y="184.2" text-anchor="middle">Fuse + reverse FET + TVS</text>
-<rect x="18" y="218" width="176" height="52" rx="3" fill="#222222" stroke="#22c55e"/><text x="106" y="237.2" text-anchor="middle">3.3V_RC buck</text><text x="106" y="255.2" text-anchor="middle">switch, W5500, G0</text>
-<rect x="206" y="218" width="176" height="52" rx="3" fill="#222222" stroke="#22c55e"/><text x="294" y="237.2" text-anchor="middle">VBAT_TX buck</text><text x="294" y="255.2" text-anchor="middle">TX module supply</text>
+<rect x="18" y="160" width="364" height="44" rx="3" fill="#1f1f1f" stroke="#22c55e"/><text x="200" y="184.2" text-anchor="middle">Fuse + reverse FET + TVS</text>
+<rect x="18" y="218" width="176" height="52" rx="3" fill="#1f1f1f" stroke="#22c55e"/><text x="106" y="237.2" text-anchor="middle">3.3V_RC buck</text><text x="106" y="255.2" text-anchor="middle">switch, W5500, G0</text>
+<rect x="206" y="218" width="176" height="52" rx="3" fill="#1f1f1f" stroke="#22c55e"/><text x="294" y="237.2" text-anchor="middle">VBAT_TX buck</text><text x="294" y="255.2" text-anchor="middle">TX module supply</text>
 <polyline points="106,204 106,216" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
 <polyline points="294,204 294,216" fill="none" stroke="#22c55e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-green)"/>
-<rect x="18" y="290" width="364" height="58" rx="3" fill="#222222" stroke="#e8e8e8"/><text x="200" y="311.2" text-anchor="middle" font-weight="bold">KSZ8795 5-port switch</text><text x="200" y="330.2" text-anchor="middle">VLANs · P1 priority · P3 limit</text>
-<rect x="18" y="372" width="150" height="48" rx="3" fill="#222222" stroke="#333333"/><text x="93" y="389.2" text-anchor="middle" font-weight="bold">W5500</text><text x="93" y="407.2" text-anchor="middle">UDP 5770</text>
+<rect x="18" y="290" width="364" height="58" rx="3" fill="#1f1f1f" stroke="#e8e8e8"/><text x="200" y="311.2" text-anchor="middle" font-weight="bold">KSZ8795 5-port switch</text><text x="200" y="330.2" text-anchor="middle">VLANs · P1 priority · P3 limit</text>
+<rect x="18" y="372" width="150" height="48" rx="3" fill="#1f1f1f" stroke="#333333"/><text x="93" y="389.2" text-anchor="middle" font-weight="bold">W5500</text><text x="93" y="407.2" text-anchor="middle">UDP 5770</text>
 <polyline points="94,348 94,370" fill="none" stroke="#e8e8e8" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-text)" marker-start="url(#ah-text)"/>
 <text x="100" y="364" font-weight="bold">P2</text>
-<rect x="18" y="440" width="150" height="66" rx="3" fill="#222222" stroke="#f97316"/><text x="93" y="457.2" text-anchor="middle" font-weight="bold">STM32G030</text><text x="93" y="475.2" text-anchor="middle">bridge (G0)</text><text x="93" y="493.2" text-anchor="middle">TIM2 + IWDG</text>
-<polyline points="94,420 94,438" fill="none" stroke="#444444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-dim)" marker-start="url(#ah-dim)"/>
-<text x="100" y="434" fill="#777777">SPI 32 MHz</text>
+<rect x="18" y="440" width="150" height="66" rx="3" fill="#1f1f1f" stroke="#f97316"/><text x="93" y="457.2" text-anchor="middle" font-weight="bold">STM32G030</text><text x="93" y="475.2" text-anchor="middle">bridge (G0)</text><text x="93" y="493.2" text-anchor="middle">TIM2 + IWDG</text>
+<polyline points="94,420 94,438" fill="none" stroke="#6e6e6e" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-dim)" marker-start="url(#ah-dim)"/>
+<text x="100" y="434" fill="#a0a0a0">SPI 32 MHz</text>
 <polyline points="168,470 210,470 210,350" fill="none" stroke="#facc15" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-amber)"/>
 <text x="218" y="452" fill="#facc15">SPI config,</text><text x="218" y="470" fill="#facc15">CAM_ENABLE →</text><text x="218" y="488" fill="#facc15">P3 on / limit</text>
-<text x="218" y="506" fill="#777777">LEDs: RC state,</text>
-<text x="218" y="524" fill="#777777">link (TBD)</text>
+<text x="218" y="506" fill="#a0a0a0">LEDs: RC state,</text>
+<text x="218" y="524" fill="#a0a0a0">link (TBD)</text>
 <polyline points="94,506 94,560" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-accent)"/>
 <text x="102" y="532" fill="#f97316">CRSF single-wire</text>
 <text x="102" y="550" fill="#f97316">400 kbaud</text>
-<rect x="18" y="562" width="364" height="30" rx="2" fill="#222222" stroke="#333333"/><text x="200" y="579.2" text-anchor="middle">JST-GH: VBAT_TX · GND · CRSF · spare</text>
+<rect x="18" y="562" width="364" height="30" rx="2" fill="#1f1f1f" stroke="#333333"/><text x="200" y="579.2" text-anchor="middle">JST-GH: VBAT_TX · GND · CRSF · spare</text>
 <polyline points="382,244 388,244 388,577 384,577" fill="none" stroke="#22c55e" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#ah-green)"/>
 <polyline points="200,592 200,618" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-accent)"/>
-<rect x="110" y="620" width="180" height="48" rx="3" fill="#222222" stroke="#f97316"/><text x="200" y="637.2" text-anchor="middle" font-weight="bold">ELRS TX module</text><text x="200" y="655.2" text-anchor="middle">any band</text>
-<text x="18" y="692" fill="#777777" font-weight="bold">SWITCH PORTS</text>
-<rect x="18" y="704" width="44" height="38" rx="3" fill="#222222" stroke="#e8e8e8"/><text x="40" y="725.2" text-anchor="middle" font-weight="bold">P1</text>
+<rect x="110" y="620" width="180" height="48" rx="3" fill="#1f1f1f" stroke="#f97316"/><text x="200" y="637.2" text-anchor="middle" font-weight="bold">ELRS TX module</text><text x="200" y="655.2" text-anchor="middle">any band</text>
+<text x="18" y="692" fill="#a0a0a0" font-weight="bold">SWITCH PORTS</text>
+<rect x="18" y="704" width="44" height="38" rx="3" fill="#1f1f1f" stroke="#e8e8e8"/><text x="40" y="725.2" text-anchor="middle" font-weight="bold">P1</text>
 <text x="72" y="720" font-weight="bold">HM30 air unit</text>
-<text x="72" y="737" fill="#777777">transformer · HM30 conn.</text>
-<rect x="18" y="750" width="44" height="38" rx="3" fill="#222222" stroke="#f97316"/><text x="40" y="771.2" fill="#f97316" text-anchor="middle" font-weight="bold">P2</text>
+<text x="72" y="737" fill="#a0a0a0">transformer · HM30 conn.</text>
+<rect x="18" y="750" width="44" height="38" rx="3" fill="#1f1f1f" stroke="#f97316"/><text x="40" y="771.2" fill="#f97316" text-anchor="middle" font-weight="bold">P2</text>
 <text x="72" y="766" font-weight="bold">W5500 (RC bridge)</text>
-<text x="72" y="783" fill="#777777">on board, capacitors</text>
-<rect x="18" y="796" width="44" height="38" rx="3" fill="#222222" stroke="#facc15"/><text x="40" y="817.2" fill="#facc15" text-anchor="middle" font-weight="bold">P3</text>
+<text x="72" y="783" fill="#a0a0a0">on board, capacitors</text>
+<rect x="18" y="796" width="44" height="38" rx="3" fill="#1f1f1f" stroke="#facc15"/><text x="40" y="817.2" fill="#facc15" text-anchor="middle" font-weight="bold">P3</text>
 <text x="72" y="812" font-weight="bold">IP camera</text>
-<text x="72" y="829" fill="#777777">JST-GH 4-pin TX±/RX±</text>
-<rect x="18" y="842" width="44" height="38" rx="3" fill="#222222" stroke="#777777"/><text x="40" y="863.2" fill="#777777" text-anchor="middle" font-weight="bold">P4</text>
+<text x="72" y="829" fill="#a0a0a0">JST-GH 4-pin TX±/RX±</text>
+<rect x="18" y="842" width="44" height="38" rx="3" fill="#1f1f1f" stroke="#a0a0a0"/><text x="40" y="863.2" fill="#a0a0a0" text-anchor="middle" font-weight="bold">P4</text>
 <text x="72" y="858" font-weight="bold">spare</text>
-<text x="72" y="875" fill="#777777">JST-GH 4-pin TX±/RX±</text>
-<rect x="18" y="888" width="44" height="38" rx="3" fill="#222222" stroke="#ef4444"/><text x="40" y="909.2" fill="#ef4444" text-anchor="middle" font-weight="bold">P5</text>
+<text x="72" y="875" fill="#a0a0a0">JST-GH 4-pin TX±/RX±</text>
+<rect x="18" y="888" width="44" height="38" rx="3" fill="#1f1f1f" stroke="#ef4444"/><text x="40" y="909.2" fill="#ef4444" text-anchor="middle" font-weight="bold">P5</text>
 <text x="72" y="904" font-weight="bold">video board (N6)</text>
-<text x="72" y="921" fill="#777777">RMII via B2B connector</text>
-<text x="18" y="948" fill="#777777" font-weight="bold">VLAN MAP (port-based)</text>
+<text x="72" y="921" fill="#a0a0a0">RMII via B2B connector</text>
+<text x="18" y="948" fill="#a0a0a0" font-weight="bold">VLAN MAP (port-based)</text>
 <text x="18" y="970">P2 RC bridge ↔ P1 only</text><text x="18" y="988">P3 camera → P1 (and P5 if needed)</text><text x="18" y="1006">P4 spare → P1 (and P5 if needed)</text><text x="18" y="1024">Camera / spare traffic and broadcasts</text><text x="18" y="1042">never reach the RC bridge.</text>
-<text x="18" y="1076" fill="#777777" font-weight="bold">P1 EGRESS PRIORITY</text>
+<text x="18" y="1076" fill="#a0a0a0" font-weight="bold">P1 EGRESS PRIORITY</text>
 <text x="18" y="1098" fill="#f97316">1  RC status (P2)</text><text x="18" y="1116" fill="#ef4444">2  client video (P5)</text><text x="18" y="1134" fill="#facc15">3  camera (P3), rate-limited</text>
-<text x="18" y="1168" fill="#777777">The HM30 radio is the bottleneck.</text>
+<text x="18" y="1168" fill="#a0a0a0">The HM30 radio is the bottleneck.</text>
 <rect x="8" y="1196" width="384" height="296" rx="4" fill="none" stroke="#ef4444"/><text x="16" y="1216" fill="#ef4444" font-weight="bold">VIDEO BOARD</text>
 <text x="150" y="1216" fill="#22c55e">VIN via B2B, own rails</text>
-<rect x="18" y="1228" width="364" height="44" rx="3" fill="#222222" stroke="#ef4444"/><text x="200" y="1242.2" text-anchor="middle" font-weight="bold">CVBS in · SMA + JST-GH 2-pin</text><text x="200" y="1261.2" fill="#777777" text-anchor="middle">from the VRX (band per client)</text>
+<rect x="18" y="1228" width="364" height="44" rx="3" fill="#1f1f1f" stroke="#ef4444"/><text x="200" y="1242.2" text-anchor="middle" font-weight="bold">CVBS in · SMA + JST-GH 2-pin</text><text x="200" y="1261.2" fill="#a0a0a0" text-anchor="middle">from the VRX (band per client)</text>
 <polyline points="200,1272 200,1300" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
-<rect x="18" y="1302" width="364" height="44" rx="3" fill="#222222" stroke="#ef4444"/><text x="200" y="1326.2" text-anchor="middle" font-weight="bold">TVP5150 / TW9900 decoder</text>
+<rect x="18" y="1302" width="364" height="44" rx="3" fill="#1f1f1f" stroke="#ef4444"/><text x="200" y="1326.2" text-anchor="middle" font-weight="bold">TVP5150 / TW9900 decoder</text>
 <polyline points="200,1346 200,1368" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
 <text x="208" y="1362" fill="#ef4444">BT.656</text>
-<rect x="18" y="1370" width="364" height="52" rx="3" fill="#222222" stroke="#ef4444"/><text x="200" y="1388.2" text-anchor="middle" font-weight="bold">STM32N657 (N6)</text><text x="200" y="1407.2" text-anchor="middle">H.264 per field · RTP 5600</text>
+<rect x="18" y="1370" width="364" height="52" rx="3" fill="#1f1f1f" stroke="#ef4444"/><text x="200" y="1388.2" text-anchor="middle" font-weight="bold">STM32N657 (N6)</text><text x="200" y="1407.2" text-anchor="middle">H.264 per field · RTP 5600</text>
 <polyline points="200,1422 200,1444" fill="none" stroke="#ef4444" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-red)"/>
 <text x="208" y="1438" fill="#ef4444">RMII → switch P5</text>
-<text x="18" y="1466" fill="#777777">LEDs: PG8 heartbeat · PG10</text>
-<text x="18" y="1484" fill="#777777">decoder lock · PG0 Ethernet link</text>
-<text x="18" y="1516" font-weight="bold">Boards share only VIN and the RMII</text><text x="18" y="1534">link (B2B). RC enters P1, leaves P2</text><text x="18" y="1552">inside the switch: it never touches</text><text x="18" y="1570">the N6, so RC keeps running while the</text><text x="18" y="1588">video board resets or is reflashed.</text><text x="18" y="1606" fill="#777777">Test 5 proves it (incl. P3 flood).</text>
+<text x="18" y="1466" fill="#a0a0a0">LEDs: PG8 heartbeat · PG10</text>
+<text x="18" y="1484" fill="#a0a0a0">decoder lock · PG0 Ethernet link</text>
+<text x="18" y="1516" font-weight="bold">Boards share only VIN and the RMII</text><text x="18" y="1534">link (B2B). RC enters P1, leaves P2</text><text x="18" y="1552">inside the switch: it never touches</text><text x="18" y="1570">the N6, so RC keeps running while the</text><text x="18" y="1588">video board resets or is reflashed.</text><text x="18" y="1606" fill="#a0a0a0">Test 5 proves it (incl. P3 flood).</text>
 </svg>
