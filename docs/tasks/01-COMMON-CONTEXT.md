@@ -47,7 +47,7 @@ Read this file completely before you start. Then read your own work-package brie
    })(typeof self !== 'undefined' ? self : this, function () { /* ... */ return { fnA, fnB }; });
    ```
 3. **Colours** come from CSS variables in `:root` (`--accent #f97316`, `--red #ef4444`, `--green #22c55e`, `--amber #facc15`, `--bg`, `--surface`, `--text`, `--muted`, …). Never hard-code new colours in page CSS or inline SVG. Inline SVG may use `fill="var(--accent)"`. Standalone `.svg` files can't read page variables; use the same hex values there and note it.
-4. **Fonts:** Oswald (headings), Share Tech Mono (body), base 15 px. Military/operational dark style. Mobile first: tap targets ≥ 44 px, works at 360 px width, and the fixed bottom nav on mobile in `index.html` must keep working.
+4. **Fonts and design system (since WP23):** IBM Plex Sans (body, base 16 px), Oswald (headings and short labels), Share Tech Mono (values, parameters, IPs, code, timers only), all self-hosted. Tokens and one definition of every shared component in `css/base.css`; rules in `docs/design/README.md`. Dark operational style. Mobile first: tap targets ≥ 44 px, works at 360 px width, and the fixed bottom nav on mobile in `index.html` must keep working.
 5. **Escape all dynamic text** inserted with `innerHTML`. Use the shared `escH()` (from `js/common.js` once WP01 creates it), or `textContent`.
 6. **Offline first.** Anything the field needs must work without internet once cached. Never add new CDN dependencies. Leaflet gets vendored in WP02.
 7. **Match the surrounding code style** (naming, comment density, compactness). Do not reformat code you did not need to touch.

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="robots" content="noindex">
+<title>VTOL manual — styleguide</title>
+<link rel="stylesheet" href="../../css/base.css">
+<!-- Developer page (WP23 R8): every token and shared component of css/base.css. Not precached, not linked from the
+     field pages. Documentation: docs/design/README.md. -->
+<style>
+/* styleguide-only layout */
+.sg-top{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;padding:var(--sp-3) var(--sp-5);background:var(--surface);border-bottom:1px solid var(--border2);}
+.sg-top h1{flex:1;font-family:var(--head);font-size:var(--fs-xl);font-weight:500;letter-spacing:.3px;}
+.sg-sw{display:inline-block;width:40px;height:28px;border-radius:var(--r-sm);border:1px solid var(--border2);vertical-align:middle;}
+.sg-ratio{font-family:var(--mono);font-size:var(--fs-xs);white-space:nowrap;}
+.sg-ratio .bad{color:var(--red-fg);}
+.sg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--sp-4);}
+.sg-type>div{display:flex;align-items:baseline;gap:var(--sp-4);padding:var(--sp-2) 0;border-bottom:1px solid var(--border);}
+.sg-type code{flex-shrink:0;width:90px;}
+.sg-space{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-1) 0;}
+.sg-space span{display:block;height:12px;background:var(--accent);border-radius:2px;}
+.sg-radius{display:flex;gap:var(--sp-4);}
+.sg-radius div{width:96px;height:64px;background:var(--surface2);border:1px solid var(--dim);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:var(--fs-xs);}
+.sg-h{font-family:var(--head);}.sg-2xl{font-size:var(--fs-2xl);}.sg-xl{font-size:var(--fs-xl);}.sg-lg{font-size:var(--fs-lg);}.sg-sm{font-size:var(--fs-sm);}.sg-xs{font-size:var(--fs-xs);}
+.sg-rsm{border-radius:var(--r-sm);}.sg-rmd{border-radius:var(--r-md);}
+.sg-w1{width:var(--sp-1);}.sg-w2{width:var(--sp-2);}.sg-w3{width:var(--sp-3);}.sg-w4{width:var(--sp-4);}.sg-w5{width:var(--sp-5);}.sg-w6{width:var(--sp-6);}.sg-w7{width:var(--sp-7);}
+.sg-cap{font-size:var(--fs-xs);color:var(--muted);margin:var(--sp-2) 0 var(--sp-5);}
+</style>
+</head>
+<body>
+<div class="sg-top">
+  <h1>Design system — styleguide</h1>
+  <button type="button" class="btn btn-sm" data-sg-sun aria-pressed="false">☀ Sunlight mode</button>
+</div>
+<div class="content">
+
+<p>Every token and shared component of <code>css/base.css</code>, rendered with the real stylesheet. Rules and
+copy-ready markup: <code>docs/design/README.md</code>. The contrast column is measured live against
+<code>--bg</code> / <code>--surface</code> / <code>--surface2</code>; switch on sunlight mode to check it there.</p>
+
+<div class="section-title">Colour tokens</div>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Swatch</th><th>Token</th><th>Value</th><th>Use</th><th>Contrast bg / surface / surface2</th></tr></thead>
+<tbody>
+<tr><td><span class="sg-sw" data-t="--bg"></span></td><td><code>--bg</code></td><td class="num">#0f0f0f</td><td>page background (also the manifest background_color)</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--surface"></span></td><td><code>--surface</code></td><td class="num">#171717</td><td>cards, panels, header</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--surface2"></span></td><td><code>--surface2</code></td><td class="num">#1f1f1f</td><td>raised: table headers, code, inputs on a card, hover</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--border"></span></td><td><code>--border</code></td><td class="num">#262626</td><td>hairline dividers between rows (decorative)</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--border2"></span></td><td><code>--border2</code></td><td class="num">#333</td><td>outlines of cards and panels (decorative)</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--dim"></span></td><td><code>--dim</code></td><td class="num">#6e6e6e</td><td>NON-TEXT only: control boundaries, checkbox frames, icons (≥ 3:1 on every surface)</td><td class="sg-ratio" data-fg="--dim"></td></tr>
+<tr><td><span class="sg-sw" data-t="--text"></span></td><td><code>--text</code></td><td class="num">#e8e8e8</td><td>primary text, headings</td><td class="sg-ratio" data-fg="--text"></td></tr>
+<tr><td><span class="sg-sw" data-t="--text-2"></span></td><td><code>--text-2</code></td><td class="num">#c8c8c8</td><td>prose paragraphs</td><td class="sg-ratio" data-fg="--text-2"></td></tr>
+<tr><td><span class="sg-sw" data-t="--muted"></span></td><td><code>--muted</code></td><td class="num">#a0a0a0</td><td>secondary text, labels, table first column</td><td class="sg-ratio" data-fg="--muted"></td></tr>
+<tr><td><span class="sg-sw" data-t="--accent"></span></td><td><code>--accent</code></td><td class="num">#f97316</td><td>orange: interaction only — active tab, primary button, links, focus</td><td class="sg-ratio" data-fg="--accent"></td></tr>
+<tr><td><span class="sg-sw" data-t="--red"></span></td><td><code>--red</code></td><td class="num">#ef4444</td><td>emergency / danger only</td><td class="sg-ratio" data-fg="--red"></td></tr>
+<tr><td><span class="sg-sw" data-t="--amber"></span></td><td><code>--amber</code></td><td class="num">#facc15</td><td>warning, TBD and VERIFY only</td><td class="sg-ratio" data-fg="--amber"></td></tr>
+<tr><td><span class="sg-sw" data-t="--green"></span></td><td><code>--green</code></td><td class="num">#22c55e</td><td>GO / healthy only</td><td class="sg-ratio" data-fg="--green"></td></tr>
+<tr><td><span class="sg-sw" data-t="--red-fg"></span></td><td><code>--red-fg</code></td><td class="num">#f87171</td><td>red TEXT on a surface or a tint (--red itself is &lt; 4.5:1 on --surface2)</td><td class="sg-ratio" data-fg="--red-fg"></td></tr>
+<tr><td><span class="sg-sw" data-t="--blue"></span></td><td><code>--blue</code></td><td class="num">#60a5fa</td><td>FBWA / FBWB mode badge (same hue as the Tools section A colour)</td><td class="sg-ratio" data-fg="--blue"></td></tr>
+<tr><td><span class="sg-sw" data-t="--orange-lt"></span></td><td><code>--orange-lt</code></td><td class="num">#fb923c</td><td>MANUAL mode badge</td><td class="sg-ratio" data-fg="--orange-lt"></td></tr>
+<tr><td><span class="sg-sw" data-t="--accent-bg"></span></td><td><code>--accent-bg</code></td><td class="num">rgba(249,115,22,.10)</td><td>selected row, open detail, info callout</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--red-bg"></span></td><td><code>--red-bg</code></td><td class="num">rgba(239,68,68,.10)</td><td>danger callout, IMMEDIATE block, primary failsafe row</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--amber-bg"></span></td><td><code>--amber-bg</code></td><td class="num">rgba(250,204,21,.08)</td><td>warning callout, CLEAN-UP block, TBD chip</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--green-bg"></span></td><td><code>--green-bg</code></td><td class="num">rgba(34,197,94,.10)</td><td>GO banner, QHOVER badge</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--blue-bg"></span></td><td><code>--blue-bg</code></td><td class="num">rgba(96,165,250,.12)</td><td>FBWA / FBWB badge</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--red-line"></span></td><td><code>--red-line</code></td><td class="num">rgba(239,68,68,.35)</td><td>dividers and outlines inside red blocks</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--amber-line"></span></td><td><code>--amber-line</code></td><td class="num">rgba(250,204,21,.35)</td><td>dividers and outlines inside amber blocks</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--paper"></span></td><td><code>--paper</code></td><td class="num">#fff</td><td>print and the QR code: black on white; dark text on filled red / orange / amber</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--ink"></span></td><td><code>--ink</code></td><td class="num">#000</td><td>print and the QR code: black on white; dark text on filled red / orange / amber</td><td class="muted">—</td></tr>
+<tr><td><span class="sg-sw" data-t="--shadow"></span></td><td><code>--shadow</code></td><td class="num">rgba(0,0,0,.6)</td><td>drop shadow of floating elements (toast)</td><td class="muted">—</td></tr>
+</tbody></table></div>
+
+<div class="section-title">Type</div>
+<div class="sg-type">
+  <div><code>--fs-2xl</code><span class="sg-h sg-2xl">Oswald 28 — display value</span></div>
+  <div><code>--fs-xl</code><span class="sg-h sg-xl">Oswald 22 — page heading</span></div>
+  <div><code>--fs-lg</code><span class="sg-h sg-lg">Oswald 18 — section title</span></div>
+  <div><code>--fs-md</code><span>IBM Plex Sans 16 — body text. <strong>Semibold 600</strong> for emphasis.</span></div>
+  <div><code>--fs-sm</code><span class="sg-sm">IBM Plex Sans 14 — secondary text, tables, callouts</span></div>
+  <div><code>--fs-xs</code><span class="sg-xs">12 — the minimum: captions, badges, small labels</span></div>
+  <div><code>--mono</code><span class="mono">Share Tech Mono — 192.168.144.12 : 19856 · BATT_LOW_VOLT 22.0</span></div>
+</div>
+
+<div class="section-title">Spacing and radii</div>
+<div class="sg-space"><code>--sp-1</code><span class="sg-w1"></span></div>
+<div class="sg-space"><code>--sp-2</code><span class="sg-w2"></span></div>
+<div class="sg-space"><code>--sp-3</code><span class="sg-w3"></span></div>
+<div class="sg-space"><code>--sp-4</code><span class="sg-w4"></span></div>
+<div class="sg-space"><code>--sp-5</code><span class="sg-w5"></span></div>
+<div class="sg-space"><code>--sp-6</code><span class="sg-w6"></span></div>
+<div class="sg-space"><code>--sp-7</code><span class="sg-w7"></span></div>
+<div class="sg-radius"><div class="sg-rsm">--r-sm</div><div class="sg-rmd">--r-md</div></div>
+
+<div class="section-title">Other tokens</div>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Token</th><th>Value</th><th>Use</th></tr></thead>
+<tbody>
+<tr><td><code>--sans</code></td><td class="num">'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif</td><td>body text and prose</td></tr>
+<tr><td><code>--head</code></td><td class="num">'Oswald','Arial Narrow',sans-serif</td><td>headings and short labels</td></tr>
+<tr><td><code>--mono</code></td><td class="num">'Share Tech Mono',ui-monospace,Consolas,monospace</td><td>values, parameters, IPs, code, timers</td></tr>
+<tr><td><code>--fs-xs</code></td><td class="num">12px</td><td>minimum: small labels, captions, badges</td></tr>
+<tr><td><code>--fs-sm</code></td><td class="num">14px</td><td>secondary text, tables, callouts</td></tr>
+<tr><td><code>--fs-md</code></td><td class="num">16px</td><td>body text</td></tr>
+<tr><td><code>--fs-lg</code></td><td class="num">18px</td><td>section titles, IMMEDIATE steps</td></tr>
+<tr><td><code>--fs-xl</code></td><td class="num">22px</td><td>page headings</td></tr>
+<tr><td><code>--fs-2xl</code></td><td class="num">28px</td><td>display values</td></tr>
+<tr><td><code>--lh-tight</code></td><td class="num">1.25</td><td>headings, labels, badges</td></tr>
+<tr><td><code>--lh-body</code></td><td class="num">1.6</td><td>prose</td></tr>
+<tr><td><code>--sp-1</code></td><td class="num">4px</td><td></td></tr>
+<tr><td><code>--sp-2</code></td><td class="num">8px</td><td></td></tr>
+<tr><td><code>--sp-3</code></td><td class="num">12px</td><td></td></tr>
+<tr><td><code>--sp-4</code></td><td class="num">16px</td><td></td></tr>
+<tr><td><code>--sp-5</code></td><td class="num">24px</td><td></td></tr>
+<tr><td><code>--sp-6</code></td><td class="num">32px</td><td></td></tr>
+<tr><td><code>--sp-7</code></td><td class="num">48px</td><td></td></tr>
+<tr><td><code>--r-sm</code></td><td class="num">4px</td><td>buttons, inputs, badges, chips, code</td></tr>
+<tr><td><code>--r-md</code></td><td class="num">8px</td><td>cards, callouts, panels</td></tr>
+<tr><td><code>--content-max</code></td><td class="num">1000px</td><td>width of .content</td></tr>
+<tr><td><code>--content-pb</code></td><td class="num">var(--sp-7)</td><td>bottom padding of .content (the Tools page adds room for its bottom nav)</td></tr>
+<tr><td><code>--vf-zoom</code></td><td class="num">1</td><td>text scale of the .vf-zoom content containers (sunlight mode)</td></tr>
+</tbody></table></div>
+
+<div class="section-title">Cards</div>
+<div class="sg-grid">
+  <div class="card"><div class="card-title">Card</div><p>Surface, 1 px border, <code>--r-md</code>, padding <code>--sp-5</code>.</p></div>
+  <div class="card accent"><div class="card-title">Card · accent</div><p>Only the left edge carries the colour.</p></div>
+  <div class="card amber"><div class="card-title">Card · amber</div><p>Caution content; the title turns amber.</p></div>
+  <div class="card danger"><div class="card-title">Card · danger</div><p>Emergency content; the title turns red.</p></div>
+</div>
+
+<div class="section-title">Callouts</div>
+<div class="alert alert-info">Information the reader should notice. Body text stays in <code>--text</code>.</div>
+<div class="alert alert-warn">A warning: <strong>bold</strong> and <code>code</code> stay inline.</div>
+<div class="alert alert-danger">A danger callout, used for safety-critical cautions only.</div>
+
+<div class="section-title">Tables, values and markers</div>
+<div class="tbl-wrap"><table>
+<thead><tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>FS_GCS_ENABL</code></td><td class="val">2</td><td>GCS failsafe in all modes</td></tr>
+<tr class="fs-primary"><td><code>FS_LONG_TIMEOUT</code></td><td class="val">5 s</td><td>Primary failsafe row (<code>.fs-primary</code>)</td></tr>
+<tr><td>Marker</td><td><span class="warn-val">TBD — what is needed</span></td><td><span class="crit-val">critical value</span> · <span class="warn-val">VERIFY — against what</span></td></tr>
+</tbody></table></div>
+<p>Mode badges: <span class="mbadge m-qhov">QHOVER</span> <span class="mbadge m-fbwb">FBWB</span> <span class="mbadge m-fbwa">FBWA</span>
+<span class="mbadge m-auto">AUTO</span> <span class="mbadge m-man">MANUAL</span> <span class="mbadge m-rtl">RTL</span></p>
+
+<div class="section-title">Steps</div>
+<div class="step"><div class="step-n">1</div><div class="step-body"><strong>Step title</strong><p>Detail text is muted; <strong>inline bold</strong> and <code>code</code> stay inline.</p></div></div>
+<div class="step"><div class="step-n">2</div><div class="step-body"><strong>Second step</strong><p>One step per action.</p></div></div>
+<div class="proc-step"><span class="n">1</span><span class="t">Procedure step (<code>.proc-step</code>)</span></div>
+
+<div class="section-title">Emergency card</div>
+<div class="card danger emerg-card emerg-primary">
+  <div class="emerg-hdr">Scenario title — primary failsafe</div>
+  <p class="emerg-summary">One-line summary of what happens.</p>
+  <div class="emerg-imm"><div class="emerg-imm-badge">IMMEDIATE — FROM MEMORY</div>
+    <div class="emerg-imm-step"><div class="n">1</div><div>FIRST MEMORY ITEM</div></div>
+    <div class="emerg-imm-step"><div class="n">2</div><div>SECOND ITEM <span class="mbadge m-rtl">RTL</span></div></div>
+  </div>
+  <button type="button" class="emerg-cleanup-btn" aria-expanded="false" onclick="toggleCleanup(this)">▶ &nbsp;CLEAN-UP — LOOK UP AFTER SITUATION STABLE</button>
+  <div class="emerg-cleanup"><div class="emerg-cu-label">CLEAN-UP · NOT FOR MEMORY</div>
+    <div class="emerg-cu-step"><div class="n">1</div><div class="t">Read from the screen once stable.</div></div>
+    <div class="emerg-cu-step"><div class="n">2</div><div class="t">Second clean-up step.</div></div>
+  </div>
+</div>
+<div class="emerg-pills"><button type="button" class="emerg-pill primary">PRIMARY</button><button type="button" class="emerg-pill">SCENARIO</button><button type="button" class="emerg-pill note">NOTE</button></div>
+
+<div class="section-title">Buttons</div>
+<div class="cluster">
+  <button type="button" class="btn btn-primary">Primary</button>
+  <button type="button" class="btn">Default</button>
+  <button type="button" class="btn btn-ghost">Ghost</button>
+  <button type="button" class="btn btn-danger">Danger</button>
+  <button type="button" class="btn btn-sm">Small</button>
+  <button type="button" class="btn" disabled>Disabled</button>
+</div>
+
+<div class="section-title">Form controls</div>
+<div class="sg-grid">
+  <div class="field"><label for="sg-a">Pack name</label><input id="sg-a" type="text" placeholder="e.g. 6S-01"><span class="hint">Hint text, 12 px.</span></div>
+  <div class="field"><label for="sg-b">Cells</label><input id="sg-b" type="number" value="6"></div>
+  <div class="field"><label for="sg-c">Chemistry</label><select id="sg-c"><option>LiPo</option><option>Li-Ion</option></select></div>
+  <div class="field"><label for="sg-d">Notes</label><textarea id="sg-d"></textarea></div>
+</div>
+<label class="cluster"><input type="checkbox" checked> Checkbox (accent colour)</label>
+
+<div class="section-title">Disclosure</div>
+<details class="disclosure"><summary>Secondary information</summary><div class="disclosure-body"><p>Hidden until opened — instead of deleting it.</p></div></details>
+
+<div class="section-title">Utilities</div>
+<p><span class="muted">.muted</span> · <span class="mono">.mono</span> · <span class="num">.num 12.34</span> · <code>.stack</code> (column, gap 12) · <code>.cluster</code> (wrapping row, gap 8) · <code>.sr-only</code></p>
+
+</div>
+<script src="../../js/common.js"></script>
+<script>
+var toggleCleanup = VtolCommon.toggleCleanup;
+(function () {
+  var root = document.documentElement;
+  document.querySelectorAll('.sg-sw').forEach(function (el) { el.style.background = 'var(' + el.dataset.t + ')'; });
+  function rgb(s) { var m = s.match(/[\d.]+/g).map(Number); return m; }
+  function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (s, v, i) { return s + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
+  function ratio(a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  var probe = document.createElement('span'); document.body.appendChild(probe);
+  function val(t) { probe.style.color = 'var(' + t + ')'; return rgb(getComputedStyle(probe).color); }
+  function ratios() {
+    document.querySelectorAll('.sg-ratio').forEach(function (td) {
+      var fg = val(td.dataset.fg), min = /^--(red|dim)$/.test(td.dataset.fg) ? 3 : 4.5;
+      td.innerHTML = ['--bg', '--surface', '--surface2'].map(function (b) { var r = ratio(fg, val(b)); return '<span' + (r < min ? ' class="bad"' : '') + '>' + r.toFixed(1) + '</span>'; }).join(' / ') + ' (min ' + min + ')';
+    });
+  }
+  ratios();
+  var btn = document.querySelector('[data-sg-sun]');
+  btn.addEventListener('click', function () {
+    var on = !root.hasAttribute('data-sun');
+    if (on) root.setAttribute('data-sun', ''); else root.removeAttribute('data-sun');
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    ratios();
+  });
+  if (location.hash === '#sun') btn.click();
+})();
+</script>
+</body>
+</html>

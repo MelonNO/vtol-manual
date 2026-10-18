@@ -20,10 +20,10 @@
 <script src="../js/gcs-client.js"></script>
 <script src="rfmodel.js"></script>
 <style>
-/* shared tokens, fonts and base element styles: ../css/base.css; page-only tokens below */
+/* tokens, fonts, base elements and the shared components: ../css/base.css (docs/design/README.md); page-only tokens below */
 :root{
   /* map link colours (same hues as the Tools page section colours) */
-  --blue:#60a5fa;--purple:#a78bfa;--rose:#f43f5e;--teal:#2dd4bf;--grey:#555;
+  --purple:#a78bfa;--rose:#f43f5e;--teal:#2dd4bf;--grey:#555;
 }
 body{height:100vh;display:flex;flex-direction:column;overflow:hidden;
      font-size:16px;line-height:normal}   /* the map keeps its previous (browser-default) body metrics */
@@ -99,7 +99,6 @@ button.nav-btn[aria-pressed="true"]{background:var(--text);color:var(--bg)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .chk{display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;color:var(--text);cursor:pointer}
 .chk input{width:20px;height:20px;accent-color:var(--accent);flex-shrink:0}
-.warn-val{color:var(--amber)}
 
 /* Alt mode buttons */
 .amode-btn{padding:1px 6px;font-size:10px;background:transparent;
@@ -108,15 +107,15 @@ button.nav-btn[aria-pressed="true"]{background:var(--text);color:var(--bg)}
 .amode-btn.amode-on{border-color:var(--accent);color:var(--accent)}
 
 /* Primary button */
-.btn{width:100%;padding:7px;background:transparent;border:1px solid var(--accent);
+#sb .btn{width:100%;padding:7px;background:transparent;border:1px solid var(--accent);
      color:var(--accent);cursor:pointer;font-family:var(--head);font-size:12px;
      font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;transition:all .15s}
-.btn:hover{background:var(--accent);color:#000}
-.btn.active{background:var(--accent);color:#000}
-.btn.stop{border-color:var(--red);color:var(--red)}
-.btn.stop:hover{background:var(--red);color:#000}
+#sb .btn:hover{background:var(--accent);color:var(--ink)}
+#sb .btn.active{background:var(--accent);color:var(--ink)}
+#sb .btn.stop{border-color:var(--red);color:var(--red)}
+#sb .btn.stop:hover{background:var(--red);color:var(--ink)}
 .btn-row{display:flex;gap:4px;margin-top:4px}
-.btn-row .btn{margin:0;flex:1;padding:6px 2px;font-size:11px}
+#sb .btn-row .btn{margin:0;flex:1;padding:6px 2px;font-size:11px}
 
 /* Slider rows */
 .vtx-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
@@ -145,7 +144,7 @@ button.nav-btn[aria-pressed="true"]{background:var(--text);color:var(--bg)}
 /* Sim */
 .sim-sub{padding-top:8px;border-top:1px solid var(--border);margin-top:8px}
 .sim-tabs{display:flex;gap:3px;margin:7px 0}
-.sim-tabs .btn{margin:0;flex:1;padding:6px 2px;font-size:11px}
+#sb .sim-tabs .btn{margin:0;flex:1;padding:6px 2px;font-size:11px}
 .sim-st{font-size:11px;margin-top:6px;color:var(--muted);font-family:var(--head);letter-spacing:1px}
 .sim-st.run{color:var(--green)}
 .sim-st.stop{color:var(--muted)}
@@ -229,7 +228,7 @@ button.nav-btn[aria-pressed="true"]{background:var(--text);color:var(--bg)}
 @keyframes blink{50%{opacity:.4}}
 
 /* Offline download panel */
-.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+#sb .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
 progress.off-prog{width:100%;height:4px;appearance:none;border:none;
                   background:var(--surface2);margin:4px 0;display:block}
 progress.off-prog::-webkit-progress-bar{background:var(--surface2)}

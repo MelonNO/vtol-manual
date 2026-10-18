@@ -12,37 +12,29 @@
 <link rel="stylesheet" href="../css/base.css">
 <script src="../js/field.js"></script>
 <style>
-/* shared tokens, fonts and base element styles: ../css/base.css; page-only tokens below */
+/* tokens, fonts, base elements and the shared components: ../css/base.css (docs/design/README.md); page-only tokens below */
 :root {
   --clock-bg:#000; --clock-fg:#fff;   /* maximum contrast for the camera (already black/white, so sunlight mode keeps it) */
-  --mono:'Share Tech Mono',ui-monospace,Consolas,monospace; --head:'Oswald','Arial Narrow',sans-serif;   /* system fallbacks for the clock */
 }
 body{line-height:1.5;}
-a{color:var(--accent);}
-:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
 .wrap{max-width:1100px;margin:0 auto;padding:16px;}
 .top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:2px solid var(--accent);padding-bottom:10px;margin-bottom:16px;}
 .title{font-family:var(--head);font-weight:700;letter-spacing:3px;color:var(--accent);font-size:16px;flex:1;}
-.btn{min-height:44px;padding:8px 16px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:14px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;}
 .btn[data-vf-sun][aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);}
 .btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:bold;}
-#clock{font-size:min(15vw,180px);font-weight:bold;letter-spacing:2px;text-align:center;color:var(--clock-fg);background:var(--clock-bg);border:2px solid var(--border2);padding:12px 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
+#clock{font-family:var(--mono);font-size:min(15vw,180px);font-weight:bold;letter-spacing:2px;text-align:center;color:var(--clock-fg);background:var(--clock-bg);border:2px solid var(--border2);padding:12px 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
 .row{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;}
 .box{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border2);padding:10px 14px;}
 .k{font-size:11px;color:var(--muted);letter-spacing:2px;}
-.v{font-size:min(8vw,56px);font-weight:bold;color:var(--clock-fg);font-variant-numeric:tabular-nums;}
+.v{font-family:var(--mono);font-size:min(8vw,56px);font-weight:bold;color:var(--clock-fg);font-variant-numeric:tabular-nums;}
 #bar{position:relative;height:28px;background:var(--clock-bg);border:1px solid var(--border2);margin:8px 0 4px;}
 #bar-mark{position:absolute;top:0;bottom:0;width:4px;background:var(--clock-fg);left:0;}
-.ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);}
-.card{background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--accent);padding:14px 16px;margin:16px 0;}
+.ticks{font-family:var(--mono);display:flex;justify-content:space-between;font-size:10px;color:var(--muted);}
 .card h2{font-family:var(--head);font-size:13px;letter-spacing:2px;color:var(--accent);margin-bottom:8px;}
-p,li{color:var(--muted);font-size:14px;margin-bottom:6px;}
+li{color:var(--muted);font-size:14px;margin-bottom:6px;}
 ol{margin-left:20px;}
 label{display:block;font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
 input[type=number]{min-height:44px;width:160px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;}
-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px;}
-td,th{padding:6px 10px;border-bottom:1px solid var(--border);text-align:left;}
-th{font-size:11px;color:var(--muted);letter-spacing:2px;}
 .warn{color:var(--amber);}
 .ver{text-align:center;margin-top:12px;}
 body.hidepanel .card,body.hidepanel .row.stats{display:none;}
