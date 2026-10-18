@@ -75,10 +75,14 @@ history rewrite, was prepared and verified, then cancelled (OPEN-ITEMS O-5).
   RELOAD" prompt, installable web app (manifest, icons), screen wake lock, sunlight/high-contrast mode, print
   kneeboard, emergency-only mode (`index.html#emergency-only`), QR code to the suite. Footers show the app version,
   the content date and the parameter file.
-- **Photos (WP22):** openly licensed photos where they help the reader. A photo that does not show this build's own
-  hardware says "Representative image" in its caption and alt text. Every image's author, licence and source are in
-  the credits table in `img/README.md`, with a visible "Image credits" section in the manual. The owner's own photos
-  (shot list in `img/README.md`) are still the goal for the build-specific items.
+- **Photos (WP22):** two openly licensed representative photos, both CC BY-SA: an analog FPV quad in Client Drones
+  (Wikimedia Commons) and a pitot-static tube in Maintenance (ArduPilot docs). Their caption and alt text say
+  "Representative image", and the caption carries a credit line (author, licence, source link). The manual has a
+  visible "Image Credits" section (Reference ▾ Abbreviations, `manual.html#abbrev/image-credits`) with a row for
+  every photo it uses, and `img/README.md` has a credits table (author, licence, source page, file URL, date
+  checked). The four vendor marketing images (`t2_vtol`, `t2_vtol2`, `matek_f405`, `siyi_hm30`) stay, captioned as
+  vendor images, with their licence marked "not recorded", until the owner's own photos (shot list in
+  `img/README.md`) replace them.
 
 ### GCS companion app (new, `gcs/`)
 
@@ -98,7 +102,7 @@ history rewrite, was prepared and verified, then cancelled (OPEN-ITEMS O-5).
 - **Late product changes (WP18, WP19):** the runtime's GIL switch interval went from 0.5 ms to **1 ms**. Below 1 ms
   Windows polls for the GIL, which starved the 250 Hz RC sender on 2–4 CPUs, as on a small laptop or a CI runner.
   At 1 ms it holds 250 Hz with a p99 lateness of about 0.6 ms. CRC-16 is now table-driven, with the same results
-  and about 6× faster. The control channel's rate limiter takes an injectable clock (`ControlServer(rate_clock=…)`,
+  and about 8× faster. The control channel's rate limiter takes an injectable clock (`ControlServer(rate_clock=…)`,
   default `perf_counter`), so its tests are exact; the limits themselves are unchanged.
 
 ### Removed / retired
