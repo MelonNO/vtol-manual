@@ -151,6 +151,11 @@ scroll; up to 900 px wide the items (`#nav-items`) open as a Menu sheet (`toggle
 | Reference ▾ | `comms`, `prearm`, `abbrev`, `params` (all parameters of the reference file) |
 | ⚠ Emergency | `emergency` (direct, always red) |
 
+Every tab panel opens with `.man-head` (an `h2.man-title` and a one-line `.man-lede`); its sections are `h3.section-title`
+with a stable `id` (sub-headings `h4.man-sub`). **"On this page"** (`#man-toc`) is built by `renderToc(tab)` from the open
+tab's `.section-title` headings (static and rendered) on every tab switch: from 1200 px a sticky side list in
+`#man-aside`, narrower a closed disclosure under the tab title; an entry opens its anchor through `showTab` (`tocGo`).
+
 Key functions: `showTab(name, anchor, opts)` (every tab switch; updates the hash `#tab/anchor` and `vtol_manual_tab`),
 `selectNavItem(name, btn, e)`, `toggleNavGroup(btn)`, `toggleNavMenu(open)`, `manGoTo(k)` (search hit → opens the tab, scrolls and
 highlights), `renderManual()` (renders the shared content, tokens and diagrams; runs on load and on store changes),
