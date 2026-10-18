@@ -162,7 +162,7 @@
 
   // ── POST-FLIGHT ── (plan §6.2.1 post-flight)
   const postflight = [
-    { id: 'pf-immediate', title: 'Right after landing', style: 'accent', steps: [
+    { id: 'pf-immediate', title: 'Right after landing', steps: [
       { id: 'pf-disarm-carrier', s: 'Disarm carrier', t: 'Disarmed in Mission Planner and all motors stopped. Do not approach until it is disarmed.' },
       { id: 'pf-disarm-client', s: 'Disarm client', t: 'Co-pilot confirms the client is disarmed. Props stopped.' },
       { id: 'pf-carrier-batt', s: 'Disconnect carrier battery', t: 'Unplug the 6S pack: FC, HM30 air unit, relay PCB and camera power down. Record the landing voltage.' },

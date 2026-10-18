@@ -98,8 +98,16 @@ Class names are emitted by the pages and by `js/render-content.js`: **never rena
 ```html
 <div class="alert alert-info">…</div> <div class="alert alert-warn">…</div> <div class="alert alert-danger">…</div>
 ```
+Several points: one `<p>` each (a short visible lead first). The rest goes behind a quiet "More" disclosure — a
+`<details>` directly inside the callout (the manual adds `class="man-more"` as a hook; it has no own CSS):
+```html
+<div class="alert alert-warn"><p><strong>Lead.</strong> The one thing to act on.</p>
+  <details><summary>Why …</summary><p>Background.</p></details></div>
+```
 
-**Section title** — Oswald `--fs-lg`, text colour, thin divider. `<div class="section-title">Crew Roles</div>`
+**Section title** — Oswald `--fs-lg`, text colour, thin divider. `<div class="section-title">Crew Roles</div>`, or as a
+real heading `<h3 class="section-title" id="…">` (the manual; "On this page" lists them). With an `id` it keeps
+`--sp-4` of air above it after an anchor jump (`scroll-margin-top`).
 
 **Table** — header row on `--surface2`, row dividers, cells `--sp-2`/`--sp-3`, tabular figures. Wrap it so it
 scrolls on a phone; mark value cells.
@@ -107,7 +115,10 @@ scrolls on a phone; mark value cells.
 <div class="tbl-wrap"><table><thead><tr><th>Parameter</th><th>Value</th></tr></thead>
 <tbody><tr><td><code>FS_GCS_ENABL</code></td><td class="val">2</td></tr></tbody></table></div>
 ```
-`.val` = monospace value; `.num` = monospace tabular, no wrap; `tr.fs-primary` = the primary-failsafe row.
+`.val` = monospace value; `.num` = monospace tabular, no wrap; `tr.fs-primary` = the primary-failsafe row. A marker
+can also be a whole cell (`<td class="warn-val">TBD</td>`): it keeps the cell padding. `.tbl-wrap` has a thin dark
+scrollbar. Rendered tables (`VtolRender`) always come in `.tbl-wrap` with `<thead>` / `<tbody>`; the callout tables
+(`.co-table`) set their column widths with `th.co-trig` (30 %), `th.co-who` (25 %) and `th.co-call` (35 %).
 
 **Markers and badges**
 ```html
@@ -139,12 +150,14 @@ scrolls on a phone; mark value cells.
 <button type="button" class="btn btn-primary">Save</button> <button type="button" class="btn">Default</button>
 <button type="button" class="btn btn-ghost">Cancel</button> <button type="button" class="btn btn-danger">Delete</button>
 <button type="button" class="btn btn-sm">Small</button>
+<button type="button" class="btn btn-ghost btn-sm btn-icon" aria-label="Remove">✕</button>   <!-- glyph only: ≥ 44 px square, aria-label -->
 ```
 
 **Form controls** — `input`, `select`, `textarea` get a 44 px base style at zero specificity (`:where()`), so page
 rules still win; checkboxes, radios and ranges get the accent colour.
 ```html
 <div class="field"><label for="x">Label</label><input id="x" type="text"><span class="hint">Hint</span></div>
+<p class="help">A helper line under a control or a group of controls (same style as .field .hint).</p>
 ```
 
 **Disclosure** — for secondary information.
@@ -174,6 +187,47 @@ rules still win; checkboxes, radios and ranges get the accent colour.
 |---|---|
 | Tokens, fonts, base elements, shared components, sunlight overrides, field-use components (toast, SUN, emergency-only mode), reduced motion | `css/base.css` (sections 1–7) |
 | Print and the kneeboard | `css/print.css` |
-| Header, nav, footer | each page's `<style>` (redesign WP24 owns them) |
+| Shell: app bar, page switcher, Aircraft summary, Tools and manual navigation, map status, footer, the Tools EMERGENCY button | `css/base.css` section 8 (redesign WP24, WP28) |
 | Page-specific layout and widgets (checklist rows, Link panels, map panels, clock) | that page's `<style>` |
 | Page-only tokens (map link colours, `--clock-*`, Tools `--content-pb`) | a `:root{…}` rule in that page's `<style>` |
+
+## Diagrams
+
+The standalone diagram files (`img/diagrams/*.svg`) cannot read the tokens; they use the same hex values. The
+palette is in [`img/README.md`](../../img/README.md) and equals the tokens above (retuned by WP26).
+
+## Page patterns (not shared components)
+
+These live in one page's `<style>` because only that page uses them today. Promote one to section 4 when a second page
+needs it (and delete the page copy: the duplicate guard enforces one definition).
+
+| Page | Patterns |
+|---|---|
+| Tools (`index.html`) | `.form-grid` (+ `.wide`, `.wide-2`), `.actions`, `.note`, `.status`, `.st` status chips and `.lk-badge`, `.kv` (a `<dl>` grid), `.stat` cards, `.chart-lbl` / `.chart-box`, `.file-input`, `.check`, `.txt-ok/warn/crit/muted`, `.v-*` value colours, checklist rows (`.ci…`, `.cl-…`; the section colour arrives as `--sec`), Link panels (`.lk-…`), uppercase button labels inside the content |
+| Manual (`manual.html`) | `.kv` / `.kv-grid` (rows of `<div><dt><dd>`, values right-aligned), diagram figures `.dg` / `.dg-row` / `.dg-scroll`, signal chains `.chain`, `.principles`, `.man-toc` |
+| Map (`relay/map.html`) | `.u-in` (input with a unit suffix), `.seg3` (equal-width segmented choice; `.seg` in the shell is the navigation variant), `.vtx-row`, `.btn-row`, `.ico` (44 × 44 icon button inside a button row) |
+
+## Wave-3 requests (WP28)
+
+What happened to every request of the redesign WP23–WP27 reports for this stylesheet and the renderers:
+
+| Request (from) | Result |
+|---|---|
+| Thin dark scrollbar on table wrappers (WP25, WP26) | **Folded**: `.tbl-wrap` in section 4; page copies removed (Tools keeps it for `.chart-box`, `.msg-list`; manual for `.dg-scroll`) |
+| Callout with several paragraphs and a "More" disclosure (WP26) | **Folded**: `.alert p`, `.alert>details`; manual `.man-main .alert p` and `.man-more` rules removed |
+| `scroll-margin-top` on `.section-title` (WP26) | **Folded**: `.section-title[id]`; manual rule removed |
+| Marker chips on table cells (WP26) | **Folded**: `td.warn-val, td.crit-val` keep the cell padding |
+| Renderer: no inline-styled table wrappers, abort heading id, plain design-intent card (WP26) | **Done** in `js/render-content.js`: `.tbl-wrap` + `thead`/`tbody`, `.co-table` column classes, `id="co-abort-calls"`, `card design-intent` |
+| Renderer: section colour as a custom property, no `!important` overrides (WP25) | **Done**: `<div class="cl-section" style="--sec:#hex">`; only the letter badge uses it (`index.html`) |
+| Sticky Tools sub-tabs `body>#nav.tn-has-sub` (WP24 M7, WP25) | **Folded** into the shell as `.tn.tn-has-sub` (phone) |
+| Dead `.vf-hdr-tools`, `.vf-lbl`, phone `.hdr-top` (WP24) | **Removed** (also the dead `.hdr-*` rules in `css/print.css`) |
+| Shell documented in this README; styleguide shows the shell (WP24) | **Done** ("Where CSS goes"; styleguide section "Shell") |
+| Map bar 1 px taller than 48 px (WP24 M3, WP27) | **Done**: `.map-hdr` draws its divider inside the bar (`inset` shadow) |
+| Sunlight 2 px outlines for `.att-pnl`, `#sb-wrap`, `#cursor-bar` (WP27) | **Folded** into the section 5 list |
+| Shared helper line (WP27 `.help`) | **Folded**: `.help` = `.field .hint`; the map's page rule removed |
+| Shared icon button (WP25 `.btn-icon`, WP27 `.ico`) | **Folded**: `.btn-icon` from Tools; the map's `.ico` stays a button-row modifier (its markup is outside WP28) |
+| Promote `.seg` / `.seg3`, `.u-in`, `.vtx-row` (WP24, WP27) | **Not promoted**: one consumer each (see "Page patterns") |
+| Promote the Tools patterns (`.form-grid`, `.actions`, `.note`, `.status`, `.st`, `.kv`, `.stat`, `.chart-*`, `.file-input`, `.check`, `.txt-*`, `.v-*`, uppercase button labels) and the manual `.kv` / `.dg` (WP25, WP26) | **Not promoted**: no second page uses them; Tools `.kv` (a grid of `dt`/`dd`) and manual `.kv` (rows of `div`) are different structures, so one shared rule would change one page's layout |
+| Checklist section names in sentence case (WP25) | **Done** in `data/content.js` |
+| Callouts intro shorter (WP26) | **Done** in `data/content.js` (the manual lists the principles right above it) |
+| Single 440 px diagrams beside text at 1366 (WP26 MINOR 4, optional) | **Not done**: it needs a manual markup change (figure beside its text) outside WP28; pairing unrelated diagrams is not wanted |

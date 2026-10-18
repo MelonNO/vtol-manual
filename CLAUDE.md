@@ -181,10 +181,11 @@ Text markup in content: `` `code` ``, `**bold**`, `[[MODE]]` badge, `[[TBD — �
 desktop, 52 px (▶ only) on a phone; rows ≥ 52 px, checkbox 24 × 24 px. The toolbar above a list (`.cl-hdr`, sticky on
 desktop) holds the title (`.cl-hdr-title`, a direct child: the kneeboard print keeps only it), progress, the pre-flight
 timer with START as the primary action, and the secondary actions (Expand all, Challenge–response, Reset; a "More" menu
-on a phone, CSS-only via `.cl-more-cb`). Key functions: `renderContent()`, `toggleCI(el, e)`,
+on a phone, CSS-only via `.cl-more-cb`; a tap outside it only closes it, except on EMERGENCY). Key functions: `renderContent()`, `toggleCI(el, e)`,
 `toggleDetail(key, r, e)`, `crOpen(name)` (challenge–response), `openEmerg()` / `emergJump(id)`, `vtolRefreshAll()`.
 Section accents `SEC_COLORS`: A `#60a5fa`, B `#f97316`, C `#22c55e`, D `#a78bfa`, E `#f43f5e`, T1–T3 orange /
-purple / rose (hex with alpha suffixes, pre-existing).
+purple / rose; the renderer emits them as the custom property `--sec` on `.cl-section`, and only the letter badge uses
+it.
 
 ## Emergency procedures structure
 
@@ -324,7 +325,8 @@ Mobile first: works at 360 px width, tap targets ≥ 44 px, checklist rows 50 px
 mobile (≤ 600 px) `index.html` uses a fixed bottom nav. The page frame (app bar with page switcher and ☀, the
 "Aircraft summary" disclosure whose warning chips stay visible while it is closed, the Tools groups Checklists · Link ·
 Logs · Weather · Setup with their sub-tabs — the bottom nav on a phone —, the manual nav and Menu sheet, the map status,
-the footer and the Tools EMERGENCY button) is styled only in the shell section (8) of `css/base.css`. Motion: short functional transitions only; reduced motion
+the footer and the Tools EMERGENCY button — a full-width red bar above the bottom nav on a phone) is styled only in
+the shell section (8) of `css/base.css`. Motion: short functional transitions only; reduced motion
 switches them off. Escape every dynamic text inserted with `innerHTML` (`VtolCommon.escH()` or
 `textContent`). Offline first: no CDN dependencies.
 

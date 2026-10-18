@@ -951,7 +951,7 @@
   "ta-fpv-props",
   "ta-client-vtx w=true auto=video-lock",
   "ta-client-elrs w=true auto=client-link",
-  "pf-immediate style=accent",
+  "pf-immediate",
   "pf-disarm-carrier",
   "pf-disarm-client",
   "pf-carrier-batt",
