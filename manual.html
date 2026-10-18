@@ -106,7 +106,8 @@ tr.row-active td{background:var(--accent-bg);}
 th.ok{color:var(--green);}
 th.bad{color:var(--red-fg);}
 .badge-active{display:inline-block;font-family:var(--head);font-size:var(--fs-xs);font-weight:600;letter-spacing:1px;line-height:1.4;padding:0 6px;border:1px solid var(--accent);border-radius:var(--r-sm);color:var(--accent);margin-left:6px;}
-.man-main td code{white-space:nowrap;}
+.man-main td code,.man-main td.val{white-space:nowrap;}
+@media(max-width:600px){.man-main td code{white-space:normal;}}   /* phones: long messages wrap, so the next column stays in view */
 .man-main :is(.tbl-wrap,.dg-scroll){scrollbar-width:thin;scrollbar-color:var(--dim) transparent;}
 
 /* ── Signal chains (RF & Comms): neutral nodes, the detail line in monospace ── */
@@ -178,6 +179,12 @@ svg .warn-val{fill:var(--amber);}
   .pr-table tr{display:block;border-bottom:1px solid var(--border);}
   .pr-table td{display:inline-block;border-bottom:none;padding:6px 10px 2px;}
   .pr-table td:nth-child(3){display:block;padding:0 10px 8px;font-size:var(--fs-xs);}
+}
+@media(max-width:600px){   /* Pre-Arm Ref on a phone: one block per message (message, cause, fix stacked) — no sideways scrolling */
+  .prearm-filter thead{display:none;}
+  .prearm-filter tr{display:block;padding:var(--sp-2) 0;border-bottom:1px solid var(--border);}
+  .prearm-filter td{display:block;border-bottom:none;padding:2px var(--sp-2);overflow-wrap:anywhere;}
+  .prearm-filter td:first-child{color:var(--text);font-weight:600;}
 }
 /* ── Filter fields (Pre-Arm Ref, Abbreviations, Parameters) ── */
 .filter-input{display:block;width:100%;max-width:560px;margin:0 0 var(--sp-5);font-size:var(--fs-md);}
@@ -326,7 +333,7 @@ svg .warn-val{fill:var(--amber);}
     </dl></div>
   </div>
   <p class="man-note">REL = altitude above home (where the carrier was armed). Over rising terrain REL is not the height above the ground (AGL).</p>
-  <div class="alert alert-warn"><strong>Battery:</strong> the pilot calls RTL earlier, at <span data-tok="settings.manualRtlVolt">23.0</span>V on the OSD. <span data-fs="battCrtVolt">At the critical <span data-tok="settings.battCrtVolt">21.0</span>V the carrier does Loiter → <strong>QLand at the current position</strong>, not home</span>. Every RTL ends with an <strong>automatic VTOL landing at home</strong>: keep the home landing zone clear for the whole flight. Full ladder: <a href="#aircraft/voltage-ladder">Aircraft → Battery &amp; Power</a>.</div>
+  <div class="alert alert-warn"><strong>Battery:</strong> <span data-fs="battLowVolt">at <span data-tok="settings.battLowVolt">22.0</span>V (<code>BATT_LOW_VOLT</code>) the carrier starts an <strong>automatic RTL</strong></span>; <span data-fs="battCrtVolt">at <span data-tok="settings.battCrtVolt">21.0</span>V (<code>BATT_CRT_VOLT</code>) it does Loiter → <strong>QLand at the current position</strong>, not home</span>. The pilot calls RTL earlier, at <span data-tok="settings.manualRtlVolt">23.0</span>V on the OSD. Every RTL ends with an <strong>automatic VTOL landing at home</strong>: keep the home landing zone clear for the whole flight. Full ladder: <a href="#aircraft/voltage-ladder">Aircraft → Battery &amp; Power</a>.</div>
 
   <h3 class="section-title" id="ov-crew">Crew Roles</h3>
   <div class="role-grid">
@@ -804,10 +811,10 @@ svg .warn-val{fill:var(--amber);}
     <thead><tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr></thead>
     <tbody>
     <tr><td><code>Q_TRANSITION_MS</code></td><td class="val">3500 ms</td><td>Forward transition time window</td></tr>
-    <tr><td><code>Q_TRANS_FAIL</code></td><td><span class="warn-val">8 s</span></td><td>Transition timeout: if the transition has not completed, it is cancelled</td></tr>
+    <tr><td><code>Q_TRANS_FAIL</code></td><td class="num"><span class="warn-val">8 s</span></td><td>Transition timeout: if the transition has not completed, it is cancelled</td></tr>
     <tr><td><code>Q_TRANS_FAIL_ACT</code></td><td class="val">1 = QRTL</td><td>Automatic action on transition timeout: <strong>QRTL home</strong> — hover return at <code>Q_RTL_ALT</code> (50 m REL) and a vertical landing at home (<code>Q_OPTIONS</code> bit 19 cleared). It never falls back to QHOVER (ArduPlane source: -1 warn only, 0 QLand, 1 QRTL). Keep the route WP2 → home clear.</td></tr>
     <tr><td><code>Q_BACKTRANS_MS</code></td><td class="val">8000 ms</td><td>Back-transition window (FW → VTOL): ≈ 8 s × 12 m/s ≈ 100 m flown</td></tr>
-    <tr><td><code>Q_ASSIST_SPEED</code></td><td><span class="warn-val">9 m/s</span></td><td>VTOL assist activates in FW modes below this speed</td></tr>
+    <tr><td><code>Q_ASSIST_SPEED</code></td><td class="num"><span class="warn-val">9 m/s</span></td><td>VTOL assist activates in FW modes below this speed</td></tr>
     <tr><td><code>Q_ASSIST_ALT</code></td><td class="val">25m</td><td>VTOL assist activates below this altitude (reference: <span class="warn-val">VERIFY</span>)</td></tr>
     </tbody>
   </table></div>
@@ -817,7 +824,7 @@ svg .warn-val{fill:var(--amber);}
     <thead><tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr></thead>
     <tbody>
     <tr><td><code>AIRSPEED_CRUISE</code></td><td class="val">12 m/s</td><td>Target cruise speed (43.2 km/h)</td></tr>
-    <tr><td><code>AIRSPEED_MIN</code></td><td><span class="warn-val">10 m/s</span></td><td>Stall prevention threshold</td></tr>
+    <tr><td><code>AIRSPEED_MIN</code></td><td class="num"><span class="warn-val">10 m/s</span></td><td>Stall prevention threshold</td></tr>
     <tr><td><code>AIRSPEED_MAX</code></td><td class="val">22 m/s</td><td>Maximum airspeed (79 km/h)</td></tr>
     <tr><td><code>TECS_CLMB_MAX</code></td><td class="val">5 m/s</td><td>Maximum climb rate</td></tr>
     <tr><td><code>TECS_SINK_MAX</code></td><td class="val">5 m/s</td><td>Maximum sink rate</td></tr>
@@ -846,9 +853,9 @@ svg .warn-val{fill:var(--amber);}
     <tbody>
     <tr><td>Carrier battery</td><td class="val">6S 7000mAh</td><td>Single pack powers all carrier systems: FC, ESCs, HM30 air unit, relay PCB, IP camera</td></tr>
     <tr><td>Mast battery</td><td class="val">6S 3000mAh</td><td>Powers HM30 ground unit only</td></tr>
-    <tr><td><code>BATT_LOW_VOLT</code></td><td><span class="warn-val">22.0V</span></td><td>3.67V/cell — low battery → <strong>automatic RTL</strong> after <code>BATT_LOW_TIMER</code> = 10 s below the threshold<div data-fs="battLowVolt"></div></td></tr>
+    <tr><td><code>BATT_LOW_VOLT</code></td><td class="num"><span class="warn-val">22.0V</span></td><td>3.67V/cell — low battery → <strong>automatic RTL</strong> after <code>BATT_LOW_TIMER</code> = 10 s below the threshold<div data-fs="battLowVolt"></div></td></tr>
     <tr><td><code>BATT_FS_LOW_ACT</code></td><td class="val">1</td><td>RTL: home in fixed-wing at 120 m, then an automatic VTOL landing at home</td></tr>
-    <tr><td><code>BATT_CRT_VOLT</code></td><td><span class="crit-val">21.0V</span></td><td>3.50V/cell — critical battery<div data-fs="battCrtVolt"></div></td></tr>
+    <tr><td><code>BATT_CRT_VOLT</code></td><td class="num"><span class="crit-val">21.0V</span></td><td>3.50V/cell — critical battery<div data-fs="battCrtVolt"></div></td></tr>
     <tr><td><code>BATT_FS_CRT_ACT</code></td><td class="val">6</td><td>Loiter → QLand at the <strong>current position, not home</strong></td></tr>
     <tr><td><code>BATT_FS_VOLTSRC</code></td><td class="val">1</td><td>The failsafes use the sag-compensated (resting) voltage estimate; the OSD and Mission Planner show raw voltage, which reads lower under load</td></tr>
     <tr><td><code>BATT_ARM_VOLT</code></td><td class="val">24.6V</td><td>4.10V/cell — arming refused below: a part-used pack cannot be flown<div data-fs="battArmVolt"></div></td></tr>
@@ -869,11 +876,11 @@ svg .warn-val{fill:var(--amber);}
       <tr><td>Full charge</td><td class="val">25.2</td><td>4.20</td><td>—</td></tr>
       <tr><td>Arming minimum (<code>BATT_ARM_VOLT</code>)</td><td class="val">24.6</td><td>4.10</td><td>Arming refused below — fit a fully charged pack</td></tr>
       <tr><td>Manual RTL trigger (pilot, OSD raw)</td><td class="val">23.0</td><td>3.83</td><td>Pilot initiates RTL — call "CARRIER BATT — RTL SOON"</td></tr>
-      <tr><td>Hard RTL limit (pilot discipline)</td><td><span class="warn-val">22.5</span></td><td>3.75</td><td>RTL must be active</td></tr>
-      <tr><td><code>BATT_LOW_VOLT</code></td><td><span class="warn-val">22.0</span></td><td>3.67</td><td><strong>Automatic RTL</strong> (10 s below, sag-compensated): home at 120 m, automatic VTOL landing at home</td></tr>
-      <tr><td><code>BATT_CRT_VOLT</code></td><td><span class="crit-val">21.0</span></td><td>3.50</td><td><strong>Automatic QLand here</strong> — Loiter → QLand at the current position, not home</td></tr>
+      <tr><td>Hard RTL limit (pilot discipline)</td><td class="num"><span class="warn-val">22.5</span></td><td>3.75</td><td>RTL must be active</td></tr>
+      <tr><td><code>BATT_LOW_VOLT</code></td><td class="num"><span class="warn-val">22.0</span></td><td>3.67</td><td><strong>Automatic RTL</strong> (10 s below, sag-compensated): home at 120 m, automatic VTOL landing at home</td></tr>
+      <tr><td><code>BATT_CRT_VOLT</code></td><td class="num"><span class="crit-val">21.0</span></td><td>3.50</td><td><strong>Automatic QLand here</strong> — Loiter → QLand at the current position, not home</td></tr>
       <tr><td>Storage</td><td class="val">22.8</td><td>3.80</td><td>—</td></tr>
-      <tr><td>Hard floor</td><td><span class="crit-val">18.6</span></td><td>3.10</td><td>—</td></tr>
+      <tr><td>Hard floor</td><td class="num"><span class="crit-val">18.6</span></td><td>3.10</td><td>—</td></tr>
       </tbody>
     </table></div>
     <div class="alert alert-info">The failsafes and the pilot read <strong>different voltages</strong>: <code>BATT_FS_VOLTSRC</code> = 1 means the failsafes use a sag-compensated (resting) estimate, while the OSD and Mission Planner show raw voltage, which reads lower under load. The pilot's 23.0V trigger on the OSD therefore comes well before the automatic 22.0V. If the low-battery RTL fires during a manual QHOVER landing, reselect QHOVER on the Nomad switch to finish the landing.</div>
@@ -1509,8 +1516,8 @@ svg .warn-val{fill:var(--amber);}
     <tbody>
     <tr><td>LiPo full charge</td><td>25.2V</td><td>4.20V</td><td>Same chemistry limit as the carrier pack</td></tr>
     <tr><td>Betaflight "full" detection</td><td>24.6V</td><td>4.10V</td><td><code>vbat_full_cell_voltage = 410</code> — Betaflight's threshold for a full pack, not a charge target</td></tr>
-    <tr><td>OSD warning</td><td><span class="warn-val">21.0V</span></td><td>3.5V</td><td>Call "FPV BATT LOW — RETURNING" and land immediately (app alarm FPV BATT LOW)</td></tr>
-    <tr><td>Absolute minimum</td><td><span class="crit-val">19.8V</span></td><td>3.3V</td><td>BF minimum cell voltage — retire pack if reached in flight</td></tr>
+    <tr><td>OSD warning</td><td class="num"><span class="warn-val">21.0V</span></td><td>3.5V</td><td>Call "FPV BATT LOW — RETURNING" and land immediately (app alarm FPV BATT LOW)</td></tr>
+    <tr><td>Absolute minimum</td><td class="num"><span class="crit-val">19.8V</span></td><td>3.3V</td><td>BF minimum cell voltage — retire pack if reached in flight</td></tr>
     </tbody>
   </table></div>
 
@@ -1521,8 +1528,8 @@ svg .warn-val{fill:var(--amber);}
     <div class="tbl-wrap"><table>
       <thead><tr><th>Parameter</th><th>Value</th><th>Implication</th></tr></thead>
       <tbody>
-      <tr><td>Activation delay</td><td><span class="warn-val">2.5s</span></td><td>1.5s stage 1 + 1s stage 2 before rescue triggers — plus the relay part (T_hold, TX module reaction): total <span class="warn-val">TBD — test 6</span></td></tr>
-      <tr><td>Minimum satellites</td><td><span class="warn-val">8</span></td><td>Below 8 sats, GPS Rescue will NOT activate — client descends on failsafe throttle instead</td></tr>
+      <tr><td>Activation delay</td><td class="num"><span class="warn-val">2.5s</span></td><td>1.5s stage 1 + 1s stage 2 before rescue triggers — plus the relay part (T_hold, TX module reaction): total <span class="warn-val">TBD — test 6</span></td></tr>
+      <tr><td>Minimum satellites</td><td class="num"><span class="warn-val">8</span></td><td>Below 8 sats, GPS Rescue will NOT activate — client descends on failsafe throttle instead</td></tr>
       <tr><td>Altitude mode</td><td>CURRENT_ALT</td><td>Climbs 30m above wherever the client is when the link is lost. <span class="warn-val">VERIFY — Betaflight 4.5 docs: the return altitude below applies to FIXED_ALT</span></td></tr>
       <tr><td>Return altitude</td><td>100m</td><td>Cruises home at 100m above the client's launch point (<span class="warn-val">VERIFY — with CURRENT_ALT this may not apply</span>)</td></tr>
       <tr><td>Return speed</td><td>7.5 m/s</td><td>Horizontal return ground speed</td></tr>

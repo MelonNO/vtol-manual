@@ -161,3 +161,34 @@ test('R9 (jsdom): search ignores the list, still opens and marks a hit; Overview
   assert.ok(low.classList.contains('warn-val') && !low.classList.contains('crit-val'), 'back to the amber chip');
   assert.deepEqual(errors, []);
 });
+
+// WP26 rework round 1 (verifier MINOR 1): a copy edit must never drop a failsafe phrase silently. Every phrase that promises
+// a battery failsafe carries data-fs, so fillFailsafePhrases() can turn it into the red DISABLED statement.
+test('data-fs phrases: no fewer than on main before WP26 (9 / 8 / 3), and the Overview battery warning states both automatic failsafes', () => {
+  const count = k => (BODY.match(new RegExp('data-fs="' + k + '"', 'g')) || []).length;
+  assert.ok(count('battLowVolt') >= 9, 'battLowVolt phrases: ' + count('battLowVolt'));
+  assert.ok(count('battCrtVolt') >= 8, 'battCrtVolt phrases: ' + count('battCrtVolt'));
+  assert.ok(count('battArmVolt') >= 3, 'battArmVolt phrases: ' + count('battArmVolt'));
+  const warn = panel('overview').match(/<div class="alert alert-warn"><strong>Battery:<\/strong>[\s\S]*?<\/div>/)[0];
+  assert.match(warn, /<span data-fs="battLowVolt">at <span data-tok="settings\.battLowVolt">22\.0<\/span>V \(<code>BATT_LOW_VOLT<\/code>\) the carrier starts an <strong>automatic RTL<\/strong><\/span>/);
+  assert.match(warn, /<span data-fs="battCrtVolt">at <span data-tok="settings\.battCrtVolt">21\.0<\/span>V/);
+  // an automatic-RTL or QLand promise next to a battery voltage is always inside a data-fs phrase
+  const bare = BODY.replace(/<span data-fs="[^"]+">(?:(?!<\/span>)[\s\S]|<\/span>(?!\s*[.;]))*?<\/span>(?=[\s.;,]|<\/)/g, '').replace(/<[^>]+>/g, '');
+  assert.doesNotMatch(bare.replace(/\s+/g, ' '), /22\.0 ?V[^.;]{0,30}automatic RTL/, 'a 22.0 V auto-RTL promise outside a data-fs phrase');
+});
+
+test('data-fs (jsdom): with every battery failsafe disabled, each phrase on the page is a red DISABLED statement', async t => {
+  const JSDOM = loadJsdom();
+  if (!JSDOM) { t.skip('jsdom not available — set VTOL_JSDOM to run this check'); return; }
+  const { w, d, errors } = open(JSDOM, { hash: '#overview' });
+  t.after(() => w.close());
+  await tick();
+  const all = () => [...d.querySelectorAll('[data-fs]')];
+  w.VtolStore.update(s => { s.paramFile = { name: 'off.param', importedAt: '2026-10-17T10:00:00.000Z', params: { BATT_LOW_VOLT: 0, BATT_FS_CRT_ACT: 0, BATT_ARM_VOLT: 0 } }; });
+  await tick();
+  const dis = all().filter(el => /DISABLED/.test(el.textContent) && el.classList.contains('crit-val'));
+  assert.equal(dis.length, all().length, 'every phrase replaced');
+  assert.ok(dis.length >= 20, 'DISABLED phrases rendered: ' + dis.length);   // 9 + 8 + 3 in the page body
+  assert.ok([...d.querySelectorAll('#tab-overview .alert-warn [data-fs="battLowVolt"]')].length === 1, 'the Overview warning has its low-battery phrase');
+  assert.deepEqual(errors, []);
+});

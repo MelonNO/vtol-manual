@@ -247,3 +247,46 @@ Compared with `S/baseline/manual-*` (pre-redesign) and with `S/shots/WP26/before
    relay-specific sentence.
 8. **`docs/design/README.md`.** The diagram palette now equals the WP23 tokens (`img/README.md` updated). The README
    could link to it.
+
+## Rework round 1 (verifier round 1: APPROVED with MINOR 1–4; the PM required MINOR 1)
+
+1. **MINOR 1 (required) — done.**
+   - The Overview battery warning (`manual.html:329`) states both automatic failsafes again, each in its own phrase:
+     `<span data-fs="battLowVolt">at 22.0V (BATT_LOW_VOLT) the carrier starts an automatic RTL</span>` and
+     `<span data-fs="battCrtVolt">at 21.0V (BATT_CRT_VOLT) it does Loiter → QLand at the current position, not home</span>`.
+     The rest stays short: the pilot's 23.0V call, RTL lands at home, and the link to the ladder.
+   - The static `data-fs` phrases in the page body are back to `main`'s 9 / 8 / 3 (battLowVolt / battCrtVolt /
+     battArmVolt).
+   - New tests in `test/manual/body.test.js`:
+     - The per-key phrase counts may not fall below 9 / 8 / 3.
+     - The Overview warning must hold both phrases.
+     - No "22.0 V … automatic RTL" may appear outside a `data-fs` phrase.
+     - jsdom: with all three failsafes disabled, every `[data-fs]` element becomes a red DISABLED statement (20 in the
+       body), including the one in the Overview warning.
+   - Mutation check: deleting the restored phrase makes 2 tests fail.
+2. **MINOR 2 — done.** On phones (≤ 600 px) the Pre-Arm Ref tables (`.prearm-filter`) show one block per row: message,
+   cause and fix stacked, with no sideways scrolling. In other tables, `td code` may wrap on phones. See
+   `shots/WP26/rework1/manual-prearm-390.png`.
+3. **MINOR 3 — done.** The 13 numeric chip cells are now `<td class="num">` (base `.num`: tabular, no wrap). Page rule:
+   `.man-main td.val{white-space:nowrap}`. Values such as "9 m/s", "10 m/s" and "45 deg/s" no longer break; long TBD
+   chips still wrap. See `shots/WP26/rework1/manual-aircraft-{1366,390}.png`.
+4. **MINOR 4 — not changed (optional).** The single 440 px diagrams stay alone. Pairing more of them would put
+   unrelated diagrams side by side. A float or figure-beside-text layout is a candidate for WP28.
+
+Safety-token diff after the rework (`python3 -I S/tools/safety-tokens.py --git S/wt/WP26 main manual.html`):
+
+```
+manual.html: 1458 tokens before, 1457 after
+LOST: marker 'TBD' x1, mode 'QLOITER' x1, param 'WAIT_GCS' x2
+NEW:  value '7' x3
+```
+
+The `22.0 V`, `BATT_LOW_VOLT`, `BATT_CRT_VOLT` and `RTL` losses are gone. The remaining LOST and NEW tokens are explained
+in §8 (duplicate D5 caption, the historical QLOITER aside, "7-waypoint").
+
+Checks:
+- `node --test test/`: 345 / 345 pass.
+- gen-precache, diagrams, params-reference `--check`; links, images, colours: all pass.
+- html-validate: 0 errors; manual.html has 0 findings.
+
+Screenshots: `S/shots/WP26/rework1/` (overview, prearm and aircraft at 1366 and 390, with crops).
