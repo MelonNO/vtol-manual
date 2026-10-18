@@ -105,8 +105,8 @@ D['d02-relay-electronics'] = () => {
   b.push(t(100, 434, 'SPI 32 MHz', { fill: P.muted }));
   b.push(line([[168, 470], [210, 470], [210, 350]], { c: P.amber }));
   b.push(lines(218, 452, ['SPI config,', 'CAM_ENABLE →', 'P3 on / limit'], { fill: P.amber, maxw: 170 }));
-  b.push(t(218, 506, 'LEDs: RC state,', { fill: P.muted, maxw: 170 }));
-  b.push(t(218, 524, 'link (TBD)', { fill: P.muted, maxw: 170 }));
+  b.push(t(246, 506, 'LEDs: RC state,', { fill: P.muted, maxw: 136 }));   // right of the CRSF label (WP26: they overlapped)
+  b.push(t(246, 524, 'link (TBD)', { fill: P.muted, maxw: 136 }));
   b.push(line([[94, 506], [94, 560]], { c: P.accent }));
   b.push(t(102, 532, 'CRSF single-wire', { fill: P.accent, maxw: 180 }));
   b.push(t(102, 550, '400 kbaud', { fill: P.accent }));

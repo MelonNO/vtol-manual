@@ -28,8 +28,8 @@
 <text x="100" y="434" fill="#a0a0a0">SPI 32 MHz</text>
 <polyline points="168,470 210,470 210,350" fill="none" stroke="#facc15" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-amber)"/>
 <text x="218" y="452" fill="#facc15">SPI config,</text><text x="218" y="470" fill="#facc15">CAM_ENABLE →</text><text x="218" y="488" fill="#facc15">P3 on / limit</text>
-<text x="218" y="506" fill="#a0a0a0">LEDs: RC state,</text>
-<text x="218" y="524" fill="#a0a0a0">link (TBD)</text>
+<text x="246" y="506" fill="#a0a0a0">LEDs: RC state,</text>
+<text x="246" y="524" fill="#a0a0a0">link (TBD)</text>
 <polyline points="94,506 94,560" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" marker-end="url(#ah-accent)"/>
 <text x="102" y="532" fill="#f97316">CRSF single-wire</text>
 <text x="102" y="550" fill="#f97316">400 kbaud</text>

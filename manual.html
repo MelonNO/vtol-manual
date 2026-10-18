@@ -81,7 +81,7 @@ ul.man-list strong{color:var(--text);}
 
 /* ── Overview: photos, key figures, crew roles ── */
 .man-photo{margin:var(--sp-5) 0;max-width:480px;border:1px solid var(--border2);border-radius:var(--r-md);overflow:hidden;background:var(--surface2);}
-.man-photo a{display:block;}
+.man-photo>a{display:block;}
 .man-photo img{width:100%;height:auto;max-height:320px;object-fit:cover;display:block;}
 .man-photo img.contain{object-fit:contain;background:var(--surface);}
 .man-photo figcaption{padding:var(--sp-2) var(--sp-3);font-size:var(--fs-sm);line-height:1.5;color:var(--muted);border-top:1px solid var(--border2);}
@@ -138,8 +138,8 @@ th.bad{color:var(--red-fg);}
 .man-svg.mw-560{max-width:700px;}
 .man-svg.mw-600{max-width:770px;}
 .dg-gauge-wrap{margin:var(--sp-5) 0;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);overflow:hidden;}
-.dg-gauge-wrap svg{display:block;width:100%;max-width:520px;margin:0 auto;font-family:var(--mono);}
-#ref-rescue-svg svg{max-width:760px;}
+.dg-gauge-wrap svg{display:block;width:100%;max-width:400px;margin:0 auto;font-family:var(--mono);}   /* 360-unit viewBox, text 14 units → about 15 px */
+#ref-rescue-svg svg{max-width:700px;margin:0 auto;}   /* 640-unit viewBox */
 svg .warn-val{fill:var(--amber);}
 .sprite{position:absolute;width:0;height:0;overflow:hidden;}
 .q-accent{color:var(--accent);}
@@ -401,7 +401,7 @@ svg .warn-val{fill:var(--amber);}
     </div>
   </div>
   <p>The video board decodes the VRX's composite signal and encodes <strong>each field as one H.264 picture</strong>, slice by slice, sending RTP on UDP 5600 the moment each slice is ready.</p>
-  <p>Only one Windows process can bind UDP 5600, so the GCS app receives it and re-sends it to <code>127.0.0.1:5601</code> (standalone viewer) and <code>127.0.0.1:5602</code> (Mission Planner HUD). Mission Planner holds UDP 5600 by default: while the app's fan-out runs, MP must <strong>not</strong> listen on 5600. Set its HUD source to port <strong>5602</strong> and the standalone viewer to <strong>5601</strong>.</p>
+  <p>Only one Windows process can bind UDP 5600, so the GCS app receives it and re-sends it to <code>127.0.0.1:5601</code> (standalone viewer) and <code>127.0.0.1:5602</code> (Mission Planner HUD). Mission Planner holds UDP 5600 by default: while the app's fan-out runs, MP must <strong>not</strong> listen on 5600; set its HUD source to port <strong>5602</strong> and the standalone viewer to <strong>5601</strong>.</p>
   <p>Expected video standard of the active client: <strong><span data-tok="client.videoStandard">TBD</span></strong> (PAL and NTSC are both supported). No <code>rtpjitterbuffer</code> in the viewer: its default buffering would swamp the latency the relay saves.</p>
   <div id="comms-pipelines"></div>
 
@@ -665,7 +665,7 @@ svg .warn-val{fill:var(--amber);}
   </div>
   <div class="dg-row">
     <div class="diagram-slot" data-diagram="D8b"><figure class="dg"><a href="img/diagrams/d08b-camera-logic.svg" target="_blank" rel="noopener"><img src="img/diagrams/d08b-camera-logic.svg" width="400" height="1049" loading="lazy" decoding="async" alt="Diagram D8b: the app request (key k, default off) travels as CAM_ENABLE bit 0 in every rc_up; the G0 applies it within one packet: P3 enabled and capped, or disabled / at minimum; the G0 reads the switch back and reports the actual state in the 10 Hz status; the app compares requested and reported (mismatch after 1 s). Off at power-up, forced off when the GCS stream is lost. Proposed variant (not implemented): on with no stream since boot, off after a lost stream."></a><figcaption><strong>D8b</strong> · Camera on/off — CAM_ENABLE from the GCS app → G0 → switch P3, with read-back; the client-gated variant is a firmware request. <a href="img/diagrams/d08b-camera-logic.svg" target="_blank" rel="noopener">Full size</a></figcaption></figure></div>
-    <div class="diagram-slot" data-diagram="D8"><figure class="dg"><a href="img/diagrams/d08-bandwidth-budget.svg" target="_blank" rel="noopener"><img src="img/diagrams/d08-bandwidth-budget.svg" width="400" height="655" loading="lazy" decoding="async" alt="Diagram D8: two bars, not to scale. FPV mode: N6 video CBR, RC uplink about 100–130 kbit/s, MAVLink, margin, camera off. Camera mode adds the IP camera at its P3 ingress cap. Everything must stay below the measured HM30 capacity (TBD). Until test 9 passes: camera off while the client is armed."></a><figcaption><strong>D8</strong> · Bandwidth budget — HM30 capacity split in FPV mode (camera off) and camera mode (camera at its P3 cap). Not to scale; values TBD (Q13). <a href="img/diagrams/d08-bandwidth-budget.svg" target="_blank" rel="noopener">Full size</a></figcaption></figure></div>
+    <div class="diagram-slot" data-diagram="D8"><figure class="dg"><a href="img/diagrams/d08-bandwidth-budget.svg" target="_blank" rel="noopener"><img src="img/diagrams/d08-bandwidth-budget.svg" width="400" height="671" loading="lazy" decoding="async" alt="Diagram D8: two bars, not to scale. FPV mode: N6 video CBR, RC uplink about 100–130 kbit/s, MAVLink, margin, camera off. Camera mode adds the IP camera at its P3 ingress cap. Everything must stay below the measured HM30 capacity (TBD). Until test 9 passes: camera off while the client is armed."></a><figcaption><strong>D8</strong> · Bandwidth budget — HM30 capacity split in FPV mode (camera off) and camera mode (camera at its P3 cap). Not to scale; values TBD (Q13). <a href="img/diagrams/d08-bandwidth-budget.svg" target="_blank" rel="noopener">Full size</a></figcaption></figure></div>
   </div>
 
   <h3 class="section-title" id="relay-bridge">RC Bridge (G0) — States</h3>
@@ -913,7 +913,7 @@ svg .warn-val{fill:var(--amber);}
     <thead><tr><th>WP</th><th>Type</th><th>Purpose</th><th>Pilot action</th></tr></thead>
     <tbody>
     <tr><td>1</td><td>VTOL_TAKEOFF</td><td>Vertical takeoff</td><td>Arm, hold QHOVER until transition altitude achieved</td></tr>
-    <tr><td>2</td><td>WAYPOINT</td><td>Transition safety altitude</td><td>Co-pilot advances mission from WP1 once transition confirmed. Altitude must give clearance if transition is incomplete. The route WP2 → home is the QRTL path after a transition timeout — keep it clear.</td></tr>
+    <tr><td>2</td><td>WAYPOINT</td><td>Transition safety altitude</td><td>FPV Pilot advances mission from WP1 once transition confirmed. Altitude must give clearance if transition is incomplete. The route WP2 → home is the QRTL path after a transition timeout — keep it clear.</td></tr>
     <tr><td>3</td><td>LOITER_TO_ALT</td><td>Climb to relay altitude</td><td>Autonomous. Monitor airspeed and climb rate.</td></tr>
     <tr><td>4</td><td>WAYPOINT</td><td>Mission start point</td><td>Sortie-specific. Pilots configure this per flight before departure.</td></tr>
     <tr><td>5</td><td>LOITER_TO_ALT</td><td>Descend to approach altitude</td><td>Autonomous on return leg.</td></tr>
@@ -967,7 +967,7 @@ svg .warn-val{fill:var(--amber);}
   <div class="card">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Mode: <span class="mbadge m-qhov">QHOVER</span></strong><p>Nomad switch position 1. Confirm in Mission Planner HUD.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Arm</strong><p>Stick arm (Nomad) or GCS arm. All 3 motors (M1, M2, M4) spool to min arm thrust. Confirm no pre-arm messages. <span data-fs="battArmVolt">Arming is refused below <span data-tok="settings.battArmVolt">24.6</span>V (<code>BATT_ARM_VOLT</code>) — fit a fully charged pack</span>.</p></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Hover check at 2–3m</strong><p>Confirm stable hover, no oscillation. Confirm SIYI link (MP telemetry live) and 915 RSSI acceptable. Co-pilot confirms telemetry nominal in MP.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Hover check at 2–3m</strong><p>Confirm stable hover, no oscillation. Confirm SIYI link (MP telemetry live) and 915 RSSI acceptable. FPV Pilot confirms telemetry nominal in MP.</p></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Climb to transition altitude</strong><p>Climb in QHOVER to ≥25m REL. Wind vane active — aircraft weathervanes into wind automatically.</p></div></div>
   </div>
 
@@ -976,8 +976,8 @@ svg .warn-val{fill:var(--amber);}
   <div class="card amber">
     <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Switch to <span class="mbadge m-fbwb">FBWB</span></strong><p>Nomad switch position 2. M1/M2 tilt motors begin rotating forward and build forward thrust.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Monitor the transition</strong><p>Target 12 m/s. Minimum 10 m/s. No airspeed build within 3s: QHOVER immediately.</p></div></div>
-    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Transition confirmed</strong><p>M4 tail motor stops. Aircraft in fixed-wing flight. Co-pilot advances mission to WP2.</p></div></div>
-    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Switch to <span class="mbadge m-auto">AUTO</span></strong><p>Nomad switch position 3. Carrier Pilot takes over MP monitoring. Co-pilot clears to operate the client.</p></div></div>
+    <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Transition confirmed</strong><p>M4 tail motor stops. Aircraft in fixed-wing flight. FPV Pilot advances mission to WP2.</p></div></div>
+    <div class="step"><div class="step-n">4</div><div class="step-body"><strong>Switch to <span class="mbadge m-auto">AUTO</span></strong><p>Nomad switch position 3. Carrier Pilot takes over MP monitoring. FPV Pilot clears to operate the client.</p></div></div>
   </div>
 
   <h3 class="section-title" id="relay-ops">Relay Operations</h3>
@@ -1031,7 +1031,7 @@ svg .warn-val{fill:var(--amber);}
 
   <h3 class="section-title" id="recovery">Recovery</h3>
   <div class="card">
-    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Recall client</strong><p>Co-pilot returns the client first where possible. Call "FPV LANDED" once landed and disarmed.</p></div></div>
+    <div class="step"><div class="step-n">1</div><div class="step-body"><strong>Recall client</strong><p>FPV Pilot returns the client first where possible. Call "FPV LANDED" once landed and disarmed.</p></div></div>
     <div class="step"><div class="step-n">2</div><div class="step-body"><strong>Carrier return</strong><p>Mission WP5 → WP6 → WP7 (VTOL_LAND). Or RTL from Mission Planner (it ends with an automatic VTOL landing at home); the Nomad left button only within close range.</p></div></div>
     <div class="step"><div class="step-n">3</div><div class="step-body"><strong>Back-transition</strong><p>8 s window (≈ 100 m at 12 m/s). M1/M2 tilt back to vertical. If oscillation appears: switch QHOVER manually.</p></div></div>
     <div class="step"><div class="step-n">4</div><div class="step-body"><strong>VTOL land</strong><p>Final descent at Q_LAND_FINAL_SPD = 0.5 m/s. Confirm landing zone clear. Disarm on touchdown.</p></div></div>
@@ -1372,7 +1372,7 @@ svg .warn-val{fill:var(--amber);}
   <h3 class="section-title" id="crew-roles">Role Overview</h3>
   <p>This system requires <strong>two trained operators</strong>, co-located and talking directly: no radio or earpiece between the pilots. Both must be within normal speaking distance throughout the sortie.</p>
   <div class="alert alert-warn">Neither role may be filled by an untrained operator. A solo Carrier Pilot sortie is permitted only for carrier-only test flights with no relay operations.</div>
-  <div class="diagram-slot" data-diagram="D14"><figure class="dg"><a href="img/diagrams/d14-crew-swimlane.svg" target="_blank" rel="noopener"><img src="img/diagrams/d14-crew-swimlane.svg" width="400" height="983" loading="lazy" decoding="async" alt="Diagram D14: two lanes, Carrier Pilot and FPV Pilot, for setup and pre-arm, takeoff and transition, relay operations and recovery, with the actions and the callout phrases of each phase; either pilot may call ABORT ABORT ABORT."></a><figcaption><strong>D14</strong> · Crew swim-lane — Carrier Pilot and FPV Pilot actions and callouts per phase (phrases as on the Callouts tab). <a href="img/diagrams/d14-crew-swimlane.svg" target="_blank" rel="noopener">Full size</a></figcaption></figure></div>
+  <div class="diagram-slot" data-diagram="D14"><figure class="dg"><a href="img/diagrams/d14-crew-swimlane.svg" target="_blank" rel="noopener"><img src="img/diagrams/d14-crew-swimlane.svg" width="400" height="993" loading="lazy" decoding="async" alt="Diagram D14: two lanes, Carrier Pilot and FPV Pilot, for setup and pre-arm, takeoff and transition, relay operations and recovery, with the actions and the callout phrases of each phase; either pilot may call ABORT ABORT ABORT."></a><figcaption><strong>D14</strong> · Crew swim-lane — Carrier Pilot and FPV Pilot actions and callouts per phase (phrases as on the Callouts tab). <a href="img/diagrams/d14-crew-swimlane.svg" target="_blank" rel="noopener">Full size</a></figcaption></figure></div>
 
   <h3 class="section-title" id="crew-carrier-pre">Carrier Pilot — Prerequisites</h3>
   <div class="tbl-wrap"><table>
@@ -1722,7 +1722,7 @@ svg .warn-val{fill:var(--amber);}
 
   <h3 class="section-title" id="mp-area">Operating Area — Video ∩ RC</h3>
   <p>The client's operating area must lie inside <strong>both</strong> the client video coverage and the client RC coverage around the carrier's orbit — the intersection of the two. Each depends on its band, power and antennas (client profile and link profiles). Use the coverage MAP for both, per site.</p>
-  <div class="diagram-slot" data-diagram="D13"><figure class="dg"><a href="img/diagrams/d13-coverage-intersection.svg" target="_blank" rel="noopener"><img src="img/diagrams/d13-coverage-intersection.svg" width="400" height="878" loading="lazy" decoding="async" alt="Diagram D13: overlapping video and RC coverage polygons with the operating area at their intersection; below, the orbit sweep with the always-covered inner zone (worst case over a full orbit) and the best-case union outside it."></a><figcaption><strong>D13</strong> · Coverage intersection — operating area = video ∩ RC; the orbit sweep's inner zone is covered at every point of the orbit. Illustrative: use the MAP. <a href="img/diagrams/d13-coverage-intersection.svg" target="_blank" rel="noopener">Full size</a></figcaption></figure></div>
+  <div class="diagram-slot" data-diagram="D13"><figure class="dg"><a href="img/diagrams/d13-coverage-intersection.svg" target="_blank" rel="noopener"><img src="img/diagrams/d13-coverage-intersection.svg" width="400" height="896" loading="lazy" decoding="async" alt="Diagram D13: overlapping video and RC coverage polygons with the operating area at their intersection; below, the orbit sweep with the always-covered inner zone (worst case over a full orbit) and the best-case union outside it."></a><figcaption><strong>D13</strong> · Coverage intersection — operating area = video ∩ RC; the orbit sweep's inner zone is covered at every point of the orbit. Illustrative: use the MAP. <a href="img/diagrams/d13-coverage-intersection.svg" target="_blank" rel="noopener">Full size</a></figcaption></figure></div>
 
   <h3 class="section-title" id="mp-altitude">Relay Altitude &amp; Orbit Geometry</h3>
   <p>The carrier must maintain RF line-of-sight <strong>simultaneously</strong> to the ground station and to the client's operating area. Altitude is the primary tool.</p>
@@ -1763,7 +1763,7 @@ svg .warn-val{fill:var(--amber);}
     <thead><tr><th>WP</th><th>Type</th><th>Altitude (REL)</th><th>Planning notes</th></tr></thead>
     <tbody>
     <tr><td><code>WP1</code></td><td>VTOL_TAKEOFF</td><td>20–30m</td><td>Place at the exact physical launch position (home is set where the carrier is armed). Height sufficient to clear ground obstacles before transition begins.</td></tr>
-    <tr><td><code>WP2</code></td><td>WAYPOINT</td><td>50–80m</td><td>Transition safety altitude. Position 100–200m from launch along the transition direction — into wind. Co-pilot advances mission here after confirming clean transition. Ensure 300m+ of clear airspace beyond for acceleration.</td></tr>
+    <tr><td><code>WP2</code></td><td>WAYPOINT</td><td>50–80m</td><td>Transition safety altitude. Position 100–200m from launch along the transition direction — into wind. FPV Pilot advances mission here after confirming clean transition. Ensure 300m+ of clear airspace beyond for acceleration.</td></tr>
     <tr><td><code>WP3</code></td><td>LOITER_TO_ALT</td><td>Relay altitude</td><td>Autonomous climb to relay altitude. Place over or near the client's operating area. Fully autonomous — no pilot action until altitude reached. Set LOITER_TO_ALT heading=1 so aircraft exits toward WP4 automatically.</td></tr>
     <tr><td><code>WP4</code></td><td>WAYPOINT</td><td>Relay altitude</td><td>Initial orbit centre for relay ops. Carrier Pilot orbits here manually as needed during the sortie.</td></tr>
     <tr><td><code>WP5</code></td><td>LOITER_TO_ALT</td><td>30–40m</td><td>Autonomous descent to approach altitude. Position 400m+ upwind of landing zone. Aircraft descends while loitering — fully autonomous. Do not interrupt.</td></tr>
@@ -1802,7 +1802,7 @@ svg .warn-val{fill:var(--amber);}
     <tr><td>WP3 exit heading</td><td>LOITER_TO_ALT heading=1 so aircraft exits toward WP4 automatically when relay altitude is reached.</td></tr>
     <tr><td>WP7 landing point</td><td>GPS-verified against physical marker. Clear 5m radius in all directions.</td></tr>
     <tr><td>Mission verify round-trip</td><td>Download mission from FC after upload — compare against planned to confirm successful write.</td></tr>
-    <tr><td>Active waypoint selection</td><td>If no co-pilot for WP1→WP2 advance, set starting WP to WP2 — WP1 must NOT be the active waypoint.</td></tr>
+    <tr><td>Active waypoint selection</td><td>If no FPV Pilot is available for the WP1→WP2 advance, set starting WP to WP2 — WP1 must NOT be the active waypoint.</td></tr>
     </tbody>
   </table></div>
 
