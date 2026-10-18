@@ -7,9 +7,9 @@
 | Size | Max **1600 px** on the long edge. Target **≤ 200 KB** per file. |
 | Format | Photos: **JPEG** (fallback, the name the pages reference) **plus a `.webp` sibling** with the same base name. Line art: **SVG** (≤ 10 KB, `<title>` and `<desc>`, project palette hex values). Never give a PNG a `.jpg` name. |
 | Metadata | **Strip all metadata** (EXIF incl. GPS position and camera serial, XMP, ICC, comments) before committing. The optimiser below does this. |
-| Alt text | Must describe **this** aircraft / **this** setup, e.g. "Heewing T2 Cruza relay carrier, top view, relay PCB bay open" — not a generic product name. |
-| Source | **Own photos only**, or images whose licence is recorded in the credits table below. Vendor marketing images are temporary and must be replaced. |
-| Pages | Give `<img>` explicit `width`/`height`, `loading="lazy"`, and serve the `.webp` via `<picture>` with the `.jpg` as fallback. Add new images to the `sw.js` precache list. |
+| Alt text | Must describe **this** aircraft / **this** setup, e.g. "Heewing T2 Cruza relay carrier, top view, relay PCB bay open" — not a generic product name. **Exception — representative images:** an openly licensed photo of *similar* equipment, used only where it genuinely helps the reader. Its alt text must start "Representative image, not …" (this aircraft / a client drone of this system / this setup) and describe what is actually shown; its caption must start "Representative image:" and say the same. Never add annotations to someone else's photo; a CC BY-SA image changed beyond resizing / re-encoding must be marked "modified". |
+| Source | **Own photos**, or images whose licence is recorded in the credits table below. Accepted licences: public domain, CC0, CC BY, CC BY-SA (any version), the Unsplash or Pexels licence, or a vendor page that **explicitly** grants reuse (quote the grant and its URL). Not accepted: NC / ND licences, "found on the web", vendor images without a stated licence, watermarked stock, images showing faces, number plates or house numbers. CC BY / CC BY-SA need visible attribution: a credit line in the figure caption **and** a row in the manual's *Reference ▾ Abbreviations → Image Credits* (`manual.html#abbrev/image-credits`). Vendor marketing images without a licence are temporary and must be replaced. |
+| Pages | Give `<img>` explicit `width`/`height`, `loading="lazy"`, and serve the `.webp` via `<picture>` with the `.jpg` as fallback. Add new images to the precache with `node scripts/gen-precache.mjs` (writes `sw-precache.js`). |
 
 ## Diagrams — `img/diagrams/`
 
@@ -73,19 +73,25 @@ python -c "from PIL import Image; im=Image.open('img/x.jpg'); print(im.format, i
 
 ## Credits and licences
 
-| File | Content | Source / licence | Status |
-|---|---|---|---|
-| `t2_vtol.jpg` / `.webp` | Heewing T2 Cruza with transport box, "T2 Cruza VTOL PNP" text | Heewing, vendor marketing image; source URL and licence not recorded | **Vendor marketing image — replace with own photo** |
-| `t2_vtol2.jpg` / `.webp` | Heewing T2 render on white | Heewing, vendor marketing image; source URL and licence not recorded | **Vendor marketing image — replace with own photo** |
-| `matek_f405.jpg` / `.webp` | Matek F405 flight controller with spec text | Matek Systems, vendor marketing image; source URL and licence not recorded | **Vendor marketing image — replace with own photo** (reference client #1 only) |
-| `siyi_hm30.jpg` / `.webp` | SIYI HM30 ground and air units, SIYI logo | SIYI, vendor marketing image; source URL and licence not recorded | **Vendor marketing image — replace with own photo** (of your mast setup) |
-| `client_drone.svg` | Generic quad, top view, line drawing | Drawn for this project; same licence as the repository | Keep (neutral placeholder for any client drone) |
+One row per file. Licence checks are dated; re-check a source if its row is old.
 
-Removed: `fpv_drone.jpg` (showed a different aircraft and carried an EXIF GPS position). It remains in git history.
+| File | Content | Author | Licence | Source page | File URL | Checked | Status |
+|---|---|---|---|---|---|---|---|
+| `t2_vtol.jpg` / `.webp` | Heewing T2 Cruza with transport box, "T2 Cruza VTOL PNP" text | Heewing, vendor marketing image | Not recorded. Heewing's terms forbid reproduction without written permission: section 2 of https://www.heewing.com/policies/terms-of-service reads "You agree not to reproduce, duplicate, copy, sell, resell or exploit any portion of the Service … without express written permission" | Not recorded | Not recorded | 2026-10-18 (terms) | **Vendor marketing image — replace with own photo** |
+| `t2_vtol2.jpg` / `.webp` | Heewing T2 render on white | Heewing, vendor marketing image | Not recorded. Heewing's terms forbid reproduction without written permission (same terms page and quote as `t2_vtol.jpg`) | Not recorded | Not recorded | 2026-10-18 (terms) | **Vendor marketing image — replace with own photo** |
+| `matek_f405.jpg` / `.webp` | Matek F405 flight controller with spec text | Matek Systems, vendor marketing image | Not recorded | Not recorded | Not recorded | — | **Vendor marketing image — replace with own photo** (reference client #1 only) |
+| `siyi_hm30.jpg` / `.webp` | SIYI HM30 ground and air units, SIYI logo | SIYI, vendor marketing image | Not recorded. SIYI marks its site "All Rights Reserved": the footer of https://www.siyi.biz/en/ reads "Copyright @ 2017-2026 SIYI Technology All Rights Reserved." | Not recorded | Not recorded | 2026-10-18 (footer) | **Vendor marketing image — replace with own photo** (of your mast setup) |
+| `rep_fpv_quad.jpg` / `.webp` | **Representative image:** analog FPV quad (lollipop VTX antenna, receiver antenna, GPS module, FPV camera, action camera) — not a client drone of this system. Used in Client Drones. | Euflipo (own work, 2018-11-08) | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | https://commons.wikimedia.org/wiki/File:Dron-fpv.jpg | https://upload.wikimedia.org/wikipedia/commons/c/ce/Dron-fpv.jpg | 2026-10-18 | Resized to 1600 px and re-encoded, metadata stripped (the original's EXIF held a GPS position); no other change. Replace with own photo (shot list 13). |
+| `rep_pitot_tube.jpg` / `.webp` | **Representative image:** bare pitot-static tube; arrows and labels "Dynamic Pressure Inlet" / "Static Pressure Inlet" are ArduPilot's own — not this aircraft's pitot. Used in Maintenance. | ArduPilot Dev Team (ArduPilot wiki) | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) (wiki licence; the page has no third-party credit) | https://ardupilot.org/plane/docs/common-pitot-considerations.html | https://ardupilot.org/plane/_images/pitot.jpg | 2026-10-18 | Resized to 1600 px and re-encoded, metadata stripped; no other change. Replace with own photo (shot list 6). |
+| `client_drone.svg` | Generic quad, top view, line drawing | Drawn for this project | Same licence as the repository | — | — | — | Keep (neutral placeholder for any client drone) |
+
+**Removed: `fpv_drone.jpg`.** It showed a different aircraft (a Minion 220 racing multirotor by RotorGeeks), not a client of this system. It was removed from the site in WP04 (commit `3721cd4`) and is kept in git history by owner decision (2026-10-18). Its EXIF GPS block was empty: it never carried a GPS position. Attribution for the copy in git history: Wikimedia Commons file "File:Racing Drone.jpg", author **Commanderbryce** (own work, uploaded 2016-03-14), licence [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), https://commons.wikimedia.org/wiki/File:Racing_Drone.jpg (checked 2026-10-18 through the Commons API).
 
 ## Photo shot list (owner)
 
 Shoot on a plain, uncluttered background, even light, no people, no number plates or house numbers in frame. Turn off location tagging on the camera/phone (the optimiser strips it anyway). Then annotate (labels/arrows) in an editor and run the optimiser.
+
+Items marked *(representative image in the manual)* currently show an openly licensed photo of **similar** equipment (see the credits table); the owner's own photo should replace it. Items 1, 3, 4, 7 and 9–12 are specific to this build and have no substitute.
 
 **Heewing T2 Cruza relay carrier — annotated top view and side view**, showing and labelling:
 
@@ -94,7 +100,7 @@ Shoot on a plain, uncluttered background, even light, no people, no number plate
 3. VRX patch antennas — show that they point **inward**
 4. ELRS TX module and its antenna (Nomad or DBR4)
 5. GPS / compass module
-6. Pitot tube
+6. Pitot tube *(representative image in the manual: `rep_pitot_tube.jpg`, Maintenance — replace with own photo)*
 7. 915 MHz backup RX and antenna
 8. Motors M1 / M2 (tilt) and M4 (tail lift)
 
@@ -110,4 +116,4 @@ Shoot on a plain, uncluttered background, even light, no people, no number plate
 
 **Per client drone profile (optional)**
 
-13. Each client drone, top view, with its VTX antenna visible
+13. Each client drone, top view, with its VTX antenna visible *(representative image in the manual: `rep_fpv_quad.jpg`, Client Drones — replace with own photo)*

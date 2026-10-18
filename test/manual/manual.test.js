@@ -196,6 +196,22 @@ test('Client Drones, Overview, photos and defects (R2, R6, R10)', () => {
   assert.match(HTML, /'DOC-RC-001 · REV ' \+ V\.app/);
 });
 
+test('image credits: every photo has a credits row; representative images say so (WP22 R1, R2, R5)', () => {
+  const readme = fs.readFileSync(path.join(ROOT, 'img', 'README.md'), 'utf8');
+  const photos = [...new Set([...HTML.matchAll(/<img [^>]*src="img\/([^"/]+\.jpg)"/g)].map(m => m[1]))];
+  assert.ok(photos.length >= 6, 'photos found: ' + photos.join(', '));
+  for (const f of photos) assert.match(readme, new RegExp('^\\| `' + f.replace(/\./g, '\\.') + '`', 'm'), f + ' has a credits row');
+  const reps = [...HTML.matchAll(/<img [^>]*src="img\/(rep_[^"]+)"[^>]*>/g)];
+  assert.ok(reps.length >= 2);
+  for (const m of reps) assert.match(m[0], /alt="Representative image, not /, m[1] + ' alt text says representative');
+  // Visible attribution: a credit line in each representative figure and the Image Credits section in Reference.
+  for (const f of ['rep_fpv_quad', 'rep_pitot_tube']) {
+    const fig = HTML.slice(HTML.lastIndexOf('<figure', HTML.indexOf('img/' + f + '.jpg')), HTML.indexOf('</figure>', HTML.indexOf('img/' + f + '.jpg')));
+    assert.match(fig, /<figcaption>Representative image:[\s\S]*<span class="credit">[\s\S]*CC BY-SA[\s\S]*href="#abbrev\/image-credits"/, f + ' caption');
+  }
+  assert.match(panel('abbrev'), /id="image-credits"[\s\S]*Euflipo[\s\S]*ArduPilot Dev Team/);
+});
+
 test('Pre-Arm Ref: Relay & GCS app section lists every app alarm and bridge state (R8)', () => {
   const t = stripTags(panel('prearm'));
   const alarms = ['rc_sender_dead', 'rc_stream_stopped', 'controller_disconnected', 'bridge_no_status', 'bridge_not_run', 'client_failsafe', 'client_rth', 'client_telemetry_stale', 'client_link_weak', 'client_batt_low', 'client_sats_low', 'client_rescue_not_ready', 'rtt_high', 'rtt_rising_camera', 'camera_mismatch', 'send_jitter_high', 'gcs_on_battery', 'gcs_battery_saver'];

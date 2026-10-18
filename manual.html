@@ -67,6 +67,7 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
 .man-photo img{width:100%;height:auto;max-height:340px;object-fit:cover;display:block;}
 .man-photo img.contain{object-fit:contain;background:var(--surface);}
 .man-photo figcaption{padding:8px 14px;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;border-top:1px solid var(--border2);}
+.man-photo figcaption .credit{text-transform:none;letter-spacing:0;}
 .man-photo-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0;}
 .man-photo-row .man-photo{margin:0;}
 @media(max-width:600px){.man-photo-row{grid-template-columns:1fr;}}
@@ -1350,6 +1351,19 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
     <tr><td><code>m/s</code></td><td>Metres per second</td><td>SI unit of speed. ArduPilot uses m/s internally for all speed values.</td></tr>
     </tbody>
   </table></div>
+
+  <div class="section-title" id="image-credits">Image Credits</div>
+  <p>Photos in this manual that the project did not take, with source and licence. <strong>Representative images</strong> show similar equipment, not this aircraft or this setup; own photos will replace them (shot list in <code>img/README.md</code>).</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Where</th><th>Image</th><th>Author · licence · source</th></tr></thead>
+    <tbody>
+    <tr><td>Client Drones</td><td>Representative analog FPV quad</td><td>Euflipo · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Dron-fpv.jpg" target="_blank" rel="noopener">Wikimedia Commons</a> · resized</td></tr>
+    <tr><td>Maintenance</td><td>Representative pitot-static tube (labels by ArduPilot)</td><td>ArduPilot Dev Team · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a> · <a href="https://ardupilot.org/plane/docs/common-pitot-considerations.html" target="_blank" rel="noopener">ArduPilot Plane docs, Pitot Tube Considerations</a> · resized</td></tr>
+    <tr><td>Reference Client #1</td><td>Matek F405-STD</td><td>Matek Systems vendor marketing image · licence not recorded · to be replaced with own photo</td></tr>
+    <tr><td>Overview, Aircraft</td><td>Heewing T2 Cruza (2 images)</td><td>Heewing vendor marketing images · licence not recorded · to be replaced with own photos</td></tr>
+    <tr><td>RF &amp; Comms</td><td>SIYI HM30</td><td>SIYI vendor marketing image · licence not recorded · to be replaced with own photo</td></tr>
+    </tbody>
+  </table></div>
 </div>
 
 
@@ -1442,6 +1456,11 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title">Client Drones</div>
   <p>A <strong>client</strong> is any analog FPV drone flown through the relay. Its control and video pass through the carrier: RC from the GCS app over the HM30 to the relay's ELRS TX module, video from its VTX to the carrier's VRX. The carrier's ArduPlane FC has no knowledge of the client; the GCS app sees the client only through its CRSF telemetry.</p>
+
+  <figure class="man-photo">
+    <picture><source srcset="img/rep_fpv_quad.webp" type="image/webp"><img class="contain" src="img/rep_fpv_quad.jpg" width="1600" height="1200" alt="Representative image, not a client drone of this system: an analog FPV quadcopter seen from above and behind, with a round circular-polarised video antenna and a receiver antenna tube at the rear, a GPS module, a small FPV camera at the front and an action camera on top." loading="lazy" onerror="this.closest('figure').hidden=true"></picture>
+    <figcaption>Representative image: an analog FPV quad with VTX antenna, receiver antenna and GPS — not a client drone of this system · <span class="credit">Photo: <a href="https://commons.wikimedia.org/wiki/File:Dron-fpv.jpg" target="_blank" rel="noopener">Euflipo</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>, resized · <a href="#abbrev/image-credits">Image credits</a></span></figcaption>
+  </figure>
 
   <div class="card accent" id="client-requirements">
     <div class="card-title">Requirements for a client</div>
@@ -1578,6 +1597,10 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       </tbody>
     </table></div>
   </div>
+  <figure class="man-photo">
+    <a href="img/rep_pitot_tube.webp" target="_blank" rel="noopener"><picture><source srcset="img/rep_pitot_tube.webp" type="image/webp"><img class="contain" src="img/rep_pitot_tube.jpg" width="1600" height="841" alt="Representative image, not this aircraft's pitot: a bare metal pitot-static tube on white. Arrows mark the dynamic pressure inlet at the tip and the small static pressure hole in the side of the tube." loading="lazy" onerror="this.closest('figure').hidden=true"></picture></a>
+    <figcaption>Representative image: a pitot-static tube, not this aircraft's — the pitot check covers both openings, the inlet at the tip and the static hole in the side · Tap to open full size · <span class="credit">Photo and labels: ArduPilot Dev Team, <a href="https://ardupilot.org/plane/docs/common-pitot-considerations.html" target="_blank" rel="noopener">ArduPilot Plane docs</a>, <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a>, resized · <a href="#abbrev/image-credits">Image credits</a></span></figcaption>
+  </figure>
 
   <div class="section-title">Carrier — Every 10 Flights</div>
   <div class="card">
