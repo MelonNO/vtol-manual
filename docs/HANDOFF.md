@@ -41,12 +41,17 @@ The web pages and the Node tests also run on Linux or macOS.
 git clone https://github.com/MelonNO/vtol-manual.git
 cd vtol-manual
 
-# Python: a venv outside the repository, same packages as CI (pytest is pinned, see gcs/README.md "Upgrading pytest")
+# Python: a venv outside the repository, CI's packages (pytest is pinned, see gcs/README.md "Upgrading pytest")
+# plus Pillow for the image scripts (scripts/optimize-images.py, gen-icons.py)
 py -3.12 -m venv ..\vtol-venv
-..\vtol-venv\Scripts\python -m pip install "pytest>=9.1,<9.2" pygame-ce
+..\vtol-venv\Scripts\python -m pip install "pytest>=9.1,<9.2" pygame-ce Pillow
 
-# Node test helpers: outside the repository, the versions CI uses (.github/workflows/ci.yml env)
-npm install --no-save --prefix ..\vtol-tools jsdom@30.1.3 html-validate@11.16.2
+# Node test helpers: outside the repository, the versions CI uses (.github/workflows/ci.yml env).
+# npm.cmd, not npm: Windows PowerShell's default execution policy blocks npm.ps1
+npm.cmd install --no-save --prefix ..\vtol-tools jsdom@30.1.3 html-validate@11.16.2
+
+# Set these in every new PowerShell window (they last only for that window; without VTOL_JSDOM the jsdom tests
+# are skipped without failing)
 $env:VTOL_JSDOM = (Resolve-Path ..\vtol-tools\node_modules\jsdom).Path
 $env:VTOL_PYTHON = (Resolve-Path ..\vtol-venv\Scripts\python.exe).Path
 ```
@@ -62,16 +67,19 @@ node scripts/diagrams/build.js --check
 node scripts/gen-params-reference.mjs --check
 node scripts/check-links.mjs; node scripts/check-images.mjs; node scripts/check-colours.mjs
 ..\vtol-venv\Scripts\python gcs/tools/gen_test_vectors.py --check
-..\vtol-tools\node_modules\.bin\html-validate index.html manual.html relay/map.html tools/latency-clock.html
+cd gcs; ..\..\vtol-venv\Scripts\python -m vtolgcs.protocol --selftest; cd ..
+..\vtol-tools\node_modules\.bin\html-validate.cmd index.html manual.html relay/map.html tools/latency-clock.html
 
-# GCS suite, CI mode (no windows, no console keys):
+# GCS suite, CI mode (no windows, no console keys). CI runs it five times; once is enough locally.
 $env:VTOLGCS_INTERACTIVE_TESTS = '0'; ..\vtol-venv\Scripts\python -m pytest gcs protocol -p no:cacheprovider
 ```
 
-- **Desktop-only tests:** run the full GCS suite without `VTOLGCS_INTERACTIVE_TESTS=0` only on a logged-on desktop, in a normal terminal.
+- **Desktop-only tests:** run the full GCS suite in interactive mode only on a logged-on desktop, in a normal terminal.
   - It opens Tk windows and sends keys to a real console.
   - It is required before each release (OPEN-ITEMS M-16; `gcs/README.md` "Tests").
-- **Viewing the pages:** run `python -m http.server 8000` in the repository root, then open http://localhost:8000/.
+  - In the same window as the CI-mode run, first clear the variable with `Remove-Item Env:VTOLGCS_INTERACTIVE_TESTS`.
+  - Check that the pytest header says `interactive_desktop tests RUN`.
+- **Viewing the pages:** run `..\vtol-venv\Scripts\python -m http.server 8000` in the repository root, then open http://localhost:8000/. The python.org installer does not put `python` on PATH by default.
 - **Conventions and architecture:** `CLAUDE.md`. Content review rules: `CONTRIBUTING.md`.
 
 ## 3. How the work is organised
@@ -85,15 +93,19 @@ The programme was run by a **project manager (PM) who does not implement anythin
 3. **Verification.** A **separate verification agent** checks the work against `docs/tasks/03-VERIFICATION-PROTOCOL.md`.
    - It must not approve work that is not implemented as required and in a sensible way.
    - Rework continues until it gives **APPROVED**.
-   - Its reports go in `docs/tasks/reports/WPnn-VERIFY-roundN.md`.
+   - It writes each report outside the repository, to `S\verify\WPnn\VERIFY-roundN.md`. The PM copies it into `docs/tasks/reports/WPnn-VERIFY-roundN.md` when merging.
 4. **Merge and push.** The PM merges into `main` (`--no-ff`), runs the full check list in §2 and updates the status board.
-   - The PM pushes `main` (owner approval: "Push to main").
+   - The PM pushes `main` itself, without a pull request, only after an APPROVED verification.
+   - This is an owner-approved exception ("Push to main", 2026-10-16) to the normal contributor rule in `CONTRIBUTING.md`: branch, then open a pull request.
+   - The exception belongs to this PM process. Anyone else, or a new person taking the PM role, confirms it with the owner first.
    - The PM watches the GitHub runs until they are green.
 
-**Paths on a new computer.** The paths in `01-COMMON-CONTEXT.md` §3 (the scratchpad `S`, `S\venv`, `S\jsenv`, `S\wt\WPnn`) are from the first PC. On a new computer:
-- `S` is any scratch folder outside the repository;
-- `S\venv` and `S\jsenv` are the `vtol-venv` and `vtol-tools` folders from §2;
-- worktrees are made with `git worktree add <S>\wt\WPnn -b wp/nn main`.
+**Paths on a new computer.** The paths in `01-COMMON-CONTEXT.md` §1 and §3 are from the first PC. On a new computer:
+- `S` (the scratchpad) is any scratch folder outside the repository.
+- "Main repo `S\repo\vtol-manual`" is your clone from §2, which the PM uses for merges.
+- `S\venv` and `S\jsenv` are the `vtol-venv` and `vtol-tools` folders from §2.
+- Worktrees are made with `git worktree add <S>\wt\WPnn -b wp/nn main`.
+- The relay design (`C:\Users\Simulator\Downloads\Docs\…` in §1) is wherever you copied it (§4), e.g. `<S>\owner-docs\`, outside the repository unless O-9 decides otherwise.
 
 Put the actual paths in each brief.
 
@@ -119,7 +131,7 @@ Put the actual paths in each brief.
 
 | File | Where it was | Status |
 |---|---|---|
-| **Relay design**: *Analog Video to IP Relay with Drone TX Control — Technical Solution* (`.md` and `.pdf`, latest revision received 2026-10-16) | Owner's PC, `Downloads\Docs\` | **Needed** for any relay hardware or firmware claim (CONTRIBUTING). Copy it to the new computer. Whether to publish it in `docs/relay/` is open decision **O-9** |
+| **Relay design**: *Analog Video to IP Relay with Drone TX Control — Technical Solution* (`.md` and `.pdf`, latest revision received 2026-10-16) | Owner's PC, `Downloads\Docs\` | **Needed** for any relay hardware or firmware claim (CONTRIBUTING). Copy it to the new computer, outside the repository, and give its path in every brief that cites it (§3). Whether to publish it in `docs/relay/` is open decision **O-9** |
 | *VTOL Manual Changes Needed to Match Carrier Params* (`.md`, `.pdf`) | Owner's PC, `Downloads\docs2\` | Fully applied in WP14 (plan §15). Keep it as the source record |
 | `params.param` (from `docs2`) | Owner's PC, `Downloads\docs2\` | Byte-identical to `docs/reference/carrier-params-2026-10-17.param` (checked 2026-10-18). Not needed |
 | `T2_20250809_VTOL_PNP_FC.param` | Owner's PC, `Downloads\Docs\` | Older stock param file, superseded by the reference file. Not needed |
@@ -143,7 +155,12 @@ Everything is tracked in `docs/relay/OPEN-ITEMS.md` (and `FIRMWARE-REQUESTS.md`)
 - **M-12** on the laptop that will fly. The RC sender's GIL switch interval changed from 0.5 ms to 1 ms in WP18 (`gcs/vtolgcs/runtime.py`), so re-check send jitter with the UI attached.
 - The other M-12 items are also still to do: the MP connections, the HUD on 5602, the GStreamer decoder latency and the frozen build.
 - **M-16:** the desktop-only GCS tests before each release.
-- **M-1…M-11:** SITL, bench and relay measurements, after the relay is built (H-1, H-2).
+- **Possible now, without the relay:**
+  - M-1 and M-2 (SITL);
+  - M-3 (does the HM30 send `RADIO_STATUS`?);
+  - M-13 (browser access to the local API with the app running);
+  - C-3 (VERIFY markers against the firmware in use).
+- **M-4…M-11:** relay measurements, after the relay is built (H-1, H-2).
 
 **Small software follow-ups** (good material for a WP23 bundle; none blocks a release)
 - **M-19:** text that says "9.1" will go stale after a future pytest upgrade.
@@ -157,7 +174,9 @@ Everything is tracked in `docs/relay/OPEN-ITEMS.md` (and `FIRMWARE-REQUESTS.md`)
 - **Release number.** v2.0.0; the GCS app is versioned together with the pages.
 - **Old photo (O-5).** `img/fpv_drone.jpg` stays in the git history, with no rewrite.
   - It has no GPS position.
-  - It is Wikimedia Commons *Racing Drone.jpg* by Commanderbryce, CC BY-SA 4.0; credited in `img/README.md`.
+  - Its 4.2 MB version is Wikimedia Commons *Racing Drone.jpg* by Commanderbryce, CC BY-SA 4.0, credited in `img/README.md`.
+  - A smaller historical version carries a "© sanaan" notice.
+  - Details: OPEN-ITEMS O-5.
 - **Personal notes (O-6).** `docs/history/CONVERSATION_LOG.txt` is kept.
 - **Images from the internet.** Only openly licensed images, marked "Representative image". Rules in `img/README.md`.
 - **Flight-safety intent** (plan §1.1, `CLAUDE.md` "Owner decisions that must never be contradicted"):
@@ -170,8 +189,12 @@ Everything is tracked in `docs/relay/OPEN-ITEMS.md` (and `FIRMWARE-REQUESTS.md`)
 On the first PC:
 - Removed all 22 WP worktrees and their local `wp/*` branches. All were merged into `main`; their commits remain there.
 - Removed a stale `pm/main` remote-tracking ref.
-- Deleted the scratch working folders: agent logs, CI log downloads, verifier clones and the WP22 downloads.
+- With the owner's approval, deleted the scratch working folders: agent logs, CI log downloads, verifier clones and the WP22 downloads.
 - Deleted the cancelled WP20 rewrite: the mirror, the backup bundle and the old-photo copies.
+- Deleted a stray file that a WP20 agent had left in the owner's `.local\bin` folder.
+- Kept only the PM's clone, its Python venv and the jsdom tools, in the session's Windows Temp folder.
+  - They are disposable.
+  - A new computer sets them up again from §2.
 - Stopped leftover helper processes, by PID.
 
 No branch, stash or uncommitted change was lost. Before deleting anything, `git branch --no-merged main` was empty and every worktree was clean.
