@@ -34,7 +34,7 @@ test('forbidden-terms scan of manual.html (outside the optional history note)', 
 test('every nav item resolves to an existing tab panel, and every tab has a nav item', () => {
   const panels = [...HTML.matchAll(/<div id="tab-([a-z]+)" class="tab-panel">/g)].map(m => m[1]);
   assert.equal(new Set(panels).size, panels.length, 'no duplicate panels');
-  const nav = HTML.slice(HTML.indexOf('<nav id="nav">'), HTML.indexOf('</nav>'));
+  const nav = HTML.slice(HTML.indexOf('<nav id="nav"'), HTML.indexOf('</nav>'));
   const items = [...nav.matchAll(/data-tab="([^"]+)"/g)].map(m => m[1]);
   assert.ok(items.length >= 15);
   for (const t of items) {

@@ -133,7 +133,8 @@ test('smoke: relay/map.html — loads with the vendored Leaflet, offline (no til
     await settle(100);
     assert.equal(typeof w.L, 'object', 'Leaflet loaded');
     assert.ok(d.querySelector('.leaflet-container'), 'map created');
-    assert.match(d.body.textContent, /RELAY COVERAGE/);
+    assert.equal(d.getElementById('hdr-title').textContent, 'Coverage Map');   // WP24 app bar (was "RELAY COVERAGE — …")
+    assert.match(d.getElementById('h-freq').textContent, /^video .+ · RC .+$/, 'link frequencies in the header status');
     assert.match(d.body.textContent, /GCS APP/);
     assert.deepEqual(errors, []);
   } finally { close(); }

@@ -18,9 +18,8 @@
 }
 body{line-height:1.5;}
 .wrap{max-width:1100px;margin:0 auto;padding:16px;}
-.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:2px solid var(--accent);padding-bottom:10px;margin-bottom:16px;}
-.title{font-family:var(--head);font-weight:700;letter-spacing:3px;color:var(--accent);font-size:16px;flex:1;}
-.btn[data-vf-sun][aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);}
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}   /* header, footer: ../css/base.css shell */
+.title{font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:.3px;color:var(--muted);flex:1;}
 .btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:bold;}
 #clock{font-family:var(--mono);font-size:min(15vw,180px);font-weight:bold;letter-spacing:2px;text-align:center;color:var(--clock-fg);background:var(--clock-bg);border:2px solid var(--border2);padding:12px 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
 .row{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;}
@@ -36,19 +35,23 @@ ol{margin-left:20px;}
 label{display:block;font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
 input[type=number]{min-height:44px;width:160px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;}
 .warn{color:var(--amber);}
-.ver{text-align:center;margin-top:12px;}
 body.hidepanel .card,body.hidepanel .row.stats{display:none;}
-@media(max-width:600px){.title{flex-basis:100%;} #clock{font-size:12vw;}}   /* phone: title on its own line (WP09 added a button); the 12-character clock fits 360 px */
+@media(max-width:600px){.title{flex-basis:100%;} #clock{font-size:12vw;}}   /* phone: test name on its own line; the 12-character clock fits 360 px */
 </style>
 </head>
 <body>
+<header class="app-header">
+  <div class="app-bar">
+    <div class="app-id"><span class="app-badge">Clock</span><h1 class="app-title">Latency Clock</h1></div>
+    <div class="app-switch seg"><a href="../index.html">Tools</a><a href="../manual.html">Manual</a><a href="../relay/map.html">Map</a></div>
+    <button type="button" class="app-sun" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀</button>
+  </div>
+</header>
 <div class="wrap">
   <div class="top">
-    <div class="title">LATENCY CLOCK · RELAY-DESIGN TEST 2 (GLASS-TO-GLASS)</div>
+    <div class="title">Relay-design test 2 (glass-to-glass)</div>
     <button type="button" class="btn" id="btn-panel" aria-pressed="false" onclick="togglePanel(this)">CLOCK ONLY</button>
     <button type="button" class="btn" onclick="toggleFull()">FULL SCREEN</button>
-    <button type="button" class="btn" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀&nbsp;SUN</button>
-    <a class="btn" href="../index.html">◀ TOOLS</a>
   </div>
 
   <div id="clock" role="timer" aria-live="off">--:--:--.---</div>
@@ -88,8 +91,11 @@ body.hidepanel .card,body.hidepanel .row.stats{display:none;}
     </div>
     <table id="st-table"></table>
   </div>
-  <div class="k ver" data-vf-version></div>
 </div>
+<footer class="app-footer">
+  <div>HEEWING T2 CRUZA RELAY CARRIER · LATENCY CLOCK</div>
+  <div data-vf-version></div>
+</footer>
 <script src="../js/version.js"></script>
 <script src="../js/common.js"></script>
 <script src="../js/tools-core.js"></script>

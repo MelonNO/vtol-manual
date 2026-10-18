@@ -130,6 +130,7 @@ test('R10: QR code of the live site — vendored qrcode-generator (MIT, licence 
   // the Tools footer menu
   const html = readText('index.html');
   assert.match(html, /<details class="vf-share" data-vf-share>\s*<summary>SHARE \/ KNEEBOARD<\/summary>/);
-  assert.ok(html.indexOf('<details class="vf-share"') > html.indexOf('<footer>'), 'inside the footer');
+  assert.ok(html.indexOf('<details class="vf-share"') > html.indexOf('<footer'), 'inside the footer');
+  assert.ok(html.indexOf('<footer') > 0);
   assert.ok(html.includes('<script src="js/vendor/qrcode-generator/qrcode.js"></script>'));
 });

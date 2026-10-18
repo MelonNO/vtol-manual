@@ -50,13 +50,15 @@ test('R12b: an async step that rejects is swallowed by the session (no rejection
   assert.deepEqual(unhandled.map(String), []);
 });
 
-test('R12c(a): the map header keeps its phone height — the three header buttons stack in one column at ≤ 600 px', () => {
-  const m = readText('relay/map.html');
-  const media = m.match(/@media \(max-width:600px\)\{\.hdr-title\{[\s\S]*?\n\s*button\.nav-btn\{[^}]*\}\}/);
-  assert.ok(media, 'phone media rule');
-  assert.match(media[0], /\.nav-btns\{flex-direction:column\}/);
-  assert.match(media[0], /\.nav-btn\{min-height:44px;/);
-  // measured in Edge at 360×640 (report): header 218 → 134 px, map 422 → 506 px (pre-WP09: 162 / 478)
+test('R12c(a): the map header keeps its phone height — superseded by WP24: one 48 px app bar on every width, status in a panel', () => {
+  // WP14 stacked the three header buttons at ≤ 600 px (header 134 px at 360×640). WP24 (redesign) replaced the map
+  // header with the shared app bar: one row of 48 px (the old desktop height) at every width; the status items move into a fixed panel
+  // (≤ 1279 px), so the map below keeps its full height (test/shell/shell.test.js has the full checks).
+  const m = readText('relay/map.html'), css = readText('css/base.css');
+  assert.match(m, /<header id="hdr" class="app-header map-hdr">\s*<div class="app-bar">/);
+  assert.match(css, /\n\.map-hdr \.app-bar\{height:48px;\}/);
+  assert.match(m, /#sb-wrap\{position:absolute;top:54px;/, 'sidebar under the bar as before');
+  assert.match(css, /\.map-st\.open\{[^}]*position:fixed;/);
 });
 
 test('R12c(d): the asset scanner flags a plain <img> jpg even when a <picture> on the same page uses that jpg', () => {

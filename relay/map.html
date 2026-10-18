@@ -28,43 +28,7 @@
 body{height:100vh;display:flex;flex-direction:column;overflow:hidden;
      font-size:16px;line-height:normal}   /* the map keeps its previous (browser-default) body metrics */
 
-/* ── HEADER ── */
-#hdr{background:var(--surface);border-bottom:2px solid var(--accent);
-     display:flex;align-items:stretch;flex-shrink:0;min-height:48px}
-.hdr-badge{background:var(--accent);color:#000;font-family:var(--head);font-size:10px;
-           font-weight:700;letter-spacing:3px;writing-mode:vertical-rl;
-           padding:8px 6px;display:flex;align-items:center;flex-shrink:0}
-.hdr-inner{display:flex;align-items:center;gap:12px;flex:1;padding:0 14px;flex-wrap:wrap;min-width:0}
-.hdr-title{font-family:var(--head);font-size:15px;font-weight:700;
-           color:var(--accent);letter-spacing:2px;white-space:nowrap}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}
-.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
-.dot.sim{background:var(--amber);box-shadow:0 0 6px var(--amber)}
-.hsep{width:1px;height:20px;background:var(--border2);flex-shrink:0}
-.hs{font-size:11px;color:var(--muted);white-space:nowrap;font-family:var(--head);
-    letter-spacing:1px;text-transform:uppercase}
-.hs b{color:var(--text);font-weight:400;font-family:var(--mono);font-size:12px;text-transform:none;letter-spacing:0}
-.hs b.warn{color:var(--amber)}
-.hs b.ok{color:var(--green)}
-#sim-banner{font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:2px;
-            padding:3px 10px;display:none;white-space:nowrap;text-transform:uppercase}
-#sim-banner.sim{background:#1c1000;border:1px solid var(--amber);color:var(--amber)}
-#sim-banner.manual{background:var(--surface2);border:1px solid var(--border2);color:var(--muted)}
-#sim-banner.live{background:var(--surface2);border:1px solid var(--green);color:var(--green)}
-.nav-btns{margin-left:auto;display:flex;align-items:stretch;flex-shrink:0;
-          border-left:1px solid var(--border2)}
-.nav-btn{font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;
-         color:var(--muted);text-decoration:none;border-right:1px solid var(--border2);
-         padding:0 16px;white-space:nowrap;text-transform:uppercase;
-         transition:all .15s;display:flex;align-items:center}
-.nav-btn:hover{color:var(--accent);background:var(--surface2)}
-button.nav-btn{background:none;border:none;border-right:1px solid var(--border2);cursor:pointer;min-width:44px}
-button.nav-btn[aria-pressed="true"]{background:var(--text);color:var(--bg)}
-@media (max-width:600px){.hdr-title{white-space:normal;font-size:13px}.nav-btn{padding:0 10px}
-  /* phone: the three header buttons (☀, TOOLS, MANUAL) stack in one narrow column, so the ☀ button does not
-     squeeze the title and the header keeps its height (WP09 verification F1) */
-  .nav-btns{flex-direction:column}.nav-btn{min-height:44px;justify-content:center;border-right:none;border-bottom:1px solid var(--border2)}
-  button.nav-btn{border-right:none;border-bottom:1px solid var(--border2)}}
+/* header (app bar + status items): css/base.css shell (WP24) */
 
 /* Map */
 #map{flex:1}
@@ -238,26 +202,24 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
 </head>
 <body>
 
-<div id="hdr">
-  <div class="hdr-badge">MAP</div>
-  <div class="hdr-inner">
-    <div class="dot" id="dot"></div>
-    <span class="hdr-title" id="hdr-title">RELAY COVERAGE</span>
-    <div id="sim-banner">SIMULATED</div>
-    <div class="hsep"></div>
-    <div class="hs">SRC <b id="h-src">—</b></div>
-    <div class="hs"><b id="h-alt">—</b></div>
-    <div class="hs">VIDEO <b id="h-bs">—</b></div>
-    <div class="hs">OP AREA <b id="h-cov">—</b></div>
-    <div class="hs">TERRAIN <b id="h-ter">idle</b></div>
-    <div class="hs">GCS APP <b id="h-live">NOT RUNNING</b></div>
+<header id="hdr" class="app-header map-hdr">
+  <div class="app-bar">
+    <div class="app-id"><span class="app-badge">Map</span><h1 class="app-title" id="hdr-title">Coverage Map</h1></div>
+    <button type="button" class="map-st-btn" id="map-st-btn" aria-expanded="false" aria-controls="map-st" aria-label="Map status" onclick="toggleMapStatus()"><span class="dot" id="dot"></span><span class="map-st-lbl">Status</span></button>
+    <div class="map-st" id="map-st">
+      <div id="sim-banner">SIMULATED</div>
+      <div class="hs">SRC <b id="h-src">—</b></div>
+      <div class="hs hs-x">ALT <b id="h-alt">—</b></div>
+      <div class="hs">VIDEO <b id="h-bs">—</b></div>
+      <div class="hs">OP AREA <b id="h-cov">—</b></div>
+      <div class="hs">TERRAIN <b id="h-ter">idle</b></div>
+      <div class="hs">GCS APP <b id="h-live">NOT RUNNING</b></div>
+      <div class="hs hs-x">LINKS <b id="h-freq">—</b></div>
+    </div>
+    <div class="app-switch seg"><a href="../index.html">Tools</a><a href="../manual.html">Manual</a><a href="map.html" aria-current="page">Map</a></div>
+    <button type="button" class="app-sun" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀</button>
   </div>
-  <div class="nav-btns">
-    <button type="button" class="nav-btn" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀<span class="vf-lbl" aria-hidden="true">&nbsp;SUN</span></button>
-    <a href="../index.html" class="nav-btn">◀ TOOLS</a>
-    <a href="../manual.html" class="nav-btn">MANUAL ▶</a>
-  </div>
-</div>
+</header>
 
 <div id="map"></div>
 <div id="toast"></div>
@@ -1200,7 +1162,7 @@ function renderState() {
   const isSim = sim.mode !== null || state.source === 'simulated';
   $('dot').className = 'dot' + (isSim ? ' sim' : state.source === 'live' ? ' on' : '');
   const video = activeLink('video'), rc = activeLink('rc');
-  $('hdr-title').textContent = `RELAY COVERAGE — video ${RM.fmtFreq(video && video.freqMHz)} · RC ${RM.fmtFreq(rc && rc.freqMHz)}`;
+  $('h-freq').textContent = `video ${RM.fmtFreq(video && video.freqMHz)} · RC ${RM.fmtFreq(rc && rc.freqMHz)}`;
 
   const banner = $('sim-banner');
   if (isSim) {
@@ -2215,6 +2177,19 @@ function toggleSb() {
   w.classList.toggle('sb-off');
   $('sb-tog').textContent = w.classList.contains('sb-off') ? '▶' : '◀';
 }
+
+// ─── Header status (WP24): key items in the app bar on a wide screen; the Status button opens the full list ─────
+function toggleMapStatus(open) {
+  const p = $('map-st'), b = $('map-st-btn');
+  if (open === undefined) open = !p.classList.contains('open');
+  p.classList.toggle('open', open);
+  b.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+document.addEventListener('click', e => { if (!e.target.closest('#map-st, #map-st-btn')) toggleMapStatus(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleMapStatus(false); });
+// an amber status value (TBD op. area, terrain not ready) marks the closed status button too
+new MutationObserver(() => $('map-st-btn').classList.toggle('has-warn', !!$('map-st').querySelector('b.warn')))
+  .observe($('map-st'), { subtree: true, attributes: true, attributeFilter: ['class'] });
 
 // ─── Start-up: restore the last session, never a built-in site (MAP-09) ──────
 loadProfiles();

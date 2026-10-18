@@ -121,6 +121,7 @@ re-render every surface (safety values must never be stale after an import or a 
 | `vtol_cl_preflight`, `vtol_cl_turnaround` | Checklist sessions `{session:{id,startedAt}, items:{id:{checked,ts}}}`, 6 h expiry (`vtol_cl2`/`vtol_cl3` are legacy) |
 | `vtol_store_notices` | One-time notices (e.g. the Rev C threshold migration) until dismissed |
 | `vtol_active_tab`, `vtol_bl_pack`, `vtol_manual_tab`, `vtol_map_state`, `vtol_sunlight`, `vtol_wx_cache`, `vtol_latency_samples` | Per-device UI state and caches |
+| `vtol_summary_open` | `'1'` while the "Aircraft summary" disclosure under the app bar is open (Tools and manual; absent = closed, the default) |
 
 ## Aircraft configuration
 
@@ -136,7 +137,10 @@ compass, no arming without the mast unit. No geofence. Altitudes are **REL (abov
 
 ## manual.html tab structure
 
-Grouped dropdown navigation (`#nav`), every item a `[data-tab]` button:
+Grouped dropdown navigation (`#nav.mn`, under the shared app bar and the "Aircraft summary"), every item a `[data-tab]`
+button. The dropdowns are `position:fixed`, placed from `getBoundingClientRect()` in `toggleNavGroup()` and closed by a
+scroll; up to 900 px wide the items (`#nav-items`) open as a Menu sheet (`toggleNavMenu()`), listed by group, while
+⚠ Emergency and the search stay in the nav row:
 
 | Nav item | Tab ids |
 |---|---|
@@ -148,7 +152,7 @@ Grouped dropdown navigation (`#nav`), every item a `[data-tab]` button:
 | ⚠ Emergency | `emergency` (direct, always red) |
 
 Key functions: `showTab(name, anchor, opts)` (every tab switch; updates the hash `#tab/anchor` and `vtol_manual_tab`),
-`selectNavItem(name, btn, e)`, `toggleNavGroup(btn)`, `manGoTo(k)` (search hit → opens the tab, scrolls and
+`selectNavItem(name, btn, e)`, `toggleNavGroup(btn)`, `toggleNavMenu(open)`, `manGoTo(k)` (search hit → opens the tab, scrolls and
 highlights), `renderManual()` (renders the shared content, tokens and diagrams; runs on load and on store changes),
 `fillFailsafePhrases()` (a `data-fs` phrase becomes a red DISABLED statement when the imported param file disables
 that failsafe). The pure helpers are in the inline `<script id="manual-core">` (`ManualCore`, tested from Node).
@@ -308,7 +312,10 @@ section of `css/base.css`; class names never change (the renderers emit them). P
 page-specific rules only and never redefine a component selector (`test/design/components.test.js`).
 
 Mobile first: works at 360 px width, tap targets ≥ 44 px, checklist rows 50 px min-height, checkboxes 24 × 24 px; on
-mobile (≤ 600 px) `index.html` uses a fixed bottom nav. Motion: short functional transitions only; reduced motion
+mobile (≤ 600 px) `index.html` uses a fixed bottom nav. The page frame (app bar with page switcher and ☀, the
+"Aircraft summary" disclosure whose warning chips stay visible while it is closed, the Tools groups Checklists · Link ·
+Logs · Weather · Setup with their sub-tabs — the bottom nav on a phone —, the manual nav and Menu sheet, the map status,
+the footer and the Tools EMERGENCY button) is styled only in the shell section (8) of `css/base.css`. Motion: short functional transitions only; reduced motion
 switches them off. Escape every dynamic text inserted with `innerHTML` (`VtolCommon.escH()` or
 `textContent`). Offline first: no CDN dependencies.
 

@@ -14,41 +14,7 @@
 <script src="js/field.js"></script>
 <style>
 /* tokens, fonts, base elements and the shared components: css/base.css (docs/design/README.md) — page-specific rules only */
-header{background:var(--surface);border-bottom:2px solid var(--accent);}
-.hdr-top{display:flex;align-items:stretch;border-bottom:1px solid var(--border2);}
-.hdr-badge{background:var(--surface2);color:var(--accent);font-family:var(--head);font-size:12px;font-weight:700;letter-spacing:3px;writing-mode:vertical-rl;padding:14px 10px;display:flex;align-items:center;border-right:1px solid var(--border2);}
-.hdr-main{flex:1;padding:16px 28px;}
-.hdr-doc-id{font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:5px;}
-.hdr-title{font-family:var(--head);font-size:24px;font-weight:700;color:var(--accent);letter-spacing:2px;line-height:1;}
-.hdr-sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:6px;}
-.hdr-meta{display:flex;gap:28px;padding:10px 28px 10px 58px;font-size:11px;color:var(--muted);letter-spacing:1px;flex-wrap:wrap;}
-.hdr-meta span strong{color:var(--text);}
-nav{background:var(--surface2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;align-items:center;}
-.nav-tools-btn{background:none;border:none;border-right:1px solid var(--border2);color:var(--muted);font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:1.5px;padding:14px 20px;cursor:pointer;white-space:nowrap;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;min-height:44px;}
-.nav-tools-btn:hover{color:var(--accent);}
-.nav-map-btn{background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;padding:6px 14px;cursor:pointer;white-space:nowrap;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;flex-shrink:0;min-height:44px;margin-left:auto;}
-.nav-map-btn:hover{background:var(--accent);color:#000;}
-nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:14px 18px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;min-height:44px;}
-nav button:hover{color:var(--text);}
-nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
-/* ── GROUPED DROPDOWN NAV ── */
-.nav-group{position:relative;display:flex;align-items:stretch;}
-.nav-group-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:14px 16px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;display:flex;align-items:center;gap:5px;}
-.nav-group-btn:hover{color:var(--text);}
-.nav-group-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
-.nav-caret{font-size:10px;opacity:.6;}
-.nav-dropdown{display:none;position:fixed;background:var(--surface);border:1px solid var(--border2);border-top:2px solid var(--accent);z-index:1000;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.6);}
-.nav-dropdown.open{display:block;}
-.nav-dropdown button{display:block;width:100%;background:none;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:var(--head);font-size:12px;font-weight:600;letter-spacing:1.5px;padding:11px 18px;cursor:pointer;text-align:left;text-transform:uppercase;transition:background .1s,color .1s;white-space:nowrap;}
-.nav-dropdown button:last-child{border-bottom:none;}
-.nav-dropdown button:hover{background:var(--surface2);color:var(--text);}
-.nav-dropdown button.active{color:var(--accent);background:#1c1208;}
-.nav-emerg{color:var(--red) !important;}
-.nav-emerg:hover{color:#ff6b6b !important;}
-.nav-emerg.active{border-bottom-color:var(--red) !important;color:var(--red) !important;}
-.nav-search{padding:6px 12px;flex-shrink:0;display:flex;align-items:center;}
-#man-search{background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 10px;width:180px;min-height:44px;outline:none;letter-spacing:1px;}
-#man-search:focus{border-color:var(--accent);}
+/* header, aircraft summary, nav, search field and footer: css/base.css shell (WP24) */
 #man-search-wrap{background:var(--surface);border-bottom:2px solid var(--accent);max-height:420px;overflow-y:auto;position:sticky;top:0;z-index:200;}
 #man-search-wrap[hidden]{display:none;}
 .sr-inner{max-width:1000px;margin:0 auto;}
@@ -142,7 +108,6 @@ svg .warn-val{fill:var(--amber);}
 /* ── PRE-ARM / GLOSSARY SEARCH ── */
 .filter-input{width:100%;padding:12px 16px;background:var(--surface);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;margin-bottom:18px;outline:none;min-height:44px;}
 .filter-input:focus{border-color:var(--accent);}
-footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:40px;}
 /* ── TWO-COL LAYOUT ── */
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .two-col.gap{margin:16px 0;}
@@ -153,13 +118,6 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 .stat-val.crit{color:var(--red);}
 .stat-text{font-size:14px;color:var(--text);margin-top:6px;}
 @media(max-width:600px){
-  .hdr-badge{writing-mode:horizontal-tb;padding:8px 14px;}
-  .hdr-top{flex-direction:column;}
-  .hdr-main{padding:12px 14px;}
-  .hdr-title{font-size:18px;}
-  .hdr-meta{padding:8px 14px;gap:8px 16px;font-size:10px;}
-  nav button,.nav-tools-btn{padding:12px 12px;font-size:12px;letter-spacing:.5px;}
-  #man-search{width:150px;}
   .chain{flex-wrap:wrap;}
   .cn{min-width:70px;font-size:11px;}
   .two-col{grid-template-columns:1fr;}
@@ -170,31 +128,31 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 <!-- Shared SVG symbols (plan §9.2: one quad icon, used with <use href="#sym-quad">; colour from the use element via currentColor) -->
 <svg class="sprite" aria-hidden="true" focusable="false"><symbol id="sym-quad" viewBox="-12 -12 24 24"><g stroke="currentColor" fill="currentColor"><line x1="-7" y1="-7" x2="7" y2="7" stroke-width="1.8"/><line x1="7" y1="-7" x2="-7" y2="7" stroke-width="1.8"/><circle cx="-8" cy="-8" r="2.8" stroke="none"/><circle cx="8" cy="-8" r="2.8" stroke="none"/><circle cx="-8" cy="8" r="2.8" stroke="none"/><circle cx="8" cy="8" r="2.8" stroke="none"/><circle cx="0" cy="0" r="3.2" fill="var(--bg)" stroke-width="1.5"/></g></symbol></svg>
 
-<header>
-  <div class="hdr-top">
-    <div class="hdr-badge">MANUAL</div>
-    <div class="hdr-main">
-      <div class="hdr-doc-id" id="hdr-doc-id">DOC-RC-001 · HEEWING T2 CRUZA · ARDUPLANE · ELRS 915 (carrier) · ELRS 2.4 GHz (client) · SIYI HM30</div>
-      <div class="hdr-title">RELAY CARRIER — OPERATIONS MANUAL</div>
-      <div class="hdr-sub">SYSTEMS · RELAY · COMMUNICATIONS · PROCEDURES · EMERGENCY · REFERENCE</div>
+<header class="app-header">
+  <div class="app-bar">
+    <div class="app-id"><span class="app-badge">Manual</span><h1 class="app-title">Operations Manual</h1></div>
+    <div class="app-switch seg"><a href="index.html">Tools</a><a href="manual.html" aria-current="page">Manual</a><a href="relay/map.html">Map</a></div>
+    <button type="button" class="app-sun" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀</button>
+  </div>
+  <details class="app-summary" data-vf-summary>
+    <summary><span class="app-summary-lbl">Aircraft summary</span><span class="app-chips" data-vf-chips></span></summary>
+    <div class="hdr-meta">
+      <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
+      <span><strong>FW</strong> ArduPlane / QuadPlane</span>
+      <span><strong>BATT</strong> 6S 7000mAh</span>
+      <span><strong>LOW VOLT</strong> <span data-fs="battLowVolt"><span data-tok="settings.battLowVolt">22.0</span>V auto RTL</span></span>
+      <span><strong>CRIT VOLT</strong> <span data-fs="battCrtVolt"><span data-tok="settings.battCrtVolt">21.0</span>V QLand here</span></span>
+      <span><strong>RTL ALT</strong> 120m REL</span>
+      <span><strong>CRUISE</strong> 12 m/s</span>
+      <span><strong>CLIENT</strong> <span id="hdr-client">Reference client #1</span></span>
     </div>
-    <div class="vf-hdr-tools"><button type="button" class="vf-btn" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀<span class="vf-lbl" aria-hidden="true"> SUN</span></button></div>
-  </div>
-  <div class="hdr-meta">
-    <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
-    <span><strong>FW</strong> ArduPlane / QuadPlane</span>
-    <span><strong>BATT</strong> 6S 7000mAh</span>
-    <span><strong>LOW VOLT</strong> <span data-fs="battLowVolt"><span data-tok="settings.battLowVolt">22.0</span>V auto RTL</span></span>
-    <span><strong>CRIT VOLT</strong> <span data-fs="battCrtVolt"><span data-tok="settings.battCrtVolt">21.0</span>V QLand here</span></span>
-    <span><strong>RTL ALT</strong> 120m REL</span>
-    <span><strong>CRUISE</strong> 12 m/s</span>
-    <span><strong>CLIENT</strong> <span id="hdr-client">Reference client #1</span></span>
-  </div>
+  </details>
 </header>
 
-<nav id="nav">
-  <a class="nav-tools-btn" href="index.html">◀ TOOLS</a>
+<nav id="nav" class="mn" aria-label="Manual chapters">
+  <button type="button" id="nav-menu-btn" class="mn-menu-btn" aria-expanded="false" aria-controls="nav-items" onclick="toggleNavMenu()"><span aria-hidden="true">☰</span> Menu</button>
 
+  <div class="mn-items" id="nav-items">
   <button type="button" data-tab="overview" onclick="showTab(this.dataset.tab)">Overview</button>
 
   <div class="nav-group">
@@ -234,13 +192,12 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
       <button type="button" data-tab="params" onclick="selectNavItem(this.dataset.tab,this,event)">Parameters</button>
     </div>
   </div>
+  </div>
 
   <button type="button" data-tab="emergency" onclick="showTab(this.dataset.tab)" class="nav-emerg">⚠ Emergency</button>
 
-  <a class="nav-map-btn" href="relay/map.html">MAP ▶</a>
-
   <div class="nav-search">
-    <input type="search" id="man-search" placeholder="SEARCH MANUAL..." aria-label="Search the manual" oninput="manSearch(this.value)" onkeydown="if(event.key==='Escape'){this.value='';manSearch('');}">
+    <input type="search" id="man-search" placeholder="Search the manual" aria-label="Search the manual" oninput="manSearch(this.value)" onkeydown="if(event.key==='Escape'){this.value='';manSearch('');}">
   </div>
 </nav>
 
@@ -1761,7 +1718,10 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
 </div><!-- /content -->
 
-<footer id="man-footer">DOC-RC-001 · <span data-vf-version>VERSION</span> · HEEWING T2 CRUZA RELAY CARRIER · ARDUPLANE · OPERATIONS MANUAL</footer>
+<footer id="man-footer" class="app-footer">
+  <div id="hdr-doc-id" data-vf-warn-src>DOC-RC-001 · HEEWING T2 CRUZA · ARDUPLANE · ELRS 915 (carrier) · ELRS 2.4 GHz (client) · SIYI HM30</div>
+  <div data-vf-version>VERSION</div>
+</footer>
 
 <script src="js/version.js"></script>
 <script src="js/common.js"></script>
@@ -2147,7 +2107,21 @@ function renderDiagrams() {
 var ddOpenY = null;
 function closeDropdowns() {
   document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  toggleNavMenu(false);
   ddOpenY = null;
+}
+// Menu sheet (≤ 900 px, css/base.css shell): the same nav items listed by group; Emergency stays outside it.
+function toggleNavMenu(open) {
+  var nav = document.getElementById('nav'), btn = document.getElementById('nav-menu-btn');
+  if (open === undefined) open = !nav.classList.contains('mn-open');
+  if (!open && !nav.classList.contains('mn-open')) return;
+  document.querySelectorAll('.nav-dropdown.open').forEach(function (d) { d.classList.remove('open'); });
+  nav.classList.toggle('mn-open', open);
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    document.getElementById('nav-items').style.top = nav.getBoundingClientRect().bottom + 'px';
+    ddOpenY = window.scrollY || window.pageYOffset || 0;
+  }
 }
 function replaceHash(h) {
   if (location.hash === h) return;
@@ -2178,6 +2152,7 @@ function showTab(name, anchor, opts) {
 function selectNavItem(name, btn, e) { if (e) e.stopPropagation(); return showTab(name); }
 
 function toggleNavGroup(btn) {
+  if (document.getElementById('nav').classList.contains('mn-open')) return;   // in the Menu sheet the groups are open lists
   var dropdown = btn.nextElementSibling;
   var isOpen = dropdown.classList.contains('open');
   closeDropdowns();
@@ -2189,7 +2164,8 @@ function toggleNavGroup(btn) {
     ddOpenY = window.scrollY || window.pageYOffset || 0;
   }
 }
-document.addEventListener('click', function (e) { if (!e.target.closest('.nav-group')) closeDropdowns(); });
+document.addEventListener('click', function (e) { if (!e.target.closest('.nav-group, #nav-menu-btn')) closeDropdowns(); });
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeDropdowns(); });
 window.addEventListener('scroll', function () {
   if (ddOpenY !== null && MC.dropdownShouldClose(ddOpenY, window.scrollY || window.pageYOffset || 0)) closeDropdowns();
 }, { passive: true });
