@@ -16,27 +16,47 @@
 :root {
   --clock-bg:#000; --clock-fg:#fff;   /* maximum contrast for the camera (already black/white, so sunlight mode keeps it) */
 }
-body{line-height:1.5;}
-.wrap{max-width:1100px;margin:0 auto;padding:16px;}
-.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}   /* header, footer: ../css/base.css shell */
-.title{font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:.3px;color:var(--muted);flex:1;}
-.btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:bold;}
-#clock{font-family:var(--mono);font-size:min(15vw,180px);font-weight:bold;letter-spacing:2px;text-align:center;color:var(--clock-fg);background:var(--clock-bg);border:2px solid var(--border2);padding:12px 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
-.row{display:flex;gap:12px;flex-wrap:wrap;margin:12px 0;}
-.box{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border2);padding:10px 14px;}
-.k{font-size:11px;color:var(--muted);letter-spacing:2px;}
-.v{font-family:var(--mono);font-size:min(8vw,56px);font-weight:bold;color:var(--clock-fg);font-variant-numeric:tabular-nums;}
-#bar{position:relative;height:28px;background:var(--clock-bg);border:1px solid var(--border2);margin:8px 0 4px;}
+body{line-height:var(--lh-body);}
+.wrap{max-width:1100px;margin:0 auto;padding:var(--sp-5) var(--sp-4) var(--sp-7);}
+.top{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap;margin-bottom:var(--sp-4);}   /* header, footer: ../css/base.css shell */
+.title{flex:1;min-width:0;font-family:var(--head);font-size:var(--fs-xl);font-weight:500;letter-spacing:.3px;line-height:var(--lh-tight);color:var(--text);}
+.title small{display:block;margin-top:var(--sp-1);font-family:var(--sans);font-size:var(--fs-sm);font-weight:400;letter-spacing:0;color:var(--muted);}
+/* the clock: 12 monospace characters (≈ 0.56 em each), sized to the page width so they never overflow */
+#clock{font-family:var(--mono);font-size:min(calc((min(100vw, 1100px) - 48px) / 7.4),150px);font-weight:bold;letter-spacing:.02em;line-height:1.15;
+       text-align:center;color:var(--clock-fg);background:var(--clock-bg);border:2px solid var(--border2);border-radius:var(--r-md);
+       padding:var(--sp-3) 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;}
+#bar{position:relative;height:28px;background:var(--clock-bg);border:1px solid var(--border2);border-radius:var(--r-sm);margin:var(--sp-2) 0 var(--sp-1);overflow:hidden;}
 #bar-mark{position:absolute;top:0;bottom:0;width:4px;background:var(--clock-fg);left:0;}
-.ticks{font-family:var(--mono);display:flex;justify-content:space-between;font-size:10px;color:var(--muted);}
-.card h2{font-family:var(--head);font-size:13px;letter-spacing:2px;color:var(--accent);margin-bottom:8px;}
-li{color:var(--muted);font-size:14px;margin-bottom:6px;}
-ol{margin-left:20px;}
-label{display:block;font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px;}
-input[type=number]{min-height:44px;width:160px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:15px;}
+.ticks{font-family:var(--mono);display:flex;justify-content:space-between;font-size:var(--fs-xs);color:var(--muted);}
+.row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-3);margin:var(--sp-4) 0;}
+.box{min-width:0;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);}
+.k{font-family:var(--head);font-size:var(--fs-xs);font-weight:500;letter-spacing:1px;line-height:var(--lh-tight);color:var(--muted);text-transform:uppercase;}
+.k span{text-transform:none;letter-spacing:0;}
+.v{margin-top:var(--sp-1);font-family:var(--mono);font-size:min(8vw,52px);line-height:1.1;color:var(--clock-fg);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.steps{list-style:none;counter-reset:st;max-width:75ch;}
+.steps li{counter-increment:st;position:relative;padding-left:40px;margin-bottom:var(--sp-3);color:var(--text-2);}
+.steps li::before{content:counter(st);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+                  background:var(--surface2);border:1px solid var(--dim);font-family:var(--head);font-size:var(--fs-sm);font-weight:600;color:var(--text);line-height:1;}
+.steps li strong{color:var(--text);}
+.note{font-size:var(--fs-sm);color:var(--muted);margin:0;}
+.sample-in{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;}
+#sample{width:160px;font-family:var(--mono);}
+#sample-msg{margin-top:var(--sp-2);font-size:var(--fs-sm);color:var(--text-2);}
+#st-table{max-width:320px;}
+#st-table td{vertical-align:middle;padding-top:0;padding-bottom:0;font-family:var(--mono);}
+#st-table td:last-child{text-align:right;}
 .warn{color:var(--amber);}
 body.hidepanel .card,body.hidepanel .row.stats{display:none;}
-@media(max-width:600px){.title{flex-basis:100%;} #clock{font-size:12vw;}}   /* phone: test name on its own line; the 12-character clock fits 360 px */
+@media(max-width:600px){
+  .wrap{padding:var(--sp-4) var(--sp-3) var(--sp-6);}
+  .title{flex-basis:100%;font-size:var(--fs-lg);}   /* phone: test name on its own line */
+  .row{gap:var(--sp-2);}
+  .box{padding:var(--sp-2) var(--sp-3);}
+  .k{letter-spacing:.5px;}
+  .v{font-size:24px;}
+  .row.stats{grid-template-columns:1fr 1fr;}   /* "0 / 20" needs the full width */
+  .row.stats .box:first-child{grid-column:1/-1;}
+}
 </style>
 </head>
 <body>
@@ -49,45 +69,47 @@ body.hidepanel .card,body.hidepanel .row.stats{display:none;}
 </header>
 <div class="wrap">
   <div class="top">
-    <div class="title">Relay-design test 2 (glass-to-glass)</div>
-    <button type="button" class="btn" id="btn-panel" aria-pressed="false" onclick="togglePanel(this)">CLOCK ONLY</button>
-    <button type="button" class="btn" onclick="toggleFull()">FULL SCREEN</button>
+    <h2 class="title">Relay-design test 2 <small>Glass-to-glass latency</small></h2>
+    <button type="button" class="btn" id="btn-panel" aria-pressed="false" onclick="togglePanel(this)">Clock only</button>
+    <button type="button" class="btn btn-ghost" onclick="toggleFull()">Full screen</button>
   </div>
 
   <div id="clock" role="timer" aria-live="off">--:--:--.---</div>
   <div id="bar" aria-hidden="true"><div id="bar-mark"></div></div>
   <div class="ticks" aria-hidden="true"><span>.000</span><span>.250</span><span>.500</span><span>.750</span><span>1.000</span></div>
   <div class="row">
-    <div class="box"><div class="k">FRAME</div><div class="v" id="frame">0</div></div>
-    <div class="box"><div class="k">FRAME INTERVAL (ms, avg)</div><div class="v" id="interval">—</div></div>
-    <div class="box"><div class="k">DISPLAY RATE (Hz, avg)</div><div class="v" id="fps">—</div></div>
+    <div class="box"><div class="k">Frame</div><div class="v" id="frame">0</div></div>
+    <div class="box"><div class="k">Frame interval <span>(ms, avg)</span></div><div class="v" id="interval">—</div></div>
+    <div class="box"><div class="k">Display rate <span>(Hz, avg)</span></div><div class="v" id="fps">—</div></div>
   </div>
 
   <div class="card vf-zoom">
-    <h2>PROCEDURE</h2>
-    <ol>
+    <h3 class="card-title">Procedure</h3>
+    <ol class="steps">
       <li>Show this clock on a screen in front of the <strong>client camera</strong>, so it goes through VTX → VRX → relay → HM30 → GCS.</li>
-      <li>Put the GCS screen showing the relayed video next to this clock.</li>
-      <li>Film both together at <strong>240 fps</strong>. In single frames of the recording, read this clock and the clock shown in the GCS video.</li>
+      <li>Put the GCS screen with the relayed video next to this clock.</li>
+      <li>Film both together at <strong>240 fps</strong>. In single frames of the recording, read this clock and the clock in the GCS video.</li>
       <li>Latency sample = this clock − clock in the GCS video (ms). Record <strong>20 samples</strong>; report the <strong>mean and worst case</strong> (relay design, test 2).</li>
-      <li>The display's own frame interval (above) limits the resolution of one reading.</li>
     </ol>
+    <p class="note">The display's own frame interval (above) limits the resolution of one reading.</p>
   </div>
 
   <div class="card vf-zoom">
-    <h2>SAMPLES</h2>
-    <label for="sample">LATENCY SAMPLE (ms)</label>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <input type="number" id="sample" min="0" step="1" inputmode="numeric" placeholder="e.g. 180" onkeydown="if(event.key==='Enter')addSample()">
-      <button type="button" class="btn primary" onclick="addSample()">ADD</button>
-      <button type="button" class="btn" onclick="copyResult()">COPY RESULT</button>
-      <button type="button" class="btn" onclick="clearSamples()">CLEAR</button>
+    <h3 class="card-title">Samples</h3>
+    <div class="field">
+      <label for="sample">Latency sample (ms)</label>
+      <div class="sample-in">
+        <input type="number" id="sample" min="0" step="1" inputmode="numeric" placeholder="e.g. 180" onkeydown="if(event.key==='Enter')addSample()">
+        <button type="button" class="btn btn-primary" onclick="addSample()">Add</button>
+        <button type="button" class="btn" onclick="copyResult()">Copy result</button>
+        <button type="button" class="btn btn-ghost" onclick="clearSamples()">Clear</button>
+      </div>
     </div>
-    <div id="sample-msg" role="status" style="font-size:13px;margin-top:6px"></div>
+    <div id="sample-msg" role="status"></div>
     <div class="row stats">
-      <div class="box"><div class="k">SAMPLES</div><div class="v" id="st-n">0 / 20</div></div>
-      <div class="box"><div class="k">MEAN (ms)</div><div class="v" id="st-mean">—</div></div>
-      <div class="box"><div class="k">WORST (ms)</div><div class="v" id="st-worst">—</div></div>
+      <div class="box"><div class="k">Samples</div><div class="v" id="st-n">0 / 20</div></div>
+      <div class="box"><div class="k">Mean <span>(ms)</span></div><div class="v" id="st-mean">—</div></div>
+      <div class="box"><div class="k">Worst <span>(ms)</span></div><div class="v" id="st-worst">—</div></div>
     </div>
     <table id="st-table"></table>
   </div>
@@ -134,7 +156,7 @@ function render() {
   document.getElementById('st-worst').textContent = st.worst === null ? '—' : st.worst.toFixed(0);
   const t = document.getElementById('st-table');
   t.innerHTML = samples.length ? '<tr><th>#</th><th>ms</th><th></th></tr>' + samples.map((v, i) =>
-    '<tr><td>' + (i + 1) + '</td><td>' + v + '</td><td><button type="button" class="btn" data-i="' + i + '" aria-label="Remove sample ' + (i + 1) + '" onclick="removeSample(+this.dataset.i)">✕</button></td></tr>').join('') : '';
+    '<tr><td>' + (i + 1) + '</td><td>' + v + '</td><td><button type="button" class="btn btn-ghost btn-sm" data-i="' + i + '" aria-label="Remove sample ' + (i + 1) + '" onclick="removeSample(+this.dataset.i)">✕</button></td></tr>').join('') : '';
 }
 function addSample() {
   const el = document.getElementById('sample'), v = Number(el.value), msg = document.getElementById('sample-msg');
@@ -155,7 +177,7 @@ function copyResult() {
   // Shared helper (contract C4): Clipboard API with the execCommand fallback. When both fail the text is shown to copy by hand.
   VtolCommon.copyToClipboard(text).then(ok => { msg.textContent = ok ? '✓ Copied: ' + text : 'Copy blocked — select and copy: ' + text; });
 }
-function togglePanel(btn) { const on = document.body.classList.toggle('hidepanel'); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.textContent = on ? 'SHOW PANELS' : 'CLOCK ONLY'; }
+function togglePanel(btn) { const on = document.body.classList.toggle('hidepanel'); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.textContent = on ? 'Show panels' : 'Clock only'; }
 function toggleFull() {
   try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) { /* not supported */ }
 }
