@@ -56,8 +56,7 @@
 .man-title{font-family:var(--head);font-size:var(--fs-2xl);font-weight:500;letter-spacing:.3px;line-height:var(--lh-tight);color:var(--text);}
 .man-lede{margin:var(--sp-2) 0 0;font-size:var(--fs-lg);line-height:1.5;color:var(--text-2);max-width:62ch;}
 .man-main p{max-width:70ch;}
-.man-main .tbl-wrap p,.man-main .card>p:only-child{max-width:none;}
-.man-main .section-title{scroll-margin-top:var(--sp-4);}
+.man-main :is(.tbl-wrap,.alert) p,.man-main .card>p:only-child{max-width:none;}
 .man-sub{font-family:var(--head);font-size:var(--fs-md);font-weight:600;letter-spacing:.3px;line-height:var(--lh-tight);color:var(--text);margin:var(--sp-5) 0 var(--sp-3);}
 ul.man-list{margin:0 0 var(--sp-3) var(--sp-5);color:var(--text-2);max-width:70ch;}
 ul.man-list li{margin-bottom:var(--sp-2);padding-left:var(--sp-1);}
@@ -67,17 +66,6 @@ ul.man-list strong{color:var(--text);}
 .man-howto strong{font-family:var(--head);font-weight:500;letter-spacing:.5px;color:var(--text);margin-right:var(--sp-2);}
 .man-howto a{font-weight:600;}
 .man-howto .go-emerg{color:var(--red-fg);}
-
-/* ── Callouts: a short visible lead, the rest behind "More" ── */
-.man-main .alert p{max-width:none;margin:0 0 var(--sp-2);color:inherit;font-size:inherit;}
-.man-main .alert p:last-child{margin-bottom:0;}
-.man-more>summary{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;margin-bottom:-12px;cursor:pointer;list-style:none;font-family:var(--head);font-size:var(--fs-sm);font-weight:500;letter-spacing:.5px;color:var(--accent);}
-.man-more>summary::-webkit-details-marker{display:none;}
-.man-more>summary::after{content:'';width:6px;height:6px;margin-left:2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .15s;}
-.man-more[open]>summary{margin-bottom:var(--sp-1);}
-.man-more[open]>summary::after{transform:rotate(-135deg) translateX(-2px);}
-.man-more ul{margin:0 0 var(--sp-2) var(--sp-5);}
-.man-more li{margin-bottom:var(--sp-1);}
 
 /* ── Overview: photos, key figures, crew roles ── */
 .man-photo{margin:var(--sp-5) 0;max-width:480px;border:1px solid var(--border2);border-radius:var(--r-md);overflow:hidden;background:var(--surface2);}
@@ -108,7 +96,7 @@ th.bad{color:var(--red-fg);}
 .badge-active{display:inline-block;font-family:var(--head);font-size:var(--fs-xs);font-weight:600;letter-spacing:1px;line-height:1.4;padding:0 6px;border:1px solid var(--accent);border-radius:var(--r-sm);color:var(--accent);margin-left:6px;}
 .man-main td code,.man-main td.val{white-space:nowrap;}
 @media(max-width:600px){.man-main td code{white-space:normal;}}   /* phones: long messages wrap, so the next column stays in view */
-.man-main :is(.tbl-wrap,.dg-scroll){scrollbar-width:thin;scrollbar-color:var(--dim) transparent;}
+.man-main .dg-scroll{scrollbar-width:thin;scrollbar-color:var(--dim) transparent;}   /* .tbl-wrap: css/base.css */
 
 /* ── Signal chains (RF & Comms): neutral nodes, the detail line in monospace ── */
 .chain-wrap{margin:var(--sp-4) 0;}
@@ -2286,8 +2274,11 @@ if (TOC_MQ) {
 }
 
 // Show one tab; anchor = element id inside that tab to scroll to. opts.noHash: do not rewrite location.hash.
+// Old anchors that still work: the Abort Calls heading had the runtime id callouts-sec-6 before WP28 gave it a fixed id.
+var ANCHOR_ALIAS = { 'callouts-sec-6': 'co-abort-calls' };
 function showTab(name, anchor, opts) {
   opts = opts || {};
+  if (anchor && Object.prototype.hasOwnProperty.call(ANCHOR_ALIAS, anchor)) anchor = ANCHOR_ALIAS[anchor];
   var tab = MC.resolveTab(name) || MC.DEFAULT_TAB;
   document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.id === 'tab-' + tab); });
   document.querySelectorAll('#nav [data-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === tab); });

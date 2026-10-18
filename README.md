@@ -18,12 +18,13 @@ home screen.
 
 | Page | Path | Purpose |
 |---|---|---|
-| **Flight Tools** | [`index.html`](index.html) | Pre-flight, turnaround and post-flight checklists (6 h expiry, challenge–response mode), emergency cards, live **Link** status from the GCS app, battery log per pack, `.tlog`/`.bin` and GCS session-log analysis, flight records and maintenance, parameter-file import and comparison, weather with wind at relay altitude, client/pack/link profiles |
+| **Flight Tools** | [`index.html`](index.html) | Five groups — **Checklists · Link · Logs · Weather · Setup** (the bottom nav on a phone), with the ⚠ EMERGENCY button on every view. Pre-flight, turnaround and post-flight checklists (6 h expiry, challenge–response mode), emergency cards, live **Link** status from the GCS app, battery log per pack, `.tlog`/`.bin` and GCS session-log analysis, flight records and maintenance, parameter-file import and comparison, weather with wind at relay altitude, client/pack/link profiles |
 | **Emergency only** | [`index.html#emergency-only`](index.html#emergency-only) | Large-button phone mode: one scenario per tap, immediate actions only |
-| **Operations Manual** | [`manual.html`](manual.html) | Aircraft, flight modes and failsafes, relay electronics, client drones, procedures, mission planning, crew training, maintenance, RF & comms, pre-arm reference, the full **parameter reference**, emergency procedures. Deep links: `manual.html#<tab>` or `#<tab>/<anchor>` |
-| **Coverage map** | [`relay/map.html`](relay/map.html) | Video, RC and HM30 link coverage with terrain line of sight, Fresnel clearance and foliage loss; the video ∩ RC operating area; orbit sweep; mission playback; live carrier and client from the GCS app |
+| **Operations Manual** | [`manual.html`](manual.html) | Aircraft, flight modes and failsafes, relay electronics, client drones, procedures, mission planning, crew training, maintenance, RF & comms, pre-arm reference, the full **parameter reference**, emergency procedures. Grouped menu (Overview · Aircraft · Operations · Planning · Reference, a Menu sheet on a phone) with ⚠ Emergency always in the bar; each chapter has an **On this page** list. Deep links: `manual.html#<tab>` or `#<tab>/<anchor>` |
+| **Coverage map** | [`relay/map.html`](relay/map.html) | Video, RC and HM30 link coverage with terrain line of sight, Fresnel clearance and foliage loss; the video ∩ RC operating area; orbit sweep; mission playback; live carrier and client from the GCS app. Controls in collapsible groups (a bottom sheet on a phone), live status behind the **Status** button |
 | **Latency clock** | [`tools/latency-clock.html`](tools/latency-clock.html) | Millisecond clock for the glass-to-glass latency test |
 
+Tools and the manual share an **Aircraft summary** under the app bar (closed by default; its warnings stay visible).
 Every page shows the app version, the content date and the parameter file in its footer, and offers
 **NEW VERSION AVAILABLE — RELOAD** when a newer version has been deployed.
 
@@ -68,7 +69,7 @@ diagrams D1–D15 + D8b. Repository layout:
 
 The carrier's parameter export of 2026-10-17 is stored byte for byte as
 [`docs/reference/carrier-params-2026-10-17.param`](docs/reference/carrier-params-2026-10-17.param). Every page uses it
-offline: the manual's **Reference ▾ Parameters** tab lists all parameters, the Tools **Params** tab compares an
+offline: the manual's **Reference ▾ Parameters** tab lists all parameters, the Tools **Setup → Params** tab compares an
 imported file against it, and the failsafe and battery values on every page follow it. A parameter file imported in
 the Tools page takes precedence and is compared against the reference. How to update it:
 [`docs/reference/README.md`](docs/reference/README.md).

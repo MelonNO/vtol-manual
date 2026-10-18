@@ -46,11 +46,14 @@ test('R2: checklist toolbar — title is a direct child of .cl-hdr (kneeboard pr
   assert.match(style, /\.ci-right\{flex:0 0 120px;/);
   assert.match(style, /\.ci-right\{flex-basis:52px;/);
   assert.match(style, /\.ci-box\{width:24px;height:24px;/);
-  assert.match(style, /\.cl-section-name\{[^}]*color:var\(--text\) !important/, 'section titles in the text colour');
+  assert.match(style, /\.cl-section-name\{[^}]*color:var\(--text\);/, 'section titles in the text colour');
+  assert.doesNotMatch(style, /\.cl-section[^{]*\{[^}]*!important/, 'WP28: the section colour comes as --sec, no !important overrides');
 });
 
-test('M7: the Checklists sub-tab row is sticky on a phone (page-scoped until WP28)', () => {
-  assert.match(style, /@media\(max-width:600px\)\{[\s\S]*body>#nav\.tn-has-sub\{position:sticky;top:0;/);
+test('M7: the Checklists sub-tab row is sticky on a phone (WP28: in the css/base.css shell section)', () => {
+  const base = readText('css/base.css');
+  assert.match(base.slice(base.indexOf('/* ── 8. SHELL')), /@media\(max-width:600px\)\{[\s\S]*\.tn\.tn-has-sub\{position:sticky;top:0;/);
+  assert.doesNotMatch(style, /#nav\.tn-has-sub/, 'no page-scoped copy left');
 });
 
 function open(JSDOM, storage) {

@@ -110,7 +110,8 @@ test('R6: the EMERGENCY button is fixed and red, no pulse; above the bottom nav 
   assert.match(fab, /background:var\(--red\);/);
   assert.doesNotMatch(fab, /animation/);
   assert.doesNotMatch(readText('index.html'), /pulseFab/);
-  assert.match(SHELL, /#emerg-fab\{right:var\(--sp-3\);bottom:calc\(56px \+ var\(--sp-3\) \+ env\(safe-area-inset-bottom\)\);/);
+  // WP28: on a phone a full-width bar directly on top of the 56 px bottom nav (it no longer covers the end of a row)
+  assert.match(SHELL, /#emerg-fab\{left:0;right:0;bottom:calc\(56px \+ env\(safe-area-inset-bottom\)\);[^}]*min-height:48px;/);
   assert.match(readText('index.html'), /<button type="button" id="emerg-fab" onclick="openEmerg\(\)">⚠ EMERGENCY<\/button>/);
 });
 

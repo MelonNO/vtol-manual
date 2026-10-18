@@ -109,6 +109,7 @@ code{font-family:var(--mono);font-size:.92em;color:var(--text);background:var(--
 /* Section title — one per topic block */
 .section-title{font-family:var(--head);font-size:var(--fs-lg);font-weight:500;letter-spacing:.3px;line-height:var(--lh-tight);color:var(--text);border-bottom:1px solid var(--border2);padding-bottom:var(--sp-2);margin:var(--sp-6) 0 var(--sp-4);}
 .section-title:first-child{margin-top:0;}
+.section-title[id]{scroll-margin-top:var(--sp-4);}   /* also as h2 / h3: an anchor jump leaves a little air above it */
 
 /* Card — variants only colour the left edge and the title */
 .card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);padding:var(--sp-5);margin-bottom:var(--sp-4);}
@@ -130,9 +131,19 @@ code{font-family:var(--mono);font-size:.92em;color:var(--text);background:var(--
 .alert-warn::before{content:'⚡ WARNING';color:var(--amber);}
 .alert-info::before{content:'▶ NOTE';color:var(--accent);}
 .alert strong{color:var(--text);}
+.alert p{margin:0 0 var(--sp-2);color:inherit;font-size:inherit;}   /* several paragraphs: a short visible lead first */
+.alert p:last-child{margin-bottom:0;}
+/* the rest of a callout behind a quiet "More" disclosure: <details><summary>Why …</summary><p>…</p></details> */
+.alert>details>summary{display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;margin-bottom:-12px;cursor:pointer;list-style:none;font-family:var(--head);font-size:var(--fs-sm);font-weight:500;letter-spacing:.5px;color:var(--accent);}
+.alert>details>summary::-webkit-details-marker{display:none;}
+.alert>details>summary::after{content:'';width:6px;height:6px;margin-left:2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translateY(-2px);transition:transform .15s;}
+.alert>details[open]>summary{margin-bottom:var(--sp-1);}
+.alert>details[open]>summary::after{transform:rotate(-135deg) translateX(-2px);}
+.alert>details ul{margin:0 0 var(--sp-2) var(--sp-5);}
+.alert>details li{margin-bottom:var(--sp-1);}
 
 /* Tables — wrap in .tbl-wrap so they scroll sideways on a phone instead of the page */
-.tbl-wrap{overflow-x:auto;margin:var(--sp-3) 0 var(--sp-4);}
+.tbl-wrap{overflow-x:auto;margin:var(--sp-3) 0 var(--sp-4);scrollbar-width:thin;scrollbar-color:var(--dim) transparent;}   /* thin dark scrollbar (Firefox drew a white bar) */
 .tbl-wrap>table{margin:0;}
 table{width:100%;border-collapse:collapse;margin:var(--sp-3) 0;font-size:var(--fs-sm);line-height:1.5;font-variant-numeric:tabular-nums;}
 th{text-align:left;padding:var(--sp-2) var(--sp-3);font-family:var(--head);font-size:var(--fs-xs);font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border2);vertical-align:bottom;}
@@ -140,12 +151,14 @@ td{padding:var(--sp-2) var(--sp-3);border-bottom:1px solid var(--border);vertica
 td:first-child{color:var(--muted);}
 tr:last-child td{border-bottom:none;}
 .fs-primary td{background:var(--red-bg);}
+.co-table .co-trig{width:30%;} .co-table .co-who{width:25%;} .co-table .co-call{width:35%;}   /* callout tables (VtolRender.callouts) */
 
 /* Values and markers — monospace values; amber = TBD / VERIFY, red = critical */
 .val{font-family:var(--mono);color:var(--text);}
 .warn-val,.crit-val{font-weight:600;border-radius:var(--r-sm);padding:0 .3em;-webkit-box-decoration-break:clone;box-decoration-break:clone;}
 .warn-val{color:var(--amber);background:var(--amber-bg);}
 .crit-val{color:var(--red-fg);background:var(--red-bg);}
+td.warn-val,td.crit-val{padding:var(--sp-2) var(--sp-3);border-radius:0;}   /* a marker on a whole cell keeps the cell padding */
 
 /* Flight-mode badges */
 .mbadge{display:inline-block;font-family:var(--head);font-size:var(--fs-xs);font-weight:600;letter-spacing:.8px;line-height:1.4;padding:0 6px;border-radius:var(--r-sm);vertical-align:.08em;white-space:nowrap;}
@@ -207,6 +220,7 @@ tr:last-child td{border-bottom:none;}
 .btn-danger{background:transparent;border-color:var(--red);color:var(--red-fg);}
 .btn-danger:hover{background:var(--red-bg);border-color:var(--red);}
 .btn-sm{padding:var(--sp-1) var(--sp-3);font-size:var(--fs-sm);}
+.btn-icon{min-width:44px;padding:0 var(--sp-2);font-size:var(--fs-md);}   /* a glyph-only button (✕ ↺ ✎): 44 px square at least; give it an aria-label */
 
 /* Form controls — :where() keeps the specificity at zero, so page rules still win */
 :where(input:not([type=checkbox],[type=radio],[type=range],[type=color],[type=file],[type=button],[type=submit],[type=reset]),select,textarea){min-height:44px;padding:var(--sp-2) var(--sp-3);background:var(--bg);border:1px solid var(--dim);border-radius:var(--r-sm);color:var(--text);font:inherit;font-size:var(--fs-md);line-height:var(--lh-tight);}
@@ -216,7 +230,8 @@ tr:last-child td{border-bottom:none;}
 :where(input[type=checkbox],input[type=radio],input[type=range]){accent-color:var(--accent);}
 .field{display:flex;flex-direction:column;gap:var(--sp-1);margin-bottom:var(--sp-3);}
 .field>label,.label{font-size:var(--fs-sm);font-weight:500;color:var(--muted);}
-.field .hint{font-size:var(--fs-xs);color:var(--muted);}
+.field .hint,.help{font-size:var(--fs-xs);line-height:1.45;color:var(--muted);}   /* helper line under a control or a group */
+.help{margin:var(--sp-1) 0 var(--sp-3);}
 
 /* Disclosure — <details class="disclosure"><summary>…</summary>…</details> */
 .disclosure{border:1px solid var(--border2);border-radius:var(--r-md);background:var(--surface);margin-bottom:var(--sp-3);}
@@ -247,7 +262,7 @@ tr:last-child td{border-bottom:none;}
 :root[data-sun] body{background:var(--bg);}
 .vf-zoom{zoom:var(--vf-zoom);}
 :root[data-sun] :is(td,th){border-bottom-width:2px;}
-:root[data-sun] :is(.card,.lk-panel,.prof-row,.dg,.dg-scroll,.dg-gauge-wrap,.chart-box,.pnl,.box){border-top-width:2px;border-right-width:2px;border-bottom-width:2px;}
+:root[data-sun] :is(.card,.lk-panel,.prof-row,.dg,.dg-scroll,.dg-gauge-wrap,.chart-box,.pnl,.box,.att-pnl,#sb-wrap,#cursor-bar){border-top-width:2px;border-right-width:2px;border-bottom-width:2px;}
 :root[data-sun] :is(input,select,textarea,.btn){border-width:2px;}
 :root[data-sun] :is(.ci,.cl-section-hdr,.section-title){border-bottom-width:2px;}
 :root[data-sun] .alert{border-left-width:5px;}
@@ -259,17 +274,11 @@ tr:last-child td{border-bottom:none;}
 :root[data-sun] img[src*="diagrams/"]{filter:contrast(1.3) brightness(1.15);}
 
 /* ── 6. FIELD-USE COMPONENTS ── */
-/* Header toggle (☀ SUN) — same look as the nav link buttons. */
+/* Small field-use button (emergency-only mode, share menu) */
 .vf-btn{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--muted);font-family:var(--head);font-size:var(--fs-xs);font-weight:600;letter-spacing:1.2px;text-transform:uppercase;text-decoration:none;padding:6px 12px;min-height:44px;min-width:44px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
 .vf-btn:hover{color:var(--accent);border-color:var(--accent);}
 .vf-btn[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);}
-.vf-hdr-tools{display:flex;align-items:center;gap:8px;padding:8px 12px;flex-shrink:0;}
 .vf-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-@media(max-width:600px){
-  .hdr-top{position:relative;}
-  .vf-hdr-tools{position:absolute;top:0;right:0;padding:2px;}   /* top-right corner, no extra header row on a phone */
-  .vf-lbl{display:none;}
-}
 
 /* "New version available — RELOAD" toast (SW-04 / F-3). */
 .vf-toast{position:fixed;top:10px;left:0;right:0;margin:0 auto;width:max-content;z-index:3000;display:flex;align-items:center;gap:10px 12px;flex-wrap:wrap;justify-content:center;
@@ -381,7 +390,7 @@ tr:last-child td{border-bottom:none;}
 .tn-sub.active{display:inline-flex;}
 .tn.tn-has-sub~.content{padding-top:var(--sp-5);}
 
-/* Tools EMERGENCY button: fixed, red, on every tab; no pulse */
+/* Tools EMERGENCY button: fixed, red, on every tab; no pulse (on a phone: a full-width bar above the bottom nav) */
 #emerg-fab{position:fixed;right:var(--sp-5);bottom:var(--sp-5);z-index:1050;display:inline-flex;align-items:center;gap:var(--sp-2);min-height:52px;padding:0 var(--sp-5);background:var(--red);border:none;border-radius:var(--r-md);color:var(--ink);font-family:var(--head);font-size:var(--fs-md);font-weight:700;letter-spacing:1.2px;text-transform:uppercase;box-shadow:0 4px 16px var(--shadow);cursor:pointer;transition:box-shadow .15s,transform .1s;}
 #emerg-fab:hover{box-shadow:0 0 0 3px var(--red-line),0 4px 16px var(--shadow);}
 #emerg-fab:active{transform:scale(.97);}
@@ -413,7 +422,7 @@ tr:last-child td{border-bottom:none;}
   .mn-menu-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-3);background:var(--surface2);border:1px solid var(--dim);border-radius:var(--r-sm);font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:.5px;color:var(--text);cursor:pointer;}
   .mn-menu-btn[aria-expanded="true"]{border-color:var(--accent);color:var(--accent);}
   .mn-items{display:none;}
-  .mn.mn-open .mn-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:var(--sp-4) var(--sp-5);position:fixed;left:0;right:0;bottom:0;z-index:900;overflow-y:auto;padding:var(--sp-4) var(--sp-4) var(--sp-7);background:var(--bg);border-top:1px solid var(--border2);}
+  .mn.mn-open .mn-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;align-items:start;overscroll-behavior:contain;gap:var(--sp-4) var(--sp-5);position:fixed;left:0;right:0;bottom:0;z-index:900;overflow-y:auto;padding:var(--sp-4) var(--sp-4) var(--sp-7);background:var(--bg);border-top:1px solid var(--border2);}
   .mn.mn-open .mn-items>button{justify-content:flex-start;min-height:48px;padding:0 var(--sp-3);border:1px solid var(--border2);border-radius:var(--r-md);background:var(--surface);color:var(--text);font-family:var(--sans);font-weight:600;letter-spacing:0;}
   .mn.mn-open .nav-group{display:block;}
   .mn.mn-open .nav-group-btn{min-height:0;padding:0 var(--sp-1) var(--sp-2);font-size:var(--fs-xs);font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);background:none;pointer-events:none;}
@@ -426,6 +435,7 @@ tr:last-child td{border-bottom:none;}
 /* ── Coverage map: live status. Wide screens (≥ 1280 px): the key items inline in the app bar (ALT and LINKS only in the
  *    panel); the Status button opens the full list as a fixed panel under the bar (the map keeps its full height). ── */
 .map-hdr .app-bar{height:48px;}   /* = the old map header: the map keeps its full height (sidebar at top:54px) */
+.map-hdr{border-bottom:none;box-shadow:inset 0 -1px 0 var(--border2);}   /* the divider inside the 48 px, not under it */
 .map-hdr .app-id{flex:0 1 auto;}
 .map-st-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-3);background:var(--surface2);border:1px solid var(--dim);border-radius:var(--r-sm);color:var(--text);font-family:var(--head);font-size:var(--fs-sm);font-weight:500;letter-spacing:.5px;cursor:pointer;}
 .map-st-btn::after{content:'▾';font-size:var(--fs-xs);color:var(--muted);}
@@ -464,13 +474,22 @@ tr:last-child td{border-bottom:none;}
   .tn-group.active{color:var(--accent);}
   .tn-group.active::after{top:0;bottom:auto;left:22%;right:22%;border-radius:0 0 2px 2px;}
   .tn-subs{padding:var(--sp-3) var(--sp-3) 0;}
+  .tn.tn-has-sub{position:sticky;top:0;z-index:700;background:var(--bg);padding-bottom:var(--sp-2);}   /* the sub-tabs stay reachable deep in a list */
   .tn-sub.active{display:flex;}
   .tn-sub>button{flex:1 1 0;min-width:0;padding:0 var(--sp-2);}
-  #emerg-fab{right:var(--sp-3);bottom:calc(56px + var(--sp-3) + env(safe-area-inset-bottom));min-height:48px;padding:0 var(--sp-4);font-size:var(--fs-sm);}
+  /* EMERGENCY: a full-width red bar on top of the bottom nav, so it never covers the end of a checklist row (the
+     content's bottom padding, --content-pb, keeps the last rows clear of both) */
+  #emerg-fab{left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));justify-content:center;min-height:48px;padding:0 var(--sp-4);border-radius:0;box-shadow:none;}
   .mn{gap:var(--sp-2);padding:var(--sp-1) var(--sp-2);}
   .mn-menu-btn{padding:0 var(--sp-3);}
   .nav-emerg{padding:0 var(--sp-3);}
   .mn.mn-open .mn-items{grid-template-columns:1fr;}
   .map-hdr .app-bar{padding:0 var(--sp-2);}
   .map-st-lbl{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);}
+}
+@media(max-width:400px){   /* manual nav row at 360 px: Menu, Emergency and the whole "Search the manual" placeholder */
+  .mn{gap:var(--sp-1);}
+  .mn-menu-btn,.nav-emerg{padding:0 var(--sp-2);}
+  #man-search{padding:0 var(--sp-2);}
+  #man-search::placeholder{font-size:var(--fs-xs);}
 }

@@ -23,8 +23,8 @@ function table(sun) {
   const rows = [];
   for (const f of TEXT) for (const b of SURFACES) rows.push({ fg: f, bg: b, min: 4.5, ratio: contrast(t[f], t[b]) });
   for (const f of LARGE_OR_NONTEXT) for (const b of SURFACES) rows.push({ fg: f, bg: b, min: 3, ratio: contrast(t[f], t[b]) });
-  // a tint sits on the page or on a card: check both
-  for (const [f, tint] of ON_TINT) for (const b of ['--bg', '--surface']) rows.push({ fg: f, bg: tint + ' over ' + b, min: 4.5, ratio: contrast(t[f], t[tint], t[b]) });
+  // a tint sits on the page, on a card or on a raised surface (WP28: --surface2 too): check all three
+  for (const [f, tint] of ON_TINT) for (const b of SURFACES) rows.push({ fg: f, bg: tint + ' over ' + b, min: 4.5, ratio: contrast(t[f], t[tint], t[b]) });
   return rows;
 }
 

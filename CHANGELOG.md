@@ -7,6 +7,53 @@ Versions: the web suite's version is `VTOL_VERSION.app` in `js/version.js` (show
 content date and the parameter file). The GCS companion app has its own version (`gcs/vtolgcs/__init__.py` and
 `gcs/pyproject.toml`; shown in the app's window title, its console and `/api/v1/health`).
 
+## Unreleased — redesign (WP23–WP28)
+
+No version bump: `js/version.js` still says `app: '2.0.0'`. The owner asked on 2026-10-18 for a cleaner, calmer and
+more readable suite. **No procedure, value, parameter, IP or failsafe changed**: every number, mode, parameter name,
+IP and TBD / VERIFY marker of the shared content is locked by a test (`test/content/wp28-safety-lock.test.js`).
+
+### What looks different (crew-facing)
+
+- **Calmer and easier to read everywhere.** Prose in a sans-serif font at 16 px; Oswald for headings and short labels;
+  monospace only for values, parameters, IPs and timers. Orange now means "you can tap this" only; red is emergency,
+  amber is warning / TBD / VERIFY, green is GO. Brighter grey for secondary text. Sunlight mode (☀) stays.
+- **One slim app bar** on every page: page badge and title, a Tools · Manual · Map switcher and ☀. The strip of key
+  values moved into the **Aircraft summary** under the bar (Tools and manual): closed by default, but warnings
+  (DISABLED failsafes, "PARAMS not verified", TBD values) stay visible next to it.
+- **Tools groups.** The ten tabs are now five groups: **Checklists** (Pre-flight · Turnaround · Post-flight),
+  **Link**, **Logs** (Battery · Telemetry · Flights), **Weather** and **Setup** (Params · Profiles). On a phone the
+  groups are the bottom nav and the sub-tabs stay at the top while you scroll a checklist.
+- **Checklists.** One toolbar: title, progress, pre-flight timer with START; Expand all, Challenge–response and Reset
+  are quiet buttons (a "More" menu on a phone; a tap outside it only closes it). Section names in normal case, rows at
+  least 52 px high, the right end of a row opens the detail. Item texts are shorter and plainer; their checks and order
+  are unchanged.
+- **EMERGENCY** is one tap away on every Tools view: bottom right on a computer, a **full-width red bar just above the
+  bottom nav** on a phone (it no longer covers the end of a checklist row). In the manual, ⚠ Emergency is always in
+  the bar. Emergency cards are unchanged in content: IMMEDIATE steps first (word for word as before), clean-up below.
+- **Link tab:** calm panels with readable labels; only the panel with a problem gets a red edge; values in monospace.
+- **Manual:** grouped menu (Overview · Aircraft · Operations · Planning · Reference, a Menu sheet on phones and
+  tablets), each chapter opens with a title and one line of intro, and an **On this page** list (a side list on a wide
+  screen, a disclosure on a phone). Long callouts show a short lead with the rest behind "More". Diagrams were redrawn
+  in the new palette with larger text.
+- **Coverage map:** the controls are in collapsible groups (a bottom sheet on a phone); the live status is behind the
+  **Status** button in the bar (inline on wide screens). **Latency clock:** same frame; the digits fit the screen width (they no longer overflow on a wide screen).
+
+### For developers
+
+- `css/base.css` is the design system (`docs/design/README.md`, `docs/design/styleguide.html`): tokens, self-hosted
+  fonts, one definition of every shared component (section 4), sunlight mode, field components and the page shell
+  (section 8). Page `<style>` blocks hold page-only rules; `test/design/` and `test/shell/` guard both.
+- WP28 folded the wave-3 requests into the base components (callout paragraphs and "More" disclosure, chip cells,
+  thin dark table scrollbars, `.btn-icon`, `.help`, section-title anchor offset, sunlight outlines for the map
+  overlays) and removed the page overrides. `js/render-content.js` emits no inline styles except one intended custom property,
+  `style="--sec:#hex"` on each checklist section (its colour; only a hex value is accepted); tables come in `.tbl-wrap`.
+  The Abort Calls heading has the fixed id `co-abort-calls`; the old runtime anchor `#callouts/callouts-sec-6` still
+  works (an alias in `manual.html`).
+- New test: `test/content/wp28-safety-lock.test.js` with its fixture. It freezes the exact text and order of every
+  IMMEDIATE and clean-up step, the item structure and list lengths, and the safety tokens of every text; regenerate it
+  only for a justified change.
+
 ## [2.0.0] — 2026-10-18
 
 `js/version.js` says `app: '2.0.0'`, and the **GCS app version is now 2.0.0** too (was 0.1.0), matching the suite

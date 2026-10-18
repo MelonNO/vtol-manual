@@ -26,7 +26,6 @@
 .page-intro{margin:var(--sp-2) 0 0;color:var(--muted);}
 .page-intro strong{color:var(--text-2);}
 :is(.content,#cr-modal,#emerg-modal) .btn{font-size:var(--fs-sm);letter-spacing:1px;text-transform:uppercase;}   /* button labels: short uppercase labels */
-.btn-icon{min-width:44px;padding:0 var(--sp-2);font-size:var(--fs-md);}
 .actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3);}
 .card>.actions{margin-top:var(--sp-4);}
 .note{font-size:var(--fs-sm);line-height:1.5;color:var(--muted);}
@@ -82,7 +81,7 @@ tr.lvl-warn td{background:var(--amber-bg);}
 tr.lvl-crit td{background:var(--red-bg);}
 .tbl-wrap tr.tr-sub th{padding-top:var(--sp-4);background:none;border-bottom:1px solid var(--border2);}
 .tbl-wrap td.cell-note{min-width:200px;color:var(--muted);}
-.content .tbl-wrap,.chart-box,.msg-list{scrollbar-color:var(--dim) var(--surface);scrollbar-width:thin;}
+.chart-box,.msg-list{scrollbar-color:var(--dim) var(--surface);scrollbar-width:thin;}   /* .tbl-wrap: css/base.css */
 input[type=number].bl-input::placeholder{font-family:var(--sans);}
 .mp-help{margin:var(--sp-4) 0 0;}
 .lvl-txt{margin-left:var(--sp-1);font-family:var(--head);font-size:var(--fs-xs);letter-spacing:.8px;}
@@ -104,9 +103,13 @@ input[type=number].bl-input::placeholder{font-family:var(--sans);}
 .cl-tools{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-1);margin-left:auto;}
 .cl-notice{margin-top:0;}
 .cl-section{margin-bottom:var(--sp-6);}
-.cl-section-hdr{display:flex;align-items:center;gap:var(--sp-3);padding:0 0 var(--sp-2);border-bottom:1px solid var(--border2) !important;}   /* !important: the renderer's inline section colour (request WP28) */
-.cl-section-letter{width:28px;height:28px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border-radius:var(--r-sm);font-family:var(--head);font-size:var(--fs-sm);font-weight:600;line-height:1;}
-.cl-section-name{flex:1;min-width:0;font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:1px;line-height:var(--lh-tight);color:var(--text) !important;}   /* the section accent is only the letter badge */
+.cl-section-hdr{display:flex;align-items:center;gap:var(--sp-3);padding:0 0 var(--sp-2);border-bottom:1px solid var(--border2);}
+/* the section colour (SEC_COLORS, rendered as --sec on .cl-section) marks only the letter badge */
+.cl-section-letter{width:28px;height:28px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border2);border-radius:var(--r-sm);background:var(--surface2);font-family:var(--head);font-size:var(--fs-sm);font-weight:600;line-height:1;color:var(--sec,var(--text));}
+@supports (color:color-mix(in srgb,currentColor 50%,transparent)){
+  .cl-section-letter{background:color-mix(in srgb,var(--sec,var(--text)) 13%,transparent);border-color:color-mix(in srgb,var(--sec,var(--text)) 40%,transparent);}
+}
+.cl-section-name{flex:1;min-width:0;font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:.3px;line-height:var(--lh-tight);color:var(--text);}
 .cl-section-prog{font-family:var(--mono);font-size:var(--fs-xs);color:var(--muted);white-space:nowrap;}
 .ci{display:flex;align-items:stretch;min-height:52px;border-bottom:1px solid var(--border);}
 .ci:last-child{border-bottom:none;}
@@ -318,8 +321,6 @@ td:is(.s-go,.s-caution,.s-nogo,.s-none),.wx-status{font-family:var(--head);font-
 
 @media(max-width:600px){
   :root{--content-pb:140px;}   /* room for the fixed bottom nav and the EMERGENCY button */
-  /* the Checklists sub-tabs stay reachable deep in a list (WP24 M7; page-scoped until WP28 moves it to the shell) */
-  body>#nav.tn-has-sub{position:sticky;top:0;z-index:700;background:var(--bg);padding-bottom:var(--sp-2);}
   .page-title,.cl-hdr-title{font-size:var(--fs-lg);}
   .form-grid,.prof-form{grid-template-columns:1fr;}
   .form-grid>.wide-2{grid-column:auto;}
@@ -2855,13 +2856,18 @@ function navTabOrder() {
 })();
 
 // ── CHECKLIST "MORE" MENU (phone, .cl-more-cb) ── closes after an action, on a tap outside it and on Escape.
+// A tap outside only closes the menu (it does not also tick the row under it), except on EMERGENCY, which always acts.
 document.addEventListener('click', e => {
+  const t = e.target, inside = sel => !!(t.closest && t.closest(sel));
+  let swallow = false;
   document.querySelectorAll('.cl-more-cb:checked').forEach(cb => {
-    const hdr = cb.closest('.cl-hdr'), t = e.target;
-    if (t === cb || (t.closest && t.closest('.cl-more-btn') && hdr.contains(t))) return;   // the toggle itself
+    const hdr = cb.closest('.cl-hdr');
+    if (t === cb || (inside('.cl-more-btn') && hdr.contains(t))) return;   // the toggle itself
+    if (!(inside('.cl-tools') && hdr.contains(t)) && !inside('#emerg-fab')) swallow = true;
     cb.checked = false;   // an action in the menu, or a tap anywhere else
   });
-}, true);   // capture: row handlers stop propagation
+  if (swallow) { e.preventDefault(); e.stopPropagation(); }
+}, true);   // capture: row handlers stop propagation, and a swallowed tap never reaches its target
 document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.cl-more-cb:checked').forEach(cb => { cb.checked = false; }); });
 
 // ── EMERGENCY QUICK-JUMP ──

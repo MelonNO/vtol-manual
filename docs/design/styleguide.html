@@ -17,6 +17,7 @@
 .sg-ratio{font-family:var(--mono);font-size:var(--fs-xs);white-space:nowrap;}
 .sg-ratio .bad{color:var(--red-fg);}
 .sg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--sp-4);}
+.sg-chips{padding:0 var(--sp-4) var(--sp-3);}
 .sg-type>div{display:flex;align-items:baseline;gap:var(--sp-4);padding:var(--sp-2) 0;border-bottom:1px solid var(--border);}
 .sg-type code{flex-shrink:0;width:90px;}
 .sg-space{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-1) 0;}
@@ -134,6 +135,8 @@ copy-ready markup: <code>docs/design/README.md</code>. The contrast column is me
 <div class="alert alert-info">Information the reader should notice. Body text stays in <code>--text</code>.</div>
 <div class="alert alert-warn">A warning: <strong>bold</strong> and <code>code</code> stay inline.</div>
 <div class="alert alert-danger">A danger callout, used for safety-critical cautions only.</div>
+<div class="alert alert-warn"><p><strong>Several paragraphs.</strong> A short visible lead first.</p>
+  <details><summary>Why</summary><p>The rest behind a quiet "More" disclosure (a <code>&lt;details&gt;</code> directly in the callout).</p></details></div>
 
 <div class="section-title">Tables, values and markers</div>
 <div class="tbl-wrap"><table>
@@ -142,6 +145,7 @@ copy-ready markup: <code>docs/design/README.md</code>. The contrast column is me
 <tr><td><code>FS_GCS_ENABL</code></td><td class="val">2</td><td>GCS failsafe in all modes</td></tr>
 <tr class="fs-primary"><td><code>FS_LONG_TIMEOUT</code></td><td class="val">5 s</td><td>Primary failsafe row (<code>.fs-primary</code>)</td></tr>
 <tr><td>Marker</td><td><span class="warn-val">TBD — what is needed</span></td><td><span class="crit-val">critical value</span> · <span class="warn-val">VERIFY — against what</span></td></tr>
+<tr><td>Marker on a whole cell</td><td class="warn-val">TBD</td><td><code>td.warn-val</code> / <code>td.crit-val</code> keep the cell padding</td></tr>
 </tbody></table></div>
 <p>Mode badges: <span class="mbadge m-qhov">QHOVER</span> <span class="mbadge m-fbwb">FBWB</span> <span class="mbadge m-fbwa">FBWA</span>
 <span class="mbadge m-auto">AUTO</span> <span class="mbadge m-man">MANUAL</span> <span class="mbadge m-rtl">RTL</span></p>
@@ -175,6 +179,7 @@ copy-ready markup: <code>docs/design/README.md</code>. The contrast column is me
   <button type="button" class="btn btn-danger">Danger</button>
   <button type="button" class="btn btn-sm">Small</button>
   <button type="button" class="btn" disabled>Disabled</button>
+  <button type="button" class="btn btn-ghost btn-sm btn-icon" aria-label="Remove">✕</button>
 </div>
 
 <div class="section-title">Form controls</div>
@@ -185,9 +190,17 @@ copy-ready markup: <code>docs/design/README.md</code>. The contrast column is me
   <div class="field"><label for="sg-d">Notes</label><textarea id="sg-d"></textarea></div>
 </div>
 <label class="cluster"><input type="checkbox" checked> Checkbox (accent colour)</label>
+<p class="help">A helper line under a control or a group (<code>.help</code>, the same style as <code>.field .hint</code>).</p>
 
 <div class="section-title">Disclosure</div>
 <details class="disclosure"><summary>Secondary information</summary><div class="disclosure-body"><p>Hidden until opened — instead of deleting it.</p></div></details>
+
+<div class="section-title">Shell (section 8: app bar, page switcher, summary chips)</div>
+<div class="app-header">
+  <div class="app-bar"><div class="app-id"><span class="app-badge">Tools</span><span class="app-title">Flight Tools</span></div>
+    <nav class="seg" aria-label="Pages (sample)"><a href="#" aria-current="page">Tools</a><a href="#">Manual</a><a href="#">Map</a></nav></div>
+  <div class="app-chips sg-chips"><span class="app-chip warn">⚠ PARAMS not verified</span><span class="app-chip crit">✖ BATT_LOW disabled</span></div>
+</div>
 
 <div class="section-title">Utilities</div>
 <p><span class="muted">.muted</span> · <span class="mono">.mono</span> · <span class="num">.num 12.34</span> · <code>.stack</code> (column, gap 12) · <code>.cluster</code> (wrapping row, gap 8) · <code>.sr-only</code></p>
@@ -199,7 +212,8 @@ var toggleCleanup = VtolCommon.toggleCleanup;
 (function () {
   var root = document.documentElement;
   document.querySelectorAll('.sg-sw').forEach(function (el) { el.style.background = 'var(' + el.dataset.t + ')'; });
-  function rgb(s) { var m = s.match(/[\d.]+/g).map(Number); return m; }
+  // null when the computed colour is not an rgb() value (jsdom returns the var() text): the ratio then shows '—'
+  function rgb(s) { var m = String(s || '').match(/[\d.]+/g); return m && m.length >= 3 ? m.map(Number) : null; }
   function lum(c) { return [0, 1, 2].map(function (i) { var v = c[i] / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }).reduce(function (s, v, i) { return s + v * [0.2126, 0.7152, 0.0722][i]; }, 0); }
   function ratio(a, b) { var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
   var probe = document.createElement('span'); document.body.appendChild(probe);
@@ -207,7 +221,7 @@ var toggleCleanup = VtolCommon.toggleCleanup;
   function ratios() {
     document.querySelectorAll('.sg-ratio').forEach(function (td) {
       var fg = val(td.dataset.fg), min = /^--(red|dim)$/.test(td.dataset.fg) ? 3 : 4.5;
-      td.innerHTML = ['--bg', '--surface', '--surface2'].map(function (b) { var r = ratio(fg, val(b)); return '<span' + (r < min ? ' class="bad"' : '') + '>' + r.toFixed(1) + '</span>'; }).join(' / ') + ' (min ' + min + ')';
+      td.innerHTML = ['--bg', '--surface', '--surface2'].map(function (b) { var bg = val(b); if (!fg || !bg) return '<span>—</span>'; var r = ratio(fg, bg); return '<span' + (r < min ? ' class="bad"' : '') + '>' + r.toFixed(1) + '</span>'; }).join(' / ') + ' (min ' + min + ')';
     });
   }
   ratios();

@@ -5,7 +5,7 @@
  * the blank pre-flight and turnaround checklists, each starting on a new page. */
 @page { margin: 12mm 12mm 14mm; }
 
-html:root, html:root[data-sun] {   /* html:root outranks the pages' own :root overrides (manual --muted) */
+html:root, html:root[data-sun] {   /* html:root outranks the base tokens, the sunlight block and the page :root rules */
   --bg:var(--paper); --surface:var(--paper); --surface2:var(--paper); --border:var(--ink); --border2:var(--ink);
   --text:var(--ink); --muted:var(--ink); --accent:var(--ink); --amber:var(--ink); --red:var(--ink); --green:var(--ink); --dim:var(--ink);
   --text-2:var(--ink); --red-fg:var(--ink); --blue:var(--ink); --orange-lt:var(--ink);   /* WP23 text tokens */
@@ -22,15 +22,12 @@ p { max-width:none; }   /* full measure on paper */
 a { text-decoration:none; }
 
 /* Never printed */
-nav, #nav, #emerg-fab, #cr-modal, .eo-view, .vf-toast, .vf-hdr-tools, .vf-share, .vf-btn, button, input, select, textarea,
-.nav-search, .hdr-badge, .hdr-meta, .hdr-sub, #store-notice, .cl-notice, .emerg-pills, #emerg-pills, .emerg-cleanup-btn, .ci-right, .ci-ts, .ci-auto,
+nav, #nav, #emerg-fab, #cr-modal, .eo-view, .vf-toast, .vf-share, .vf-btn, button, input, select, textarea,
+.nav-search, .hdr-meta, #store-notice, .cl-notice, .emerg-pills, #emerg-pills, .emerg-cleanup-btn, .ci-right, .ci-ts, .ci-auto,
 .app-badge, .app-switch, .app-summary, .map-st { display:none !important; }   /* WP24 page frame: switcher, summary, map status */
 
-/* Header: title and document line only */
+/* Header: the page title only */
 header { border-bottom:1.5pt solid var(--ink); margin-bottom:4mm; }
-.hdr-top { display:block !important; border:none !important; }
-.hdr-main { padding:0 0 2mm !important; }
-.hdr-title { font-size:15pt !important; }
 .app-bar { height:auto !important; padding:0 0 2mm !important; }
 .app-title { position:static !important; width:auto !important; height:auto !important; margin:0 !important; clip:auto !important; font-size:15pt !important; }
 .content { max-width:none !important; padding:0 !important; }
