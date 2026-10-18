@@ -20,7 +20,7 @@ Read this file completely before you start. Then read your own work-package brie
 
 | Document | Path | Use |
 |---|---|---|
-| Improvement plan (Rev B) | `docs/SOFTWARE-IMPROVEMENT-PLAN.md` in the repo | **Primary requirements.** Your brief cites its IDs (S-01, IDX-03, MAP-01, §6.1.4, …). |
+| Improvement plan (Rev B; Rev C §15 supersedes older values) | `docs/SOFTWARE-IMPROVEMENT-PLAN.md` in the repo | **Primary requirements.** Your brief cites its IDs (S-01, IDX-03, MAP-01, §6.1.4, …). |
 | Relay design | `C:\Users\Simulator\Downloads\Docs\Analog Video to IP Relay with Drone TX Control — Technical Solution.md` | Hardware/firmware facts (ports, packets, states, tests). **Read only, never edit.** |
 | Contracts | `docs/tasks/02-CONTRACTS.md` | Interfaces shared between work packages. **You must conform.** If a contract is wrong or insufficient, write it in your report; do not silently diverge. |
 

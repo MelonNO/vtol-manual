@@ -1,6 +1,6 @@
 # Implementation programme — work packages
 
-Source of requirements: `docs/SOFTWARE-IMPROVEMENT-PLAN.md` (Rev B). Every plan item is assigned to exactly one work package (WP) below, or listed under "Not implementable in software".
+Source of requirements: `docs/SOFTWARE-IMPROVEMENT-PLAN.md` (Rev B when the programme started; Rev C, §15, added 2026-10-17, supersedes older values). Every plan item is assigned to exactly one work package (WP) below, or listed under "Not implementable in software".
 
 Process for every WP:
 1. The PM writes the brief.

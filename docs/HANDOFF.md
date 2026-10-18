@@ -79,6 +79,8 @@ $env:VTOLGCS_INTERACTIVE_TESTS = '0'; ..\vtol-venv\Scripts\python -m pytest gcs 
   - It is required before each release (OPEN-ITEMS M-16; `gcs/README.md` "Tests").
   - In the same window as the CI-mode run, first clear the variable with `Remove-Item Env:VTOLGCS_INTERACTIVE_TESTS`.
   - Check that the pytest header says `interactive_desktop tests RUN`.
+  - The commands are in `gcs/README.md` "Tests" and OPEN-ITEMS M-16, including the second run with `VTOLGCS_UI_SMOKE='1'`.
+- **Plain `python` and `npx`.** Wherever `CLAUDE.md`, `CONTRIBUTING.md`, `gcs/README.md` or a brief writes `python`, use `..\vtol-venv\Scripts\python`. In Windows PowerShell, write `npx.cmd`, not `npx`; the same execution-policy rule applies as for `npm`. Git Bash needs neither change.
 - **Viewing the pages:** run `..\vtol-venv\Scripts\python -m http.server 8000` in the repository root, then open http://localhost:8000/. The python.org installer does not put `python` on PATH by default.
 - **Conventions and architecture:** `CLAUDE.md`. Content review rules: `CONTRIBUTING.md`.
 
@@ -95,7 +97,7 @@ The programme was run by a **project manager (PM) who does not implement anythin
    - Rework continues until it gives **APPROVED**.
    - It writes each report outside the repository, to `S\verify\WPnn\VERIFY-roundN.md`. The PM copies it into `docs/tasks/reports/WPnn-VERIFY-roundN.md` when merging.
 4. **Merge and push.** The PM merges into `main` (`--no-ff`), runs the full check list in §2 and updates the status board.
-   - The PM pushes `main` itself, without a pull request, only after an APPROVED verification.
+   - The PM pushes `main` itself, without a pull request. A push holds only work with an APPROVED verification, or the PM's own record commits (status board, OPEN-ITEMS rows, reports, this file). It is never forced.
    - This is an owner-approved exception ("Push to main", 2026-10-16) to the normal contributor rule in `CONTRIBUTING.md`: branch, then open a pull request.
    - The exception belongs to this PM process. Anyone else, or a new person taking the PM role, confirms it with the owner first.
    - The PM watches the GitHub runs until they are green.
