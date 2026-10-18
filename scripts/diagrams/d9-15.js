@@ -103,7 +103,7 @@ D['d11-wiring-harness'] = () => {
   let y = 72;
   b.push(box(18, y, 364, 50, { title: 'Carrier battery 6S 7000 mAh', lines: ['one pack powers every carrier system'], stroke: P.green, lh: 18 }));
   y += 50;
-  b.push(t(18, y + 26, 'POWER', { weight: 'bold', fill: P.green }));
+  b.push(t(44, y + 26, 'POWER', { weight: 'bold', fill: P.green }));   // right of the bus line (WP26: the line crossed it)
   const bus = 34;
   b.push(line([[bus, y], [bus, y + 300]], { c: P.green, w: 3, end: false }));
   const taps = [
@@ -205,7 +205,7 @@ D['d13-coverage-intersection'] = () => {
   b.push('<ellipse cx="' + (cx + 40) + '" cy="' + (cy + 10) + '" rx="130" ry="95" fill="' + P.green + '" fill-opacity="0.35" clip-path="url(#cv)"/>');
   b.push(t(cx + 5, cy - 4, 'OPERATING', { anchor: 'middle', weight: 'bold' }));
   b.push(t(cx + 5, cy + 14, 'AREA', { anchor: 'middle', weight: 'bold' }));
-  b.push(t(cx - 150, cy - 70, 'video', { fill: P.red, weight: 'bold' }));
+  b.push(t(24, cy - 88, 'video', { fill: P.red, weight: 'bold' }));   // outside the ellipse (WP26: its edge crossed the label)
   b.push(t(cx + 156, cy - 66, 'RC', { fill: P.accent, weight: 'bold', anchor: 'end' }));
   b.push('<polygon points="' + cx + ',' + (cy + 52) + ' ' + (cx - 7) + ',' + (cy + 66) + ' ' + (cx + 7) + ',' + (cy + 66) + '" fill="' + P.text + '"/>');
   b.push(t(cx + 12, cy + 64, 'carrier', { fill: P.text }));
@@ -220,9 +220,9 @@ D['d13-coverage-intersection'] = () => {
   b.push('<polygon points="' + (ox + 90) + ',' + (oy - 8) + ' ' + (ox + 82) + ',' + (oy + 6) + ' ' + (ox + 98) + ',' + (oy + 6) + '" fill="' + P.text + '"/>');
   b.push(t(ox, oy - 4, 'ALWAYS', { anchor: 'middle', weight: 'bold' }));
   b.push(t(ox, oy + 14, 'COVERED', { anchor: 'middle', weight: 'bold' }));
-  b.push(t(ox, oy - 98, 'carrier orbit', { anchor: 'middle', fill: P.muted }));
-  b.push(t(ox, oy + 116, 'best case (union)', { anchor: 'middle', fill: P.green }));
-  y = oy + 150;
+  b.push(lines(330, oy - 40, ['carrier', 'orbit'], { fill: P.muted }));   // labels clear of the circles (WP26)
+  b.push(t(ox, oy + 140, 'best case (union)', { anchor: 'middle', fill: P.green }));
+  y = oy + 168;
   b.push(lines(18, y, [{ s: 'Inner zone = worst case: covered at', o: { weight: 'bold', fill: P.green } }, { s: 'every point of the orbit.', o: { weight: 'bold', fill: P.green } }, 'Outer = best case: covered at some', 'point only. Keep the client inside', 'the inner zone and inside the orbit.', { s: 'Shapes illustrative — use the MAP', o: { fill: P.amber } }, { s: 'for each site and client.', o: { fill: P.amber } }], { maxw: 364 }));
   y += 7 * 18;
   return { h: y + 16, heading: 'D13 · COVERAGE INTERSECTION', sub: 'Operating area = video ∩ RC',
@@ -256,8 +256,8 @@ D['d14-crew-swimlane'] = () => {
     b.push('<line x1="200" y1="' + (y - 4) + '" x2="200" y2="' + (y + n * 19) + '" stroke="' + P.dim + '"/>');
     y += n * 19 + 12;
   });
-  b.push(box(18, y, 364, 60, { align: 'left', top: 20, stroke: P.red, sw: 2, lines: [{ s: 'EITHER PILOT: "ABORT ABORT ABORT"', o: { weight: 'bold', fill: P.red } }, 'Carrier Pilot acts at once: QHOVER', 'in VTOL phase, RTL in cruise.'], lh: 18 }));
-  y += 72;
+  b.push(box(18, y, 364, 68, { align: 'left', top: 22, stroke: P.red, sw: 2, lines: [{ s: 'EITHER PILOT: "ABORT ABORT ABORT"', o: { weight: 'bold', fill: P.red } }, 'Carrier Pilot acts at once: QHOVER', 'in VTOL phase, RTL in cruise.'], lh: 18 }));   // WP26: text clear of the frame
+  y += 82;
   b.push(t(18, y + 6, 'Bold = callout. Full list: Callouts tab.', { fill: P.muted, maxw: 364 }));
   return { h: y + 22, heading: 'D14 · CREW SWIM-LANE', sub: 'Actions and calls per phase',
     title: 'D14 — Crew swim-lane per phase: Carrier Pilot and FPV Pilot actions and callouts',

@@ -30,16 +30,18 @@ The manual's diagrams D1–D15 (plus D8b) are standalone SVG files, `d01-system-
 
 **Palette**
 
-A standalone SVG cannot read the page CSS variables. It therefore uses the same hex values as the `:root` tokens in `css/base.css` (`--muted` is the manual's own `#777`), and each file carries this mapping as a comment:
+A standalone SVG cannot read the page CSS variables. It therefore uses the same hex values as the `:root` tokens in `css/base.css` (the WP23 neutrals since WP26), and each file carries this mapping as a comment:
 
 | Hex | Token | Hex | Token |
 |---|---|---|---|
 | `#0f0f0f` | `--bg` | `#e8e8e8` | `--text` |
-| `#1a1a1a` | `--surface` | `#777777` | `--muted` |
-| `#222222` | `--surface2` | `#f97316` | `--accent` |
-| `#2a2a2a` | `--border` | `#facc15` | `--amber` |
+| `#171717` | `--surface` | `#a0a0a0` | `--muted` |
+| `#1f1f1f` | `--surface2` | `#f97316` | `--accent` |
+| `#262626` | `--border` | `#facc15` | `--amber` |
 | `#333333` | `--border2` | `#ef4444` | `--red` |
-| `#444444` | `--dim` | `#22c55e` | `--green` |
+| `#6e6e6e` | `--dim` | `#22c55e` | `--green` |
+
+Diagram headings use the text colour (orange marks interaction only).
 
 Inline SVG and the generated charts (`js/diagrams.js`) use `var(--…)` instead and never hex.
 
@@ -47,7 +49,7 @@ Inline SVG and the generated charts (`js/diagrams.js`) use `var(--…)` instead 
 
 Text must be **≥ 11 CSS px when the page is 360 px wide**. The manual's content is 332 px wide there (14 px padding each side) and a figure's image 330 px (its 1 px border each side); about 315 px when a desktop-style scrollbar takes 15 px. There are two ways to meet it:
 
-- **Fit to width** (all `img/diagrams/` files): a viewBox 400 units wide with text ≥ 14 units gives 14 × 330 / 400 ≈ 11.55 px. Desktop caps the image at 560 px.
+- **Fit to width** (all `img/diagrams/` files): a viewBox 400 units wide with text ≥ 14 units gives 14 × 330 / 400 ≈ 11.55 px. Desktop caps the image at 440 px (1.1 px per unit), so the text is about 15 px, the size of the table text next to it.
 - **Scroll** (the manual's inline SVGs and the Tools charts): text ≥ 13 units (charts ≥ 12) plus a `min-width` class (`.mw-560`, `.mw-600`, `.mw-780`) inside an `overflow-x:auto` frame, with min-width ≥ viewBox width × 11 / smallest font.
 
 ## Optimiser

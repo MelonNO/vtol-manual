@@ -18,7 +18,7 @@ const FILES = {
 const svg = id => readText('img/diagrams/' + FILES[id] + '.svg');
 // Visible text of an SVG (title/desc/comments excluded) for content checks.
 const visible = s => s.replace(/<title[\s\S]*?<\/title>|<desc[\s\S]*?<\/desc>|<!--[\s\S]*?-->/g, '').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/\s+/g, ' ');
-const PALETTE = ['#0f0f0f', '#1a1a1a', '#222222', '#2a2a2a', '#333333', '#444444', '#e8e8e8', '#777777', '#f97316', '#facc15', '#ef4444', '#22c55e'];
+const PALETTE = ['#0f0f0f', '#171717', '#1f1f1f', '#262626', '#333333', '#6e6e6e', '#e8e8e8', '#a0a0a0', '#f97316', '#facc15', '#ef4444', '#22c55e'];   // css/base.css :root tokens (WP23 neutrals)
 const PHONE_CONTENT_PX = 330;   // 360 px viewport minus the manual's 14 px side padding and the figure's 1 px border (img/README.md)
 
 test('R1/R6: every D1–D15 file exists, is well-formed, ≤ 60 KB, accessible, uses only the palette (with the mapping comment)', () => {
@@ -133,7 +133,7 @@ test('diagram files: no removed-relay terms or corrected safety facts', () => {
 test('R2: every manual diagram slot is filled with its image and a caption', () => {
   const html = readText('manual.html');
   const slots = [...html.matchAll(/<div class="diagram-slot" data-diagram="(D\d+b?)">([\s\S]*?)<\/div>\n/g)];
-  assert.equal(slots.length, 17, 'D1–D15, D8b, and D5 twice');
+  assert.equal(slots.length, 16, 'D1–D15 and D8b, once each (Pre-Arm Ref links to D5 on Relay Electronics since WP26)');
   assert.deepEqual([...new Set(slots.map(m => m[1]))].sort(), Object.keys(FILES).sort());
   for (const [, id, body] of slots) {
     const src = 'img/diagrams/' + FILES[id] + '.svg';

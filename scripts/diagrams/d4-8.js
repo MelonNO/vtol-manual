@@ -60,7 +60,7 @@ D['d05-bridge-states'] = () => {
   });
   // FAILSAFE → WAIT_GCS immediately (loop on the right)
   b.push(line([[318, ys[4] + 35], [360, ys[4] + 35], [360, ys[1] + 35], [320, ys[1] + 35]], { c: P.red }));
-  b.push(t(352, ys[2] + 60, 'immediately', { fill: P.red, anchor: 'end', maxw: 120 }));
+  b.push(t(352, ys[2] + 104, 'immediately', { fill: P.red, anchor: 'end', maxw: 120 }));   // in the gap below START, clear of the box (WP26)
   y += 22;
   b.push(lines(18, y, [{ s: 'Valid packet: right magic, version,', o: {} }, 'CRC, source IP, increasing seq.', { s: 'Watchdog (IWDG, about 100 ms):', o: { fill: P.muted } }, { s: 'resets the G0 → BOOT if the scheduler', o: { fill: P.muted } }, { s: 'or the W5500 stops.', o: { fill: P.muted } }], { maxw: 364 }));
   y += 108;
@@ -177,7 +177,7 @@ D['d08-bandwidth-budget'] = () => {
       x += s.w;
     });
     b.push('<line x1="382" y1="' + (y - 8) + '" x2="382" y2="' + (y + 48) + '" stroke="' + P.text + '" stroke-width="2" stroke-dasharray="3,3"/>');
-    y += 52;
+    y += 60;   // notes clear of the bar (WP26: they touched it)
     b.push(lines(18, y, note, { maxw: 364 }));
     y += note.length * 19 + 18;
   };
