@@ -147,7 +147,7 @@ html-validate index.html manual.html relay/map.html tools/latency-clock.html (+ 
 |---|---|---|
 | WP23 M2 styleguide contrast script throws in jsdom | DONE: `rgb()` returns null for unparsable colours, the ratio shows "—", the toggle is wired; jsdom test | `docs/design/styleguide.html`, `wp28-components.test.js` |
 | WP23 M3 tint test misses `--surface2` | DONE | `test/design/tokens.test.js` |
-| WP23 M4 stale print.css comment | DONE | `css/print.css:7` |
+| WP23 M4 stale print.css comment | DONE | `css/print.css:8` |
 | WP24 M1 Menu sheet columns centred at 601–900 px | DONE `align-items:start` | `css/base.css:425`; shot `manual-menu-800.png` |
 | WP24 M4 search placeholder cut at 360 px | DONE: at ≤ 400 px tighter nav padding, 12 px placeholder; the full "Search the manual" shows, Menu and Emergency keep 44 px | `css/base.css:490`; `manual-overview-360.png` |
 | WP24 M5 dead `.hdr-*` (print), `.vf-hdr-tools` / `.vf-lbl` (base) | DONE | `css/print.css`, `css/base.css` §6 |
@@ -155,7 +155,7 @@ html-validate index.html manual.html relay/map.html tools/latency-clock.html (+ 
 | WP24 M7 / WP25 sticky sub-tabs | DONE in the shell; page rule removed | `css/base.css:477` |
 | WP24 shell docs / `.seg` promotion | DONE docs and styleguide; `.seg` not promoted (no body consumer) | `docs/design/README.md` |
 | WP25 outside tap on More also activates | DONE (dismiss only; EMERGENCY exempt) | `index.html:2857-2870` |
-| WP25 `!important` section colours | DONE (`--sec`) | `js/render-content.js:105-112`, `index.html:105-111` |
+| WP25 `!important` section colours | DONE (`--sec`) | `js/render-content.js:105-112`, `index.html:106-112` |
 | WP25 phone EMERGENCY covers the row ends | DONE (full-width bar above the bottom nav) | `css/base.css:482`; `tools-scroll-fab-{390,360}.png` |
 | WP25 promote Tools patterns | REJECTED: one consumer; documented as page patterns | README "Page patterns" |
 | WP25 `.tbl-wrap` scrollbar, section names in sentence case | DONE | base §4; `data/content.js` |
