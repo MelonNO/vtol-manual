@@ -150,18 +150,25 @@ def test_run_rtt_telemetry_camera_and_failsafe(harness) -> None:
                                                               "streaming": True, "start_path": "normal"}
 
     # stop sending -> the bridge reaches FAILSAFE after T_hold
-    t_stop = time.perf_counter()
     assert h.rt.request_mode(Mode.IDLE).ok
+    t_stopped = time.perf_counter()                           # the runtime took its stop time before this
     h.expect(lambda: h.sim_visited(BridgeState.FAILSAFE), "bridge FAILSAFE after the stream stops")
     h.expect(lambda: "FAILSAFE" in [d["to"] for k, d in h.events if k == "bridge_state"],
              "FAILSAFE status received by the GCS")
     with h.sim.lock:
         t_fs = [t for t, _, new in h.sim.core.transitions if new == BridgeState.FAILSAFE][0]
-    assert t_fs - t_stop >= 0.25 - 0.01                       # not before T_hold (250 ms)
-    # the observed stop -> FAILSAFE time is compared with the configured T_hold expectation
+        t_last_rc = h.sim.core.last_valid_time
+        last_seq = h.sim.core.last_rc.seq
+    # WP19: deterministic (it was "t_fs - t_stop >= 0.24" and "observed_ms >= 240": a margin of a few ms on how
+    # promptly the sender and this thread were scheduled around the stop).  Not before T_hold after the last rc_up
+    # (the bridge's rule, on its clock), and that rc_up is the last one the GCS sent (it stopped the stream).
+    assert t_fs - t_last_rc > 0.25, (t_fs, t_last_rc)
+    assert last_seq == h.rt.sender.state().seq
+    # the observed stop -> FAILSAFE time is compared with the configured T_hold expectation; the GCS saw FAILSAFE
+    # after the bridge entered it and took its stop time before t_stopped (all perf_counter, one process)
     h.expect(lambda: any(k == "failsafe_timing" for k, _ in h.events), "failsafe_timing event")
     ft = [d for k, d in h.events if k == "failsafe_timing"][0]
-    assert ft["expected_t_hold_ms"] == 250 and 240 <= ft["observed_ms"] < 2000
+    assert ft["expected_t_hold_ms"] == 250 and (t_fs - t_stopped) * 1000 - 0.1 <= ft["observed_ms"] < 2000, ft
     st = [d for k, d in h.events if k == "start_timing"][0]
     assert st["expected_start_packets"] == 5 and st["packets_sent"] >= 5
 

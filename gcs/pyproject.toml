@@ -11,7 +11,7 @@ dependencies = []   # standard library only, except the joystick input below
 
 [project.optional-dependencies]
 controller = ["pygame-ce"]   # vtolgcs.controller.PygameController (imported only when used)
-dev = ["pytest", "pygame-ce"]
+dev = ["pytest>=9.1,<9.2", "pygame-ce"]   # pytest pinned with gcs/conftest.py PYTEST_VERIFIED (README: upgrading pytest)
 packaging = ["pyinstaller>=6"]   # gcs/packaging/build.ps1
 
 [tool.setuptools]

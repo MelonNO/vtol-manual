@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import ast
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -114,11 +115,14 @@ def _alive(pid: int) -> bool:
         k.CloseHandle(ctypes.c_void_p(h))
 
 
-def _run_tree(tmp_path: Path, name: str, source: str, **env: str) -> tuple[subprocess.CompletedProcess, Path, float]:
+def _run_tree(tmp_path: Path, name: str, source: str, files: dict[str, str] | None = None,
+              **env: str) -> tuple[subprocess.CompletedProcess, Path, float]:
     root = tmp_path / name / "gcs"
     (root / "tests").mkdir(parents=True)
     shutil.copy(GCS_DIR / "conftest.py", root / "conftest.py")
     (root / "tests" / f"test_{name}.py").write_text(source, encoding="utf-8")
+    for rel, text in (files or {}).items():                    # more files in tests/ (WP19: a conftest, modules)
+        (root / "tests" / rel).write_text(text, encoding="utf-8")
     full = {k: v for k, v in os.environ.items() if k not in ("CI", "GITHUB_ACTIONS", "VTOLGCS_INTERACTIVE_TESTS")}
     full.update({"PYTHONUNBUFFERED": "1", "VTOLGCS_TEST_TIMEOUT": "3", "VTOLGCS_TEST_GRACE": "4",
                  "VTOLGCS_TEST_DUMP_DIR": str(root / "dumps"), "VTOLGCS_LIVE_TEST_NAMES": "1"}, **env)
@@ -579,3 +583,178 @@ def test_a_leak_is_caught_even_when_a_finaliser_raises(tmp_path: Path) -> None:
     assert "ERROR at teardown of test_leak_plus_teardown_error" in out, out
     assert "test_after PASSED" in out, out
     assert "2 passed, 1 error" in out, out
+
+
+# --------------------------------------------------------------------------- WP19 R2 (WP18 verify round 2, finding 1)
+
+STALE_CONFTEST = '''
+import itertools
+
+import pytest
+
+SERIAL = itertools.count(1)
+
+
+class Res:
+    def __init__(self, name):
+        self.name, self.serial, self.closed = name, next(SERIAL), False
+
+    def close(self):
+        self.closed = True
+        open(f"closed-{self.name}-{self.serial}.flag", "w").write("1")
+        log(f"{self.name}-{self.serial}")
+
+
+def log(line):                   # every finaliser that ran: each must run exactly once
+    with open("finalisers.log", "a") as f:
+        f.write(line + "\\n")
+
+
+@pytest.fixture(scope="session")
+def shared():                    # still needed after the hang: must stay the same, live object
+    r = Res("shared")
+    yield r
+    r.close()
+
+
+@pytest.fixture(scope="module")
+def mod_res():                   # every module gets its own instance; a stale one is a closed-never object of another module
+    r = Res("mod")
+    yield r
+    r.close()
+
+
+@pytest.fixture
+def fn_res():
+    r = Res("fn")
+    yield r
+    r.close()
+'''
+
+STALE_MODULE_HANG = '''
+import time
+
+import pytest
+
+
+@pytest.fixture(scope="module")
+def hangs_in_teardown(mod_res):
+    yield
+    while True:                  # interruptible: TestTimeout after the teardown budget
+        time.sleep(0.05)
+
+
+def test_module_teardown_hangs(shared, mod_res, hangs_in_teardown):
+    open("a-mod.txt", "w").write(str(mod_res.serial))
+    open("shared.txt", "w").write(str(shared.serial))
+'''
+
+STALE_NEXT_MODULE = '''
+import os
+
+
+def test_next_module_gets_fresh_fixtures(shared, mod_res):
+    a = int(open("a-mod.txt").read())
+    assert mod_res.serial != a and not mod_res.closed, f"stale module fixture: serial {mod_res.serial} (was {a})"
+    assert os.path.exists(f"closed-mod-{a}.flag"), "the hung module's other fixture was never torn down"
+    assert shared.serial == int(open("shared.txt").read()) and not shared.closed     # session fixture: kept, live
+'''
+
+STALE_FUNCTION_HANG = '''
+import os
+import time
+
+import pytest
+
+
+@pytest.fixture
+def hangs_in_teardown():
+    yield
+    while True:
+        time.sleep(0.05)
+
+
+def log(line):
+    with open("finalisers.log", "a") as f:
+        f.write(line + "\\n")
+
+
+def test_function_teardown_hangs(request, monkeypatch, fn_res, hangs_in_teardown):   # both torn down after the hang
+    request.node.addfinalizer(lambda: log("node-fin"))    # runs before the hang (last in, first out): exactly once
+    monkeypatch.setenv("WP19_LEFT_BEHIND", "1")
+
+
+def test_next_test_gets_a_fresh_monkeypatch(monkeypatch, fn_res):
+    assert "WP19_LEFT_BEHIND" not in os.environ, "the hung test's monkeypatch was never undone"
+    assert not fn_res.closed and fn_res.serial == 5
+'''
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="the suite's platform")
+def test_a_hung_teardown_leaves_no_stale_fixture_for_later_tests(tmp_path: Path) -> None:
+    """WP19 R2: a teardown still running after its budget gets ``TestTimeout`` (a ``BaseException``), and pytest then
+    skips that test's remaining finalisers.  Before WP19 the cached, never torn down fixtures (here a module-scoped
+    one, and pytest's own ``monkeypatch``) went to later tests.  Now the conftest runs the skipped finalisers and
+    finishes the teardown pytest broke off, so later tests get fresh fixtures and the run goes on."""
+    files = {"conftest.py": STALE_CONFTEST, "test_b_next.py": STALE_NEXT_MODULE, "test_c_fn.py": STALE_FUNCTION_HANG}
+    proc, root, took = _run_tree(tmp_path, "a_mod", STALE_MODULE_HANG, files=files, VTOLGCS_TEST_TIMEOUT="2",
+                                 VTOLGCS_TEST_GRACE="8", VTOLGCS_TEST_TEARDOWN_BUDGET="2")
+    out = proc.stdout + proc.stderr
+    assert "a teardown gets 2 s more" in out and "worst case per hanging test 20 s (30 s with the GIL held)" in out, out
+    assert "INTERNALERROR>" not in out and "hard exit (status 1)" not in out, out
+    for test in ("test_a_mod.py::test_module_teardown_hangs", "test_c_fn.py::test_function_teardown_hangs"):
+        assert f"{test} is in its teardown: not interrupted" in out, out
+        assert re.search(rf"\+\+\+ TIMEOUT: tests/{re.escape(test)}: its teardown was interrupted after its budget: "
+                         r"ran the [1-9]\d* finaliser\(s\) pytest skipped and finished its teardown", out), out
+        assert f"ERROR at teardown of {test.split('::')[1]}" in out, out
+    assert "test_b_next.py::test_next_module_gets_fresh_fixtures PASSED" in out, out
+    assert "test_c_fn.py::test_next_test_gets_a_fresh_monkeypatch PASSED" in out, out
+    assert "4 passed, 2 errors" in out and proc.returncode == 1, out
+    assert took < 60, took
+    # round 2 (verify F2): every finaliser ran exactly once, the skipped ones included, none twice
+    ran = (root / "finalisers.log").read_text().split()
+    assert sorted(ran) == sorted(["mod-2", "mod-3", "node-fin", "fn-4", "fn-5", "shared-1"]), ran
+
+
+def test_the_teardown_recovery_was_verified_for_this_pytest() -> None:
+    """WP19 round 2 (verify F2), round 3: CI installs pytest pinned to the release in PYTEST_VERIFIED (see
+    ``test_the_pytest_pin_and_the_verified_release_agree``), so this passes there.  It catches a local venv with
+    another release, where ``_finish_teardown`` would take the hard exit: install the pinned one, or upgrade as in
+    gcs/README.md, "Upgrading pytest" (list the release first, then run the self-test)."""
+    g = _guards()
+    assert g.teardown_recovery_verified(), (f"this venv has pytest {pytest.__version__}, CI uses the pinned "
+                                            f"release {g.PYTEST_VERIFIED}: install that one (pip install -e "
+                                            "gcs[dev]), or upgrade on purpose as in gcs/README.md, "
+                                            "'Upgrading pytest'")
+
+
+def test_the_documented_worst_case_per_hanging_test(monkeypatch) -> None:
+    """WP19 R3: with the defaults a hanging test ends at most 190 s after it started (the watchdog's hard exit), or
+    200 s for a hang with the GIL held (the faulthandler backstop); the conftest docstring and the README say so."""
+    g = _guards()
+    for name in (g.TIMEOUT_ENV, g.GRACE_ENV, g.TEARDOWN_BUDGET_ENV, g.MARGIN_ENV):
+        monkeypatch.delenv(name, raising=False)
+    assert g.worst_case_s() == (120 + 20 + 30 + 20, 120 + 20 + 30 + 20 + 10) == (190, 200)
+    assert "= **190 s**" in g.__doc__ and "at **200 s**" in g.__doc__
+    readme = (GCS_DIR / "README.md").read_text(encoding="utf-8")
+    assert "**190 s**" in readme and "**200 s**" in readme
+
+
+def test_the_pytest_pin_and_the_verified_release_agree() -> None:
+    """WP19 round 3: CI installs pytest pinned to the release the teardown recovery was verified for.  Every
+    ``pip install`` of pytest in the workflows and the ``dev`` extra use the same pin, and it matches the newest entry
+    of PYTEST_VERIFIED, so the two can only be raised together (gcs/README.md, "Upgrading pytest")."""
+    g = _guards()
+    major, minor = max(g.PYTEST_VERIFIED)
+    pin = f"pytest>={major}.{minor},<{major}.{minor + 1}"
+    repo = GCS_DIR.parent
+    installs = []
+    for name in ("ci.yml", "gcs-build.yml"):
+        for line in (repo / ".github" / "workflows" / name).read_text(encoding="utf-8").splitlines():
+            if "pip install" in line and "pytest" in line.split("#")[0]:
+                installs.append((name, line.split("#")[0].strip()))
+    assert len(installs) == 3, installs                                  # ci.yml Linux + Windows, gcs-build
+    assert all(f'"{pin}"' in line for _, line in installs), (pin, installs)
+    import tomllib
+    dev = tomllib.loads((GCS_DIR / "pyproject.toml").read_text(encoding="utf-8"))["project"]["optional-dependencies"]
+    assert pin in dev["dev"], dev

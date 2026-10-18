@@ -472,7 +472,7 @@ spawned sender ignores Ctrl+C and refuses QUIT on a real Ctrl+Break, the refusal
 
 | Guard | What it covers | Behaviour | Setting |
 |---|---|---|---|
-| Per-test watchdog (a Python thread) | any hang that releases the GIL: sleeps, waits on locks, threads, processes, sockets, pipes, polling loops | after the timeout (120 s): `+++ TIMEOUT [time] <test id>` and the stacks of all threads; the processes the tests started are killed, `TestTimeout` is raised in the main thread and the test is reported FAILED; the run goes on. WP18: it is raised only while the main thread runs the test's own setup or call; while pytest itself is busy (e.g. formatting a failure) it waits for the test's next phase, because an exception there ended the session with `INTERNALERROR` and skipped every teardown. A teardown is never interrupted at once: it gets its own budget (30 s, `VTOLGCS_TEST_TEARDOWN_BUDGET`) so every finaliser runs; only a teardown still running after it gets `TestTimeout`, and the hard exit moves behind it. If the test is still running 20 s later (e.g. `time.sleep`, which no exception interrupts): the stacks again and exit status 1 | `VTOLGCS_TEST_TIMEOUT`, `@pytest.mark.timeout(s)` (the test's own value), `VTOLGCS_TEST_GRACE`; `VTOLGCS_TEST_DUMP_DIR` also writes these dumps to `pytest-timeouts.txt` there (CI: the uploaded `pytest-logs`) |
+| Per-test watchdog (a Python thread) | any hang that releases the GIL: sleeps, waits on locks, threads, processes, sockets, pipes, polling loops | after the timeout (120 s): `+++ TIMEOUT [time] <test id>` and the stacks of all threads; the processes the tests started are killed, `TestTimeout` is raised in the main thread and the test is reported FAILED; the run goes on. WP18: it is raised only while the main thread runs the test's own setup or call; while pytest itself is busy (e.g. formatting a failure) it waits for the test's next phase, because an exception there ended the session with `INTERNALERROR` and skipped every teardown. A teardown is never interrupted at once: it gets its own budget (30 s, `VTOLGCS_TEST_TEARDOWN_BUDGET`) so every finaliser runs; only a teardown still running after it gets `TestTimeout`, and the hard exit moves behind it. WP19: pytest skips the rest of that teardown's finalisers then, and would give the never torn down fixtures (module or session scope, and cached function-scoped ones such as `monkeypatch`) to later tests; the conftest runs the skipped finalisers and finishes the teardown (`+++ TIMEOUT: <id>: its teardown was interrupted after its budget: ran the N finaliser(s) pytest skipped …`), so later tests get fresh fixtures. This relies on how pytest 9.1 tears down (finalisers popped from their list before they run), so CI installs pytest pinned to 9.1 (see "Upgrading pytest" below). In a local venv with another release, or if the attributes it reads are missing, it takes the hard exit instead, the header warns, and `test_the_teardown_recovery_was_verified_for_this_pytest` fails. The R2 self-test (fresh fixtures, every finaliser exactly once) checks the behaviour on the pinned release. If the test is still running 20 s later (e.g. `time.sleep`, which no exception interrupts): the stacks again and exit status 1 | `VTOLGCS_TEST_TIMEOUT`, `@pytest.mark.timeout(s)` (the test's own value), `VTOLGCS_TEST_TEARDOWN_BUDGET`, `VTOLGCS_TEST_GRACE`; `VTOLGCS_TEST_DUMP_DIR` also writes these dumps to `pytest-timeouts.txt` there (CI: the uploaded `pytest-logs`) |
 | Per-test faulthandler backstop (a C thread, needs no GIL) | a hang in native code that **holds the GIL** (the Python watchdog cannot run then) | 10 s after the watchdog's hard exit: `Timeout (h:mm:ss)!` and the stacks of all threads on stdout (the CI log and its uploaded copy), exit status 1. The test is the last `START` line before it; CI annotates it | `VTOLGCS_TEST_BACKSTOP_MARGIN` |
 | Exit guard (Python thread) | the process not exiting after the session (a leaked non-daemon thread, a slow atexit handler) | 60 s after the session: `+++ EXIT GUARD` and the stacks, exit status (or 1) | `VTOLGCS_EXIT_GRACE` |
 | Exit backstop (faulthandler) | the same with the GIL held (Python atexit handlers, thread shutdown) | 10 s later: `Timeout (h:mm:ss)!` and the stacks, exit status 1 | — |
@@ -484,6 +484,38 @@ spawned sender ignores Ctrl+C and refuses QUIT on a real Ctrl+Break, the refusal
 
 Not covered: a hang during collection or pytest's own start-up (before the first test); the CI step timeout is the
 last resort there.
+
+**Time bounds (WP19).** With the defaults (timeout 120 s, grace 20 s, teardown budget 30 s, backstop margin 10 s)
+a hanging test ends, counted from its start:
+
+| Where it hangs | Ends | At most |
+|---|---|---|
+| setup or call, interruptible | `TestTimeout`, the run goes on | 120 s |
+| setup or call, not interruptible (`time.sleep`) | hard exit, status 1 | 140 s |
+| teardown | `TestTimeout` after its budget, the skipped finalisers run, the run goes on; or the hard exit | 120 + 20 + 30 = 170 s; hard exit at 120 + 20 + 30 + 20 = **190 s** |
+| anywhere, with the GIL held | faulthandler backstop, status 1 | **200 s** |
+
+The teardown term is the worst case: the timeout fires while pytest formats the failure, which may take almost the
+grace, and the teardown that follows still gets its full budget. The pytest header prints the values in force
+(`worst case per hanging test 190 s (200 s with the GIL held)`). An interrupted hang does not end the run, so every
+further hanging test in the same run adds up to 190 s. After the session the exit guards add at most 60 / 70 / 80 s.
+
+Against the workflow step timeouts (a full CI-mode run takes about 130 s, on the runner about the same):
+
+- `ci.yml`, five runs in one 35-minute step (2100 s): one hanging test per run costs at most
+  5 × (130 + 200 + ~5 start-up) ≈ 1675 s ≈ 28 min. That leaves about 7 minutes. It fits as long as one full run
+  stays under about 215 s. A teardown hang that ends with `TestTimeout` (170 s), followed by an exit-guard hang
+  (80 s), gives 5 × (130 + 170 + 80 + 5) ≈ 1925 s. That fits too. Two hanging tests in every run do not fit. The
+  step then times out, but the logs are still uploaded, because the step timeout is below the 45-minute job timeout.
+- `gcs-build.yml`, one 15-minute step (900 s): 130 + 200 ≈ 330 s with one hang, and up to three hanging tests fit.
+
+**Upgrading pytest (WP19).** CI installs pytest **pinned** to `"pytest>=9.1,<9.2"`. The pin is in both workflows (`ci.yml` twice, `gcs-build.yml` once) and in the `dev` extra of `gcs/pyproject.toml`. So a new pytest **minor** release (9.2 or later) on PyPI changes nothing: CI and the release build keep using 9.1 and stay green. Nothing breaks on its own. New 9.1.x patch releases are still installed automatically, and the teardown self-test checks them on every CI run. Moving to a new minor release is a deliberate change, done on a PC, in this order:
+
+1. **Install the new release in a separate venv.** From the repository root: `python -m venv ..\pytest-upgrade` (a folder next to the repository folder, so it can never be committed), then `..\pytest-upgrade\Scripts\python -m pip install "pytest>=9.2,<9.3" pygame-ce` (put in the release you want).
+2. **Tell the conftest about the release.** In `gcs/conftest.py`, add it to `PYTEST_VERIFIED`, e.g. `PYTEST_VERIFIED = ((9, 1), (9, 2))`. Do this first: on a release that is not listed, the conftest deliberately refuses its teardown recovery, so the test in step 3 cannot pass before this edit.
+3. **Run the two checks:** `..\pytest-upgrade\Scripts\python -m pytest gcs/tests/test_test_guards.py -k "stale_fixture or verified_for" -v`. Both must say PASSED. The first checks that the conftest's teardown recovery still works with the new pytest. The second checks that the release is listed.
+4. **If both passed:** in the same change, raise the four pins to the new range, e.g. `"pytest>=9.2,<9.3"`. Then run the whole suite once with that venv (`..\pytest-upgrade\Scripts\python -m pytest gcs protocol`; it includes `test_the_pytest_pin_and_the_verified_release_agree`, which fails if the pins and `PYTEST_VERIFIED` do not match). Commit everything as one commit, and push.
+5. **If the first check failed:** undo the edit from step 2 and change nothing else. CI stays on the old pin and keeps working. The new pytest changed something the teardown recovery relies on, so a developer has to look at `_finish_teardown` in `gcs/conftest.py` first.
 
 **Writing tests that start things (WP18).** Every test or fixture that starts a `Runtime`, `Sender`, `Receiver`,
 `ControlServer`, `SessionLog` or `BridgeSim` registers its stop as soon as it exists, so a failure, an assertion
