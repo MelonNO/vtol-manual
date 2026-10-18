@@ -171,8 +171,12 @@ Checklists come from `VtolContent.checklists.preflight` / `.turnaround` (section
 ```
 
 Text markup in content: `` `code` ``, `**bold**`, `[[MODE]]` badge, `[[TBD — …]]` / `[[VERIFY — …]]` amber,
-`{client.…}` / `{settings.…}` / `{clientPack.…}` tokens (null → TBD). Rows split 50/50: the left half ticks, the
-right half opens the detail (mobile tap targets). Key functions: `renderContent()`, `toggleCI(el, e)`,
+`{client.…}` / `{settings.…}` / `{clientPack.…}` tokens (null → TBD). Each row has two tap zones: the left zone
+(checkbox and title, most of the row width) ticks, the right zone opens the detail — 120 px wide with "DETAILS" on
+desktop, 52 px (▶ only) on a phone; rows ≥ 52 px, checkbox 24 × 24 px. The toolbar above a list (`.cl-hdr`, sticky on
+desktop) holds the title (`.cl-hdr-title`, a direct child: the kneeboard print keeps only it), progress, the pre-flight
+timer with START as the primary action, and the secondary actions (Expand all, Challenge–response, Reset; a "More" menu
+on a phone, CSS-only via `.cl-more-cb`). Key functions: `renderContent()`, `toggleCI(el, e)`,
 `toggleDetail(key, r, e)`, `crOpen(name)` (challenge–response), `openEmerg()` / `emergJump(id)`, `vtolRefreshAll()`.
 Section accents `SEC_COLORS`: A `#60a5fa`, B `#f97316`, C `#22c55e`, D `#a78bfa`, E `#f43f5e`, T1–T3 orange /
 purple / rose (hex with alpha suffixes, pre-existing).
