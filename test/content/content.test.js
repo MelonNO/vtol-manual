@@ -37,7 +37,7 @@ test('C5 shape: all top-level parts exist', () => {
   for (const k of ['designIntent', 'checklists', 'postflight', 'emergencies', 'emergencyNotes', 'failsafeTable', 'network', 'callouts']) assert.ok(C[k], k);
   assert.ok(C.checklists.preflight && C.checklists.turnaround);
   assert.deepEqual(C.checklists.preflight.sections.map(s => s.id), ['A', 'B', 'C', 'D', 'E']);
-  assert.equal(C.checklists.preflight.sections[4].name, 'CLIENT');
+  assert.match(C.checklists.preflight.sections[4].name, /^client$/i);   // E renamed FPV → Client (§6.2.1); WP28: names in sentence case
 });
 
 test('every id is unique and well-formed; checklist items have s and t', () => {

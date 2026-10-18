@@ -12,7 +12,8 @@
  *   failsafeTable, clientFailsafeChain, networkTable, callouts, designIntent, postflight
  *   autoHint(ruleId, status, ctx)          → { state:'ok'|'fail'|'unknown', text } (checklist automation)
  *   linkStatus(status, ctx)                → Link tab view of a C2 status object
- * Pages must provide the CSS classes used here (index.html has them all; see the class list in WP05's report).
+ * The shared classes (tables in .tbl-wrap, callout tables .co-table, the emergency family, cards, markers) are base
+ * components in css/base.css; the checklist rows (.ci, .cl-section…) and the Link panels (.lk-…) are styled by index.html.
  */
 (function (root, factory) {
   const api = factory();
@@ -82,6 +83,7 @@
 
   // ── checklists ──
   // opts: { colors: {A:'#hex',…}, prefix: id prefix of the section progress counters }
+  // The section colour is passed to the page CSS as the custom property --sec (only the letter badge uses it).
   // state: { items: { [itemId]: {checked, ts} } } (WP01 engine; ToolsCore.cl*)
   function checklistItem(item, sec, listName, saved, ctx) {
     const hasDetail = !!(item.t || item.n || (item.extras && item.extras.length));
@@ -103,11 +105,12 @@
   }
   function checklistSection(sec, listName, state, ctx, opts) {
     opts = opts || {};
-    const sc = (opts.colors && opts.colors[sec.id]) || '#f97316';   // section accent (hex, alpha suffixes below)
+    const sc = opts.colors && opts.colors[sec.id];
+    const secVar = typeof sc === 'string' && /^#[0-9a-f]{3,8}$/i.test(sc) ? ' style="--sec:' + sc + '"' : '';
     const items = (state && state.items) || {};
-    return '<div class="cl-section" id="cls-' + escH(sec.id) + '">'
-      + '<div class="cl-section-hdr" style="border-bottom-color:' + sc + '44"><span class="cl-section-letter" style="background:' + sc + '22;border:1px solid ' + sc + '66;color:' + sc + '">' + escH(sec.id) + '</span>'
-      + '<span class="cl-section-name" style="color:' + sc + '">' + fmt(sec.name, ctx) + '</span><span class="cl-section-prog" id="' + escH((opts.prefix || '') + sec.id) + '"></span></div>'
+    return '<div class="cl-section" id="cls-' + escH(sec.id) + '"' + secVar + '>'
+      + '<div class="cl-section-hdr"><span class="cl-section-letter">' + escH(sec.id) + '</span>'
+      + '<span class="cl-section-name">' + fmt(sec.name, ctx) + '</span><span class="cl-section-prog" id="' + escH((opts.prefix || '') + sec.id) + '"></span></div>'
       + sec.items.map(it => checklistItem(it, sec, listName, items[it.id], ctx)).join('') + '</div>';
   }
   function checklist(list, state, ctx, opts) {
@@ -161,9 +164,9 @@
 
   // ── tables ──
   function table(columns, rows, keys, ctx, cls, rowCls) {
-    return '<div style="overflow-x:auto"><table class="' + cls + '"><tr>' + columns.map(c => '<th>' + escH(c) + '</th>').join('') + '</tr>'
+    return '<div class="tbl-wrap"><table class="' + cls + '"><thead><tr>' + columns.map(c => '<th>' + escH(c) + '</th>').join('') + '</tr></thead><tbody>'
       + rows.map(r => '<tr id="' + escH(r.id) + '"' + (rowCls && rowCls(r) ? ' class="' + rowCls(r) + '"' : '') + '>' + keys.map(k => '<td>' + fmt(r[k], ctx) + '</td>').join('') + '</tr>').join('')
-      + '</table></div>';
+      + '</tbody></table></div>';
   }
   function failsafeTable(ft, ctx) {
     return table(ft.columns, ft.rows, ['event', 'detection', 'action', 'pilot'], ctx, 'fs-table', r => r.primary ? 'fs-primary' : '');
@@ -177,17 +180,17 @@
       + '<p><strong>' + fmt(ch.total, ctx) + '</strong></p><p>' + fmt(ch.note, ctx) + '</p></div>';
   }
   function designIntent(d, ctx) {
-    return '<div class="card accent design-intent" id="' + escH(d.id) + '"><div class="card-title">' + fmt(d.title, ctx) + '</div><p>' + fmt(d.text, ctx) + '</p></div>';
+    return '<div class="card design-intent" id="' + escH(d.id) + '"><div class="card-title">' + fmt(d.title, ctx) + '</div><p>' + fmt(d.text, ctx) + '</p></div>';
   }
   function callouts(c, ctx) {
-    const groups = c.groups.map(g => '<div class="section-title" id="' + escH(g.id) + '">' + fmt(g.title, ctx) + '</div><div style="overflow-x:auto"><table class="co-table">'
-      + '<tr><th style="width:30%">Trigger</th><th style="width:25%">Who calls</th><th>Callout</th></tr>'
+    const groups = c.groups.map(g => '<div class="section-title" id="' + escH(g.id) + '">' + fmt(g.title, ctx) + '</div><div class="tbl-wrap"><table class="co-table">'
+      + '<thead><tr><th class="co-trig">Trigger</th><th class="co-who">Who calls</th><th>Callout</th></tr></thead><tbody>'
       + g.rows.map(r => '<tr id="' + escH(r.id) + '"><td>' + fmt(r.trigger, ctx) + '</td><td>' + fmt(r.who, ctx) + '</td><td><strong>"' + fmt(r.call, ctx) + '"</strong>'
-        + (r.note ? ' — ' + fmt(r.note, ctx) : '') + '</td></tr>').join('') + '</table></div>').join('');
+        + (r.note ? ' — ' + fmt(r.note, ctx) : '') + '</td></tr>').join('') + '</tbody></table></div>').join('');
     const a = c.abort;
-    const abort = a ? '<div class="section-title">Abort Calls</div><div class="card danger" id="' + escH(a.id) + '"><div class="card-title">' + fmt(a.title, ctx) + '</div><p>' + fmt(a.text, ctx) + '</p>'
-      + '<div style="overflow-x:auto"><table class="co-table"><tr><th style="width:35%">Callout</th><th>Meaning &amp; immediate action</th></tr>'
-      + a.rows.map(r => '<tr id="' + escH(r.id) + '"><td><strong>"' + fmt(r.call, ctx) + '"</strong></td><td>' + fmt(r.meaning, ctx) + '</td></tr>').join('') + '</table></div></div>' : '';
+    const abort = a ? '<div class="section-title" id="' + escH(a.id) + '-calls">Abort Calls</div><div class="card danger" id="' + escH(a.id) + '"><div class="card-title">' + fmt(a.title, ctx) + '</div><p>' + fmt(a.text, ctx) + '</p>'
+      + '<div class="tbl-wrap"><table class="co-table"><thead><tr><th class="co-call">Callout</th><th>Meaning &amp; immediate action</th></tr></thead><tbody>'
+      + a.rows.map(r => '<tr id="' + escH(r.id) + '"><td><strong>"' + fmt(r.call, ctx) + '"</strong></td><td>' + fmt(r.meaning, ctx) + '</td></tr>').join('') + '</tbody></table></div></div>' : '';
     return (c.intro ? '<p>' + fmt(c.intro, ctx) + '</p>' : '') + groups + abort;
   }
 
@@ -305,52 +308,52 @@
     s = s && typeof s === 'object' ? s : {};
     ctx = ctx || {};
     const st = get(s, 'bridge.state');
-    const bridge = row('STATE', st ? '<span class="lk-badge ' + (BRIDGE_CLS[st] || 'warn') + '">' + escH(st) + '</span>' : DASH)
+    const bridge = row('State', st ? '<span class="lk-badge ' + (BRIDGE_CLS[st] || 'warn') + '">' + escH(st) + '</span>' : DASH)
       + row('RTT', n(get(s, 'bridge.rtt_ms'), 1, 'ms'))
-      + row('UPLINK LOSS', n(get(s, 'bridge.uplink_loss_pct'), 1, '%'))
-      + row('SEND JITTER p99', n(get(s, 'bridge.send_jitter_ms_p99'), 2, 'ms'), get(s, 'bridge.send_jitter_ms_p99') > 2 ? 'warn' : '')
-      + row('STATUS AGE', n(get(s, 'bridge.status_age_ms'), 0, 'ms'), get(s, 'bridge.status_age_ms') > 300 ? 'crit' : '')
-      + row('TIMING LOCK', yn(get(s, 'bridge.timing_locked'), 'LOCKED', 'NOT LOCKED'), get(s, 'bridge.timing_locked') === false ? 'warn' : '')
-      + row('SYNC OFFSET', n(get(s, 'bridge.sync_offset_us'), 1, 'µs'))
-      + row('BRIDGE FW', n(get(s, 'bridge.fw_version')));
+      + row('Uplink loss', n(get(s, 'bridge.uplink_loss_pct'), 1, '%'))
+      + row('Send jitter p99', n(get(s, 'bridge.send_jitter_ms_p99'), 2, 'ms'), get(s, 'bridge.send_jitter_ms_p99') > 2 ? 'warn' : '')
+      + row('Status age', n(get(s, 'bridge.status_age_ms'), 0, 'ms'), get(s, 'bridge.status_age_ms') > 300 ? 'crit' : '')
+      + row('Timing lock', yn(get(s, 'bridge.timing_locked'), 'LOCKED', 'NOT LOCKED'), get(s, 'bridge.timing_locked') === false ? 'warn' : '')
+      + row('Sync offset', n(get(s, 'bridge.sync_offset_us'), 1, 'µs'))
+      + row('Bridge firmware', n(get(s, 'bridge.fw_version')));
 
     const rq = get(s, 'bridge.camera.requested'), rp = get(s, 'bridge.camera.reported');
     const mismatch = typeof rq === 'boolean' && typeof rp === 'boolean' && rq !== rp;
-    const camera = row('REQUESTED', yn(rq, 'ON', 'OFF')) + row('REPORTED', yn(rp, 'ON', 'OFF'), mismatch ? 'crit' : '')
-      + (mismatch ? row('CAMERA', '<span class="lk-badge crit">MISMATCH</span>', 'crit') : '');
+    const camera = row('Requested', yn(rq, 'ON', 'OFF')) + row('Reported', yn(rp, 'ON', 'OFF'), mismatch ? 'crit' : '')
+      + (mismatch ? row('Camera', '<span class="lk-badge crit">MISMATCH</span>', 'crit') : '');
 
     const cc = get(s, 'controller.connected'), asafe = get(s, 'controller.arm_switch_safe'), tl = get(s, 'controller.throttle_low');
-    const controller = row('CONNECTED', yn(cc), cc === false ? 'crit' : '') + row('NAME', n(get(s, 'controller.name')))
-      + row('ARM SWITCH', yn(asafe, 'SAFE', 'NOT SAFE'), asafe === false ? 'warn' : '') + row('THROTTLE', yn(tl, 'LOW', 'NOT LOW'), tl === false ? 'warn' : '');
+    const controller = row('Connected', yn(cc), cc === false ? 'crit' : '') + row('Name', n(get(s, 'controller.name')))
+      + row('Arm switch', yn(asafe, 'SAFE', 'NOT SAFE'), asafe === false ? 'warn' : '') + row('Throttle', yn(tl, 'LOW', 'NOT LOW'), tl === false ? 'warn' : '');
 
     const vstd = get(s, 'video.standard'), exp = get(ctx, 'client.videoStandard'), lock = get(s, 'video.decoder_lock');
     const stdKnown = vstd && vstd !== 'null';
-    const video = row('STANDARD', stdKnown ? escH(vstd) : DASH, stdKnown && exp && vstd !== exp ? 'warn' : '')
-      + row('PROFILE EXPECTS', exp ? escH(exp) : TBD_HTML)
-      + row('DECODER LOCK', yn(lock, 'LOCK', 'NO LOCK'), lock === false ? 'crit' : '') + row('RX', n(get(s, 'video.rx_kbps'), 0, 'kbit/s'));
+    const video = row('Standard', stdKnown ? escH(vstd) : DASH, stdKnown && exp && vstd !== exp ? 'warn' : '')
+      + row('Profile expects', exp ? escH(exp) : TBD_HTML)
+      + row('Decoder lock', yn(lock, 'LOCK', 'NO LOCK'), lock === false ? 'crit' : '') + row('RX', n(get(s, 'video.rx_kbps'), 0, 'kbit/s'));
 
     const L = 'client.link.';
     const lq = get(s, L + 'lq_pct'), r1 = get(s, L + 'rssi1_dbm'), r2 = get(s, L + 'rssi2_dbm'), tage = get(s, 'client.telemetry_age_ms');
     const link = row('LQ', n(lq, 0, '%'), isNum(lq) && lq < 70 ? 'crit' : '')
       + row('RSSI 1 / 2', n(r1, 0, 'dBm') + ' / ' + n(r2, 0, 'dBm'), (isNum(r1) && r1 < -90) || (isNum(r2) && r2 < -90) ? 'warn' : '')
-      + row('SNR', n(get(s, L + 'snr_db'), 0, 'dB')) + row('TX POWER', n(get(s, L + 'tx_power_mw'), 0, 'mW')) + row('RF MODE', n(get(s, L + 'rf_mode')))
-      + row('DOWNLINK RSSI / LQ / SNR', n(get(s, L + 'dl_rssi_dbm'), 0, 'dBm') + ' / ' + n(get(s, L + 'dl_lq_pct'), 0, '%') + ' / ' + n(get(s, L + 'dl_snr_db'), 0, 'dB'))
-      + row('TELEMETRY AGE', n(tage, 0, 'ms'), isNum(tage) && tage > 2000 && st === 'RUN' ? 'crit' : '');
+      + row('SNR', n(get(s, L + 'snr_db'), 0, 'dB')) + row('TX power', n(get(s, L + 'tx_power_mw'), 0, 'mW')) + row('RF mode', n(get(s, L + 'rf_mode')))
+      + row('Downlink RSSI / LQ / SNR', n(get(s, L + 'dl_rssi_dbm'), 0, 'dBm') + ' / ' + n(get(s, L + 'dl_lq_pct'), 0, '%') + ' / ' + n(get(s, L + 'dl_snr_db'), 0, 'dB'))
+      + row('Telemetry age', n(tage, 0, 'ms'), isNum(tage) && tage > 2000 && st === 'RUN' ? 'crit' : '');
 
     const sats = get(s, 'client.gps.sats'), minSats = get(ctx, 'client.failsafe.minSats');
-    const gps = row('SATS', n(sats, 0) + (isNum(minSats) ? ' <span class="lk-na">(min ' + escH(minSats) + ')</span>' : ''), isNum(sats) && isNum(minSats) && sats < minSats ? 'crit' : '')
-      + row('ALT', n(get(s, 'client.gps.alt_m'), 1, 'm')) + row('SPEED', n(get(s, 'client.gps.gspd_kmh'), 1, 'km/h'))
-      + row('HEADING', n(get(s, 'client.gps.hdg_deg'), 0, '°')) + row('POSITION', n(get(s, 'client.gps.lat'), 5) + ', ' + n(get(s, 'client.gps.lon'), 5));
+    const gps = row('Satellites', n(sats, 0) + (isNum(minSats) ? ' <span class="lk-na">(min ' + escH(minSats) + ')</span>' : ''), isNum(sats) && isNum(minSats) && sats < minSats ? 'crit' : '')
+      + row('Altitude', n(get(s, 'client.gps.alt_m'), 1, 'm')) + row('Speed', n(get(s, 'client.gps.gspd_kmh'), 1, 'km/h'))
+      + row('Heading', n(get(s, 'client.gps.hdg_deg'), 0, '°')) + row('Position', n(get(s, 'client.gps.lat'), 5) + ', ' + n(get(s, 'client.gps.lon'), 5));
 
     const volt = get(s, 'client.battery.voltage_v'), cells = get(ctx, 'clientPack.cells');
-    const batt = row('VOLTAGE', n(volt, 2, 'V') + (isNum(volt) && isNum(cells) && cells > 0 ? ' <span class="lk-na">(' + (volt / cells).toFixed(2) + ' V/cell, ' + escH(cells) + 'S)</span>' : ''))
-      + row('CURRENT', n(get(s, 'client.battery.current_a'), 1, 'A')) + row('USED', n(get(s, 'client.battery.used_mah'), 0, 'mAh'))
-      + row('REMAINING', n(get(s, 'client.battery.remaining_pct'), 0, '%'));
+    const batt = row('Voltage', n(volt, 2, 'V') + (isNum(volt) && isNum(cells) && cells > 0 ? ' <span class="lk-na">(' + (volt / cells).toFixed(2) + ' V/cell, ' + escH(cells) + 'S)</span>' : ''))
+      + row('Current', n(get(s, 'client.battery.current_a'), 1, 'A')) + row('Used', n(get(s, 'client.battery.used_mah'), 0, 'mAh'))
+      + row('Remaining', n(get(s, 'client.battery.remaining_pct'), 0, '%'));
 
     const fs = get(s, 'client.flight_mode.failsafe'), armed = get(s, 'client.flight_mode.armed'), rnr = get(s, 'client.flight_mode.rescue_not_ready');
-    const mode = row('RAW', n(get(s, 'client.flight_mode.raw')))
-      + row('FAILSAFE', fs === true ? '<span class="lk-badge crit">FAILSAFE</span>' : yn(fs), fs === true ? 'crit' : '')
-      + row('ARMED', yn(armed)) + row('RESCUE NOT READY', yn(rnr), rnr === true ? 'warn' : '');
+    const mode = row('Raw mode', n(get(s, 'client.flight_mode.raw')))
+      + row('Failsafe', fs === true ? '<span class="lk-badge crit">FAILSAFE</span>' : yn(fs), fs === true ? 'crit' : '')
+      + row('Armed', yn(armed)) + row('Rescue not ready', yn(rnr), rnr === true ? 'warn' : '');
 
     const alarms = Array.isArray(s.alarms) ? s.alarms.filter(a => a && typeof a === 'object') : [];
     const alarmHtml = alarms.length ? alarms.map(a => '<div class="lk-alarm ' + (a.severity === 'crit' ? 'crit' : 'warn') + '"><span class="lk-badge ' + (a.severity === 'crit' ? 'crit' : 'warn') + '">' + escH(a.severity === 'crit' ? 'CRIT' : 'WARN') + '</span> '

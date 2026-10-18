@@ -72,33 +72,33 @@
   // ── CHECKLISTS ── (plan §6.2.1; sections A–E, E renamed CLIENT)
   const preflight = {
     id: 'preflight',
-    title: 'Pre-Flight Check',
-    goText: '// GO — ALL ITEMS COMPLETE — CLEAR TO ARM //',
+    title: 'Pre-flight check',
+    goText: 'GO — ALL ITEMS COMPLETE — CLEAR TO ARM',
     sections: [
-      { id: 'A', name: 'SITE', items: [
-        { id: 'site-airspace', s: 'Airspace verified & pilots briefed', t: 'Airspace verified — NOTAMs checked, operation permitted. Remote piloting through the relay is covered by the operator\'s authorisation (Luftfartstilsynet). Both pilots briefed on roles and emergency actions.', w: true },
-        { id: 'site-wind', s: 'Wind within limits', t: 'Wind within limits — crosswind acceptable for VTOL.', n: 'Wind vane active — carrier will weathervane into wind automatically.' },
-        { id: 'site-lz', s: 'Landing zone clear', t: 'VTOL landing zone clear — 5m radius, level, no obstacles.' },
-        { id: 'site-home-lz-flight', s: 'Home LZ kept clear all flight', t: 'Every RTL — SIYI / GCS loss, low battery ({settings.battLowVolt} V) or the pilot — ends in an **automatic VTOL landing at home** (`Q_RTL_MODE` = 2); a transition timeout QRTLs home. **Keep the home landing zone clear for the whole flight** and brief everyone on site.', w: true }
+      { id: 'A', name: 'Site', items: [
+        { id: 'site-airspace', s: 'Airspace verified & pilots briefed', t: 'NOTAMs checked and the operation is permitted. Remote piloting through the relay is covered by the operator\'s authorisation (Luftfartstilsynet). Both pilots briefed on roles and emergency actions.', w: true },
+        { id: 'site-wind', s: 'Wind within limits', t: 'Wind within limits; crosswind acceptable for VTOL.', n: 'Weathervaning is on: the carrier turns into the wind by itself.' },
+        { id: 'site-lz', s: 'Landing zone clear', t: 'VTOL landing zone clear: 5m radius, level, no obstacles.' },
+        { id: 'site-home-lz-flight', s: 'Home LZ clear all flight', t: 'Every RTL — SIYI / GCS loss, low battery ({settings.battLowVolt} V) or the pilot — ends in an **automatic VTOL landing at home** (`Q_RTL_MODE` = 2); a transition timeout QRTLs home. **Keep the home landing zone clear for the whole flight** and brief everyone on site.', w: true }
       ] },
-      { id: 'B', name: 'VTOL BUILD', items: [
-        { id: 'build-airframe', s: 'Airframe inspected', t: 'Carrier drone (Heewing T2 Cruza) assembled and inspected — no cracks at tilt motor mounts or wing joins.' },
-        { id: 'build-pitot-cover', s: 'Pitot cover on', t: 'Pitot cover installed.', n: 'Leave on until pitot calibration step.', w: true },
-        { id: 'build-relay-pcb', s: 'Relay PCB secured', t: 'Relay PCB mount secure, connectors locked (JST-GH, HM30 Ethernet, XT30, CRSF lead). Antennas: VRX patches facing inward, ELRS TX module antenna fitted.', n: 'Never plug goggles in parallel with the relay on one VRX output (CVBS lead).', w: true },
-        { id: 'build-props', s: 'Props tight, rotation correct', t: 'All props tight — correct rotation direction confirmed for all 3 motors (M1/M2 tilt, M4 tail).', n: 'M1/M2: wing tilt-motor props. M4: tail lift-motor prop (VTOL only).', w: true }
+      { id: 'B', name: 'VTOL build', items: [
+        { id: 'build-airframe', s: 'Airframe inspected', t: 'Carrier (Heewing T2 Cruza) assembled and inspected: no cracks at the tilt-motor mounts or wing joins.' },
+        { id: 'build-pitot-cover', s: 'Pitot cover on', t: 'Pitot cover installed.', n: 'Leave it on until the pitot calibration step.', w: true },
+        { id: 'build-relay-pcb', s: 'Relay PCB secured', t: 'Relay PCB mount secure; connectors locked (JST-GH, HM30 Ethernet, XT30, CRSF lead). VRX patches face inward; ELRS TX module antenna fitted.', n: 'Never plug goggles in parallel with the relay on one VRX output (CVBS lead).', w: true },
+        { id: 'build-props', s: 'Props tight, rotation correct', t: 'All props tight, rotation direction correct on all 3 motors (M1/M2 tilt, M4 tail).', n: 'M1/M2: wing tilt-motor props. M4: tail lift-motor prop (VTOL only).', w: true }
       ] },
-      { id: 'C', name: 'GROUND STATION & POWER-UP', items: [
+      { id: 'C', name: 'Ground station & power-up', items: [
         { id: 'gs-charged', s: 'All devices charged', t: 'All controllers, TX units and EcoFlow charged and ready.' },
-        { id: 'gs-mast', s: 'Mast up and powered', t: 'HM30 mast erected and powered — 6S 3000mAh secured to mast.' },
+        { id: 'gs-mast', s: 'Mast up and powered', t: 'HM30 mast up and powered; its 6S 3000mAh battery secured to the mast.' },
         { id: 'gs-ethernet', s: 'Ethernet connected', t: 'Ethernet cable connected mast → laptop.' },
-        { id: 'gs-hm30-link', s: 'HM30 linked, battery OK', t: 'HM30 ground unit linked — verify LED is blue. Check mast battery voltage.' },
-        { id: 'gs-subnet', s: 'Laptop IP verified', t: 'Ethernet network adapter: static IP on the HM30 subnet.', n: 'IP `192.168.144.X`, mask `255.255.255.0`. X must not clash with any relay address (suggested `.100`; final address [[TBD — decide at bring-up]]).' },
-        { id: 'gs-laptop-sleep', s: 'Laptop will not sleep', t: 'Power plan: never sleep or hibernate, on battery or mains. Lid-close action "do nothing". Laptop on mains where possible.', n: 'Mission Planner is the carrier\'s GCS heartbeat: closing MP, sleep/hibernate or a pulled cable = carrier RTL (QRTL in VTOL modes) after 5 s (FS_GCS_ENABL = 2).', w: true },
-        { id: 'gs-app', s: 'GCS app started', t: 'GCS companion app running. Controller detected, arm switch DISARMED, throttle low, bridge reachable (RTT shown).', n: 'The FPV pilot\'s EdgeTX radio is a USB joystick only: internal and external RF modules OFF in the GCS-RELAY model. A radio transmitting ELRS could fight the relay for the client.', w: true, auto: 'app-controller-safe' },
-        { id: 'fpv-battery', s: 'Client battery connected', t: 'Client battery connected — voltage nominal (power-up step 3: VTX on, ELRS RX waiting).' },
-        { id: 'build-battery-power', s: 'Battery secured & power on', t: 'Battery secured — strap tight, no movement. Connect the carrier battery at power-up **step 4**: after the HM30 ground unit (1), the laptop and GCS app — arm switch DISARMED, throttle low (2) and the client (3); the 915 Nomad comes last (8). Allow GPS fix time after step 4, before arming.', n: 'Arming is refused below {settings.battArmVolt} V (`BATT_ARM_VOLT`): fit a fully charged pack. Power-up order: Manual → Procedures → Power-Up Sequence. Do not arm yet. The relay bridge stays silent (WAIT_GCS) until the GCS app stream arrives — it never sends default sticks. Final power-up order with the relay: [[TBD — confirm by bench test, plan §6.1.6]].' },
-        { id: 'gs-mp-connect', s: 'Mission Planner connected', t: 'Mission Planner open — second screen via USB-C. Select **UDPCI** in MP connection dropdown. Never close MP in flight.', n: 'No other program may send MAVLink as GCS sysid 255 on this network (S-02b) — it would mask the SIYI failsafe.', extras: [{ label: 'IP', val: '192.168.144.12' }, { label: 'Port', val: '19856' }] },
-        { id: 'gs-client-video', s: 'Client video viewer', t: 'Client video arrives as RTP/UDP. The GCS app receives UDP 5600 and re-sends it to `127.0.0.1:5601` (standalone viewer) and `127.0.0.1:5602` (MP HUD: right-click avionics screen → Video → Set GStreamer Source). Use the variant for the client\'s video standard: **{client.videoStandard}**.', n: 'Mission Planner holds UDP 5600 by default: while the app\'s fan-out runs, MP must NOT listen on 5600 — its HUD source uses port 5602, the standalone viewer 5601. Windows GStreamer pipelines from plan §7.4 — verify on the target laptop. No rtpjitterbuffer. mpv with the .sdp file: verify its latency matches GStreamer before relying on it.', w: true, extras: [
+        { id: 'gs-hm30-link', s: 'HM30 linked, battery OK', t: 'HM30 ground unit linked: LED blue. Mast battery voltage checked.' },
+        { id: 'gs-subnet', s: 'Laptop IP verified', t: 'Laptop Ethernet adapter: static IP on the HM30 subnet.', n: 'IP `192.168.144.X`, mask `255.255.255.0`. X must not clash with any relay address (suggested `.100`; final address [[TBD — decide at bring-up]]).' },
+        { id: 'gs-laptop-sleep', s: 'Laptop will not sleep', t: 'Power plan: never sleep or hibernate, on battery or mains. Lid-close action "do nothing". Laptop on mains where possible.', n: 'Mission Planner is the carrier\'s GCS heartbeat. Closing MP, sleep / hibernate or a pulled cable → carrier RTL (QRTL in VTOL modes) after 5 s (FS_GCS_ENABL = 2).', w: true },
+        { id: 'gs-app', s: 'GCS app started', t: 'GCS app running: controller detected, arm switch DISARMED, throttle low, bridge reachable (RTT shown).', n: 'The FPV pilot\'s EdgeTX radio is a USB joystick only: internal and external RF modules OFF in the GCS-RELAY model. A radio transmitting ELRS could fight the relay for the client.', w: true, auto: 'app-controller-safe' },
+        { id: 'fpv-battery', s: 'Client battery connected', t: 'Client battery connected, voltage nominal (power-up step 3: VTX on, ELRS RX waiting).' },
+        { id: 'build-battery-power', s: 'Battery secured & power on', t: 'Carrier battery strapped tight, no movement. Connect it at power-up **step 4**, after the HM30 ground unit (1), the laptop and GCS app with the arm switch DISARMED and throttle low (2), and the client (3). The 915 Nomad comes last (8). Allow GPS fix time after step 4, before arming.', n: 'Do not arm yet. Arming is refused below {settings.battArmVolt} V (`BATT_ARM_VOLT`): fit a fully charged pack. The relay bridge stays silent (WAIT_GCS) until the GCS app stream arrives; it never sends default sticks. Full order: Manual → Procedures → Power-Up Sequence. Final order with the relay: [[TBD — confirm by bench test, plan §6.1.6]].' },
+        { id: 'gs-mp-connect', s: 'Mission Planner connected', t: 'Mission Planner open on the second screen (USB-C). Connect with **UDPCI** in the MP connection list. Never close MP in flight.', n: 'No other program may send MAVLink as GCS sysid 255 on this network (S-02b) — it would mask the SIYI failsafe.', extras: [{ label: 'IP', val: '192.168.144.12' }, { label: 'Port', val: '19856' }] },
+        { id: 'gs-client-video', s: 'Client video viewer', t: 'Client video arrives as RTP/UDP. The GCS app receives UDP 5600 and re-sends it to `127.0.0.1:5601` (standalone viewer) and `127.0.0.1:5602` (MP HUD: right-click avionics screen → Video → Set GStreamer Source). Use the variant for the client\'s video standard: **{client.videoStandard}**.', n: 'Mission Planner holds UDP 5600 by default: while the app\'s fan-out runs, MP must NOT listen on 5600; its HUD source uses port 5602, the standalone viewer 5601. Windows GStreamer pipelines from plan §7.4: verify them on the target laptop. No rtpjitterbuffer. mpv with the .sdp file: check that its latency matches GStreamer before relying on it.', w: true, extras: [
           { label: 'VIEWER · PAL (UDP 5601)', val: PIPE.viewerPal },
           { label: 'VIEWER · NTSC (UDP 5601)', val: PIPE.viewerNtsc },
           { label: 'MP HUD · PAL (UDP 5602)', val: PIPE.mpHudPal },
@@ -107,23 +107,23 @@
         ] },
         { id: 'gs-carrier-camera', s: 'Carrier camera (GStreamer in MP)', t: 'Carrier IP camera (`.26`, via relay switch P3). **Switch the camera on in the GCS app first** (default OFF). Verify the picture, then set it to the state planned for the sortie. MP\'s HUD takes one GStreamer source at a time.', n: PIPE.carrierCamera, copy: true, w: true }
       ] },
-      { id: 'D', name: 'CARRIER DRONE', items: [
+      { id: 'D', name: 'Carrier', items: [
         { id: 'carrier-compass-ext', s: 'Compass calibrated & heading checked', t: 'Mission Planner: Initial Setup → Mandatory Hardware → Compass. **First confirm the external IST8310 is priority 1 and marked External, and the internal compass is unticked.** Outdoors, away from vehicles and metal, aircraft assembled as flown: Onboard Mag Calibration → rotate through all axes until success → Accept → **reboot**. Then the **four-direction check**: nose N, E, S, W — the MP heading must match a phone compass within 5–10°.', n: 'No backup compass (internal AK09916 disabled): no arming without the GPS-mast unit. Never relax COMPASS_CAL_FIT to make a calibration pass. Record COMPASS_OFS_X/Y/Z after each calibration (Manual → Maintenance).', w: true },
-        { id: 'carrier-home', s: 'Home position set', t: 'Home position set correctly — verify on map.' },
-        { id: 'carrier-mission', s: 'Mission verified', t: 'Mission loaded and verified on map — all 7 waypoints in correct positions.', n: 'Keep the route WP2 → home clear: after a transition timeout (8 s) the aircraft QRTLs home along it.' },
-        { id: 'carrier-failsafe-params', s: 'Failsafe params verified', t: 'Failsafe parameters verified in Mission Planner Full Parameter List. Link failsafe only on SIYI / GCS loss (after 5 s, all modes: RTL in fixed-wing modes, QRTL in VTOL modes); 915 MHz loss is ignored by design. Battery failsafes: low → RTL home, critical → QLand here. Transition timeout → QRTL home.', n: FAILSAFE_PARAMS, w: true, copy: true },
-        { id: 'carrier-servo-check', s: 'Servo check (MANUAL)', t: 'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and in correct direction. Switch back to QHOVER when done.', n: 'MANUAL must never be used in flight.', w: true },
-        { id: 'carrier-mode-cycle', s: 'Mode cycle verified', t: '915 backup radio (Nomad) on, RC visible in MP. Cycle through all 3 mode-switch positions, confirm QHOVER / FBWB / AUTO update in Mission Planner. Verify tilt servos rotate forward on FBWB.' },
-        { id: 'carrier-pitot-cal', s: 'Pitot calibrated, cover removed', t: 'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated" in Messages. Confirm airspeed stable and below 2 m/s. Remove pitot cover.', w: true },
-        { id: 'carrier-auto-wp', s: 'Correct AUTO waypoint selected', t: 'Verify correct starting waypoint for AUTO mode. If launching without co-pilot, WP 1 must NOT be the active waypoint.', w: true },
+        { id: 'carrier-home', s: 'Home position set', t: 'Home position correct on the map.' },
+        { id: 'carrier-mission', s: 'Mission verified', t: 'Mission loaded; all 7 waypoints in the right place on the map.', n: 'Keep the route WP2 → home clear: after a transition timeout (8 s) the aircraft QRTLs home along it.' },
+        { id: 'carrier-failsafe-params', s: 'Failsafe params verified', t: 'Check them in the Mission Planner Full Parameter List against the list below. Link failsafe only on SIYI / GCS loss (after 5 s, all modes: RTL in fixed-wing modes, QRTL in VTOL modes); 915 MHz loss is ignored by design. Battery: low → RTL home, critical → QLand here. Transition timeout → QRTL home.', n: FAILSAFE_PARAMS, w: true, copy: true },
+        { id: 'carrier-servo-check', s: 'Servo check (MANUAL)', t: 'Select MANUAL in Mission Planner. Ailerons, elevator and rudder move fully and in the right direction. Back to QHOVER when done.', n: 'MANUAL must never be used in flight.', w: true },
+        { id: 'carrier-mode-cycle', s: 'Mode cycle verified', t: '915 backup radio (Nomad) on, RC visible in MP. Cycle all 3 mode-switch positions: QHOVER / FBWB / AUTO shown in Mission Planner. The tilt servos rotate forward on FBWB.' },
+        { id: 'carrier-pitot-cal', s: 'Pitot calibrated, cover removed', t: 'Mission Planner: Preflight_Calibration → Do Action; Messages shows "Airspeed 1 calibrated". Airspeed stable and below 2 m/s. Then remove the pitot cover.', w: true },
+        { id: 'carrier-auto-wp', s: 'Correct AUTO waypoint selected', t: 'Correct start waypoint selected for AUTO. Without a co-pilot, WP 1 must NOT be the active waypoint.', w: true },
         { id: 'carrier-bridge-run', s: 'Bridge in RUN', t: 'GCS app shows bridge state RUN, ModelID accepted, timing-frame lock (sync offset ≈ 0).', w: true, auto: 'bridge-run' },
-        { id: 'carrier-camera-sortie', s: 'Camera state set for sortie', t: 'Carrier camera normally OFF before the client launches (FPV mode), unless relay-design test 9 has passed. The app must report the same state as requested.', w: true, auto: 'camera-sortie' }
+        { id: 'carrier-camera-sortie', s: 'Camera state set for sortie', t: 'Carrier camera OFF before the client launches (FPV mode), unless relay-design test 9 has passed. The app must report the same state as requested.', w: true, auto: 'camera-sortie' }
       ] },
-      { id: 'E', name: 'CLIENT', items: [
-        { id: 'client-profile', s: 'Client profile selected', t: 'Active client profile: **{client.name}** ({client.fc}, {client.firmware}). It drives the VTX, ELRS, failsafe and battery values below — change it on the PROFILES tab.' },
-        { id: 'fpv-props', s: 'Client props checked', t: 'Client props tight — correct rotation direction.', n: 'Check motor bell screws and prop nuts.' },
-        { id: 'client-vtx', s: 'VTX on, correct band/channel', t: 'Client VTX on **{client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz · {client.vtx.powerMw} mW**. Video visible in the viewer, decoder lock LED on.', n: 'Must show live view — not static or blank. Expected video standard: {client.videoStandard}.', w: true, auto: 'video-lock' },
-        { id: 'client-elrs', s: 'ELRS link up', t: 'Client ELRS RX ({client.elrs.band}) linked to the relay\'s ELRS TX module by binding phrase / model match — set once per client, nothing to do before each flight. The app shows client LQ/RSSI if telemetry is enabled; otherwise read LQ on the client OSD.', n: 'Telemetry needs telemetry enabled on the client FC and a non-zero ELRS telemetry ratio (profile: {client.elrs.telemetryRatio}).', w: true, auto: 'client-link' },
+      { id: 'E', name: 'Client', items: [
+        { id: 'client-profile', s: 'Client profile selected', t: 'Active client profile: **{client.name}** ({client.fc}, {client.firmware}). It sets the VTX, ELRS, failsafe and battery values below; change it in Setup → Profiles.' },
+        { id: 'fpv-props', s: 'Client props checked', t: 'Client props tight, rotation direction correct.', n: 'Check motor bell screws and prop nuts.' },
+        { id: 'client-vtx', s: 'VTX on, correct band/channel', t: 'Client VTX on **{client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz · {client.vtx.powerMw} mW**. Video visible in the viewer, decoder lock LED on.', n: 'Live picture, not static or blank. Expected video standard: {client.videoStandard}.', w: true, auto: 'video-lock' },
+        { id: 'client-elrs', s: 'ELRS link up', t: 'Client ELRS RX ({client.elrs.band}) linked to the relay\'s ELRS TX module (binding phrase / model match, set once per client: nothing to do before each flight). The app shows client LQ / RSSI when telemetry is on; otherwise read LQ on the client OSD.', n: 'Telemetry needs telemetry enabled on the client FC and a non-zero ELRS telemetry ratio (profile: {client.elrs.telemetryRatio}).', w: true, auto: 'client-link' },
         { id: 'client-gps-ready', s: 'Client GPS ready', t: 'Client GPS has at least {client.failsafe.minSats} satellites.', w: true, auto: 'client-sats' },
         { id: 'client-failsafe', s: 'Client failsafe known', t: 'Client failsafe: **{client.failsafe.type}**, delay {client.failsafe.delayS} s, minimum {client.failsafe.minSats} sats. Measured total failsafe time through the relay: [[TBD — relay-design test 6, per cause]].', n: 'GPS Rescue clients: the flight mode must not show `?` (GPS Rescue configured but no fix).', w: true, auto: 'client-rescue-ready' }
       ] }
@@ -132,54 +132,54 @@
 
   const turnaround = {
     id: 'turnaround',
-    title: 'Turnaround Check',
-    goText: '// GO — TURNAROUND COMPLETE — CLEAR TO ARM //',
+    title: 'Turnaround check',
+    goText: 'GO — TURNAROUND COMPLETE — CLEAR TO ARM',
     sections: [
-      { id: 'T1', name: 'CARRIER — BATTERY & INSPECTION', items: [
-        { id: 'ta-airframe', s: 'Airframe inspected', t: 'Quick visual — check tilt motor mounts, wing joins, props for damage from previous flight.' },
-        { id: 'ta-battery-swap', s: 'Battery swapped', t: 'Remove used battery, record landing voltage, place on charger immediately. Install fresh battery — strap tight, verify above 25.0V.', n: 'Used batteries must be set to charge before the next flight begins. Arming is refused below {settings.battArmVolt} V (`BATT_ARM_VOLT`): a part-used pack cannot be flown.', w: true },
-        { id: 'ta-power-gps', s: 'Power on, GPS acquiring', t: 'Power on carrier drone. Allow GPS to re-acquire fix before proceeding.' }
+      { id: 'T1', name: 'Carrier — battery & inspection', items: [
+        { id: 'ta-airframe', s: 'Airframe inspected', t: 'Quick look for damage from the last flight: tilt-motor mounts, wing joins, props.' },
+        { id: 'ta-battery-swap', s: 'Battery swapped', t: 'Remove the used battery, record its landing voltage and put it on charge at once. Fit a fresh battery, strap tight, reading above 25.0V.', n: 'Used batteries must be set to charge before the next flight begins. Arming is refused below {settings.battArmVolt} V (`BATT_ARM_VOLT`): a part-used pack cannot be flown.', w: true },
+        { id: 'ta-power-gps', s: 'Power on, GPS acquiring', t: 'Carrier powered on. Let the GPS get its fix again before going on.' }
       ] },
-      { id: 'T2', name: 'CARRIER — PRE-ARM', items: [
-        { id: 'ta-home', s: 'Home position reset', t: 'Home position updated on map — verify correct location.' },
-        { id: 'ta-mission', s: 'Mission verified', t: 'Mission still loaded and correct — all 7 waypoints in correct positions.' },
-        { id: 'ta-auto-wp', s: 'Correct AUTO waypoint selected', t: 'Verify correct starting waypoint for AUTO. If no co-pilot, WP 1 must NOT be active.', w: true },
-        { id: 'ta-servo-check', s: 'Servo check (MANUAL)', t: 'Switch to MANUAL via Mission Planner GCS. Verify ailerons, elevator and rudder move fully and correctly. Switch back to QHOVER when done.', n: 'MANUAL must never be used in flight.', w: true },
-        { id: 'ta-pitot-cal', s: 'Pitot calibrated, cover removed', t: 'Pitot calibration — Mission Planner: Preflight_Calibration → Do Action. Verify "Airspeed 1 calibrated". Confirm airspeed below 2 m/s. Remove pitot cover.', w: true },
-        { id: 'ta-mode-cycle', s: 'Mode cycle verified', t: 'Cycle all 3 mode-switch positions on the 915 backup radio. Confirm QHOVER / FBWB / AUTO in Mission Planner. Verify tilt servos rotate on FBWB.' },
+      { id: 'T2', name: 'Carrier — pre-arm', items: [
+        { id: 'ta-home', s: 'Home position reset', t: 'Home position updated and correct on the map.' },
+        { id: 'ta-mission', s: 'Mission verified', t: 'Mission still loaded; all 7 waypoints in the right place.' },
+        { id: 'ta-auto-wp', s: 'Correct AUTO waypoint selected', t: 'Correct start waypoint selected for AUTO. Without a co-pilot, WP 1 must NOT be active.', w: true },
+        { id: 'ta-servo-check', s: 'Servo check (MANUAL)', t: 'Select MANUAL in Mission Planner. Ailerons, elevator and rudder move fully and correctly. Back to QHOVER when done.', n: 'MANUAL must never be used in flight.', w: true },
+        { id: 'ta-pitot-cal', s: 'Pitot calibrated, cover removed', t: 'Mission Planner: Preflight_Calibration → Do Action; "Airspeed 1 calibrated". Airspeed below 2 m/s. Then remove the pitot cover.', w: true },
+        { id: 'ta-mode-cycle', s: 'Mode cycle verified', t: 'Cycle all 3 mode-switch positions on the 915 backup radio: QHOVER / FBWB / AUTO shown in Mission Planner. The tilt servos rotate on FBWB.' },
         { id: 'ta-bridge-run', s: 'Bridge back in RUN', t: 'After the carrier power cycle the bridge restarts (BOOT → WAIT_GCS → START → RUN). Confirm RUN in the GCS app.', w: true, auto: 'bridge-run' },
         { id: 'ta-viewer-restart', s: 'Viewer restarted if needed', t: 'The video board restarts the stream after a carrier power cycle. Restart the viewer (GStreamer / MP HUD source) if the client picture does not return.' },
         { id: 'ta-camera', s: 'Camera re-enabled if needed', t: 'A carrier power cycle resets the camera to OFF. Re-enable it in the GCS app only if the sortie plan needs it.', auto: 'camera-sortie' }
       ] },
-      { id: 'T3', name: 'CLIENT', items: [
-        { id: 'ta-fpv-battery', s: 'Client battery swapped', t: 'Remove used client battery, place on charger. Install fresh pack. Verify voltage nominal.' },
-        { id: 'ta-fpv-props', s: 'Client props checked', t: 'Quick visual — props undamaged, tight.' },
-        { id: 'ta-client-vtx', s: 'VTX on, video confirmed', t: 'Client VTX on {client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz. Verify the client feed in the viewer.', n: 'Must show live view — not static or blank.', w: true, auto: 'video-lock' },
-        { id: 'ta-client-elrs', s: 'ELRS link up', t: 'Client ELRS RX ({client.elrs.band}) linked through the relay — the binding phrase is set once, nothing to do per flight. Check LQ in the app or on the client OSD.', w: true, auto: 'client-link' }
+      { id: 'T3', name: 'Client', items: [
+        { id: 'ta-fpv-battery', s: 'Client battery swapped', t: 'Used client battery off and on charge. Fresh pack fitted, voltage nominal.' },
+        { id: 'ta-fpv-props', s: 'Client props checked', t: 'Quick look: props undamaged and tight.' },
+        { id: 'ta-client-vtx', s: 'VTX on, video confirmed', t: 'Client VTX on {client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz. Verify the client feed in the viewer.', n: 'Live picture, not static or blank.', w: true, auto: 'video-lock' },
+        { id: 'ta-client-elrs', s: 'ELRS link up', t: 'Client ELRS RX ({client.elrs.band}) linked through the relay (binding phrase set once: nothing to do per flight). Check LQ in the app or on the client OSD.', w: true, auto: 'client-link' }
       ] }
     ]
   };
 
   // ── POST-FLIGHT ── (plan §6.2.1 post-flight)
   const postflight = [
-    { id: 'pf-immediate', title: 'Immediate Post-Landing', style: 'accent', steps: [
-      { id: 'pf-disarm-carrier', s: 'Disarm carrier', t: 'Confirm disarmed in Mission Planner. All motors stopped. Do not approach until disarmed.' },
+    { id: 'pf-immediate', title: 'Right after landing', style: 'accent', steps: [
+      { id: 'pf-disarm-carrier', s: 'Disarm carrier', t: 'Disarmed in Mission Planner and all motors stopped. Do not approach until it is disarmed.' },
       { id: 'pf-disarm-client', s: 'Disarm client', t: 'Co-pilot confirms the client is disarmed. Props stopped.' },
-      { id: 'pf-carrier-batt', s: 'Disconnect carrier battery', t: 'Disconnect 6S pack. All systems power down (FC, HM30 air unit, relay PCB, camera). Record landing voltage.' },
+      { id: 'pf-carrier-batt', s: 'Disconnect carrier battery', t: 'Unplug the 6S pack: FC, HM30 air unit, relay PCB and camera power down. Record the landing voltage.' },
       { id: 'pf-client-batt', s: 'Disconnect client battery', t: 'Record client landing voltage.' }
     ] },
-    { id: 'pf-teardown', title: 'Ground Station Teardown', steps: [
-      { id: 'pf-mast-batt', s: 'Check mast battery voltage', t: 'Disconnect and measure 6S 3000mAh mast battery. Below [[21.0V]]: charge immediately, do not store discharged.' },
+    { id: 'pf-teardown', title: 'Ground station teardown', steps: [
+      { id: 'pf-mast-batt', s: 'Check mast battery voltage', t: 'Disconnect and measure the 6S 3000mAh mast battery. Below [[21.0V]]: charge it at once; never store it discharged.' },
       { id: 'pf-app-log', s: 'Save GCS app session log', t: 'Save the GCS companion app session log (RC out, status, telemetry, alarms) for debrief, then close the app.' },
-      { id: 'pf-hm30-off', s: 'Power down HM30 ground unit', t: 'Disconnect ethernet. Remove mast battery safely.' },
-      { id: 'pf-mast-down', s: 'Lower and secure mast', t: 'Confirm HM30 and cabling secured before transport.' },
-      { id: 'pf-mp-close', s: 'Close Mission Planner', t: 'Save log if required.' }
+      { id: 'pf-hm30-off', s: 'Power down HM30 ground unit', t: 'Disconnect the Ethernet cable; remove the mast battery.' },
+      { id: 'pf-mast-down', s: 'Lower and secure mast', t: 'HM30 and cabling secured for transport.' },
+      { id: 'pf-mp-close', s: 'Close Mission Planner', t: 'Save the log if needed.' }
     ] },
     { id: 'pf-inspection', title: 'Inspection', steps: [
-      { id: 'pf-airframe', s: 'Carrier airframe', t: 'Inspect tilt motor mounts, wing joins, prop blades, connectors. Check for heat or smell from ESCs/motors.' },
-      { id: 'pf-carrier-pack', s: 'Carrier battery', t: 'Check for puffing, heat, damage. Store at 22.8V (3.8V/cell) if not flying within 48h. Never store discharged — BATT_CRT voltage ({settings.battCrtVolt}V) is not a storage target.' },
+      { id: 'pf-airframe', s: 'Carrier airframe', t: 'Tilt-motor mounts, wing joins, prop blades, connectors. Any heat or smell from the ESCs or motors?' },
+      { id: 'pf-carrier-pack', s: 'Carrier battery', t: 'Puffing, heat or damage? Store at 22.8V (3.8V/cell) if not flying within 48h. Never store it discharged; the BATT_CRT voltage ({settings.battCrtVolt}V) is not a storage target.' },
       { id: 'pf-relay-pcb', s: 'Relay PCB', t: 'Relay PCB temperature and smell; connector security (JST-GH, HM30 Ethernet, CRSF lead). Inspect VRX patches and the ELRS module antenna.' },
-      { id: 'pf-client', s: 'Client', t: 'Inspect props, motors, frame.' }
+      { id: 'pf-client', s: 'Client', t: 'Props, motors, frame.' }
     ] }
   ];
 
@@ -238,7 +238,7 @@
         '(a) Analog RF — snow: client VTX on {client.vtx.band}{client.vtx.channel} / {client.vtx.freqMHz} MHz? VRX patches facing inward toward the operating area? Reduce range or move the orbit.',
         '(b) Digital chain — frozen or black: check the video board (N6) decoder-lock LED, then the encoder/video board, then the HM30 link (RTT in the GCS app). The Link tab shows decoder lock if the bridge reports it.',
         'A video-board reset does not affect RC. Decision time: the 10 s wait above (current procedure value). Video-board restart / recovery time: [[TBD — measure, then review the 10 s]].',
-        'Viewer restart: stop and restart the GStreamer viewer (UDP 5601) or the MP HUD source (UDP 5602). Pipelines: Pre-Flight → C → Client video viewer.',
+        'Viewer restart: stop and restart the GStreamer viewer (UDP 5601) or the MP HUD source (UDP 5602). Pipelines: Pre-flight → C → Client video viewer.',
         'Verify video in the viewer before the client re-arms.'
       ] },
     { id: 'emerg-relay-pcb', pill: 'RELAY PCB',
@@ -290,7 +290,7 @@
         'By design? CAM_ENABLE off in the app, or forced off because the GCS stream was lost (the status packet / Link tab shows the reported camera state). Re-enable only once the stream is back.',
         'A carrier power cycle resets the camera to OFF.',
         'Then the P3 ingress rate limit at the relay switch: [[TBD — P3 limit value (plan Q13)]].',
-        'Then restart the RTSP stream: MP → Video → Set GStreamer Source with the `.26` pipeline (Pre-Flight → C).',
+        'Then restart the RTSP stream: MP → Video → Set GStreamer Source with the `.26` pipeline (Pre-flight → C).',
         'Camera ON during FPV flight only if relay-design test 9 has passed.'
       ] },
     { id: 'emerg-trans', pill: 'TRANSITION',
@@ -304,12 +304,12 @@
       ],
       cleanup: [
         'Automatic action: Q_TRANS_FAIL (8 s) → Q_TRANS_FAIL_ACT = 1 (Q_OPTIONS bit 19 cleared) → **QRTL home**: hover at 50 m REL back to home, vertical landing at home — never QHOVER. If QRTL has started: the route WP2 → home and the home landing zone must be clear.',
-        'Check pitot — airspeed reading in MP? Zero = blocked/disconnected. Do not retry without airspeed data.',
-        'Check tilt servos — switch to FBWB and observe in MP. Do the M1/M2 tilt motors rotate forward?',
-        'Check battery — sufficient for another transition attempt plus VTOL recovery?',
-        'Check wind — transition into wind (airspeed builds fastest); avoid a tailwind transition.',
-        'If retrying: climb to 60m+ in QHOVER first. Clear 300m corridor ahead. Monitor airspeed immediately on AUTO.',
-        'Log failure phase: no airspeed build in 3s vs pitch-down upset. Note battery voltage.'
+        'Pitot: airspeed reading in MP? Zero = blocked or disconnected. Do not retry without airspeed data.',
+        'Tilt servos: switch to FBWB and watch in MP. Do the M1/M2 tilt motors rotate forward?',
+        'Battery: enough for another transition attempt plus a VTOL recovery?',
+        'Wind: transition into wind (airspeed builds fastest); avoid a tailwind transition.',
+        'Before a retry: climb to 60m+ in QHOVER and clear a 300m corridor ahead. Watch the airspeed as soon as AUTO starts.',
+        'Log the failure phase (no airspeed build in 3s, or a pitch-down upset) and the battery voltage.'
       ] },
     { id: 'emerg-batt', pill: 'BATTERY',
       title: 'Battery Low / Critical — Carrier',
@@ -326,9 +326,9 @@
         'The failsafes read the sag-compensated voltage (BATT_FS_VOLTSRC = 1); the OSD reads raw voltage, lower under load — the pilot\'s {settings.manualRtlVolt} V call comes well before the automatic RTL.',
         'Low-battery RTL during a **manual QHOVER landing**: the aircraft switches to RTL (fixed-wing return, climb to 120 m). **Reselect QHOVER on the Nomad switch** to finish the landing. The failsafe does not interrupt QLAND, QRTL or an AUTO VTOL landing.',
         'The automatic RTL ends with an automatic VTOL landing at home (Q_RTL_MODE = 2): keep the home landing zone clear. Only the critical stage ({settings.battCrtVolt} V) lands where the aircraft is.',
-        'Log landing voltage in battery log — note start voltage and any anomalies.',
-        'Inspect battery for puffing, heat, smell. If any present — quarantine, do not charge.',
-        'Allow pack to cool 30 minutes minimum before charging.',
+        'Log the landing voltage in the battery log, with the start voltage and any anomalies.',
+        'Battery puffed, hot or smelling? Quarantine it and do not charge it.',
+        'Let the pack cool for at least 30 minutes before charging.',
         'Review: was RTL initiated on time? Use the battery-log analysis (suggested manual RTL trigger, OSD raw voltage) to check sag vs previous flights. BATT_LOW_VOLT and BATT_CRT_VOLT are configured failsafes — do not change them from the log.'
       ] }
   ];
@@ -394,7 +394,7 @@
   // ── CALLOUTS ── (manual callouts updated + plan §6.1.6, §6.1.9, §14.2)
   const callouts = {
     id: 'callouts',
-    intro: 'Both pilots are co-located at all times. All in-flight communication is **direct verbal only**. One to five words per call; the recipient acknowledges with "COPY" or by repeating the key word. With the relay, the GCS app raises the client alarms — the callout phrase is the same.',
+    intro: 'Both pilots are co-located at all times; all in-flight communication is **direct verbal only**. With the relay, the GCS app raises the client alarms — the callout phrase stays the same.',
     groups: [
       { id: 'co-prearm', title: 'Pre-Arm & Setup', rows: [
         { id: 'co-power-on', trigger: 'Carrier powered on, GPS acquiring', who: 'Carrier Pilot', call: 'CARRIER POWER ON' },
