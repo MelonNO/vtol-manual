@@ -359,7 +359,7 @@ the four raised pins.
 | Run | Result |
 |---|---|
 | `pytest gcs/tests/test_test_guards.py` | 19 passed |
-| CI mode ×1 (`S\wp19un.py … ci`: real Python, CI env, stdin NUL) | **699 passed, 7 deselected**, 136.7 s, exit 0. No LEAKED / TIMEOUT / FAILED / ERROR / INTERNALERROR line, no process left (`S\wp194ciun.txt`) |
+| CI mode ×1 (`S\wp19\run.py … ci`: real Python, CI env, stdin NUL) | **699 passed, 7 deselected**, 136.7 s, exit 0. No LEAKED / TIMEOUT / FAILED / ERROR / INTERNALERROR line, no process left (`S\wp19\r4ci\run.txt`) |
 | Node with jsdom | 310 pass, 0 fail, 0 skipped |
 | `check-links` | OK |
 
