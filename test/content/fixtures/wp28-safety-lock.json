@@ -1,0 +1,1044 @@
+{
+ "tokens": {
+  "$version": [
+   "value:1"
+  ],
+  "design-intent/text": [
+   "mode:QLand",
+   "mode:QRTL",
+   "mode:RTL",
+   "mode:RTL",
+   "mode:RTL",
+   "tmpl:{settings.battCrtVolt}",
+   "tmpl:{settings.battLowVolt}",
+   "value:915 MHz"
+  ],
+  "site-lz/t": [
+   "value:5m"
+  ],
+  "site-home-lz-flight/t": [
+   "mode:RTL",
+   "param:Q_RTL_MODE",
+   "tmpl:{settings.battLowVolt}",
+   "value:2"
+  ],
+  "build-props/t": [
+   "value:3"
+  ],
+  "gs-mast/t": [
+   "value:3000mAh",
+   "value:6S"
+  ],
+  "gs-subnet/n": [
+   "ip:192.168.144.X",
+   "ip:255.255.255.0",
+   "marker:TBD"
+  ],
+  "gs-laptop-sleep/n": [
+   "mode:QRTL",
+   "mode:RTL",
+   "param:FS_GCS_ENABL",
+   "value:2",
+   "value:5 s"
+  ],
+  "fpv-battery/t": [
+   "value:3"
+  ],
+  "build-battery-power/t": [
+   "value:1",
+   "value:2",
+   "value:3",
+   "value:4",
+   "value:4",
+   "value:8",
+   "value:915"
+  ],
+  "build-battery-power/n": [
+   "marker:TBD",
+   "param:BATT_ARM_VOLT",
+   "param:WAIT_GCS",
+   "tmpl:{settings.battArmVolt}"
+  ],
+  "gs-mp-connect/n": [
+   "value:255"
+  ],
+  "gs-mp-connect/extras": [
+   "ip:192.168.144.12",
+   "value:19856"
+  ],
+  "gs-client-video/t": [
+   "ip:127.0.0.1:5601",
+   "ip:127.0.0.1:5602",
+   "tmpl:{client.videoStandard}",
+   "value:5600"
+  ],
+  "gs-client-video/n": [
+   "value:5600",
+   "value:5600",
+   "value:5602",
+   "value:7.4"
+  ],
+  "gs-client-video/extras": [
+   "ip:0.0.0.0",
+   "ip:0.0.0.0",
+   "value:0",
+   "value:0",
+   "value:0",
+   "value:0",
+   "value:0 m",
+   "value:1",
+   "value:1",
+   "value:1",
+   "value:1",
+   "value:1.0",
+   "value:1.0",
+   "value:480",
+   "value:480",
+   "value:5601",
+   "value:5601",
+   "value:5601",
+   "value:5601",
+   "value:5601",
+   "value:5602",
+   "value:5602",
+   "value:5602",
+   "value:5602",
+   "value:576",
+   "value:576",
+   "value:640",
+   "value:640",
+   "value:768",
+   "value:768",
+   "value:90000",
+   "value:90000",
+   "value:90000",
+   "value:90000",
+   "value:90000",
+   "value:96",
+   "value:96",
+   "value:96",
+   "value:96",
+   "value:96",
+   "value:96"
+  ],
+  "gs-carrier-camera/n": [
+   "ip:192.168.144.26:8554",
+   "value:0",
+   "value:1",
+   "value:1",
+   "value:2",
+   "value:41"
+  ],
+  "carrier-compass-ext/t": [
+   "value:1",
+   "value:10",
+   "value:5"
+  ],
+  "carrier-compass-ext/n": [
+   "param:COMPASS_CAL_FIT",
+   "param:COMPASS_OFS_X"
+  ],
+  "carrier-mission/t": [
+   "value:7"
+  ],
+  "carrier-mission/n": [
+   "value:8 s"
+  ],
+  "carrier-failsafe-params/t": [
+   "mode:QLand",
+   "mode:QRTL",
+   "mode:QRTL",
+   "mode:RTL",
+   "mode:RTL",
+   "value:5 s",
+   "value:915 MHz"
+  ],
+  "carrier-failsafe-params/n": [
+   "mode:AUTO",
+   "mode:GUIDED",
+   "mode:Loiter",
+   "mode:QLand",
+   "mode:QRTL",
+   "mode:RTL",
+   "mode:RTL",
+   "param:BATT_ARM_VOLT",
+   "param:BATT_CRT_VOLT",
+   "param:BATT_FS_CRT_ACT",
+   "param:BATT_FS_LOW_ACT",
+   "param:BATT_FS_VOLTSRC",
+   "param:BATT_LOW_VOLT",
+   "param:FS_GCS_ENABL",
+   "param:FS_LONG_ACTN",
+   "param:FS_LONG_TIMEOUT",
+   "param:FS_SHORT_ACTN",
+   "param:FS_SHORT_TIMEOUT",
+   "param:Q_TRANS_FAIL",
+   "param:Q_TRANS_FAIL_ACT",
+   "param:THR_FAILSAFE",
+   "param:THR_FS_VALUE",
+   "value:0",
+   "value:1",
+   "value:1",
+   "value:1",
+   "value:1",
+   "value:1.5",
+   "value:2",
+   "value:2",
+   "value:21.0",
+   "value:22.0",
+   "value:24.6",
+   "value:5",
+   "value:6",
+   "value:8",
+   "value:950"
+  ],
+  "carrier-servo-check/s": [
+   "mode:MANUAL"
+  ],
+  "carrier-servo-check/t": [
+   "mode:MANUAL",
+   "mode:QHOVER"
+  ],
+  "carrier-servo-check/n": [
+   "mode:MANUAL"
+  ],
+  "carrier-mode-cycle/t": [
+   "mode:AUTO",
+   "mode:FBWB",
+   "mode:FBWB",
+   "mode:QHOVER",
+   "value:3",
+   "value:915"
+  ],
+  "carrier-pitot-cal/t": [
+   "value:1",
+   "value:2 m"
+  ],
+  "carrier-auto-wp/s": [
+   "mode:AUTO"
+  ],
+  "carrier-auto-wp/t": [
+   "mode:AUTO",
+   "value:1"
+  ],
+  "carrier-bridge-run/t": [
+   "value:0"
+  ],
+  "carrier-camera-sortie/t": [
+   "value:9"
+  ],
+  "client-profile/t": [
+   "tmpl:{client.fc}",
+   "tmpl:{client.firmware}",
+   "tmpl:{client.name}"
+  ],
+  "client-vtx/t": [
+   "tmpl:{client.vtx.band}",
+   "tmpl:{client.vtx.channel}",
+   "tmpl:{client.vtx.freqMHz}",
+   "tmpl:{client.vtx.powerMw}"
+  ],
+  "client-vtx/n": [
+   "tmpl:{client.videoStandard}"
+  ],
+  "client-elrs/t": [
+   "tmpl:{client.elrs.band}"
+  ],
+  "client-elrs/n": [
+   "tmpl:{client.elrs.telemetryRatio}"
+  ],
+  "client-gps-ready/t": [
+   "tmpl:{client.failsafe.minSats}"
+  ],
+  "client-failsafe/t": [
+   "marker:TBD",
+   "tmpl:{client.failsafe.delayS}",
+   "tmpl:{client.failsafe.minSats}",
+   "tmpl:{client.failsafe.type}",
+   "value:6"
+  ],
+  "ta-battery-swap/n": [
+   "param:BATT_ARM_VOLT",
+   "tmpl:{settings.battArmVolt}"
+  ],
+  "ta-mission/t": [
+   "value:7"
+  ],
+  "ta-auto-wp/s": [
+   "mode:AUTO"
+  ],
+  "ta-auto-wp/t": [
+   "mode:AUTO",
+   "value:1"
+  ],
+  "ta-servo-check/s": [
+   "mode:MANUAL"
+  ],
+  "ta-servo-check/t": [
+   "mode:MANUAL",
+   "mode:QHOVER"
+  ],
+  "ta-servo-check/n": [
+   "mode:MANUAL"
+  ],
+  "ta-pitot-cal/t": [
+   "value:1",
+   "value:2 m"
+  ],
+  "ta-mode-cycle/t": [
+   "mode:AUTO",
+   "mode:FBWB",
+   "mode:FBWB",
+   "mode:QHOVER",
+   "value:3",
+   "value:915"
+  ],
+  "ta-bridge-run/t": [
+   "param:WAIT_GCS"
+  ],
+  "ta-client-vtx/t": [
+   "tmpl:{client.vtx.band}",
+   "tmpl:{client.vtx.channel}",
+   "tmpl:{client.vtx.freqMHz}"
+  ],
+  "ta-client-elrs/t": [
+   "tmpl:{client.elrs.band}"
+  ],
+  "pf-carrier-batt/t": [
+   "value:6S"
+  ],
+  "pf-mast-batt/t": [
+   "value:21.0V",
+   "value:3000mAh",
+   "value:6S"
+  ],
+  "pf-carrier-pack/t": [
+   "param:BATT_CRT",
+   "tmpl:{settings.battCrtVolt}",
+   "value:22.8V",
+   "value:3.8V/cell"
+  ],
+  "emerg-gcs/summary": [
+   "mode:AUTO",
+   "mode:GUIDED",
+   "mode:QRTL",
+   "mode:RTL",
+   "mode:RTL",
+   "param:FS_GCS_ENABL",
+   "param:FS_LONG_ACTN",
+   "param:FS_LONG_TIMEOUT",
+   "param:Q_OPTIONS",
+   "value:1",
+   "value:2",
+   "value:5",
+   "value:5",
+   "value:5 s"
+  ],
+  "emerg-gcs/immediate#1": [],
+  "emerg-gcs/immediate#2": [
+   "mode:AUTO",
+   "mode:QRTL",
+   "mode:RTL",
+   "value:5 s"
+  ],
+  "emerg-gcs/immediate#3": [
+   "mode:AUTO"
+  ],
+  "emerg-gcs/immediate#4": [
+   "value:915"
+  ],
+  "emerg-gcs/immediate#5": [],
+  "emerg-gcs/immediate#6": [
+   "mode:RTL"
+  ],
+  "emerg-gcs/cleanup": [
+   "ip:192.168.144.12",
+   "marker:TBD",
+   "marker:VERIFY",
+   "mode:AUTO",
+   "mode:AUTO",
+   "mode:GUIDED",
+   "mode:QRTL",
+   "mode:QRTL",
+   "mode:RTL",
+   "mode:RTL",
+   "param:FS_LONG_TIMEOUT",
+   "param:Q_OPTIONS",
+   "param:Q_RTL_ALT",
+   "param:Q_RTL_MODE",
+   "param:RADIO_STATUS",
+   "param:RTL_ALTITUDE",
+   "tmpl:{client.failsafe.type}",
+   "value:02",
+   "value:120m",
+   "value:19856",
+   "value:2",
+   "value:21.0V",
+   "value:255",
+   "value:30",
+   "value:5",
+   "value:5 s",
+   "value:50m",
+   "value:915"
+  ],
+  "emerg-client-rc/immediate#1": [],
+  "emerg-client-rc/immediate#2": [],
+  "emerg-client-rc/immediate#3": [],
+  "emerg-client-rc/immediate#4": [
+   "marker:TBD",
+   "value:6"
+  ],
+  "emerg-client-rc/immediate#5": [],
+  "emerg-client-rc/cleanup": [
+   "marker:VERIFY",
+   "marker:VERIFY",
+   "param:CURRENT_ALT",
+   "param:FIXED_ALT",
+   "tmpl:{client.failsafe.delayS}",
+   "tmpl:{client.failsafe.minSats}",
+   "tmpl:{client.failsafe.type}",
+   "value:1",
+   "value:100 m",
+   "value:100m",
+   "value:250 ms",
+   "value:30m",
+   "value:4 m",
+   "value:4.5",
+   "value:4.5",
+   "value:6",
+   "value:7.5 m/s"
+  ],
+  "emerg-video/immediate#1": [],
+  "emerg-video/immediate#2": [],
+  "emerg-video/immediate#3": [],
+  "emerg-video/immediate#4": [
+   "value:10"
+  ],
+  "emerg-video/immediate#5": [],
+  "emerg-video/cleanup": [
+   "marker:TBD",
+   "tmpl:{client.vtx.band}",
+   "tmpl:{client.vtx.channel}",
+   "tmpl:{client.vtx.freqMHz}",
+   "value:10 s",
+   "value:10 s",
+   "value:5601",
+   "value:5602"
+  ],
+  "emerg-relay-pcb/immediate#1": [],
+  "emerg-relay-pcb/immediate#2": [],
+  "emerg-relay-pcb/immediate#3": [],
+  "emerg-relay-pcb/immediate#4": [],
+  "emerg-relay-pcb/immediate#5": [],
+  "emerg-relay-pcb/cleanup": [
+   "marker:TBD",
+   "param:WAIT_GCS",
+   "param:WAIT_GCS",
+   "value:250 ms",
+   "value:3",
+   "value:3.1"
+  ],
+  "emerg-app/immediate#1": [],
+  "emerg-app/immediate#2": [],
+  "emerg-app/immediate#3": [],
+  "emerg-app/immediate#4": [],
+  "emerg-app/immediate#5": [],
+  "emerg-app/immediate#6": [],
+  "emerg-app/cleanup": [
+   "tmpl:{client.failsafe.type}",
+   "tmpl:{client.failsafe.type}"
+  ],
+  "emerg-camera/summary": [
+   "param:CAM_ENABLE"
+  ],
+  "emerg-camera/immediate#1": [],
+  "emerg-camera/immediate#2": [],
+  "emerg-camera/immediate#3": [],
+  "emerg-camera/cleanup": [
+   "marker:TBD",
+   "param:CAM_ENABLE",
+   "value:9"
+  ],
+  "emerg-trans/summary": [
+   "mode:QHOVER",
+   "mode:QHOVER",
+   "mode:QRTL",
+   "mode:QRTL",
+   "param:Q_RTL_ALT",
+   "param:Q_TRANS_FAIL",
+   "param:Q_TRANS_FAIL_ACT",
+   "value:1",
+   "value:2",
+   "value:3",
+   "value:50 m",
+   "value:8 s"
+  ],
+  "emerg-trans/immediate#1": [
+   "mode:QHOVER"
+  ],
+  "emerg-trans/immediate#2": [],
+  "emerg-trans/immediate#3": [
+   "mode:AUTO",
+   "mode:QRTL",
+   "value:8 s"
+  ],
+  "emerg-trans/immediate#4": [],
+  "emerg-trans/cleanup": [
+   "mode:AUTO",
+   "mode:FBWB",
+   "mode:QHOVER",
+   "mode:QHOVER",
+   "mode:QRTL",
+   "mode:QRTL",
+   "param:Q_OPTIONS",
+   "param:Q_TRANS_FAIL",
+   "param:Q_TRANS_FAIL_ACT",
+   "value:1",
+   "value:19",
+   "value:300m",
+   "value:3s",
+   "value:50 m",
+   "value:60m",
+   "value:8 s"
+  ],
+  "emerg-batt/summary": [
+   "mode:Loiter",
+   "mode:QLand",
+   "mode:RTL",
+   "mode:RTL",
+   "param:BATT_CRT_VOLT",
+   "param:BATT_FS_VOLTSRC",
+   "param:BATT_LOW_VOLT",
+   "tmpl:{settings.battCrtVolt}",
+   "tmpl:{settings.battLowVolt}",
+   "tmpl:{settings.manualRtlVolt}",
+   "value:1",
+   "value:10 s",
+   "value:120 m",
+   "value:15.3"
+  ],
+  "emerg-batt/immediate#1": [
+   "mode:RTL",
+   "tmpl:{settings.manualRtlVolt}"
+  ],
+  "emerg-batt/immediate#2": [
+   "mode:RTL",
+   "tmpl:{settings.hardLimitVolt}"
+  ],
+  "emerg-batt/immediate#3": [
+   "mode:AUTO",
+   "mode:RTL",
+   "tmpl:{settings.battLowVolt}"
+  ],
+  "emerg-batt/immediate#4": [
+   "mode:AUTO",
+   "mode:QLAND",
+   "tmpl:{settings.battCrtVolt}"
+  ],
+  "emerg-batt/immediate#5": [],
+  "emerg-batt/cleanup": [
+   "mode:AUTO",
+   "mode:QHOVER",
+   "mode:QHOVER",
+   "mode:QLAND",
+   "mode:QRTL",
+   "mode:RTL",
+   "mode:RTL",
+   "mode:RTL",
+   "mode:RTL",
+   "mode:RTL",
+   "mode:RTL",
+   "mode:RTL",
+   "param:BATT_CRT_VOLT",
+   "param:BATT_FS_VOLTSRC",
+   "param:BATT_LOW_VOLT",
+   "param:Q_RTL_MODE",
+   "tmpl:{settings.battCrtVolt}",
+   "tmpl:{settings.manualRtlVolt}",
+   "value:1",
+   "value:120 m",
+   "value:2",
+   "value:30"
+  ],
+  "note-915-lost/pill": [
+   "value:915"
+  ],
+  "note-915-lost/title": [
+   "value:915 MHz"
+  ],
+  "note-915-lost/text": [
+   "param:THR_FAILSAFE",
+   "value:2"
+  ],
+  "note-915-lost/closeIn": [
+   "marker:VERIFY",
+   "mode:QHOVER",
+   "mode:QLAND",
+   "mode:QLOITER",
+   "value:15.2",
+   "value:915"
+  ],
+  "fs-siyi/detection": [
+   "param:FS_LONG_TIMEOUT",
+   "value:0",
+   "value:5 s"
+  ],
+  "fs-siyi/action": [
+   "marker:VERIFY",
+   "mode:AUTO",
+   "mode:GUIDED",
+   "mode:QRTL",
+   "mode:RTL",
+   "mode:RTL",
+   "param:FS_LONG_ACTN",
+   "param:Q_OPTIONS",
+   "param:Q_RTL_MODE",
+   "value:02",
+   "value:1",
+   "value:120 m",
+   "value:2",
+   "value:5"
+  ],
+  "fs-915/event": [
+   "value:915 MHz"
+  ],
+  "fs-915/action": [
+   "mode:QHOVER",
+   "param:THR_FAILSAFE",
+   "value:2"
+  ],
+  "fs-batt-low/event": [
+   "tmpl:{settings.battLowVolt}"
+  ],
+  "fs-batt-low/detection": [
+   "param:BATT_FS_VOLTSRC",
+   "param:BATT_LOW_TIMER",
+   "param:BATT_LOW_VOLT",
+   "value:1",
+   "value:10 s"
+  ],
+  "fs-batt-low/action": [
+   "mode:AUTO",
+   "mode:QLAND",
+   "mode:QRTL",
+   "mode:RTL",
+   "param:BATT_FS_LOW_ACT",
+   "value:1",
+   "value:120 m"
+  ],
+  "fs-batt-low/pilot": [
+   "mode:QHOVER",
+   "mode:QHOVER",
+   "mode:RTL",
+   "tmpl:{settings.manualRtlVolt}"
+  ],
+  "fs-batt-crit/event": [
+   "tmpl:{settings.battCrtVolt}"
+  ],
+  "fs-batt-crit/detection": [
+   "param:BATT_CRT_VOLT"
+  ],
+  "fs-batt-crit/action": [
+   "mode:Loiter",
+   "mode:QLAND",
+   "param:BATT_FS_CRT_ACT",
+   "value:6"
+  ],
+  "fs-trans/detection": [
+   "param:Q_TRANS_FAIL",
+   "value:8 s"
+  ],
+  "fs-trans/action": [
+   "mode:QHOVER",
+   "mode:QRTL",
+   "param:Q_RTL_ALT",
+   "param:Q_TRANS_FAIL_ACT",
+   "value:1",
+   "value:50 m"
+  ],
+  "fs-trans/pilot": [
+   "mode:QHOVER",
+   "mode:QRTL",
+   "value:2",
+   "value:3 s"
+  ],
+  "client-failsafe-chain/steps": [
+   "marker:TBD",
+   "tmpl:{client.failsafe.type}",
+   "value:250 ms"
+  ],
+  "client-failsafe-chain/total": [
+   "marker:TBD",
+   "value:6"
+  ],
+  "client-failsafe-chain/note": [
+   "value:5"
+  ],
+  "net-laptop/ip": [
+   "ip:192.168.144.X",
+   "value:24"
+  ],
+  "net-laptop/notes": [
+   "marker:TBD"
+  ],
+  "net-hm30-air/ip": [
+   "ip:192.168.144.11"
+  ],
+  "net-hm30-ground/ip": [
+   "ip:192.168.144.12"
+  ],
+  "net-hm30-ground/port": [
+   "value:19856"
+  ],
+  "net-camera/ip": [
+   "ip:192.168.144.26"
+  ],
+  "net-camera/port": [
+   "value:8554"
+  ],
+  "net-camera/notes": [
+   "marker:TBD",
+   "param:CAM_ENABLE",
+   "value:1"
+  ],
+  "net-spare/notes": [
+   "marker:TBD"
+  ],
+  "net-n6/ip": [
+   "marker:TBD"
+  ],
+  "net-n6/port": [
+   "value:5600"
+  ],
+  "net-bridge/ip": [
+   "marker:TBD"
+  ],
+  "net-bridge/port": [
+   "value:5770"
+  ],
+  "net-bridge/notes": [
+   "value:200",
+   "value:250 Hz",
+   "value:36"
+  ],
+  "net-fanout/ip": [
+   "ip:127.0.0.1"
+  ],
+  "net-fanout/port": [
+   "value:5601",
+   "value:5602"
+  ],
+  "net-fanout/notes": [
+   "value:5600",
+   "value:5600",
+   "value:5602"
+  ],
+  "net-api/ip": [
+   "ip:127.0.0.1"
+  ],
+  "net-api/port": [
+   "value:47800"
+  ],
+  "co-clean-transition/trigger": [
+   "param:AIRSPEED_MIN",
+   "value:10 m/s"
+  ],
+  "co-transition-fail/trigger": [
+   "value:3 s"
+  ],
+  "co-transition-fail/call": [
+   "mode:QHOVER"
+  ],
+  "co-rc-degraded/trigger": [
+   "marker:TBD",
+   "value:7.5"
+  ],
+  "co-link-weak/trigger": [
+   "value:70%",
+   "value:90dBm"
+  ],
+  "co-fpv-batt/trigger": [
+   "value:1",
+   "value:21.0V",
+   "value:3.5V/cell"
+  ],
+  "co-sats-low/trigger": [
+   "tmpl:{client.failsafe.minSats}"
+  ],
+  "co-telemetry-lost/trigger": [
+   "value:2 s"
+  ],
+  "co-carrier-batt/trigger": [
+   "tmpl:{settings.manualRtlVolt}"
+  ],
+  "co-carrier-batt/call": [
+   "mode:RTL"
+  ],
+  "co-carrier-rtl/trigger": [
+   "mode:RTL"
+  ],
+  "co-carrier-rtl/call": [
+   "mode:RTL"
+  ],
+  "co-abort-abort/meaning": [
+   "mode:QHOVER",
+   "mode:RTL"
+  ],
+  "co-carrier-rtl-now/call": [
+   "mode:RTL"
+  ],
+  "co-carrier-rtl-now/meaning": [
+   "mode:RTL",
+   "mode:RTL",
+   "value:915"
+  ],
+  "$pipelines.viewerPal": [
+   "value:1",
+   "value:1.0",
+   "value:5601",
+   "value:576",
+   "value:768",
+   "value:90000",
+   "value:96"
+  ],
+  "$pipelines.viewerNtsc": [
+   "value:1",
+   "value:1.0",
+   "value:480",
+   "value:5601",
+   "value:640",
+   "value:90000",
+   "value:96"
+  ],
+  "$pipelines.mpHudPal": [
+   "value:1",
+   "value:5602",
+   "value:576",
+   "value:768",
+   "value:90000",
+   "value:96"
+  ],
+  "$pipelines.mpHudNtsc": [
+   "value:1",
+   "value:480",
+   "value:5602",
+   "value:640",
+   "value:90000",
+   "value:96"
+  ],
+  "$pipelines.carrierCamera": [
+   "ip:192.168.144.26:8554",
+   "value:0",
+   "value:1",
+   "value:1",
+   "value:2",
+   "value:41"
+  ],
+  "$sdp": [
+   "ip:0.0.0.0",
+   "ip:0.0.0.0",
+   "value:0",
+   "value:0",
+   "value:0",
+   "value:0",
+   "value:0 m",
+   "value:5601",
+   "value:90000",
+   "value:96",
+   "value:96"
+  ],
+  "$failsafeParams": [
+   "mode:AUTO",
+   "mode:GUIDED",
+   "mode:Loiter",
+   "mode:QLand",
+   "mode:QRTL",
+   "mode:RTL",
+   "mode:RTL",
+   "param:BATT_ARM_VOLT",
+   "param:BATT_CRT_VOLT",
+   "param:BATT_FS_CRT_ACT",
+   "param:BATT_FS_LOW_ACT",
+   "param:BATT_FS_VOLTSRC",
+   "param:BATT_LOW_VOLT",
+   "param:FS_GCS_ENABL",
+   "param:FS_LONG_ACTN",
+   "param:FS_LONG_TIMEOUT",
+   "param:FS_SHORT_ACTN",
+   "param:FS_SHORT_TIMEOUT",
+   "param:Q_TRANS_FAIL",
+   "param:Q_TRANS_FAIL_ACT",
+   "param:THR_FAILSAFE",
+   "param:THR_FS_VALUE",
+   "value:0",
+   "value:1",
+   "value:1",
+   "value:1",
+   "value:1",
+   "value:1.5",
+   "value:2",
+   "value:2",
+   "value:21.0",
+   "value:22.0",
+   "value:24.6",
+   "value:5",
+   "value:6",
+   "value:8",
+   "value:950"
+  ]
+ },
+ "structure": [
+  "design-intent",
+  "preflight",
+  "A",
+  "site-airspace w=true",
+  "site-wind",
+  "site-lz",
+  "site-home-lz-flight w=true",
+  "B",
+  "build-airframe",
+  "build-pitot-cover w=true",
+  "build-relay-pcb w=true",
+  "build-props w=true",
+  "C",
+  "gs-charged",
+  "gs-mast",
+  "gs-ethernet",
+  "gs-hm30-link",
+  "gs-subnet",
+  "gs-laptop-sleep w=true",
+  "gs-app w=true auto=app-controller-safe",
+  "fpv-battery",
+  "build-battery-power",
+  "gs-mp-connect",
+  "gs-client-video w=true",
+  "gs-carrier-camera w=true copy=true",
+  "D",
+  "carrier-compass-ext w=true",
+  "carrier-home",
+  "carrier-mission",
+  "carrier-failsafe-params w=true copy=true",
+  "carrier-servo-check w=true",
+  "carrier-mode-cycle",
+  "carrier-pitot-cal w=true",
+  "carrier-auto-wp w=true",
+  "carrier-bridge-run w=true auto=bridge-run",
+  "carrier-camera-sortie w=true auto=camera-sortie",
+  "E",
+  "client-profile",
+  "fpv-props",
+  "client-vtx w=true auto=video-lock",
+  "client-elrs w=true auto=client-link",
+  "client-gps-ready w=true auto=client-sats",
+  "client-failsafe w=true auto=client-rescue-ready",
+  "turnaround",
+  "T1",
+  "ta-airframe",
+  "ta-battery-swap w=true",
+  "ta-power-gps",
+  "T2",
+  "ta-home",
+  "ta-mission",
+  "ta-auto-wp w=true",
+  "ta-servo-check w=true",
+  "ta-pitot-cal w=true",
+  "ta-mode-cycle",
+  "ta-bridge-run w=true auto=bridge-run",
+  "ta-viewer-restart",
+  "ta-camera auto=camera-sortie",
+  "T3",
+  "ta-fpv-battery",
+  "ta-fpv-props",
+  "ta-client-vtx w=true auto=video-lock",
+  "ta-client-elrs w=true auto=client-link",
+  "pf-immediate style=accent",
+  "pf-disarm-carrier",
+  "pf-disarm-client",
+  "pf-carrier-batt",
+  "pf-client-batt",
+  "pf-teardown",
+  "pf-mast-batt",
+  "pf-app-log",
+  "pf-hm30-off",
+  "pf-mast-down",
+  "pf-mp-close",
+  "pf-inspection",
+  "pf-airframe",
+  "pf-carrier-pack",
+  "pf-relay-pcb",
+  "pf-client",
+  "emerg-gcs priority=primary",
+  "emerg-client-rc",
+  "emerg-video",
+  "emerg-relay-pcb",
+  "emerg-app",
+  "emerg-camera priority=low",
+  "emerg-trans",
+  "emerg-batt",
+  "note-915-lost kind=note",
+  "failsafe-table",
+  "fs-siyi primary=true",
+  "fs-915",
+  "fs-batt-low",
+  "fs-batt-crit",
+  "fs-trans",
+  "client-failsafe-chain",
+  "network",
+  "net-laptop",
+  "net-hm30-air",
+  "net-hm30-ground",
+  "net-camera",
+  "net-spare",
+  "net-n6",
+  "net-bridge",
+  "net-fanout",
+  "net-api",
+  "callouts",
+  "co-prearm",
+  "co-power-on",
+  "co-mp-live",
+  "co-fpv-ready",
+  "co-checklist-go",
+  "co-fpv-go",
+  "co-arming",
+  "co-armed",
+  "co-takeoff",
+  "co-taking-off",
+  "co-stable",
+  "co-transitioning",
+  "co-clean-transition",
+  "co-advancing-wp",
+  "co-transition-fail",
+  "co-on-station",
+  "co-relay",
+  "co-fpv-airborne",
+  "co-relay-solid",
+  "co-rc-degraded",
+  "co-link-weak",
+  "co-bridge-failsafe",
+  "co-app-down",
+  "co-video-snow",
+  "co-video-digital",
+  "co-fpv-batt",
+  "co-sats-low",
+  "co-fpv-rth",
+  "co-telemetry-lost",
+  "co-camera-on",
+  "co-camera-off",
+  "co-carrier-batt",
+  "co-fpv-returning",
+  "co-fpv-landed",
+  "co-recovery",
+  "co-carrier-rtl",
+  "co-back-transition",
+  "co-descending",
+  "co-zone-clear",
+  "co-landed",
+  "co-safe",
+  "co-abort",
+  "co-abort-abort",
+  "co-carrier-rtl-now",
+  "co-fpv-failsafe",
+  "co-clear-zone"
+ ]
+}
