@@ -1,4 +1,287 @@
 {
+ "immediate": {
+  "emerg-gcs": [
+   "CHECK MP · CABLE · HM30 LED",
+   "SIYI LOST 5 s → AUTO [[RTL]] / [[QRTL]] — ANY MODE",
+   "HOME LZ CLEAR — AUTO VTOL LANDING",
+   "NOMAD (915) ONLY IF CLOSE",
+   "CLIENT FAILSAFE FIRES TOO",
+   "CALL \"CARRIER RTL\" · \"FPV FAILSAFE\""
+  ],
+  "emerg-client-rc": [
+   "FPV PILOT: HANDS OFF",
+   "CARRIER: HOLD ORBIT",
+   "CHECK GCS APP STATUS",
+   "CLIENT FAILSAFE FIRES (t ≈ [[TBD — measured, test 6]])",
+   "WATCH VIDEO / OSD"
+  ],
+  "emerg-video": [
+   "FPV PILOT: ZERO INPUTS — hover",
+   "CALL \"VIDEO SNOW\" OR \"VIDEO DIGITAL LOST\"",
+   "SNOW: CARRIER REDUCE RANGE",
+   "WAIT 10 SECONDS",
+   "STILL LOST: CLIENT RETURN HOME"
+  ],
+  "emerg-relay-pcb": [
+   "CHECK APP: BRIDGE STATE + VIDEO",
+   "VIDEO ONLY: RC STILL WORKS — RECALL CLIENT",
+   "BRIDGE DOWN: CLIENT FAILSAFE FIRES",
+   "CARRIER: HOLD ORBIT",
+   "END RELAY SORTIE"
+  ],
+  "emerg-app": [
+   "CLIENT FAILSAFE FIRES — BRIDGE SILENT",
+   "FPV PILOT: HANDS OFF",
+   "CARRIER: HOLD ORBIT",
+   "CLIENT AIRBORNE: NEVER NORMAL START",
+   "IF TAKING OVER: RESUME ONLY — ARM SWITCH ARMED",
+   "WATCH VIDEO / OSD"
+  ],
+  "emerg-camera": [
+   "LOW PRIORITY — FLY THE AIRCRAFT",
+   "CHECK APP: CAMERA REQUESTED vs REPORTED",
+   "GCS STREAM LOST? CAMERA OFF BY DESIGN"
+  ],
+  "emerg-trans": [
+   "[[QHOVER]] — switch now",
+   "GAIN ALTITUDE — full VTOL power",
+   "NO ACTION BY 8 s → AUTO [[QRTL]] HOME",
+   "HOLD — assess before any retry"
+  ],
+  "emerg-batt": [
+   "{settings.manualRtlVolt}V → [[RTL]] NOW — CLIENT RETURNS",
+   "{settings.hardLimitVolt}V → RTL MUST BE ACTIVE",
+   "{settings.battLowVolt}V → AUTO [[RTL]] (FAILSAFE)",
+   "{settings.battCrtVolt}V → AUTO [[QLAND]] HERE — not home",
+   "CLEAR AREA BELOW"
+  ],
+  "note-915-lost/closeIn": [
+   "TAKE OVER IN MP — [[QLOITER]] / [[QLAND]]"
+  ]
+ },
+ "cleanup": {
+  "emerg-gcs": [
+   "Causes (S-02a): Mission Planner closed or crashed, laptop asleep or hibernating, Ethernet cable pulled, or HM30 link lost. Each one stops the GCS heartbeat → after FS_LONG_TIMEOUT (5 s), in every mode: RTL in fixed-wing modes, QRTL in VTOL modes.",
+   "Fixed-wing modes (incl. AUTO / GUIDED): **RTL** — home in fixed-wing at RTL_ALTITUDE (120m REL, above home), loiter down, airbrake approach and an **automatic VTOL landing at home** (Q_RTL_MODE = 2). VTOL modes: **QRTL** (Q_OPTIONS bit 5) — hover return home at Q_RTL_ALT (50m REL), vertical landing at home. [[VERIFY — confirm the Q-mode case in SITL (S-02)]]. Keep the home landing zone clear.",
+   "Check the Ethernet cable mast → laptop and reseat both ends. Check the HM30 ground unit LED (blue = linked). Check mast battery voltage — below 21.0V the HM30 may brown out.",
+   "Restart the MP UDPCI connection: IP `192.168.144.12` / Port `19856`. Do not re-enter AUTO until GCS telemetry is stable for 30+ seconds.",
+   "The client fails safe at the same time: the bridge goes silent after T_hold and the client's own failsafe ({client.failsafe.type}) runs. Do not rely on the carrier camera to watch the client return — it is forced OFF when the GCS stream is lost and stays off until the stream is back and the pilot re-enables it.",
+   "Use the 915 backup radio only within close range. Beyond close range its loss is expected and harmless.",
+   "S-02b: no other program may send GCS heartbeats as MAVLink sysid 255 (the Mission Planner default). It would keep the carrier \"happy\" while MP is dead and mask this failsafe. The GCS companion app never uses sysid 255.",
+   "Whether the HM30 also reports RADIO_STATUS remrssi (S-02c): [[TBD — check with the MP MAVLink Inspector]]. The heartbeat timeout applies either way."
+  ],
+  "emerg-client-rc": [
+   "Diagnose from the GCS app status: no packets out → app or controller · RTT gone → HM30 link · bridge FAILSAFE → bridge watchdog / T_hold (start value 250 ms) · LQ low with bridge RUN → ELRS RF: range, band, orbit geometry.",
+   "Client failsafe ({client.failsafe.type}, delay {client.failsafe.delayS} s, needs {client.failsafe.minSats}+ sats). Reference client #1 GPS Rescue: climbs 30m, cruises home at 100m / 7.5 m/s [[VERIFY — Betaflight 4.5: with altitude mode CURRENT_ALT the 100 m return altitude may not apply (it is the FIXED_ALT value)]], landing phase from 4 m (gps_rescue_landing_alt) [[VERIFY — Betaflight 4.5 docs: landing-phase altitude, not a confirmed motor cut]].",
+   "The carrier camera is forced off if the GCS stream was lost; re-enable it only once the stream is back.",
+   "Keep the carrier on station until the client has landed — it may be returning toward its home point.",
+   "Confirm the client is disarmed before anyone approaches it on the ground.",
+   "Log the cause and the time to client failsafe (input for relay-design test 6)."
+  ],
+  "emerg-video": [
+   "(a) Analog RF — snow: client VTX on {client.vtx.band}{client.vtx.channel} / {client.vtx.freqMHz} MHz? VRX patches facing inward toward the operating area? Reduce range or move the orbit.",
+   "(b) Digital chain — frozen or black: check the video board (N6) decoder-lock LED, then the encoder/video board, then the HM30 link (RTT in the GCS app). The Link tab shows decoder lock if the bridge reports it.",
+   "A video-board reset does not affect RC. Decision time: the 10 s wait above (current procedure value). Video-board restart / recovery time: [[TBD — measure, then review the 10 s]].",
+   "Viewer restart: stop and restart the GStreamer viewer (UDP 5601) or the MP HUD source (UDP 5602). Pipelines: Pre-flight → C → Client video viewer.",
+   "Verify video in the viewer before the client re-arms."
+  ],
+  "emerg-relay-pcb": [
+   "Bridge states: BOOT → WAIT_GCS → START (ModelID ×3) → RUN. No valid packet for T_hold (start value 250 ms) → FAILSAFE (silent) → WAIT_GCS.",
+   "Bridge and video-board LED patterns: [[TBD — to be defined by the relay firmware (plan §6.1.4)]].",
+   "The RC path never touches the video board: RC keeps running while video reboots or is reflashed. VLAN isolation keeps camera and spare-port traffic away from the RC bridge.",
+   "Carrier control (Mission Planner over the HM30 to the FC) does not pass through the relay PCB (plan §3.1). If MP telemetry also drops → SIYI / GCS LOSS card.",
+   "Recall the client if the bridge does not return to RUN, FAILSAFE repeats, or video does not return.",
+   "After landing: relay PCB temperature/smell, connectors, firmware versions (bridge status packet), save the app session log."
+  ],
+  "emerg-app": [
+   "Chain: app stops → bridge FAILSAFE after T_hold → ELRS TX module silent → client RX failsafe → client FC failsafe ({client.failsafe.type}).",
+   "Client AIRBORNE: **never use the normal start**. The normal start needs the arm switch DISARMED, so its first packet would disarm the client in mid-air. The only way back is **RESUME (client airborne)**: hold the arm switch ARMED, check the live arm/throttle preview, type `RESUME` — and `THROTTLE` as well if the throttle is at minimum. The client then gets exactly the controller values.",
+   "Use RESUME only if taking over is safer than letting the client's own failsafe ({client.failsafe.type}) finish. Otherwise leave the app stopped until the client is on the ground.",
+   "Client on the GROUND (disarmed): normal start — arm switch DISARMED, throttle low (app start interlock).",
+   "Mission Planner is separate: if only the app crashed, the carrier is unaffected. If the laptop froze or slept, the MP heartbeat is lost too → SIYI / GCS LOSS card.",
+   "After landing: save the app session log, check the controller USB cable and the EdgeTX GCS-RELAY model (RF modules OFF)."
+  ],
+  "emerg-camera": [
+   "By design? CAM_ENABLE off in the app, or forced off because the GCS stream was lost (the status packet / Link tab shows the reported camera state). Re-enable only once the stream is back.",
+   "A carrier power cycle resets the camera to OFF.",
+   "Then the P3 ingress rate limit at the relay switch: [[TBD — P3 limit value (plan Q13)]].",
+   "Then restart the RTSP stream: MP → Video → Set GStreamer Source with the `.26` pipeline (Pre-flight → C).",
+   "Camera ON during FPV flight only if relay-design test 9 has passed."
+  ],
+  "emerg-trans": [
+   "Automatic action: Q_TRANS_FAIL (8 s) → Q_TRANS_FAIL_ACT = 1 (Q_OPTIONS bit 19 cleared) → **QRTL home**: hover at 50 m REL back to home, vertical landing at home — never QHOVER. If QRTL has started: the route WP2 → home and the home landing zone must be clear.",
+   "Pitot: airspeed reading in MP? Zero = blocked or disconnected. Do not retry without airspeed data.",
+   "Tilt servos: switch to FBWB and watch in MP. Do the M1/M2 tilt motors rotate forward?",
+   "Battery: enough for another transition attempt plus a VTOL recovery?",
+   "Wind: transition into wind (airspeed builds fastest); avoid a tailwind transition.",
+   "Before a retry: first climb to 60m+ in QHOVER and clear a 300m corridor ahead. Watch the airspeed immediately on AUTO.",
+   "Log the failure phase (no airspeed build in 3s, or a pitch-down upset) and the battery voltage."
+  ],
+  "emerg-batt": [
+   "Call \"CARRIER BATT — RTL SOON\" so the FPV pilot brings the client back first; the relay ends when the carrier leaves.",
+   "The failsafes read the sag-compensated voltage (BATT_FS_VOLTSRC = 1); the OSD reads raw voltage, lower under load — the pilot's {settings.manualRtlVolt} V call comes well before the automatic RTL.",
+   "Low-battery RTL during a **manual QHOVER landing**: the aircraft switches to RTL (fixed-wing return, climb to 120 m). **Reselect QHOVER on the Nomad switch** to finish the landing. The failsafe does not interrupt QLAND, QRTL or an AUTO VTOL landing.",
+   "The automatic RTL ends with an automatic VTOL landing at home (Q_RTL_MODE = 2): keep the home landing zone clear. Only the critical stage ({settings.battCrtVolt} V) lands where the aircraft is.",
+   "Log the landing voltage in the battery log, with the start voltage and any anomalies.",
+   "Battery puffed, hot or smelling? Quarantine it and do not charge it.",
+   "Let the pack cool for at least 30 minutes before charging.",
+   "Review: was RTL initiated on time? Use the battery-log analysis (suggested manual RTL trigger, OSD raw voltage) to check sag vs previous flights. BATT_LOW_VOLT and BATT_CRT_VOLT are configured failsafes — do not change them from the log."
+  ]
+ },
+ "structure": [
+  "design-intent",
+  "preflight sections=5",
+  "A items=4",
+  "site-airspace w=true",
+  "site-wind",
+  "site-lz",
+  "site-home-lz-flight w=true",
+  "B items=4",
+  "build-airframe",
+  "build-pitot-cover w=true",
+  "build-relay-pcb w=true",
+  "build-props w=true",
+  "C items=12",
+  "gs-charged",
+  "gs-mast",
+  "gs-ethernet",
+  "gs-hm30-link",
+  "gs-subnet",
+  "gs-laptop-sleep w=true",
+  "gs-app w=true auto=app-controller-safe",
+  "fpv-battery",
+  "build-battery-power",
+  "gs-mp-connect extras=2",
+  "gs-client-video w=true extras=5",
+  "gs-carrier-camera w=true copy=true",
+  "D items=10",
+  "carrier-compass-ext w=true",
+  "carrier-home",
+  "carrier-mission",
+  "carrier-failsafe-params w=true copy=true",
+  "carrier-servo-check w=true",
+  "carrier-mode-cycle",
+  "carrier-pitot-cal w=true",
+  "carrier-auto-wp w=true",
+  "carrier-bridge-run w=true auto=bridge-run",
+  "carrier-camera-sortie w=true auto=camera-sortie",
+  "E items=6",
+  "client-profile",
+  "fpv-props",
+  "client-vtx w=true auto=video-lock",
+  "client-elrs w=true auto=client-link",
+  "client-gps-ready w=true auto=client-sats",
+  "client-failsafe w=true auto=client-rescue-ready",
+  "turnaround sections=3",
+  "T1 items=3",
+  "ta-airframe",
+  "ta-battery-swap w=true",
+  "ta-power-gps",
+  "T2 items=9",
+  "ta-home",
+  "ta-mission",
+  "ta-auto-wp w=true",
+  "ta-servo-check w=true",
+  "ta-pitot-cal w=true",
+  "ta-mode-cycle",
+  "ta-bridge-run w=true auto=bridge-run",
+  "ta-viewer-restart",
+  "ta-camera auto=camera-sortie",
+  "T3 items=4",
+  "ta-fpv-battery",
+  "ta-fpv-props",
+  "ta-client-vtx w=true auto=video-lock",
+  "ta-client-elrs w=true auto=client-link",
+  "pf-immediate steps=4",
+  "pf-disarm-carrier",
+  "pf-disarm-client",
+  "pf-carrier-batt",
+  "pf-client-batt",
+  "pf-teardown steps=5",
+  "pf-mast-batt",
+  "pf-app-log",
+  "pf-hm30-off",
+  "pf-mast-down",
+  "pf-mp-close",
+  "pf-inspection steps=4",
+  "pf-airframe",
+  "pf-carrier-pack",
+  "pf-relay-pcb",
+  "pf-client",
+  "emerg-gcs priority=primary immediate=6 cleanup=8",
+  "emerg-client-rc immediate=5 cleanup=6",
+  "emerg-video immediate=5 cleanup=5",
+  "emerg-relay-pcb immediate=5 cleanup=6",
+  "emerg-app immediate=6 cleanup=6",
+  "emerg-camera priority=low immediate=3 cleanup=5",
+  "emerg-trans immediate=4 cleanup=7",
+  "emerg-batt immediate=5 cleanup=8",
+  "note-915-lost kind=note",
+  "failsafe-table columns=4 rows=5",
+  "fs-siyi primary=true",
+  "fs-915",
+  "fs-batt-low",
+  "fs-batt-crit",
+  "fs-trans",
+  "client-failsafe-chain steps=5",
+  "network columns=5 rows=9",
+  "net-laptop",
+  "net-hm30-air",
+  "net-hm30-ground",
+  "net-camera",
+  "net-spare",
+  "net-n6",
+  "net-bridge",
+  "net-fanout",
+  "net-api",
+  "callouts groups=4",
+  "co-prearm rows=7",
+  "co-power-on",
+  "co-mp-live",
+  "co-fpv-ready",
+  "co-checklist-go",
+  "co-fpv-go",
+  "co-arming",
+  "co-armed",
+  "co-takeoff rows=7",
+  "co-taking-off",
+  "co-stable",
+  "co-transitioning",
+  "co-clean-transition",
+  "co-advancing-wp",
+  "co-transition-fail",
+  "co-on-station",
+  "co-relay rows=17",
+  "co-fpv-airborne",
+  "co-relay-solid",
+  "co-rc-degraded",
+  "co-link-weak",
+  "co-bridge-failsafe",
+  "co-app-down",
+  "co-video-snow",
+  "co-video-digital",
+  "co-fpv-batt",
+  "co-sats-low",
+  "co-fpv-rth",
+  "co-telemetry-lost",
+  "co-camera-on",
+  "co-camera-off",
+  "co-carrier-batt",
+  "co-fpv-returning",
+  "co-fpv-landed",
+  "co-recovery rows=6",
+  "co-carrier-rtl",
+  "co-back-transition",
+  "co-descending",
+  "co-zone-clear",
+  "co-landed",
+  "co-safe",
+  "co-abort rows=4",
+  "co-abort-abort",
+  "co-carrier-rtl-now",
+  "co-fpv-failsafe",
+  "co-clear-zone"
+ ],
  "tokens": {
   "$version": [
    "value:1"
@@ -334,62 +617,54 @@
    "value:5",
    "value:5 s"
   ],
-  "emerg-gcs/immediate#1": [],
-  "emerg-gcs/immediate#2": [
-   "mode:AUTO",
+  "emerg-gcs/cleanup#1": [
    "mode:QRTL",
    "mode:RTL",
+   "param:FS_LONG_TIMEOUT",
    "value:5 s"
   ],
-  "emerg-gcs/immediate#3": [
-   "mode:AUTO"
-  ],
-  "emerg-gcs/immediate#4": [
-   "value:915"
-  ],
-  "emerg-gcs/immediate#5": [],
-  "emerg-gcs/immediate#6": [
-   "mode:RTL"
-  ],
-  "emerg-gcs/cleanup": [
-   "ip:192.168.144.12",
-   "marker:TBD",
+  "emerg-gcs/cleanup#2": [
    "marker:VERIFY",
-   "mode:AUTO",
    "mode:AUTO",
    "mode:GUIDED",
    "mode:QRTL",
-   "mode:QRTL",
    "mode:RTL",
-   "mode:RTL",
-   "param:FS_LONG_TIMEOUT",
    "param:Q_OPTIONS",
    "param:Q_RTL_ALT",
    "param:Q_RTL_MODE",
-   "param:RADIO_STATUS",
    "param:RTL_ALTITUDE",
-   "tmpl:{client.failsafe.type}",
    "value:02",
    "value:120m",
-   "value:19856",
    "value:2",
-   "value:21.0V",
-   "value:255",
-   "value:30",
    "value:5",
-   "value:5 s",
-   "value:50m",
+   "value:50m"
+  ],
+  "emerg-gcs/cleanup#3": [
+   "value:21.0V"
+  ],
+  "emerg-gcs/cleanup#4": [
+   "ip:192.168.144.12",
+   "mode:AUTO",
+   "value:19856",
+   "value:30"
+  ],
+  "emerg-gcs/cleanup#5": [
+   "tmpl:{client.failsafe.type}"
+  ],
+  "emerg-gcs/cleanup#6": [
    "value:915"
   ],
-  "emerg-client-rc/immediate#1": [],
-  "emerg-client-rc/immediate#2": [],
-  "emerg-client-rc/immediate#3": [],
-  "emerg-client-rc/immediate#4": [
-   "marker:TBD",
-   "value:6"
+  "emerg-gcs/cleanup#7": [
+   "value:255"
   ],
-  "emerg-client-rc/immediate#5": [],
-  "emerg-client-rc/cleanup": [
+  "emerg-gcs/cleanup#8": [
+   "marker:TBD",
+   "param:RADIO_STATUS"
+  ],
+  "emerg-client-rc/cleanup#1": [
+   "value:250 ms"
+  ],
+  "emerg-client-rc/cleanup#2": [
    "marker:VERIFY",
    "marker:VERIFY",
    "param:CURRENT_ALT",
@@ -400,63 +675,71 @@
    "value:1",
    "value:100 m",
    "value:100m",
-   "value:250 ms",
    "value:30m",
    "value:4 m",
    "value:4.5",
    "value:4.5",
-   "value:6",
    "value:7.5 m/s"
   ],
-  "emerg-video/immediate#1": [],
-  "emerg-video/immediate#2": [],
-  "emerg-video/immediate#3": [],
-  "emerg-video/immediate#4": [
-   "value:10"
+  "emerg-client-rc/cleanup#3": [],
+  "emerg-client-rc/cleanup#4": [],
+  "emerg-client-rc/cleanup#5": [],
+  "emerg-client-rc/cleanup#6": [
+   "value:6"
   ],
-  "emerg-video/immediate#5": [],
-  "emerg-video/cleanup": [
-   "marker:TBD",
+  "emerg-video/cleanup#1": [
    "tmpl:{client.vtx.band}",
    "tmpl:{client.vtx.channel}",
-   "tmpl:{client.vtx.freqMHz}",
+   "tmpl:{client.vtx.freqMHz}"
+  ],
+  "emerg-video/cleanup#2": [],
+  "emerg-video/cleanup#3": [
+   "marker:TBD",
    "value:10 s",
-   "value:10 s",
+   "value:10 s"
+  ],
+  "emerg-video/cleanup#4": [
    "value:5601",
    "value:5602"
   ],
-  "emerg-relay-pcb/immediate#1": [],
-  "emerg-relay-pcb/immediate#2": [],
-  "emerg-relay-pcb/immediate#3": [],
-  "emerg-relay-pcb/immediate#4": [],
-  "emerg-relay-pcb/immediate#5": [],
-  "emerg-relay-pcb/cleanup": [
-   "marker:TBD",
+  "emerg-video/cleanup#5": [],
+  "emerg-relay-pcb/cleanup#1": [
    "param:WAIT_GCS",
    "param:WAIT_GCS",
    "value:250 ms",
-   "value:3",
+   "value:3"
+  ],
+  "emerg-relay-pcb/cleanup#2": [
+   "marker:TBD"
+  ],
+  "emerg-relay-pcb/cleanup#3": [],
+  "emerg-relay-pcb/cleanup#4": [
    "value:3.1"
   ],
-  "emerg-app/immediate#1": [],
-  "emerg-app/immediate#2": [],
-  "emerg-app/immediate#3": [],
-  "emerg-app/immediate#4": [],
-  "emerg-app/immediate#5": [],
-  "emerg-app/immediate#6": [],
-  "emerg-app/cleanup": [
-   "tmpl:{client.failsafe.type}",
+  "emerg-relay-pcb/cleanup#5": [],
+  "emerg-relay-pcb/cleanup#6": [],
+  "emerg-app/cleanup#1": [
    "tmpl:{client.failsafe.type}"
   ],
+  "emerg-app/cleanup#2": [],
+  "emerg-app/cleanup#3": [
+   "tmpl:{client.failsafe.type}"
+  ],
+  "emerg-app/cleanup#4": [],
+  "emerg-app/cleanup#5": [],
+  "emerg-app/cleanup#6": [],
   "emerg-camera/summary": [
    "param:CAM_ENABLE"
   ],
-  "emerg-camera/immediate#1": [],
-  "emerg-camera/immediate#2": [],
-  "emerg-camera/immediate#3": [],
-  "emerg-camera/cleanup": [
-   "marker:TBD",
-   "param:CAM_ENABLE",
+  "emerg-camera/cleanup#1": [
+   "param:CAM_ENABLE"
+  ],
+  "emerg-camera/cleanup#2": [],
+  "emerg-camera/cleanup#3": [
+   "marker:TBD"
+  ],
+  "emerg-camera/cleanup#4": [],
+  "emerg-camera/cleanup#5": [
    "value:9"
   ],
   "emerg-trans/summary": [
@@ -473,20 +756,7 @@
    "value:50 m",
    "value:8 s"
   ],
-  "emerg-trans/immediate#1": [
-   "mode:QHOVER"
-  ],
-  "emerg-trans/immediate#2": [],
-  "emerg-trans/immediate#3": [
-   "mode:AUTO",
-   "mode:QRTL",
-   "value:8 s"
-  ],
-  "emerg-trans/immediate#4": [],
-  "emerg-trans/cleanup": [
-   "mode:AUTO",
-   "mode:FBWB",
-   "mode:QHOVER",
+  "emerg-trans/cleanup#1": [
    "mode:QHOVER",
    "mode:QRTL",
    "mode:QRTL",
@@ -495,11 +765,23 @@
    "param:Q_TRANS_FAIL_ACT",
    "value:1",
    "value:19",
-   "value:300m",
-   "value:3s",
    "value:50 m",
-   "value:60m",
    "value:8 s"
+  ],
+  "emerg-trans/cleanup#2": [],
+  "emerg-trans/cleanup#3": [
+   "mode:FBWB"
+  ],
+  "emerg-trans/cleanup#4": [],
+  "emerg-trans/cleanup#5": [],
+  "emerg-trans/cleanup#6": [
+   "mode:AUTO",
+   "mode:QHOVER",
+   "value:300m",
+   "value:60m"
+  ],
+  "emerg-trans/cleanup#7": [
+   "value:3s"
   ],
   "emerg-batt/summary": [
    "mode:Loiter",
@@ -517,26 +799,16 @@
    "value:120 m",
    "value:15.3"
   ],
-  "emerg-batt/immediate#1": [
+  "emerg-batt/cleanup#1": [
+   "mode:RTL"
+  ],
+  "emerg-batt/cleanup#2": [
    "mode:RTL",
-   "tmpl:{settings.manualRtlVolt}"
+   "param:BATT_FS_VOLTSRC",
+   "tmpl:{settings.manualRtlVolt}",
+   "value:1"
   ],
-  "emerg-batt/immediate#2": [
-   "mode:RTL",
-   "tmpl:{settings.hardLimitVolt}"
-  ],
-  "emerg-batt/immediate#3": [
-   "mode:AUTO",
-   "mode:RTL",
-   "tmpl:{settings.battLowVolt}"
-  ],
-  "emerg-batt/immediate#4": [
-   "mode:AUTO",
-   "mode:QLAND",
-   "tmpl:{settings.battCrtVolt}"
-  ],
-  "emerg-batt/immediate#5": [],
-  "emerg-batt/cleanup": [
+  "emerg-batt/cleanup#3": [
    "mode:AUTO",
    "mode:QHOVER",
    "mode:QHOVER",
@@ -544,21 +816,24 @@
    "mode:QRTL",
    "mode:RTL",
    "mode:RTL",
+   "value:120 m"
+  ],
+  "emerg-batt/cleanup#4": [
    "mode:RTL",
-   "mode:RTL",
-   "mode:RTL",
+   "param:Q_RTL_MODE",
+   "tmpl:{settings.battCrtVolt}",
+   "value:2"
+  ],
+  "emerg-batt/cleanup#5": [],
+  "emerg-batt/cleanup#6": [],
+  "emerg-batt/cleanup#7": [
+   "value:30"
+  ],
+  "emerg-batt/cleanup#8": [
    "mode:RTL",
    "mode:RTL",
    "param:BATT_CRT_VOLT",
-   "param:BATT_FS_VOLTSRC",
-   "param:BATT_LOW_VOLT",
-   "param:Q_RTL_MODE",
-   "tmpl:{settings.battCrtVolt}",
-   "tmpl:{settings.manualRtlVolt}",
-   "value:1",
-   "value:120 m",
-   "value:2",
-   "value:30"
+   "param:BATT_LOW_VOLT"
   ],
   "note-915-lost/pill": [
    "value:915"
@@ -578,6 +853,10 @@
    "value:15.2",
    "value:915"
   ],
+  "failsafe-table/columns#1": [],
+  "failsafe-table/columns#2": [],
+  "failsafe-table/columns#3": [],
+  "failsafe-table/columns#4": [],
   "fs-siyi/detection": [
    "param:FS_LONG_TIMEOUT",
    "value:0",
@@ -662,10 +941,16 @@
    "value:2",
    "value:3 s"
   ],
-  "client-failsafe-chain/steps": [
-   "marker:TBD",
-   "tmpl:{client.failsafe.type}",
+  "client-failsafe-chain/steps#1": [],
+  "client-failsafe-chain/steps#2": [
    "value:250 ms"
+  ],
+  "client-failsafe-chain/steps#3": [
+   "marker:TBD"
+  ],
+  "client-failsafe-chain/steps#4": [],
+  "client-failsafe-chain/steps#5": [
+   "tmpl:{client.failsafe.type}"
   ],
   "client-failsafe-chain/total": [
    "marker:TBD",
@@ -674,6 +959,11 @@
   "client-failsafe-chain/note": [
    "value:5"
   ],
+  "network/columns#1": [],
+  "network/columns#2": [],
+  "network/columns#3": [],
+  "network/columns#4": [],
+  "network/columns#5": [],
   "net-laptop/ip": [
    "ip:192.168.144.X",
    "value:24"
@@ -886,159 +1176,5 @@
    "value:8",
    "value:950"
   ]
- },
- "structure": [
-  "design-intent",
-  "preflight",
-  "A",
-  "site-airspace w=true",
-  "site-wind",
-  "site-lz",
-  "site-home-lz-flight w=true",
-  "B",
-  "build-airframe",
-  "build-pitot-cover w=true",
-  "build-relay-pcb w=true",
-  "build-props w=true",
-  "C",
-  "gs-charged",
-  "gs-mast",
-  "gs-ethernet",
-  "gs-hm30-link",
-  "gs-subnet",
-  "gs-laptop-sleep w=true",
-  "gs-app w=true auto=app-controller-safe",
-  "fpv-battery",
-  "build-battery-power",
-  "gs-mp-connect",
-  "gs-client-video w=true",
-  "gs-carrier-camera w=true copy=true",
-  "D",
-  "carrier-compass-ext w=true",
-  "carrier-home",
-  "carrier-mission",
-  "carrier-failsafe-params w=true copy=true",
-  "carrier-servo-check w=true",
-  "carrier-mode-cycle",
-  "carrier-pitot-cal w=true",
-  "carrier-auto-wp w=true",
-  "carrier-bridge-run w=true auto=bridge-run",
-  "carrier-camera-sortie w=true auto=camera-sortie",
-  "E",
-  "client-profile",
-  "fpv-props",
-  "client-vtx w=true auto=video-lock",
-  "client-elrs w=true auto=client-link",
-  "client-gps-ready w=true auto=client-sats",
-  "client-failsafe w=true auto=client-rescue-ready",
-  "turnaround",
-  "T1",
-  "ta-airframe",
-  "ta-battery-swap w=true",
-  "ta-power-gps",
-  "T2",
-  "ta-home",
-  "ta-mission",
-  "ta-auto-wp w=true",
-  "ta-servo-check w=true",
-  "ta-pitot-cal w=true",
-  "ta-mode-cycle",
-  "ta-bridge-run w=true auto=bridge-run",
-  "ta-viewer-restart",
-  "ta-camera auto=camera-sortie",
-  "T3",
-  "ta-fpv-battery",
-  "ta-fpv-props",
-  "ta-client-vtx w=true auto=video-lock",
-  "ta-client-elrs w=true auto=client-link",
-  "pf-immediate",
-  "pf-disarm-carrier",
-  "pf-disarm-client",
-  "pf-carrier-batt",
-  "pf-client-batt",
-  "pf-teardown",
-  "pf-mast-batt",
-  "pf-app-log",
-  "pf-hm30-off",
-  "pf-mast-down",
-  "pf-mp-close",
-  "pf-inspection",
-  "pf-airframe",
-  "pf-carrier-pack",
-  "pf-relay-pcb",
-  "pf-client",
-  "emerg-gcs priority=primary",
-  "emerg-client-rc",
-  "emerg-video",
-  "emerg-relay-pcb",
-  "emerg-app",
-  "emerg-camera priority=low",
-  "emerg-trans",
-  "emerg-batt",
-  "note-915-lost kind=note",
-  "failsafe-table",
-  "fs-siyi primary=true",
-  "fs-915",
-  "fs-batt-low",
-  "fs-batt-crit",
-  "fs-trans",
-  "client-failsafe-chain",
-  "network",
-  "net-laptop",
-  "net-hm30-air",
-  "net-hm30-ground",
-  "net-camera",
-  "net-spare",
-  "net-n6",
-  "net-bridge",
-  "net-fanout",
-  "net-api",
-  "callouts",
-  "co-prearm",
-  "co-power-on",
-  "co-mp-live",
-  "co-fpv-ready",
-  "co-checklist-go",
-  "co-fpv-go",
-  "co-arming",
-  "co-armed",
-  "co-takeoff",
-  "co-taking-off",
-  "co-stable",
-  "co-transitioning",
-  "co-clean-transition",
-  "co-advancing-wp",
-  "co-transition-fail",
-  "co-on-station",
-  "co-relay",
-  "co-fpv-airborne",
-  "co-relay-solid",
-  "co-rc-degraded",
-  "co-link-weak",
-  "co-bridge-failsafe",
-  "co-app-down",
-  "co-video-snow",
-  "co-video-digital",
-  "co-fpv-batt",
-  "co-sats-low",
-  "co-fpv-rth",
-  "co-telemetry-lost",
-  "co-camera-on",
-  "co-camera-off",
-  "co-carrier-batt",
-  "co-fpv-returning",
-  "co-fpv-landed",
-  "co-recovery",
-  "co-carrier-rtl",
-  "co-back-transition",
-  "co-descending",
-  "co-zone-clear",
-  "co-landed",
-  "co-safe",
-  "co-abort",
-  "co-abort-abort",
-  "co-carrier-rtl-now",
-  "co-fpv-failsafe",
-  "co-clear-zone"
- ]
+ }
 }

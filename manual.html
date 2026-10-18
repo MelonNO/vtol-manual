@@ -2274,8 +2274,11 @@ if (TOC_MQ) {
 }
 
 // Show one tab; anchor = element id inside that tab to scroll to. opts.noHash: do not rewrite location.hash.
+// Old anchors that still work: the Abort Calls heading had the runtime id callouts-sec-6 before WP28 gave it a fixed id.
+var ANCHOR_ALIAS = { 'callouts-sec-6': 'co-abort-calls' };
 function showTab(name, anchor, opts) {
   opts = opts || {};
+  if (anchor && Object.prototype.hasOwnProperty.call(ANCHOR_ALIAS, anchor)) anchor = ANCHOR_ALIAS[anchor];
   var tab = MC.resolveTab(name) || MC.DEFAULT_TAB;
   document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.toggle('active', p.id === 'tab-' + tab); });
   document.querySelectorAll('#nav [data-tab]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === tab); });

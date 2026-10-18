@@ -12,8 +12,9 @@ Branch `wp/28` (worktree `S/wt/WP28`), based on `main` with WP23–WP27 merged. 
   word**.
 - **R3 / R4:**
   - every wave-3 request is folded into `css/base.css` or rejected with a reason (§7); the page overrides are removed;
-  - `js/render-content.js` emits no inline styles: tables in `.tbl-wrap` with `thead` / `tbody`, the section colour as
-    `--sec`, a plain design-intent card, the abort heading id, Link row labels in sentence case.
+  - `js/render-content.js` emits no inline styles except the intended `style="--sec:#hex"` custom property on each
+    checklist section; tables in `.tbl-wrap` with `thead` / `tbody`, a plain design-intent card, the abort heading id,
+    Link row labels in sentence case.
 - **Carried items:** all are done except the optional diagram layout and the CLEAN-UP button text (§7, with reasons).
   - The phone EMERGENCY button is now a full-width red bar above the bottom nav.
   - A tap outside the More menu only closes it.
@@ -27,7 +28,7 @@ Branch `wp/28` (worktree `S/wt/WP28`), based on `main` with WP23–WP27 merged. 
 | ID | Status | Evidence | Note |
 |---|---|---|---|
 | R1 copy pass | DONE | `data/content.js` (diff vs main) | Shorter, plainer, consistent wording ("GCS app", "Mission Planner", "home landing zone", "Setup → Profiles"). Section names are in sentence case. The GO banners lost their `// … //` decoration. Every `s` is ≤ 5 words: "Home LZ kept clear all flight" (6 words on main) became "Home LZ clear all flight". IMMEDIATE steps, ids, order, `w`, `copy`, `auto`, numbers, params, IPs, modes and markers are unchanged (§3). The manual's data-fs tests are green |
-| R2 lock test | DONE | `test/content/safety-lock.js`, `test/content/wp28-safety-lock.test.js`, `test/content/fixtures/wp28-safety-lock.json` | Tokens per item id and per field: ip, param, mode, marker, value+unit, and `{template}`. Each IMMEDIATE step is locked on its own, so their count and order are locked too. The structure is also locked: ids in order, `w/copy/auto/priority/kind/primary/style`. A mutation test proves that the lock catches a changed value, a dropped TBD, swapped IMMEDIATE steps, a removed `w`, reordered items and QRTL→QLAND, and that wording alone does not trip it. One justified fixture update: §3 |
+| R2 lock test | DONE (reworked in round 1, see below) | `test/content/safety-lock.js`, `test/content/wp28-safety-lock.test.js`, `test/content/fixtures/wp28-safety-lock.json` | Tokens per item id and per field: ip, param, mode, marker, value+unit, and `{template}`. *Round-0 claim corrected:* the round-0 lock did NOT lock the count and order of token-free IMMEDIATE steps (verification F1); since rework round 1 the exact IMMEDIATE and clean-up texts are locked. The structure is also locked: ids in order, `w/copy/auto/priority/kind/primary/style`. A mutation test proves that the lock catches a changed value, a dropped TBD, swapped IMMEDIATE steps, a removed `w`, reordered items and QRTL→QLAND, and that wording alone does not trip it. One justified fixture update: §3 |
 | R3 wave-3 requests | DONE | `css/base.css:112,134-143,146,154,161,223,233-234,265,425,438,477,482,490`; table in `docs/design/README.md` "Wave-3 requests" | Each request is folded or rejected with a reason. Page copies removed: `index.html` (`.btn-icon`, `.tbl-wrap` scrollbar, `!important` ×2, `body>#nav.tn-has-sub`), `manual.html` (`.man-main .alert p`, `.man-more` ×8, `.man-main .section-title`, `.tbl-wrap` scrollbar), `relay/map.html` (`.help`) |
 | R4 rendered components | DONE | `js/render-content.js:105-112,165-169,183,185-196,305-357` | Same class contracts (`cl-section`, `cl-section-hdr/letter/name/prog`, `fs-table`, `net-table`, `co-table`, `fs-primary`, `design-intent`, emergency family, `lk-*`). Escaping is unchanged. `[[TBD/VERIFY]]` still renders amber (render tests). Only a valid hex reaches `style="--sec:…"` (tested) |
 | R5 CHANGELOG / README | DONE | `CHANGELOG.md` "Unreleased — redesign (WP23–WP28)"; `README.md` pages table and Params path | No version bump (`js/version.js` untouched) |
@@ -125,8 +126,9 @@ html-validate index.html manual.html relay/map.html tools/latency-clock.html (+ 
    - Desktop is unchanged.
 4. **Callout "More" disclosure:** the base component targets `.alert>details`, so no markup change was needed. The
    manual's `class="man-more"` stays as a hook (`test/manual/body.test.js` counts it); it has no CSS.
-5. **Abort heading anchor:** "Abort Calls" now has `id="co-abort-calls"`. Before, `renderToc` gave it a positional
-   runtime id (`callouts-sec-N`). A bookmark to that runtime id would no longer resolve. It was never a static id.
+5. **Abort heading anchor:** "Abort Calls" now has `id="co-abort-calls"`. Before, `renderToc` gave it the positional
+   runtime id `callouts-sec-6`. Since rework round 1, an alias in `manual.html` `showTab` keeps that old anchor
+   working (see below).
 6. **Kept as is, on purpose:**
    - Emergency IMMEDIATE wording (any change is a memory-item change).
    - The emergency card titles (tests match them).
@@ -198,3 +200,41 @@ All of the following were viewed:
 | `manual-menu-800` | Sheet columns top-aligned ("Overview" and the group lists start on one line) |
 | `map-{1366,390}`, `sun-map-1366`, `crop-*-btnrow` | "⊕ Use My Location" inside its button; in sunlight the label wraps instead of overflowing; overlays get 2 px outlines in sunlight |
 | `sun-tools-preflight-390` | Sunlight: 2 px row lines, the bar visible |
+
+## Rework round 1
+
+Verifier report: `S/verify/WP28/VERIFY-round1.md` (REJECTED for F1). PM: the "normally" minor is required.
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 MAJOR**: the lock missed token-free IMMEDIATE steps (27 of 39 have no token; an empty list was treated like a missing one) | **The lock has three parts now** (`test/content/safety-lock.js`):<br>(1) `immediate`: the **exact text** of every IMMEDIATE step per scenario, in order, plus the 915 note's close-in steps.<br>(2) `cleanup`: the exact text of every CLEAN-UP step, in order.<br>(3) `structure`: ids in order, flags and **the length of every list** (items per checklist section, `immediate=`, `cleanup=`, steps, rows).<br>Token lists of string arrays are kept **per position**, empty lists included. `diff()` compares JSON, so a missing key ≠ `[]`. The code comment and the R2 row of this report now describe exactly this; the round-0 claim is corrected | Mutation cases added in `wp28-safety-lock.test.js` (all must differ from the fixture):<br>- **m7**: "CLEAR AREA BELOW" dropped;<br>- **m8**: "FPV PILOT: HANDS OFF" / "CARRIER: HOLD ORBIT" swapped;<br>- **m9**: a token-free clean-up step dropped;<br>- **m10**: a checklist item removed;<br>- **m11**: an IMMEDIATE step reworded;<br>- **m12**: two token-free clean-up steps swapped.<br>With the round-1 lock code (`git show 0fe71cc:test/content/safety-lock.js`) and its diff semantics, m7 and m8 are **not** detected: `S/r1check/check.js` prints `drop "CLEAR AREA BELOW" detected = false ; swap HANDS OFF/HOLD ORBIT detected = false` |
+| Fixture provenance | It was regenerated twice: from `main`'s content (`git archive main` → `S/main-export`, saved as `S/fixture-from-main.json`) and from this branch. The diff between the two is exactly the justified changes:<br>- `immediate` and `tokens` are **identical** to main (IMMEDIATE text untouched);<br>- `structure` differs only in `pf-immediate` (no `style=accent`, §3);<br>- `cleanup` differs only in the 11 clean-up steps this copy pass reworded (below). | `diff` of the two fixtures |
+| PM (was MINOR 2): "normally" dropped | Restored: "Carrier camera **normally** OFF before the client launches …" (the same as the manual Procedures) | `data/content.js` item `carrier-camera-sortie` |
+| Other dropped qualifiers | I checked the whole copy diff for words that were removed (normally, usually, only, never, until, unless, at least, immediately, first, before, all, must, not, minimum, if). The table below lists each one: restored, or kept because the qualifier is still there in other words | — |
+| MINOR 3: wording "no inline styles" | Report §1 and CHANGELOG now say: no inline styles **except** the intended `style="--sec:#hex"` custom property (hex only) | — |
+| MINOR 4: old anchor `#callouts/callouts-sec-6` | Alias `ANCHOR_ALIAS = { 'callouts-sec-6': 'co-abort-calls' }` at the top of `showTab` (`manual.html`, 3 lines). The hash is rewritten to the fixed id | New jsdom test in `wp28-components.test.js`: with the URL `#callouts/callouts-sec-6`, the Callouts tab opens and the hash becomes `#callouts/co-abort-calls`. Without the alias the test fails (checked) |
+
+**Qualifier review of the copy diff** (removed wording → now):
+
+| Item | Removed | Now |
+|---|---|---|
+| `carrier-camera-sortie` | "normally" | **restored** "normally OFF" |
+| `ta-battery-swap` | "place on charger immediately" (round 0: "at once") | **restored** "put it on charge immediately" |
+| `pf-mast-batt` | "charge immediately, do not store discharged" (round 0: "at once; never store") | **restored** "charge it immediately; do not store it discharged" |
+| `pf-carrier-batt` | "All systems power down" | **restored** "all systems power down (FC, HM30 air unit, relay PCB, camera)" |
+| `pf-mast-down` | "before transport" (round 0: "for transport") | **restored** "before transport" |
+| `emerg-trans` clean-up | "first", "immediately on AUTO" | **restored** "Before a retry: first climb … Watch the airspeed immediately on AUTO." |
+| `client-vtx`, `ta-client-vtx` notes | "Must show live view" (round 0: "Live picture") | **restored** "Must show a live picture, not static or blank." |
+| `carrier-auto-wp`, `ta-auto-wp` | "If launching without co-pilot" / "If no co-pilot" | kept "Without a co-pilot, WP 1 must NOT be …" (same condition) |
+| `client-elrs` | "if telemetry is enabled" | kept "when telemetry is on" (same condition) |
+| `build-battery-power` | "Do not arm yet" | kept (moved to the start of the note) |
+| `emerg-batt` clean-up | "Allow pack to cool 30 minutes minimum"; "If any present — quarantine, do not charge" | kept "at least 30 minutes"; "puffed, hot or smelling? Quarantine it and do not charge it" |
+| callouts intro | "at all times. All in-flight" | kept "at all times; all in-flight" |
+
+The `never` count went up by one in round 0. It now equals main again: "never store" is back to "do not store".
+
+Checks after the rework (`VTOL_JSDOM` set):
+- `node --test test/`: **374 / 374 pass**.
+- gen-precache (regenerated), diagrams and params `--check`, links, images and colours: all pass.
+- html-validate on the four pages: 0 findings.
+- Safety-token diff: `data/content.js` 485 → 485, LOST 0, NEW 0; `manual.html` 1457 → 1457, LOST 0, NEW 0.

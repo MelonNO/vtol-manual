@@ -142,3 +142,28 @@ test('carried WP25 (jsdom): a tap outside the open More menu only closes it; EME
     assert.deepEqual(errors, []);
   } finally { w.close(); }
 });
+
+test('rework 1 (jsdom): the old runtime anchor #callouts/callouts-sec-6 still opens the Abort Calls heading', async t => {
+  const JSDOM = loadJsdom();
+  if (!JSDOM) { t.skip('jsdom not available — set VTOL_JSDOM to the jsdom package path'); return; }
+  const html = readText('manual.html').replace(/<script src="([^"]+)"><\/script>/g, (m, src) => /^(https?:)?\/\//.test(src) ? m
+    : '<script>' + readText(path.posix.normalize(src)).replace(/<\/script/gi, '<\\/script') + '</script>');
+  const errors = [];
+  const dom = new JSDOM(html, { url: 'https://melonno.github.io/vtol-manual/manual.html#callouts/callouts-sec-6', runScripts: 'dangerously', pretendToBeVisual: true,
+    beforeParse(w) {
+      w.alert = () => {}; w.scrollTo = () => {}; w.print = () => {};
+      w.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
+      w.fetch = () => Promise.reject(new w.TypeError('offline'));
+      w.Element.prototype.scrollIntoView = function () { (w.__scrolled = w.__scrolled || []).push(this.id); };
+      w.addEventListener('error', e => errors.push(String(e.message)));
+    } });
+  const w = dom.window, d = w.document;
+  try {
+    await new Promise(r => setTimeout(r, 50));
+    assert.ok(d.getElementById('tab-callouts').classList.contains('active'), 'Callouts tab open');
+    assert.ok(d.getElementById('co-abort-calls'), 'the heading exists with its fixed id');
+    assert.equal(w.location.hash, '#callouts/co-abort-calls', 'the alias resolves to the fixed id');
+    assert.ok(!d.getElementById('callouts-sec-6'), 'no runtime id is generated for it any more');
+    assert.deepEqual(errors, []);
+  } finally { w.close(); }
+});

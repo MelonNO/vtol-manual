@@ -117,12 +117,12 @@
         { id: 'carrier-pitot-cal', s: 'Pitot calibrated, cover removed', t: 'Mission Planner: Preflight_Calibration → Do Action; Messages shows "Airspeed 1 calibrated". Airspeed stable and below 2 m/s. Then remove the pitot cover.', w: true },
         { id: 'carrier-auto-wp', s: 'Correct AUTO waypoint selected', t: 'Correct start waypoint selected for AUTO. Without a co-pilot, WP 1 must NOT be the active waypoint.', w: true },
         { id: 'carrier-bridge-run', s: 'Bridge in RUN', t: 'GCS app shows bridge state RUN, ModelID accepted, timing-frame lock (sync offset ≈ 0).', w: true, auto: 'bridge-run' },
-        { id: 'carrier-camera-sortie', s: 'Camera state set for sortie', t: 'Carrier camera OFF before the client launches (FPV mode), unless relay-design test 9 has passed. The app must report the same state as requested.', w: true, auto: 'camera-sortie' }
+        { id: 'carrier-camera-sortie', s: 'Camera state set for sortie', t: 'Carrier camera normally OFF before the client launches (FPV mode), unless relay-design test 9 has passed. The app must report the same state as requested.', w: true, auto: 'camera-sortie' }
       ] },
       { id: 'E', name: 'Client', items: [
         { id: 'client-profile', s: 'Client profile selected', t: 'Active client profile: **{client.name}** ({client.fc}, {client.firmware}). It sets the VTX, ELRS, failsafe and battery values below; change it in Setup → Profiles.' },
         { id: 'fpv-props', s: 'Client props checked', t: 'Client props tight, rotation direction correct.', n: 'Check motor bell screws and prop nuts.' },
-        { id: 'client-vtx', s: 'VTX on, correct band/channel', t: 'Client VTX on **{client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz · {client.vtx.powerMw} mW**. Video visible in the viewer, decoder lock LED on.', n: 'Live picture, not static or blank. Expected video standard: {client.videoStandard}.', w: true, auto: 'video-lock' },
+        { id: 'client-vtx', s: 'VTX on, correct band/channel', t: 'Client VTX on **{client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz · {client.vtx.powerMw} mW**. Video visible in the viewer, decoder lock LED on.', n: 'Must show a live picture, not static or blank. Expected video standard: {client.videoStandard}.', w: true, auto: 'video-lock' },
         { id: 'client-elrs', s: 'ELRS link up', t: 'Client ELRS RX ({client.elrs.band}) linked to the relay\'s ELRS TX module (binding phrase / model match, set once per client: nothing to do before each flight). The app shows client LQ / RSSI when telemetry is on; otherwise read LQ on the client OSD.', n: 'Telemetry needs telemetry enabled on the client FC and a non-zero ELRS telemetry ratio (profile: {client.elrs.telemetryRatio}).', w: true, auto: 'client-link' },
         { id: 'client-gps-ready', s: 'Client GPS ready', t: 'Client GPS has at least {client.failsafe.minSats} satellites.', w: true, auto: 'client-sats' },
         { id: 'client-failsafe', s: 'Client failsafe known', t: 'Client failsafe: **{client.failsafe.type}**, delay {client.failsafe.delayS} s, minimum {client.failsafe.minSats} sats. Measured total failsafe time through the relay: [[TBD — relay-design test 6, per cause]].', n: 'GPS Rescue clients: the flight mode must not show `?` (GPS Rescue configured but no fix).', w: true, auto: 'client-rescue-ready' }
@@ -137,7 +137,7 @@
     sections: [
       { id: 'T1', name: 'Carrier — battery & inspection', items: [
         { id: 'ta-airframe', s: 'Airframe inspected', t: 'Quick look for damage from the last flight: tilt-motor mounts, wing joins, props.' },
-        { id: 'ta-battery-swap', s: 'Battery swapped', t: 'Remove the used battery, record its landing voltage and put it on charge at once. Fit a fresh battery, strap tight, reading above 25.0V.', n: 'Used batteries must be set to charge before the next flight begins. Arming is refused below {settings.battArmVolt} V (`BATT_ARM_VOLT`): a part-used pack cannot be flown.', w: true },
+        { id: 'ta-battery-swap', s: 'Battery swapped', t: 'Remove the used battery, record its landing voltage and put it on charge immediately. Fit a fresh battery, strap tight, reading above 25.0V.', n: 'Used batteries must be set to charge before the next flight begins. Arming is refused below {settings.battArmVolt} V (`BATT_ARM_VOLT`): a part-used pack cannot be flown.', w: true },
         { id: 'ta-power-gps', s: 'Power on, GPS acquiring', t: 'Carrier powered on. Let the GPS get its fix again before going on.' }
       ] },
       { id: 'T2', name: 'Carrier — pre-arm', items: [
@@ -154,7 +154,7 @@
       { id: 'T3', name: 'Client', items: [
         { id: 'ta-fpv-battery', s: 'Client battery swapped', t: 'Used client battery off and on charge. Fresh pack fitted, voltage nominal.' },
         { id: 'ta-fpv-props', s: 'Client props checked', t: 'Quick look: props undamaged and tight.' },
-        { id: 'ta-client-vtx', s: 'VTX on, video confirmed', t: 'Client VTX on {client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz. Verify the client feed in the viewer.', n: 'Live picture, not static or blank.', w: true, auto: 'video-lock' },
+        { id: 'ta-client-vtx', s: 'VTX on, video confirmed', t: 'Client VTX on {client.vtx.band}{client.vtx.channel} · {client.vtx.freqMHz} MHz. Verify the client feed in the viewer.', n: 'Must show a live picture, not static or blank.', w: true, auto: 'video-lock' },
         { id: 'ta-client-elrs', s: 'ELRS link up', t: 'Client ELRS RX ({client.elrs.band}) linked through the relay (binding phrase set once: nothing to do per flight). Check LQ in the app or on the client OSD.', w: true, auto: 'client-link' }
       ] }
     ]
@@ -165,14 +165,14 @@
     { id: 'pf-immediate', title: 'Right after landing', steps: [
       { id: 'pf-disarm-carrier', s: 'Disarm carrier', t: 'Disarmed in Mission Planner and all motors stopped. Do not approach until it is disarmed.' },
       { id: 'pf-disarm-client', s: 'Disarm client', t: 'Co-pilot confirms the client is disarmed. Props stopped.' },
-      { id: 'pf-carrier-batt', s: 'Disconnect carrier battery', t: 'Unplug the 6S pack: FC, HM30 air unit, relay PCB and camera power down. Record the landing voltage.' },
+      { id: 'pf-carrier-batt', s: 'Disconnect carrier battery', t: 'Unplug the 6S pack: all systems power down (FC, HM30 air unit, relay PCB, camera). Record the landing voltage.' },
       { id: 'pf-client-batt', s: 'Disconnect client battery', t: 'Record client landing voltage.' }
     ] },
     { id: 'pf-teardown', title: 'Ground station teardown', steps: [
-      { id: 'pf-mast-batt', s: 'Check mast battery voltage', t: 'Disconnect and measure the 6S 3000mAh mast battery. Below [[21.0V]]: charge it at once; never store it discharged.' },
+      { id: 'pf-mast-batt', s: 'Check mast battery voltage', t: 'Disconnect and measure the 6S 3000mAh mast battery. Below [[21.0V]]: charge it immediately; do not store it discharged.' },
       { id: 'pf-app-log', s: 'Save GCS app session log', t: 'Save the GCS companion app session log (RC out, status, telemetry, alarms) for debrief, then close the app.' },
       { id: 'pf-hm30-off', s: 'Power down HM30 ground unit', t: 'Disconnect the Ethernet cable; remove the mast battery.' },
-      { id: 'pf-mast-down', s: 'Lower and secure mast', t: 'HM30 and cabling secured for transport.' },
+      { id: 'pf-mast-down', s: 'Lower and secure mast', t: 'HM30 and cabling secured before transport.' },
       { id: 'pf-mp-close', s: 'Close Mission Planner', t: 'Save the log if needed.' }
     ] },
     { id: 'pf-inspection', title: 'Inspection', steps: [
@@ -308,7 +308,7 @@
         'Tilt servos: switch to FBWB and watch in MP. Do the M1/M2 tilt motors rotate forward?',
         'Battery: enough for another transition attempt plus a VTOL recovery?',
         'Wind: transition into wind (airspeed builds fastest); avoid a tailwind transition.',
-        'Before a retry: climb to 60m+ in QHOVER and clear a 300m corridor ahead. Watch the airspeed as soon as AUTO starts.',
+        'Before a retry: first climb to 60m+ in QHOVER and clear a 300m corridor ahead. Watch the airspeed immediately on AUTO.',
         'Log the failure phase (no airspeed build in 3s, or a pitch-down upset) and the battery voltage.'
       ] },
     { id: 'emerg-batt', pill: 'BATTERY',

@@ -46,9 +46,13 @@ IP and TBD / VERIFY marker of the shared content is locked by a test (`test/cont
   (section 8). Page `<style>` blocks hold page-only rules; `test/design/` and `test/shell/` guard both.
 - WP28 folded the wave-3 requests into the base components (callout paragraphs and "More" disclosure, chip cells,
   thin dark table scrollbars, `.btn-icon`, `.help`, section-title anchor offset, sunlight outlines for the map
-  overlays) and removed the page overrides; `js/render-content.js` emits no inline styles (tables in `.tbl-wrap`, the
-  checklist section colour as `--sec`).
-- New test: `test/content/wp28-safety-lock.test.js` with its fixture — regenerate it only for a justified change.
+  overlays) and removed the page overrides. `js/render-content.js` emits no inline styles except one intended custom property,
+  `style="--sec:#hex"` on each checklist section (its colour; only a hex value is accepted); tables come in `.tbl-wrap`.
+  The Abort Calls heading has the fixed id `co-abort-calls`; the old runtime anchor `#callouts/callouts-sec-6` still
+  works (an alias in `manual.html`).
+- New test: `test/content/wp28-safety-lock.test.js` with its fixture. It freezes the exact text and order of every
+  IMMEDIATE and clean-up step, the item structure and list lengths, and the safety tokens of every text; regenerate it
+  only for a justified change.
 
 ## [2.0.0] — 2026-10-18
 
