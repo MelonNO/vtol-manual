@@ -14,30 +14,11 @@
 <script src="js/field.js"></script>
 <style>
 /* tokens, fonts, base elements and the shared components: css/base.css (docs/design/README.md) — page-specific rules only */
-:root{--content-pb:100px;}   /* room for the EMERGENCY button */
-header{background:var(--surface);border-bottom:2px solid var(--accent);}
-.hdr-top{display:flex;align-items:stretch;border-bottom:1px solid var(--border2);}
-.hdr-badge{background:var(--accent);color:#000;font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:3px;writing-mode:vertical-rl;padding:12px 8px;display:flex;align-items:center;}
-.hdr-main{flex:1;padding:14px 24px;}
-.hdr-doc-id{font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:4px;}
-.hdr-title{font-family:var(--head);font-size:22px;font-weight:700;color:var(--accent);letter-spacing:2px;line-height:1;}
-.hdr-sub{font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:5px;}
-.hdr-meta{display:flex;gap:32px;padding:8px 24px 8px 52px;font-size:10px;color:var(--muted);letter-spacing:1px;flex-wrap:wrap;}
-.hdr-meta span strong{color:var(--text);}
-nav{background:var(--surface2);border-bottom:1px solid var(--border2);display:flex;overflow-x:auto;padding:0 8px;align-items:center;}
-nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--head);font-size:14px;font-weight:600;letter-spacing:1.5px;padding:12px 18px;cursor:pointer;white-space:nowrap;text-transform:uppercase;transition:all .15s;}
-nav button:hover{color:var(--text);}
-nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
-.nav-manual-btn{margin-left:auto;background:var(--surface);border:1px solid var(--accent);color:var(--accent);font-family:var(--head);font-size:11px;font-weight:700;letter-spacing:1.5px;padding:6px 14px;cursor:pointer;white-space:nowrap;text-transform:uppercase;text-decoration:none;display:flex;align-items:center;gap:6px;transition:all .15s;}
-.nav-manual-btn:hover{background:var(--accent);color:#000;}
+:root{--content-pb:100px;}   /* room for the EMERGENCY button (header, nav, footer, EMERGENCY button: css/base.css shell) */
 @keyframes slideDown{from{opacity:0;max-height:0;}to{opacity:1;max-height:600px;}}
 @keyframes checkPop{0%{transform:scale(0);}60%{transform:scale(1.3);}100%{transform:scale(1);}}
-@keyframes pulseFab{0%,100%{box-shadow:0 4px 20px rgba(239,68,68,.4);}50%{box-shadow:0 4px 32px rgba(239,68,68,.8),0 0 0 6px rgba(239,68,68,.15);}}
 @keyframes goNogoBanner{from{opacity:0;transform:scaleX(.95);}to{opacity:1;transform:scaleX(1);}}
 @keyframes pulseGoBorder{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0);}50%{box-shadow:0 0 0 8px rgba(34,197,94,.18);}}
-#emerg-fab{position:fixed;bottom:20px;right:20px;z-index:1050;background:var(--red);color:#fff;border:none;font-family:var(--head);font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:14px 22px;cursor:pointer;border-radius:4px;box-shadow:0 4px 20px rgba(239,68,68,.4);transition:background .15s,transform .1s;display:flex;align-items:center;gap:8px;animation:pulseFab 2.5s ease-in-out infinite;}
-#emerg-fab:hover{background:#dc2626;animation:none;box-shadow:0 4px 28px rgba(239,68,68,.7);}
-#emerg-fab:active{transform:scale(.96);}
 .ref-diff{font-size:12px;color:var(--muted);margin:6px 0 12px;}
 /* ── CHECKLIST ── */
 .cl-hdr{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;position:sticky;top:0;z-index:100;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--border2);}
@@ -185,64 +166,66 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
 .cr-btns .cr-skip{border-color:var(--amber);color:var(--amber);}
 .cr-btns button:disabled{opacity:.35;cursor:default;}
 @media(max-width:600px){ .cr-wrap{padding-bottom:140px;} .cr-item{font-size:30px;} .cr-btns button{font-size:18px;min-height:64px;} }
-footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;color:var(--muted);letter-spacing:1px;text-align:center;margin-top:40px;}
 @media(max-width:600px){
-  .hdr-badge{writing-mode:horizontal-tb;padding:6px 12px;font-size:10px;}
-  .hdr-title{font-size:15px;}
-  .hdr-main{padding-right:50px;}   /* room for the ☀ toggle (css/base.css puts it top-right) */
-  .hdr-meta{padding:8px 12px;gap:8px 16px;font-size:9px;}
   :root{--content-pb:140px;}   /* room for the fixed bottom nav and the EMERGENCY button */
-  nav{position:fixed;bottom:0;left:0;right:0;z-index:800;border-top:2px solid var(--border2);border-bottom:none;padding:0;}
-  nav button{padding:10px 8px 8px;font-size:10px;letter-spacing:.3px;min-height:52px;border-bottom:none;border-top:2px solid transparent;}
-  nav button.active{border-bottom:none;border-top-color:var(--accent);}
-  .nav-manual-btn{min-height:52px;margin-left:0;border:none;border-left:1px solid var(--border2);padding:10px 12px 8px;font-size:10px;}
   .ci-left,.ci-right{padding:10px 8px;}
   .ci-box{width:22px;height:22px;font-size:13px;}
-  #emerg-fab{bottom:68px;right:16px;font-size:13px;padding:12px 16px;}
 }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="hdr-top">
-    <div class="hdr-badge">TOOLS</div>
-    <div class="hdr-main">
-      <div class="hdr-doc-id" id="hdr-doc-id">HEEWING T2 CRUZA · ARDUPLANE · ELRS 915 (carrier) · ELRS TBD (client) · SIYI HM30</div>
-      <div class="hdr-title">RELAY CARRIER — FLIGHT TOOLS</div>
-      <div class="hdr-sub">CHECKLISTS · EMERGENCY PROCEDURES · LINK · PROFILES · BATTERY LOG</div>
+<header class="app-header">
+  <div class="app-bar">
+    <div class="app-id"><span class="app-badge">Tools</span><h1 class="app-title">Flight Tools</h1></div>
+    <div class="app-switch seg"><a href="index.html" aria-current="page">Tools</a><a href="manual.html">Manual</a><a href="relay/map.html">Map</a></div>
+    <button type="button" class="app-sun" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀</button>
+  </div>
+  <details class="app-summary" data-vf-summary>
+    <summary><span class="app-summary-lbl">Aircraft summary</span><span class="app-chips" data-vf-chips></span></summary>
+    <div class="hdr-meta">
+      <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
+      <span><strong>CLIENT</strong> <span id="hdr-client"></span></span>
+      <span><strong>BATT</strong> 6S 7000mAh</span>
+      <span><strong>LOW VOLT</strong> <span id="hdr-low">22.0V auto RTL</span></span>
+      <span><strong>CRIT VOLT</strong> <span id="hdr-crit">21.0V QLand here</span></span>
+      <span><strong>RTL ALT</strong> 120m REL (above home)</span>
+      <span><strong>CRUISE</strong> 12 m/s</span>
+      <span><strong>VERSION</strong> <span class="ver-app"></span> · CONTENT <span class="ver-content"></span></span>
+      <span><strong>PARAMS</strong> <span id="hdr-params">not verified against a param file</span></span>
     </div>
-    <div class="vf-hdr-tools"><button type="button" class="vf-btn" data-vf-sun aria-pressed="false" aria-label="Sunlight mode">☀<span class="vf-lbl" aria-hidden="true"> SUN</span></button></div>
-  </div>
-  <div class="hdr-meta">
-    <span><strong>PLATFORM</strong> Heewing T2 Cruza</span>
-    <span><strong>CLIENT</strong> <span id="hdr-client"></span></span>
-    <span><strong>BATT</strong> 6S 7000mAh</span>
-    <span><strong>LOW VOLT</strong> <span id="hdr-low">22.0V auto RTL</span></span>
-    <span><strong>CRIT VOLT</strong> <span id="hdr-crit">21.0V QLand here</span></span>
-    <span><strong>RTL ALT</strong> 120m REL (above home)</span>
-    <span><strong>CRUISE</strong> 12 m/s</span>
-    <span><strong>VERSION</strong> <span class="ver-app"></span> · CONTENT <span class="ver-content"></span></span>
-    <span><strong>PARAMS</strong> <span id="hdr-params">not verified against a param file</span></span>
-  </div>
+  </details>
 </header>
 
-<nav id="nav" aria-label="Tools sections">
-  <button onclick="switchTab('preflight',this)">Pre-Flight</button>
-  <button onclick="switchTab('turnaround',this)">Turnaround</button>
-  <button onclick="switchTab('postflight',this)">Post-Flight</button>
-  <button onclick="switchTab('link',this)">Link</button>
-  <button onclick="switchTab('battlog',this)">Battery Log</button>
-  <button onclick="switchTab('tlog',this)">Telemetry</button>
-  <button type="button" onclick="switchTab('flights',this)">Flights</button>
-  <button type="button" onclick="switchTab('params',this)">Params</button>
-  <button onclick="switchTab('weather',this)">Weather</button>
-  <button onclick="switchTab('profiles',this)">Profiles</button>
-  <a class="nav-manual-btn" href="manual.html">MANUAL ▶</a>
-  <a class="nav-manual-btn" href="relay/map.html" style="margin-left:0;border-left:none">MAP ▶</a>
+<nav id="nav" class="tn" aria-label="Tools sections">
+  <div class="tn-groups">
+    <button type="button" class="tn-group" data-group="checklists" onclick="switchGroup(this.dataset.group)">Checklists</button>
+    <button type="button" class="tn-group" data-group="link" onclick="switchGroup(this.dataset.group)">Link</button>
+    <button type="button" class="tn-group" data-group="logs" onclick="switchGroup(this.dataset.group)">Logs</button>
+    <button type="button" class="tn-group" data-group="weather" onclick="switchGroup(this.dataset.group)">Weather</button>
+    <button type="button" class="tn-group" data-group="setup" onclick="switchGroup(this.dataset.group)">Setup</button>
+  </div>
+  <div class="tn-subs">
+    <div class="tn-sub seg" data-group="checklists">
+      <button type="button" onclick="switchTab('preflight',this)">Pre-flight</button>
+      <button type="button" onclick="switchTab('turnaround',this)">Turnaround</button>
+      <button type="button" onclick="switchTab('postflight',this)">Post-flight</button>
+    </div>
+    <div class="tn-sub seg tn-single" data-group="link"><button type="button" onclick="switchTab('link',this)">Link</button></div>
+    <div class="tn-sub seg" data-group="logs">
+      <button type="button" onclick="switchTab('battlog',this)">Battery</button>
+      <button type="button" onclick="switchTab('tlog',this)">Telemetry</button>
+      <button type="button" onclick="switchTab('flights',this)">Flights</button>
+    </div>
+    <div class="tn-sub seg tn-single" data-group="weather"><button type="button" onclick="switchTab('weather',this)">Weather</button></div>
+    <div class="tn-sub seg" data-group="setup">
+      <button type="button" onclick="switchTab('params',this)">Params</button>
+      <button type="button" onclick="switchTab('profiles',this)">Profiles</button>
+    </div>
+  </div>
 </nav>
 
-<button id="emerg-fab" onclick="openEmerg()">⚠ EMERGENCY</button>
+<button type="button" id="emerg-fab" onclick="openEmerg()">⚠ EMERGENCY</button>
 
 <!-- CHALLENGE–RESPONSE MODE (plan §10.8): one item at a time, same checklist state engine -->
 <div id="cr-modal" role="dialog" aria-modal="true" aria-labelledby="cr-title">
@@ -566,7 +549,9 @@ footer{border-top:1px solid var(--border2);padding:10px 24px;font-size:10px;colo
 
 </div><!-- /content -->
 
-<footer>HEEWING T2 VTOL RELAY CARRIER · FLIGHT TOOLS · ARDUPLANE · <span data-vf-version>v<span class="ver-app"></span> · CONTENT <span class="ver-content"></span></span>
+<footer class="app-footer">
+  <div id="hdr-doc-id" data-vf-warn-src>HEEWING T2 CRUZA · ARDUPLANE · ELRS 915 (carrier) · ELRS TBD (client) · SIYI HM30</div>
+  <div data-vf-version>v<span class="ver-app"></span> · CONTENT <span class="ver-content"></span></div>
   <details class="vf-share" data-vf-share>
     <summary>SHARE / KNEEBOARD</summary>
     <div class="vf-share-body">
@@ -603,11 +588,33 @@ document.querySelectorAll('.ver-content').forEach(el => { el.textContent = VTOL_
 
 function switchTab(name, btn) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('nav button').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
   document.getElementById('tab-' + name).classList.add('active');
-  if (btn) { btn.classList.add('active'); btn.setAttribute('aria-current', 'page'); }
+  navMark(btn || navTabBtn(name));
   localStorage.setItem('vtol_active_tab', name);
   wakeSync();
+}
+// ── NAV (WP24) ── five groups; each tab button sits in the sub-tab row of its group (.tn-sub[data-group]).
+const navLastTab = {};   // group → its last opened tab (this page view only)
+function navTabBtn(name) { return document.querySelector('#nav .tn-sub button[onclick^="switchTab(\'' + name + '\'"]'); }
+// Mark the tab button, its group and the visible sub-tab row.
+function navMark(btn) {
+  document.querySelectorAll('#nav button').forEach(b => { b.classList.remove('active'); b.removeAttribute('aria-current'); });
+  const sub = btn ? btn.closest('.tn-sub') : null, g = sub ? sub.dataset.group : null;
+  document.querySelectorAll('#nav .tn-sub').forEach(s => s.classList.toggle('active', s === sub));
+  document.getElementById('nav').classList.toggle('tn-has-sub', !!sub && !sub.classList.contains('tn-single'));
+  if (!btn) return;
+  btn.classList.add('active'); btn.setAttribute('aria-current', 'page');
+  const gb = document.querySelector('#nav .tn-group[data-group="' + g + '"]');
+  if (gb) { gb.classList.add('active'); gb.setAttribute('aria-current', 'page'); }
+  const m = /^switchTab\('([\w-]+)'/.exec(btn.getAttribute('onclick') || '');
+  if (g && m) navLastTab[g] = m[1];
+}
+// A group button opens the group's last opened tab, else its first.
+function switchGroup(g) {
+  const sub = document.querySelector('#nav .tn-sub[data-group="' + g + '"]'); if (!sub) return;
+  const btn = (navLastTab[g] && navTabBtn(navLastTab[g])) || sub.querySelector('button');
+  const m = /^switchTab\('([\w-]+)'/.exec(btn.getAttribute('onclick'));
+  switchTab(m[1], btn);
 }
 function openEmerg() { document.getElementById('emerg-modal').style.display='block'; document.body.style.overflow='hidden'; wakeSync(); }
 function closeEmerg() { document.getElementById('emerg-modal').style.display='none'; document.body.style.overflow = cr ? 'hidden' : ''; wakeSync(); }
@@ -1137,13 +1144,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // Restore last active tab, default to preflight
   const savedTab = localStorage.getItem('vtol_active_tab') || 'preflight';
   const tabEl = document.getElementById('tab-' + savedTab);
-  const tabBtn = document.querySelector('nav button[onclick*="\''+savedTab+'\'"]');
+  const tabBtn = navTabBtn(savedTab);
   if (tabEl && tabBtn) {
     tabEl.classList.add('active');
-    tabBtn.classList.add('active');
+    navMark(tabBtn);
   } else {
     document.getElementById('tab-preflight').classList.add('active');
-    document.querySelector('nav button[onclick*="preflight"]').classList.add('active');
+    navMark(navTabBtn('preflight'));
   }
   wakeSync();
 });
@@ -2665,7 +2672,7 @@ function renderAirspace() {
 }
 
 // ── SWIPE TAB NAVIGATION ── (not while the emergency modal is open, nor from inside horizontally scrollable content)
-// Swipe order = the nav buttons' order (one source of truth: a hard-coded copy went stale when tabs were added).
+// Swipe order = the nav's tab buttons in group order, all ten tabs (one source of truth: a hard-coded copy went stale when tabs were added).
 function navTabOrder() {
   return Array.from(document.querySelectorAll('nav button[onclick^="switchTab"]'), b => (b.getAttribute('onclick').match(/^switchTab\('([\w-]+)'/) || [])[1]).filter(Boolean);
 }
@@ -2697,8 +2704,7 @@ function navTabOrder() {
     const idx = TABS.indexOf(cur);
     const next = dx < 0 ? idx + 1 : idx - 1;
     if (next < 0 || next >= TABS.length) return;
-    const btn = document.querySelector('nav button[onclick*="\''+TABS[next]+'\'"]');
-    switchTab(TABS[next], btn);
+    switchTab(TABS[next], navTabBtn(TABS[next]));
   }, { passive: true });
 })();
 

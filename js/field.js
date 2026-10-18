@@ -6,7 +6,9 @@
  *   - version line in every [data-vf-version] element: app · content · param file (store.paramFile if imported);
  *   - sunlight / high-contrast toggle on every [data-vf-sun] button (persisted in localStorage 'vtol_sunlight');
  *   - screen wake lock (feature-detected) for the pages that ask for it (setWake);
- *   - "Share / kneeboard" menus ([data-vf-share]): QR code of the live site and PRINT KNEEBOARD.
+ *   - "Share / kneeboard" menus ([data-vf-share]): QR code of the live site and PRINT KNEEBOARD;
+ *   - "Aircraft summary" disclosure ([data-vf-summary], WP24): open state per device (localStorage 'vtol_summary_open')
+ *     and the warning chips ([data-vf-chips]) that keep every warning state of its items visible while it is closed.
  */
 (function (root, factory) {
   const api = factory(root);
@@ -193,6 +195,56 @@
     try { root.print(); } catch (e) { done(); }
   }
 
+  // ══════════ AIRCRAFT SUMMARY (WP24) — the former header meta strip, closed by default ══════════
+  // Warning states never hide behind the closed summary: every item that says DISABLED / TBD / "not verified" (or is
+  // marked .crit-val / .warn-val by the page's own render functions) becomes a red or amber chip in the summary row.
+  const SUMMARY_KEY = 'vtol_summary_open';
+  // { level: 'crit' | 'warn', text } for one summary item, or null when it shows no warning state.
+  function summaryChip(label, text, hasCrit, hasWarn) {
+    label = String(label || '').trim(); text = String(text || '');
+    const pre = label ? label + ' ' : '';
+    if (hasCrit || /\bDISABLED\b/.test(text)) return { level: 'crit', text: pre + 'DISABLED' };
+    if (/not verified/i.test(text)) return { level: 'warn', text: pre + 'not verified' };
+    if (hasWarn || /\bTBD\b/.test(text)) return { level: 'warn', text: pre + 'TBD' };
+    return null;
+  }
+  // All chips of a document: the items of every summary (label = their <strong>), then the TBD parts of every
+  // [data-vf-warn-src] line (the document line in the footer: "ELRS TBD (client)"). Duplicates are listed once.
+  function summaryChips(d) {
+    const out = [], seen = {};
+    const add = c => { if (c && !seen[c.text]) { seen[c.text] = 1; out.push(c); } };
+    d.querySelectorAll('[data-vf-summary] .hdr-meta > *').forEach(item => {
+      const lab = item.querySelector('strong'), label = lab ? lab.textContent.trim() : '';
+      const text = item.textContent.replace(label, '').trim();
+      add(summaryChip(label, text, !!item.querySelector('.crit-val'), !!item.querySelector('.warn-val, .vf-tbd')));
+    });
+    d.querySelectorAll('[data-vf-warn-src]').forEach(el => el.textContent.split(' · ').forEach(seg => {
+      if (/\bTBD\b/.test(seg)) add({ level: 'warn', text: seg.trim() });
+    }));
+    return out;
+  }
+  function chipsHTML(chips) {
+    return chips.map(c => '<span class="app-chip ' + c.level + '"><span aria-hidden="true">' + (c.level === 'crit' ? '✖' : '⚠') + '</span>' + escH(c.text) + '</span>').join('');
+  }
+  function renderSummary() {
+    if (!doc) return;
+    const html = chipsHTML(summaryChips(doc));
+    doc.querySelectorAll('[data-vf-chips]').forEach(el => { if (el.innerHTML !== html) el.innerHTML = html; });
+  }
+  function initSummary() {
+    doc.querySelectorAll('details[data-vf-summary]').forEach(d => {
+      d.open = lsGet(SUMMARY_KEY) === '1';
+      d.addEventListener('toggle', () => lsSet(SUMMARY_KEY, d.open ? '1' : null));
+    });
+    renderSummary();
+    // The pages keep rendering the items with their own functions; any change re-checks the chips.
+    if (typeof root.MutationObserver === 'function') {
+      const mo = new root.MutationObserver(renderSummary);
+      doc.querySelectorAll('[data-vf-summary] .hdr-meta, [data-vf-warn-src]').forEach(el =>
+        mo.observe(el, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] }));
+    }
+  }
+
   // ══════════ START ══════════
   function init() {
     applySun(sunOn());
@@ -203,6 +255,7 @@
     });
     doc.querySelectorAll('[data-vf-print-kb]').forEach(b => b.addEventListener('click', printKneeboard));
     renderVersion();
+    initSummary();
     root.addEventListener('storage', e => {
       if (e.key === SUN_KEY) applySun(sunOn());          // another tab or page toggled it
       if (e.key === STORE_KEY) renderVersion();
@@ -218,6 +271,7 @@
   return {
     SITE_URL, SUN_KEY, sunOn, setSun, toggleSun, applySun,
     paramFileText, versionParts, versionLineHTML, renderVersion,
-    registerSW, showUpdate, setWake, wakeState, qrSvg, printKneeboard
+    registerSW, showUpdate, setWake, wakeState, qrSvg, printKneeboard,
+    SUMMARY_KEY, summaryChip, summaryChips, chipsHTML, renderSummary
   };
 });

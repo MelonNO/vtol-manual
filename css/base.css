@@ -1,6 +1,7 @@
 /* css/base.css — the design system shared by every page (WP09; redesign WP23, docs/design/README.md).
  * 1. Self-hosted fonts (fonts/README.md)   2. Tokens   3. Base elements   4. Components (one definition each)
  * 5. Sunlight / high-contrast mode         6. Field-use components (js/field.js, js/emergency-only.js)   7. Motion
+ * 8. Shell: app bar, aircraft summary, page navigation, footer, Tools EMERGENCY button (redesign WP24)
  * Pages link this file BEFORE their own <style>. Page <style> blocks hold page-specific rules only: they never
  * redefine a selector of section 4 (test/design/components.test.js). Colours are defined here as tokens only. */
 
@@ -322,4 +323,154 @@ tr:last-child td{border-bottom:none;}
 /* ── 7. MOTION — functional transitions only; none at all when the user asks for reduced motion ── */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation:none !important;transition:none !important;scroll-behavior:auto !important;}
+}
+
+/* ── 8. SHELL — the frame shared by the four pages (redesign WP24) ──
+ * <header class="app-header"> = one 56 px app bar (badge, title, page switcher, ☀) + on Tools / manual the
+ * "Aircraft summary" disclosure (closed by default; warning chips stay visible in its summary row, js/field.js).
+ * Then the page navigation (Tools: groups + sub-tabs, bottom nav on a phone; manual: grouped dropdowns, a Menu sheet
+ * up to 900 px), the content and <footer class="app-footer">. Dropdowns and sheets are position:fixed (never
+ * position:absolute inside an overflow container: they were clipped). */
+:root{color-scheme:dark;}   /* native scrollbars and controls dark (a light nav scrollbar was the white bar under the phone header) */
+.app-header{background:var(--surface);border-bottom:1px solid var(--border2);}
+.app-bar{display:flex;align-items:center;gap:var(--sp-3);height:56px;padding:0 var(--sp-2) 0 var(--sp-4);}
+.app-id{display:flex;align-items:center;gap:var(--sp-3);flex:1;min-width:0;}
+.app-badge{flex-shrink:0;padding:3px var(--sp-2);border:1px solid var(--dim);border-radius:var(--r-sm);font-family:var(--head);font-size:var(--fs-xs);font-weight:600;letter-spacing:1.2px;line-height:var(--lh-tight);text-transform:uppercase;color:var(--text);}
+.app-title{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-family:var(--head);font-size:var(--fs-xl);font-weight:500;letter-spacing:.3px;line-height:var(--lh-tight);color:var(--text);}
+/* segmented control: the page switcher and the Tools sub-tabs */
+.seg{display:inline-flex;flex-shrink:0;border:1px solid var(--dim);border-radius:var(--r-sm);overflow:hidden;background:var(--bg);}
+.seg>a,.seg>button{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:0 var(--sp-4);background:none;border:none;font-family:var(--head);font-size:var(--fs-sm);font-weight:500;letter-spacing:.5px;line-height:var(--lh-tight);color:var(--muted);text-decoration:none;white-space:nowrap;cursor:pointer;transition:background-color .15s,color .15s;}
+.seg>*+*{border-left:1px solid var(--border2);}
+.seg>a:hover,.seg>button:hover{color:var(--text);background:var(--surface2);}
+.seg>[aria-current="page"],.seg>.active{color:var(--accent);background:var(--accent-bg);}
+.app-sun{flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;background:none;border:1px solid var(--dim);border-radius:var(--r-sm);color:var(--text);font-size:var(--fs-lg);line-height:1;cursor:pointer;transition:background-color .15s,border-color .15s;}
+.app-sun:hover{border-color:var(--text);}
+.app-sun[aria-pressed="true"]{background:var(--text);color:var(--bg);border-color:var(--text);}
+
+/* Aircraft summary — the former header meta strip, closed by default (localStorage vtol_summary_open) */
+.app-summary{border-top:1px solid var(--border);}
+.app-summary>summary{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2) var(--sp-3);min-height:44px;padding:var(--sp-1) var(--sp-4);cursor:pointer;list-style:none;}
+.app-summary>summary::-webkit-details-marker{display:none;}
+.app-summary-lbl{display:inline-flex;align-items:center;gap:var(--sp-2);font-family:var(--head);font-size:var(--fs-sm);font-weight:500;letter-spacing:.5px;color:var(--muted);white-space:nowrap;}
+.app-summary-lbl::before{content:'';width:6px;height:6px;margin:0 2px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);transition:transform .15s;}
+.app-summary[open] .app-summary-lbl::before{transform:rotate(45deg);}
+.app-summary>summary:hover .app-summary-lbl{color:var(--text);}
+.app-chips{display:flex;flex-wrap:wrap;gap:var(--sp-2);}
+.app-chips:empty{display:none;}
+.app-chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px var(--sp-2);border:1px solid;border-radius:var(--r-sm);font-size:var(--fs-sm);font-weight:600;line-height:var(--lh-tight);}
+.app-chip.warn{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-line);}
+.app-chip.crit{color:var(--red-fg);background:var(--red-bg);border-color:var(--red-line);}
+.app-summary .hdr-meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:var(--sp-3) var(--sp-5);padding:var(--sp-2) var(--sp-4) var(--sp-4);}
+.hdr-meta>span{font-size:var(--fs-sm);line-height:1.45;color:var(--text);min-width:0;overflow-wrap:anywhere;}
+.hdr-meta>span>strong{display:block;margin-bottom:2px;font-family:var(--head);font-size:var(--fs-xs);font-weight:500;letter-spacing:1px;color:var(--muted);}
+
+/* Footer: document line, version line, share / kneeboard menu (Tools) */
+.app-footer{display:flex;flex-direction:column;align-items:center;gap:var(--sp-1);margin-top:var(--sp-6);padding:var(--sp-5) var(--sp-4);border-top:1px solid var(--border2);font-size:var(--fs-xs);line-height:1.5;color:var(--muted);text-align:center;}
+.app-footer .vf-share{margin-top:var(--sp-3);}
+
+/* ── Tools navigation: five groups (#nav .tn-groups) + a segmented sub-tab row; on a phone the groups are the
+ *    fixed bottom nav and the sub-tabs sit at the top of the content ── */
+.tn-groups{display:flex;gap:var(--sp-1);padding:0 var(--sp-3);background:var(--surface);border-bottom:1px solid var(--border2);overflow-x:auto;scrollbar-width:none;}
+.tn-group{position:relative;flex-shrink:0;min-height:48px;padding:0 var(--sp-4);background:none;border:none;font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:.5px;line-height:var(--lh-tight);color:var(--muted);white-space:nowrap;cursor:pointer;transition:color .15s;}
+.tn-group:hover{color:var(--text);}
+.tn-group.active{color:var(--text);}
+.tn-group.active::after{content:'';position:absolute;left:var(--sp-3);right:var(--sp-3);bottom:0;height:3px;border-radius:2px 2px 0 0;background:var(--accent);}
+.tn-subs{display:none;max-width:calc(var(--content-max) * var(--vf-zoom));margin:0 auto;padding:var(--sp-5) calc(var(--sp-5) * var(--vf-zoom)) 0;}   /* lines up with the (sunlight-zoomed) .content */
+.tn.tn-has-sub .tn-subs{display:block;}
+.tn-sub{display:none;}
+.tn-sub.active{display:inline-flex;}
+.tn.tn-has-sub~.content{padding-top:var(--sp-5);}
+
+/* Tools EMERGENCY button: fixed, red, on every tab; no pulse */
+#emerg-fab{position:fixed;right:var(--sp-5);bottom:var(--sp-5);z-index:1050;display:inline-flex;align-items:center;gap:var(--sp-2);min-height:52px;padding:0 var(--sp-5);background:var(--red);border:none;border-radius:var(--r-md);color:var(--ink);font-family:var(--head);font-size:var(--fs-md);font-weight:700;letter-spacing:1.2px;text-transform:uppercase;box-shadow:0 4px 16px var(--shadow);cursor:pointer;transition:box-shadow .15s,transform .1s;}
+#emerg-fab:hover{box-shadow:0 0 0 3px var(--red-line),0 4px 16px var(--shadow);}
+#emerg-fab:active{transform:scale(.97);}
+
+/* ── Manual navigation (#nav.mn): Overview · Aircraft ▾ · Operations ▾ · Planning ▾ · Reference ▾ · ⚠ Emergency · search ── */
+.mn{display:flex;align-items:center;gap:var(--sp-2);min-height:52px;padding:var(--sp-1) var(--sp-3);background:var(--surface);border-bottom:1px solid var(--border2);overflow-x:auto;scrollbar-width:none;}
+.mn-items{display:flex;align-items:center;gap:var(--sp-1);}
+.mn-items>button,.nav-group-btn{position:relative;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 var(--sp-3);background:none;border:none;border-radius:var(--r-sm);font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:.5px;line-height:var(--lh-tight);color:var(--muted);white-space:nowrap;cursor:pointer;transition:color .15s,background-color .15s;}
+.mn-items>button:hover,.nav-group-btn:hover{color:var(--text);background:var(--surface2);}
+.mn-items>button.active,.nav-group-btn.active{color:var(--text);}
+.mn-items>button.active::after,.nav-group-btn.active::after{content:'';position:absolute;left:var(--sp-3);right:var(--sp-3);bottom:-4px;height:3px;border-radius:2px 2px 0 0;background:var(--accent);}
+.nav-group{display:flex;}
+.nav-caret{font-size:var(--fs-xs);color:var(--muted);}
+.nav-dropdown{display:none;position:fixed;z-index:1000;min-width:200px;padding:var(--sp-1);background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);box-shadow:0 8px 24px var(--shadow);}
+.nav-dropdown.open{display:block;}
+.nav-dropdown button{display:flex;align-items:center;width:100%;min-height:44px;padding:0 var(--sp-3);background:none;border:none;border-radius:var(--r-sm);font-family:var(--sans);font-size:var(--fs-md);color:var(--text);text-align:left;white-space:nowrap;cursor:pointer;}
+.nav-dropdown button:hover{background:var(--surface2);}
+.nav-dropdown button.active{color:var(--accent);background:var(--accent-bg);font-weight:600;}
+.nav-emerg{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 var(--sp-4);background:var(--red-bg);border:1px solid var(--red);border-radius:var(--r-sm);font-family:var(--head);font-size:var(--fs-md);font-weight:600;letter-spacing:.5px;line-height:var(--lh-tight);color:var(--red-fg);white-space:nowrap;cursor:pointer;transition:background-color .15s,color .15s;}
+.nav-emerg:hover{background:var(--red);color:var(--ink);}
+.nav-emerg.active{background:var(--red);color:var(--ink);}
+.nav-search{flex:0 1 240px;min-width:0;margin-left:auto;display:flex;}
+#man-search{width:100%;min-width:0;min-height:44px;padding:0 var(--sp-3);background:var(--bg);border:1px solid var(--dim);border-radius:var(--r-sm);font-family:var(--sans);font-size:var(--fs-sm);color:var(--text);}
+#man-search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);}
+.mn-menu-btn{display:none;}
+/* Menu sheet up to 900 px: the same nav items, listed by group in a fixed sheet; Emergency stays outside the menu */
+@media(max-width:900px){
+  .mn{overflow:visible;}
+  .mn-menu-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-3);background:var(--surface2);border:1px solid var(--dim);border-radius:var(--r-sm);font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:.5px;color:var(--text);cursor:pointer;}
+  .mn-menu-btn[aria-expanded="true"]{border-color:var(--accent);color:var(--accent);}
+  .mn-items{display:none;}
+  .mn.mn-open .mn-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:var(--sp-4) var(--sp-5);position:fixed;left:0;right:0;bottom:0;z-index:900;overflow-y:auto;padding:var(--sp-4) var(--sp-4) var(--sp-7);background:var(--bg);border-top:1px solid var(--border2);}
+  .mn.mn-open .mn-items>button{justify-content:flex-start;min-height:48px;padding:0 var(--sp-3);border:1px solid var(--border2);border-radius:var(--r-md);background:var(--surface);color:var(--text);font-family:var(--sans);font-weight:600;letter-spacing:0;}
+  .mn.mn-open .nav-group{display:block;}
+  .mn.mn-open .nav-group-btn{min-height:0;padding:0 var(--sp-1) var(--sp-2);font-size:var(--fs-xs);font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);background:none;pointer-events:none;}
+  .mn.mn-open .nav-group-btn .nav-caret{display:none;}
+  .mn.mn-open :is(.mn-items>button,.nav-group-btn).active::after{display:none;}
+  .mn.mn-open .nav-dropdown{display:block;position:static;min-width:0;padding:var(--sp-1);box-shadow:none;}
+  .mn.mn-open .mn-items>button.active{border-color:var(--accent);color:var(--accent);background:var(--accent-bg);}
+}
+
+/* ── Coverage map: live status. Wide screens (≥ 1280 px): the key items inline in the app bar (ALT and LINKS only in the
+ *    panel); the Status button opens the full list as a fixed panel under the bar (the map keeps its full height). ── */
+.map-hdr .app-bar{height:48px;}   /* = the old map header: the map keeps its full height (sidebar at top:54px) */
+.map-hdr .app-id{flex:0 1 auto;}
+.map-st-btn{flex-shrink:0;display:inline-flex;align-items:center;gap:var(--sp-2);min-height:44px;padding:0 var(--sp-3);background:var(--surface2);border:1px solid var(--dim);border-radius:var(--r-sm);color:var(--text);font-family:var(--head);font-size:var(--fs-sm);font-weight:500;letter-spacing:.5px;cursor:pointer;}
+.map-st-btn::after{content:'▾';font-size:var(--fs-xs);color:var(--muted);}
+.map-st-btn.has-warn::after{content:'⚠';font-size:var(--fs-sm);color:var(--amber);}
+.map-st-btn[aria-expanded="true"]{border-color:var(--accent);}
+.dot{flex-shrink:0;width:10px;height:10px;border-radius:50%;background:var(--red);}
+.dot.on{background:var(--green);}
+.dot.sim{background:var(--amber);}
+.map-st{display:flex;align-items:center;gap:var(--sp-3);flex:1 1 auto;min-width:0;overflow:hidden;}
+.hs{flex-shrink:0;font-family:var(--head);font-size:var(--fs-xs);font-weight:500;letter-spacing:1px;line-height:var(--lh-tight);color:var(--muted);white-space:nowrap;}
+.hs b{margin-left:var(--sp-1);font-family:var(--mono);font-size:var(--fs-sm);font-weight:400;letter-spacing:0;color:var(--text);}
+.hs b.warn{color:var(--amber);}
+.hs b.ok{color:var(--green);}
+.map-st:not(.open) .hs-x{display:none;}
+#sim-banner{display:none;flex-shrink:0;padding:2px var(--sp-2);border:1px solid var(--border2);border-radius:var(--r-sm);font-family:var(--head);font-size:var(--fs-xs);font-weight:600;letter-spacing:1px;line-height:var(--lh-tight);white-space:nowrap;text-transform:uppercase;color:var(--muted);background:var(--surface2);}
+#sim-banner.sim{color:var(--amber);border-color:var(--amber-line);background:var(--amber-bg);}
+#sim-banner.live{color:var(--green);border-color:var(--green);}
+.map-st.open{display:grid;grid-template-columns:auto 1fr;gap:var(--sp-2) var(--sp-4);align-items:baseline;position:fixed;top:52px;right:var(--sp-2);z-index:1200;width:min(380px,calc(100vw - 16px));overflow:visible;padding:var(--sp-3) var(--sp-4);background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);box-shadow:0 8px 24px var(--shadow);}
+.map-st.open #sim-banner{grid-column:1/-1;justify-self:start;}
+.map-st.open .hs{display:contents;}
+.map-st.open .hs b{margin:0;white-space:normal;}
+@media(max-width:1279px){
+  .map-hdr .app-id{flex:1 1 auto;}
+  .map-st:not(.open){display:none;}
+}
+
+@media(max-width:600px){
+  .app-bar{gap:var(--sp-2);padding:0 var(--sp-2) 0 var(--sp-3);}
+  .app-title{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);}   /* the badge and the switcher name the page */
+  .seg>a,.seg>button{padding:0 var(--sp-3);}
+  .app-summary>summary,.app-summary .hdr-meta{padding-left:var(--sp-3);padding-right:var(--sp-3);}
+  .app-summary .hdr-meta{grid-template-columns:1fr 1fr;gap:var(--sp-3);}
+  /* Tools: the five groups are the fixed bottom nav; the sub-tabs fill the width at the top of the content */
+  .tn-groups{position:fixed;left:0;right:0;bottom:0;z-index:800;gap:0;padding:0 0 env(safe-area-inset-bottom);border-top:1px solid var(--border2);border-bottom:none;}
+  .tn-group{flex:1 1 0;min-width:0;min-height:56px;padding:0 var(--sp-1);font-size:var(--fs-sm);}
+  .tn-group.active{color:var(--accent);}
+  .tn-group.active::after{top:0;bottom:auto;left:22%;right:22%;border-radius:0 0 2px 2px;}
+  .tn-subs{padding:var(--sp-3) var(--sp-3) 0;}
+  .tn-sub.active{display:flex;}
+  .tn-sub>button{flex:1 1 0;min-width:0;padding:0 var(--sp-2);}
+  #emerg-fab{right:var(--sp-3);bottom:calc(56px + var(--sp-3) + env(safe-area-inset-bottom));min-height:48px;padding:0 var(--sp-4);font-size:var(--fs-sm);}
+  .mn{gap:var(--sp-2);padding:var(--sp-1) var(--sp-2);}
+  .mn-menu-btn{padding:0 var(--sp-3);}
+  .nav-emerg{padding:0 var(--sp-3);}
+  .mn.mn-open .mn-items{grid-template-columns:1fr;}
+  .map-hdr .app-bar{padding:0 var(--sp-2);}
+  .map-st-lbl{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);}
 }
