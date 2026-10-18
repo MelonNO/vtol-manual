@@ -57,3 +57,9 @@ request-fold table and the screenshot list.
 - Tools phone: a tap outside the open "More" menu also activates whatever is under it — swallow that first outside tap (closing only), or use a backdrop. WP28 may touch this listener in `index.html`.
 - Remove the WP25 `!important` overrides of the inline section colours (render the section accent through a class or CSS variable in `js/render-content.js`) and fold `body>#nav.tn-has-sub` into the shell section (WP25 report §6).
 - Tools phone: the fixed EMERGENCY button covers the right end of checklist rows (detail zone) while scrolling (pre-existing). Reserve space for it (e.g. bottom padding plus a narrower button, or place it inside the bottom nav row) without making it less visible.
+
+## Carried over from the WP26 verification and report
+
+- Fold in the WP26 report §10 requests (multi-paragraph callouts with a "More" disclosure, heading scroll offset, chips in table cells, dark scrollbars, the renderer's inline-styled table wrapper divs).
+- MINOR 4 (optional): single 440 px diagrams leave empty space beside them at 1366 — only if a sensible layout exists (never pair unrelated diagrams).
+- The data-fs phrase-count tests (WP26) must stay green: if your copy pass touches `data/content.js` phrases that the manual renders, keep every DISABLED statement.
