@@ -4,6 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 single source for the project's architecture and conventions (plan REP-03). The notes in `docs/history/` are
 historical and partly outdated — never take values from them.
 
+**Picking the work up on another computer or in a new session:** read `docs/HANDOFF.md` first (current state, setup,
+the PM / implementer / verifier process, files outside the repo, what is open).
+
 ## Project overview
 
 Field software for a VTOL FPV relay system (release 2.0.0):

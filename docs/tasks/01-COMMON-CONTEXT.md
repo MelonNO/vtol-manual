@@ -56,6 +56,9 @@ Read this file completely before you start. Then read your own work-package brie
 
 ## 3. Environment
 
+These are the paths of the first PC (2026-10-16 … 18). On any other computer, `docs/HANDOFF.md` §2–§3 says what
+each one maps to; the PM writes the actual paths into each brief.
+
 | Item | Path / command |
 |---|---|
 | Scratchpad (S) | `C:\Users\SIMULA~1\AppData\Local\Temp\claude\C--Users-Simulator--local-bin\8b20c513-1423-4428-a521-9d0f657bd241\scratchpad` |

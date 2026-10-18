@@ -79,3 +79,7 @@ The PM updates this table.
 one. The programme is complete. What remains is outside software or undecided, and is tracked
 in `docs/relay/OPEN-ITEMS.md` (hardware, firmware, measurements, owner decisions, photos, deferred features, known
 minor follow-ups) and `docs/relay/FIRMWARE-REQUESTS.md`. Changes per release: `CHANGELOG.md` (2.0.0).
+
+**Update (2026-10-18):** WP17–WP22 followed (CI reliability, release preparation, photos; WP20 cancelled). Release
+**v2.0.0** is tagged on `3df2cd4` and published with the GCS app zip. To continue on another computer, or to start
+the next work package (**WP23**): `docs/HANDOFF.md`.

@@ -77,7 +77,8 @@ the Tools page takes precedence and is compared against the reference. How to up
 
 The relay hardware and firmware, the measurements and some owner decisions are not done yet; the pages show them as
 amber **TBD** / **VERIFY**. The full list: [`docs/relay/OPEN-ITEMS.md`](docs/relay/OPEN-ITEMS.md); what the software
-asks of the firmware: [`docs/relay/FIRMWARE-REQUESTS.md`](docs/relay/FIRMWARE-REQUESTS.md).
+asks of the firmware: [`docs/relay/FIRMWARE-REQUESTS.md`](docs/relay/FIRMWARE-REQUESTS.md). To pick the work up on
+another computer: [`docs/HANDOFF.md`](docs/HANDOFF.md).
 
 ## Development
 
