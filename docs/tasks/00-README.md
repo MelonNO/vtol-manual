@@ -83,3 +83,27 @@ minor follow-ups) and `docs/relay/FIRMWARE-REQUESTS.md`. Changes per release: `C
 **Update (2026-10-18):** WP17–WP22 followed (CI reliability, release preparation, photos; WP20 cancelled). Release
 **v2.0.0** is tagged on `3df2cd4` and published with the GCS app zip. To continue on another computer, or to start
 the next work package (**WP23**): `docs/HANDOFF.md`.
+
+## Redesign programme (started 2026-10-18)
+
+Owner request (2026-10-18): make the site cleaner, more readable and prettier; keep the dark theme; text may be
+rewritten (safety values never change). Same PM → implementer → verifier process. Common context and design
+direction: `04-REDESIGN-CONTEXT.md`. The PM pushes `main` once the whole programme is merged and verified.
+
+| WP | Title | Wave | Depends on | Main files owned |
+|---|---|---|---|---|
+| WP23 | Design foundation: tokens, body font, shared components | 1 | — | `css/`, `fonts/`, page `<style>` de-duplication, `test/pwa/` style tests, `docs/design/` |
+| WP24 | Shared page frame: header, key-values strip, navigation | 2 | WP23 | header / nav / footer of all pages, `js/field.js`, `css/base.css` shell |
+| WP25 | Tools page body | 3 | WP24 | `index.html` tab panels and modals, `test/tools/` |
+| WP26 | Manual body and diagrams | 3 | WP24 | `manual.html` content, `scripts/diagrams/`, `img/diagrams/`, `test/manual/` |
+| WP27 | Coverage map and latency clock bodies | 3 | WP24 | `relay/map.html` panel and overlays, `tools/latency-clock.html`, `test/map/` |
+| WP28 | Shared content copy, rendered components, CHANGELOG | 4 | WP25–WP27 | `data/content.js` (text), `js/render-content.js`, `css/base.css` components, `CHANGELOG.md` |
+
+| WP | Impl | Verify | Merged |
+|---|---|---|---|
+| WP23 | in progress | — | no |
+| WP24 | not started | — | no |
+| WP25 | not started | — | no |
+| WP26 | not started | — | no |
+| WP27 | not started | — | no |
+| WP28 | not started | — | no |
