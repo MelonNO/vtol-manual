@@ -138,7 +138,7 @@ A NEW value is allowed only with its source.
 | WP25 | Tools page body | 3 | `index.html` below the nav (tab panels, modals, page CSS), `test/tools/`, `test/smoke/` (Tools parts) |
 | WP26 | Manual body and diagrams | 3 | `manual.html` below the nav, `scripts/diagrams/`, `img/diagrams/`, `test/manual/`, `test/diagrams/` |
 | WP27 | Coverage map and latency clock bodies | 3 | `relay/map.html` below the header, `tools/latency-clock.html` below the header, `test/map/` |
-| WP28 | Shared content copy, rendered components, CHANGELOG | 4 | `data/content.js` (text), `js/render-content.js` (markup), `css/base.css` (components), `test/content/`, `CHANGELOG.md`, `README.md`, `docs/design/` |
+| WP28 | Shared content copy, rendered components, CHANGELOG | 4 | `data/content.js` (text), `js/render-content.js` (markup), `css/base.css` (components and shell), `css/print.css`, `js/field.js` (shell minors), `test/content/`, `CHANGELOG.md`, `README.md`, `docs/design/` |
 
 - Wave 3 WPs run in parallel and **must not edit `css/base.css`**. If a shared component needs a change, put a
   page-scoped override in your page `<style>` and list the request in your report; WP28 folds it in.

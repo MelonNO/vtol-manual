@@ -34,3 +34,9 @@ screenshot list and `css/base.css` requests.
 
 - M5: page rules in `relay/map.html` still use `--dim` for text-like glyphs; `--dim` is non-text only — use `--muted`.
 - The map sidebar grew taller in WP23 (44 px controls); R1 should make it compact again through grouping and disclosures, not by shrinking tap targets.
+
+## Carried over from the WP24 verification (MINOR)
+
+- M2: below 1280 px the SIMULATED banner shows only inside the Status panel and the Status button gets no ⚠ marker for it; the link frequencies now live only in that panel. A simulated state must be visible without opening the panel (e.g. the ⚠ marker or a compact chip).
+- M3: the desktop map area is 1 px shorter than on main — fix it if trivial.
+- Noted by the WP24 implementer: the clock digits overflow at 1366 px, and the map attitude panel overlaps the sidebar on phones (both already in the baseline) — fix in R3/R4.

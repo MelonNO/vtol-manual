@@ -38,3 +38,11 @@ request-fold table and the screenshot list.
 - M2: `docs/design/styleguide.html`'s contrast script throws in jsdom (works in Firefox) — make it robust.
 - M3: the tint-contrast test does not cover `--surface2` — extend it.
 - M4: a comment in `css/print.css` is stale — correct it.
+
+## Carried over from the WP24 verification and report (MINOR; shell section of `css/base.css` and `js/field.js` are yours in wave 4)
+
+- M1: manual Menu sheet at 601–900 px: columns vertically centred and misaligned — `align-items:start`.
+- M4: the manual search placeholder is cut off at 360 px.
+- M5: dead `.hdr-*` selectors in `css/print.css`; dead `.vf-hdr-tools` / `.vf-lbl` in `css/base.css` §6 — remove; update `docs/design/README.md` for the shell (WP24 request).
+- M6: scrolling past the end of the Menu sheet scrolls the page and closes the sheet — contain the scroll (`overscroll-behavior:contain`) or keep it open.
+- Fold in WP25's sticky sub-tab request (WP25 report).

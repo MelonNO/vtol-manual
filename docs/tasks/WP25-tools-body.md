@@ -37,3 +37,7 @@ screenshot list and any `css/base.css` change requests for WP28.
 
 - M1: the pre-flight progress label ("0 / 36 ITEMS COMPLETE") wraps onto two lines at 1366 px (page rule) — fix in R2.
 - M5: some page rules in `index.html` still use `--dim` for text-like glyphs; `--dim` is non-text only (contrast < 4.5:1) — use `--muted`.
+
+## Carried over from the WP24 verification (MINOR)
+
+- M7 (SHOULD): on phones the Checklists sub-tab row scrolls away, so switching Pre-flight ↔ Turnaround deep in a checklist needs scrolling up. Make the sub-tab row sticky below the app bar on phones (page-scoped rule in `index.html`; list it as a request for WP28 to fold into the shell section of `css/base.css`).
