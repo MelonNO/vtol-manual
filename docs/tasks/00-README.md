@@ -71,6 +71,9 @@ The PM updates this table.
 | WP17 | done (1 rework) | APPROVED (round 2) | yes |
 | WP18 | done (1 rework) | APPROVED (round 2) | yes |
 | WP19 | done (3 reworks) | APPROVED (round 4) | yes |
+| WP20 | cancelled (owner decision 2026-10-18: keep the photo in history; rewrite prepared and verified, not applied) | (round 2 rejected on minors; superseded) | no |
+| WP21 | in progress (release 2.0.0: GCS version, CHANGELOG, O-5/O-6/O-16) | | |
+| WP22 | in progress (openly licensed photos, image credits) | | |
 
 **Final state (2026-10-17):** every work package is implemented, independently verified and merged; WP10 was the last
 one. The programme is complete. What remains is outside software or undecided, and is tracked
