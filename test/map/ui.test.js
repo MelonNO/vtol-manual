@@ -164,3 +164,56 @@ test('R3/M2: a simulated state marks the closed Status button (⚠) and shows th
     assert.deepEqual(errors, []);
   } finally { close(); }
 });
+
+// Rework round 1 (verification F1): an element shown by clearing its hidden attribute must not be kept hidden by a page
+// rule. Static guard over every element the script toggles with .hidden, then the real modes in jsdom (computed style).
+test('R5/F1: no page rule sets display:none on an element the script shows by clearing hidden', () => {
+  const css = MAP.match(/<style>([\s\S]*?)<\/style>/)[1].replace(/\/\*[\s\S]*?\*\//g, '');
+  const ids = new Set([...MAP.matchAll(/\$\('([\w-]+)'\)\.hidden =/g)].map(m => m[1]));
+  for (const p of ['sp-straight', 'sp-orbit', 'sp-mission', 'off-terr-prog', 'off-map-prog']) ids.add(p);   // via 'sp-' + m and prog
+  assert.ok(ids.has('cursor-measure') && ids.has('veg-draw-hint'));
+  const tag = id => (MAP.match(new RegExp('<\\w+[^>]*\\bid="' + id + '"[^>]*>')) || [''])[0];
+  for (const id of ids) {
+    if (id === 'sim-chip') continue;   // hidden on purpose at ≥ 1280 px, where the header banner shows the state
+    const classes = ((tag(id).match(/class="([^"]*)"/) || [])[1] || '').split(/\s+/).filter(Boolean);
+    for (const rule of css.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+      if (!/display:none/.test(rule[2]) || /\[hidden\]/.test(rule[1])) continue;
+      // the compound that selects the element itself (last one); a state pseudo-class (:empty …) is conditional, not a hide
+      const hit = rule[1].split(',').map(x => x.trim().split(/[\s>+~]+/).pop()).some(last => !last.includes(':') &&
+        (new RegExp('#' + id + '(?![\\w-])').test(last) || classes.some(c => new RegExp('\\.' + c + '(?![\\w-])').test(last))));
+      const sel = rule[1];
+      assert.ok(!hit, `#${id} would stay hidden: ${sel.trim()}{${rule[2]}}`);
+    }
+  }
+});
+
+test('R5/F1: the measure hint and the forest-zone drawing hint are visible while their mode is active (jsdom, page CSS)', async t => {
+  if (!loadJsdom()) { t.skip('jsdom not available'); return; }
+  const { w, d, errors, close } = openMap();
+  try {
+    await settle(50);
+    const shown = id => !d.getElementById(id).hidden && w.getComputedStyle(d.getElementById(id)).display !== 'none';
+    assert.equal(shown('cursor-measure'), false);
+    d.getElementById('btn-measure').click();
+    assert.equal(shown('cursor-measure'), true, 'measure hint in the cursor bar');
+    assert.ok(d.getElementById('map').classList.contains('measuring'), 'the measure button is marked on (#map.measuring #btn-measure)');
+    d.getElementById('btn-measure').click();
+    assert.equal(shown('cursor-measure'), false);
+    assert.equal(shown('veg-draw-hint'), false);
+    w.startVegDraw();
+    assert.equal(shown('veg-draw-hint'), true, 'forest-zone drawing hint');
+    w.selectSimMode('orbit');
+    assert.equal(shown('sp-orbit'), true);
+    assert.deepEqual(errors, []);
+  } finally { close(); }
+});
+
+test('R1: the first load does not save the default group state (only a user toggle is saved)', async t => {
+  if (!loadJsdom()) { t.skip('jsdom not available'); return; }
+  const { w, close } = openMap();
+  try {
+    await settle(450);
+    const st = JSON.parse(w.localStorage.getItem('vtol_map_state') || '{}');
+    assert.equal(st.panels, undefined);
+  } finally { close(); }
+});

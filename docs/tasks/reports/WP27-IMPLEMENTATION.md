@@ -148,7 +148,10 @@ Text changes, none of which touch a value:
    into Manual placement.
 4. **The profile value fields are behind the "Edit profile values" disclosure.** The client, the kind, the active
    profile and the completeness status (`#pf-status`) stay visible.
-5. **No infinite blink** on "terrain fetching" or on the measure hint any more. They are amber instead (principle 7).
+5. **No infinite blink** on "terrain fetching" or on the measure hint any more (principle 7). *Corrected in rework
+   round 1:* in round 0 the claim "they are amber instead" was **wrong for the measure hint and the forest-zone
+   hint**. A page `display:none` rule kept both hidden (verification F1). Since rework round 1 both show, steady and
+   amber, while their mode is active. "Terrain: fetching" was always shown in amber.
 6. **`CLAUDE.md`:** one phrase is added to the map Architecture row: the groups, `vtol_map_state.panels` and the
    phone sheet.
 
@@ -198,3 +201,30 @@ The before-state of `main` (after WP24) is in `S/shots/WP27/before/`; iteration 
 | `latency-1366.png`, `latency-samples-1366.png` | Baseline: the digits overflowed (".1" cut off) and the titles were orange and letter-spaced. Now the 12 digits fit with margins; numbered steps; one orange Add; sentence-case stat labels; a compact sample table |
 | `latency-390.png`, `latency-samples-360.png` | The clock fits; the stats are three columns; in the samples card, Samples spans the full width so "7 / 20" is whole |
 | `sun-map-1366.png`, `sun-map-open-390.png`, `sun-latency-390.png` | Sunlight: black / white tokens, 2 px control borders, the panel zoom 1.15 without clipping (the altitude choice moved onto the label row for this reason) |
+
+## Rework round 1
+
+Verification round 1 (`S/verify/WP27/VERIFY-round1.md`) rejected the work on one MAJOR finding (F1) and listed five
+minors. All six are fixed.
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| **F1 MAJOR** — the measure hint (`#cursor-measure`) and the forest-zone hint (`#veg-draw-hint`) were never shown: page rules `#cursor-bar .cmeasure{display:none}` and `#veg-draw-hint{display:none}` overrode the cleared `hidden` attribute | Both `display:none` rules removed; `[hidden]{display:none !important}` alone hides them. **Audit** of every element the script now shows by clearing `hidden`: `sp-straight` / `sp-orbit` / `sp-mission` (`.sim-sub`: no display rule), `off-terr-prog` / `off-map-prog` (`display:block`, beaten by `[hidden] !important`), `cursor-measure`, `veg-draw-hint` (`.info-txt:empty` only hides when empty; the hint has text), `sim-chip` (hidden on purpose at ≥ 1280 px, where the header banner shows) | `relay/map.html` `#veg-draw-hint`, `#cursor-bar .cmeasure` rules; shots `r1/map-measure-1366x800.png`, `r1/map-measure-390.png` (amber "📏 click to add point · dbl-click to finish" in the cursor bar), `r1/map-vegdraw-1366.png` (amber "Click to add points · double-click to close") |
+| F1 test | Two new tests in `test/map/ui.test.js`. (1) A static guard: for every element the script toggles with `.hidden`, no page rule whose last compound selects it (by id or class, without a state pseudo-class) sets `display:none`. (2) jsdom with the page CSS: clicking 📏 makes `#cursor-measure` visible (computed `display` ≠ `none`) and sets `#map.measuring`; a second click hides it; `startVegDraw()` shows `#veg-draw-hint`; `selectSimMode('orbit')` shows `#sp-orbit` | With the round-0 `relay/map.html` the new tests **fail** (checked: "#cursor-measure would stay hidden …", "measure hint in the cursor bar"); with the fix they pass |
+| M2 — the active measure button was hard to tell apart | `#map.measuring #btn-measure`: accent tint, accent text and a 2 px accent ring (the script's inline `--surface2` background is overridden) | `r1/map-measure-*.png` (orange ringed 📏) |
+| M3 — the toast covered the placement hint at the desktop start | Desktop toast moved to `top:112px`, under the hint and the SIMULATED chip (both at 60 px). Phone toast at `bottom: sheet + 112px`, above the hint (sheet + 44 px) | `r1/map-measure-1366x800.png`, `r1/map-measure-390.png`: toast and hint both readable |
+| M4 — "Apply / Update" was below the panel fold at 1366 × 800 | The placement group is reordered: position fields (lat/lon, altitude, heading, roll/pitch) → **Apply / Update** → My Location / Set Home / ✕ → home line → a "Client" sub-heading with client VTX power and client height AGL. Those two apply on their own (`setVtx`, `setClientAgl`), not through Apply, so Apply now sits directly under the fields it reads (`applyManual` reads exactly lat, lon, alt, roll, pitch, heading). Also fixed: in a button row the ✕ icon button took a third of the row, because `#sb .btn-row .btn{flex:1}` beat `.ico`; it is now 44 × 44, so "⊕ Use My Location" is no longer clipped | `r1/map-1366x800.png` (Apply at y ≈ 570), `r1/map-open-360.png` |
+| M5 — the attitude box overlapped the zoom controls on ~400 px tall viewports | `.att-pnl` is a flex column with `max-height: calc(100vh - 260px)` (phone: `100vh - 180px`); its body scrolls | `r1/map-short-1366x400.png` (the box starts below the 📏 button and scrolls) |
+| M6 — the default-open group was saved on the first load | `initPanels()` remembers each group's initial (default or restored) state and saves only a real change; the load-time `toggle` event is ignored | New jsdom test "the first load does not save the default group state"; the existing restore test still passes |
+
+No text values changed. Safety-token diff, re-run: `relay/map.html` 35/35, LOST 0, NEW 0; `tools/latency-clock.html`
+9/9, LOST 0, NEW 0.
+
+Checks, re-run (worktree):
+- `node --test test/` → **345 pass**, 0 fail (+3 tests).
+- `gen-precache` → regenerated and committed; `--check`, diagrams and params-reference are up to date.
+- `check-links`, `check-images` and `check-colours` pass.
+- `html-validate` on the four pages → 0 errors, 117 warnings; map and clock 0 problems.
+
+Screenshots of this round: `S/shots/WP27/r1/`. Each one was viewed: `map-1366x800.png`, `map-measure-1366x800.png`,
+`map-measure-390.png`, `map-vegdraw-1366.png`, `map-short-1366x400.png`, `map-open-360.png`.
