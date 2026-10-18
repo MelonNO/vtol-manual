@@ -1,6 +1,7 @@
 # WP21 — Release 2.0.0 preparation: implementation report
 
-Branch `wp/21`, base `be7b8f0`. Work commit `753949b` (plus the commit that adds this report). No push, no tag.
+Branch `wp/21`, base `be7b8f0`. Round 1: work `753949b`, report `d43f6a9`. Round 2: fixes `e83a543`, plus the
+commit that updates this report. No push, no tag.
 
 ## 1. Summary
 
@@ -114,3 +115,27 @@ Fixed:
   (no desktop runs).
 - Repeat the Commons call in §5; it is read-only.
 - Logs: `S\wp21\ci1\run.txt`, `S\wp21\node-all.txt`, `S\wp21\workflows.txt`, `S\wp21\hv.txt`.
+
+## Rework round 2
+
+Verification round 1 (`Serify\WP21\VERIFY-round1.md`) rejected the work on F1. The scope was extended to
+`docs/history/README.md` and the `gcs/vtolgcs/protocol.py:113` comment. Fix commit: `e83a543`.
+
+| # | Fix | Where |
+|---|---|---|
+| F1 (MAJOR) | I rewrote the "Photos (WP22)" bullet against wp/22 **2b61a98** (`manual.html`, `img/README.md`, WP22 report). Each sentence was checked against that tree: two representative photos, both CC BY-SA (`rep_fpv_quad`, Euflipo, CC BY-SA 4.0, Wikimedia Commons, Client Drones; `rep_pitot_tube`, ArduPilot Dev Team, CC BY-SA 3.0, ArduPilot docs, Maintenance); caption and alt text say "Representative image"; the caption carries a credit line with a source link (`manual.html` 1463, 1603); the visible "Image Credits" section is in Reference ▾ Abbreviations (`#abbrev/image-credits`) and has a `data-img` row for every photo the manual uses (6 photos in 5 rows; `client_drone.svg` is a drawing); the `img/README.md` credits table has author, licence, source page, file URL and date checked; the four vendor images stay, captioned as vendor images (manual 344, 501, 871, 875 "vendor render", 1505), with their licence "not recorded". The old claims ("every image's author, licence and source"; "every photo of non-own hardware says Representative") are gone. | `CHANGELOG.md:78-85` |
+| F2 (MINOR) | CRC speed-up "about 6×" → "about 8×" (WP18 7.9×, verifiers 8.2× and 8.5×), in the CHANGELOG and in the `protocol.py:113` comment (comment only, no code). No other "6×" mention in the repository. | `CHANGELOG.md:105`, `gcs/vtolgcs/protocol.py:113` |
+| F3 (MINOR) | The privacy note now records the owner decision: kept as it is, no deletion, no history purge (OPEN-ITEMS O-6, closed). | `docs/history/README.md:31-33` |
+
+§7's note about `img/README.md:84` is obsolete: wp/22 2b61a98 rewrote that line ("Its EXIF GPS block was empty: it
+never carried a GPS position", with the Commons attribution). Nothing is left for the PM there.
+
+**Tests (round 2, on `e83a543`):**
+
+| Run | Result |
+|---|---|
+| CI-mode `pytest gcs protocol` ×1 (`S\wp21un.py … ci`, as in §4; `protocol.py` changed, even if only a comment) | **700 passed, 7 deselected**, 138.2 s, exit 0. No LEAKED / TIMEOUT / FAILED / ERROR / INTERNALERROR line, no process left (`S\wp212ciun.txt`) |
+| `node --test test/` (VTOL_JSDOM, VTOL_PYTHON, VTOLGCS_INTERACTIVE_TESTS=0) | 310 pass, 0 fail, 0 skipped (`S\wp212-node.txt`) |
+| `check-links`, `check-images`, `check-colours`, `gen-precache --check`, `gen-params-reference --check`, `diagrams/build.js --check`, `gcs/tools/gen_test_vectors.py --check` | all exit 0 |
+| **Trial merge** in a throw-away clone (`S\wp21	rialmerge`): `e83a543` + `git merge --no-ff 2b61a98` | no conflicts (disjoint files), clean tree. `node --test test/`: **312 pass, 0 fail, 0 skipped** (`S\wp212-merge-node.txt`). All six Node checks exit 0 (59 precache assets, 39 images). Git maintenance printed "failed to write commit-graph" because the clone's source is shallow; the merge was not affected. |
+
