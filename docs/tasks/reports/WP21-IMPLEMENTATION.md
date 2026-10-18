@@ -118,7 +118,7 @@ Fixed:
 
 ## Rework round 2
 
-Verification round 1 (`Serify\WP21\VERIFY-round1.md`) rejected the work on F1. The scope was extended to
+Verification round 1 (`S\verify\WP21\VERIFY-round1.md`) rejected the work on F1. The scope was extended to
 `docs/history/README.md` and the `gcs/vtolgcs/protocol.py:113` comment. Fix commit: `e83a543`.
 
 | # | Fix | Where |
@@ -134,8 +134,8 @@ never carried a GPS position", with the Commons attribution). Nothing is left fo
 
 | Run | Result |
 |---|---|
-| CI-mode `pytest gcs protocol` ×1 (`S\wp21un.py … ci`, as in §4; `protocol.py` changed, even if only a comment) | **700 passed, 7 deselected**, 138.2 s, exit 0. No LEAKED / TIMEOUT / FAILED / ERROR / INTERNALERROR line, no process left (`S\wp212ciun.txt`) |
-| `node --test test/` (VTOL_JSDOM, VTOL_PYTHON, VTOLGCS_INTERACTIVE_TESTS=0) | 310 pass, 0 fail, 0 skipped (`S\wp212-node.txt`) |
+| CI-mode `pytest gcs protocol` ×1 (`S\wp21\run.py … ci`, as in §4; `protocol.py` changed, even if only a comment) | **700 passed, 7 deselected**, 138.2 s, exit 0. No LEAKED / TIMEOUT / FAILED / ERROR / INTERNALERROR line, no process left (`S\wp21\r2ci\run.txt`) |
+| `node --test test/` (VTOL_JSDOM, VTOL_PYTHON, VTOLGCS_INTERACTIVE_TESTS=0) | 310 pass, 0 fail, 0 skipped (`S\wp21\r2-node.txt`) |
 | `check-links`, `check-images`, `check-colours`, `gen-precache --check`, `gen-params-reference --check`, `diagrams/build.js --check`, `gcs/tools/gen_test_vectors.py --check` | all exit 0 |
-| **Trial merge** in a throw-away clone (`S\wp21	rialmerge`): `e83a543` + `git merge --no-ff 2b61a98` | no conflicts (disjoint files), clean tree. `node --test test/`: **312 pass, 0 fail, 0 skipped** (`S\wp212-merge-node.txt`). All six Node checks exit 0 (59 precache assets, 39 images). Git maintenance printed "failed to write commit-graph" because the clone's source is shallow; the merge was not affected. |
+| **Trial merge** in a throw-away clone (`S\wp21\trialmerge`): `e83a543` + `git merge --no-ff 2b61a98` | no conflicts (disjoint files), clean tree. `node --test test/`: **312 pass, 0 fail, 0 skipped** (`S\wp21\r2-merge-node.txt`). All six Node checks exit 0 (59 precache assets, 39 images). Git maintenance printed "failed to write commit-graph" because the clone's source is shallow; the merge was not affected. |
 
