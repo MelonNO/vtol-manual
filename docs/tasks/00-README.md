@@ -109,3 +109,4 @@ direction: `04-REDESIGN-CONTEXT.md`. The PM pushes `main` once the whole program
 | WP28 | done (1 rework) | APPROVED (round 2) | yes |
 
 **Redesign programme state (2026-10-18):** WP23–WP28 implemented, independently verified and merged. Remaining minors (non-blocking): single 440 px diagrams leave empty space at 1366 (WP26 M4); the CLEAN-UP toggle text lives in `js/common.js`; checklist `pf-hm30-off` dropped the filler word "safely" (accepted by the PM: no operational meaning); the `safety-lock.js` header comment should also mention the 11 reworded clean-up steps.
+- Final whole-site verification (READY TO PUSH): `reports/REDESIGN-FINAL-VERIFY.md`. Its two minors: a stale comment in `.htmlvalidate.cjs`; at 390 px "22.0 V" in the Emergency design-intent text wraps between number and unit.
