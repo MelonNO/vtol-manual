@@ -24,6 +24,8 @@
 :root{
   /* map link colours (same hues as the Tools page section colours) */
   --purple:#a78bfa;--rose:#f43f5e;--teal:#2dd4bf;--grey:#555;
+  --sb-w:320px;         /* desktop: width of the control panel */
+  --sheet-h:52px;       /* phone: the closed bottom sheet (its handle) */
 }
 body{height:100vh;display:flex;flex-direction:column;overflow:hidden;
      font-size:16px;line-height:normal}   /* the map keeps its previous (browser-default) body metrics */
@@ -33,171 +35,267 @@ body{height:100vh;display:flex;flex-direction:column;overflow:hidden;
 /* Map */
 #map{flex:1}
 
-/* ── SIDEBAR ── */
-#sb-wrap{position:absolute;top:54px;right:8px;z-index:900;display:flex;align-items:flex-start}
-#sb-tog{flex-shrink:0;background:var(--surface);border:1px solid var(--border2);
-        border-right:none;border-radius:4px 0 0 4px;color:var(--accent);cursor:pointer;
-        padding:10px 5px;font-family:var(--head);font-size:13px;align-self:flex-start;
-        margin-top:8px;transition:all .15s}
+/* ── CONTROL PANEL (redesign WP27): one card of collapsible groups; a bottom sheet on a phone ── */
+#sb-wrap{position:absolute;top:54px;right:var(--sp-2);z-index:900;width:var(--sb-w);max-width:calc(100vw - 16px);
+         max-height:calc(100vh - 92px);display:flex;flex-direction:column;line-height:var(--lh-tight);
+         background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);
+         box-shadow:0 8px 24px var(--shadow);overflow:hidden}
+#sb-tog{flex-shrink:0;display:flex;align-items:center;gap:var(--sp-2);width:100%;min-height:44px;
+        padding:0 var(--sp-4);background:var(--surface);border:none;border-bottom:1px solid var(--border2);
+        color:var(--text);font-family:var(--head);font-size:var(--fs-md);font-weight:500;letter-spacing:.3px;
+        text-align:left;cursor:pointer}
 #sb-tog:hover{background:var(--surface2)}
-#sb{width:278px;max-width:calc(100vw - 40px);display:flex;flex-direction:column;gap:6px;
-    max-height:calc(100vh - 70px);overflow-y:auto;padding-right:1px}
+#sb-tog .sb-tog-lbl{flex:1}
+#sb-tog::after{content:'';flex-shrink:0;width:8px;height:8px;margin-right:2px;
+               border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg)}
+#sb-wrap.sb-off{width:auto}
 #sb-wrap.sb-off #sb{display:none}
-#sb-wrap.sb-off #sb-tog{border-right:1px solid var(--border2);border-radius:4px}
+#sb-wrap.sb-off #sb-tog{border-bottom:none}
+#sb-wrap.sb-off #sb-tog::after{transform:rotate(135deg);margin:0 0 0 4px}
+#sb{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 
-/* Panels */
-.pnl{background:var(--surface);border:1px solid var(--border2);
-     border-top:2px solid var(--accent);padding:12px 14px}
-#hint-pnl{border-top-color:var(--dim);text-align:center;
-          font-size:11px;color:var(--muted);padding:8px 14px}
-.pnl h2{font-family:var(--head);font-size:11px;font-weight:700;color:var(--accent);
-         text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+/* Groups — <details class="pnl" data-pnl="…">: one heading style; open state kept in vtol_map_state */
+.pnl{border-bottom:1px solid var(--border2)}
+.pnl:last-of-type{border-bottom:none}
+.pnl>summary{display:flex;align-items:center;gap:var(--sp-2);min-height:48px;padding:0 var(--sp-4);
+             list-style:none;cursor:pointer;font-family:var(--head);font-size:var(--fs-md);font-weight:500;
+             letter-spacing:.3px;color:var(--text)}
+.pnl>summary::-webkit-details-marker{display:none}
+.pnl>summary::after{content:'';flex-shrink:0;margin-left:auto;width:7px;height:7px;
+                    border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translate(-2px,-2px)}
+.pnl[open]>summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.pnl>summary:hover{background:var(--surface2)}
+.pnl[open]>summary{color:var(--text)}
+.pnl-b{padding:var(--sp-1) var(--sp-4) var(--sp-4)}
+.pnl-b>:last-child{margin-bottom:0}
+.sb-ver{padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--border2)}
 
-/* Form fields */
-.fld{margin-bottom:7px}
-.fld label{font-family:var(--head);font-size:10px;font-weight:600;color:var(--muted);
-           letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:3px}
-.fld input,.fld select{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
-           padding:5px 8px;font-family:var(--mono);font-size:13px}
-.fld input:focus,.fld select:focus{outline:none;border-color:var(--accent)}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.chk{display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;color:var(--text);cursor:pointer}
-.chk input{width:20px;height:20px;accent-color:var(--accent);flex-shrink:0}
+/* Fields: base .field (label above, 44 px control); values in monospace; units beside the input */
+#sb .field{margin-bottom:var(--sp-3)}
+#sb .field>label,#sb .lbl{font-size:var(--fs-sm);font-weight:500;color:var(--muted);line-height:var(--lh-tight)}
+#sb :is(input[type=number],input[type=text],select){width:100%;min-width:0;font-family:var(--mono);background:var(--bg)}
+#sb select{font-family:var(--sans);font-size:var(--fs-sm)}
+#sb input[type=number]{-moz-appearance:textfield;appearance:textfield}   /* no spinners: values are typed */
+#sb input[type=number]::-webkit-inner-spin-button,#sb input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.u-in{display:flex;align-items:stretch;min-width:0}
+.u-in input{flex:1;border-top-right-radius:0;border-bottom-right-radius:0}
+.u-in .u{display:flex;align-items:center;gap:.4em;padding:0 var(--sp-2);background:var(--surface2);border:1px solid var(--dim);
+         border-left:none;border-radius:0 var(--r-sm) var(--r-sm) 0;color:var(--muted);font-family:var(--mono);
+         font-size:var(--fs-sm);white-space:nowrap}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2) var(--sp-3)}
+.row2>.field{min-width:0}
+.chk{display:flex;align-items:center;gap:var(--sp-3);min-height:44px;font-size:var(--fs-sm);line-height:1.35;color:var(--text);cursor:pointer}
+.chk input{width:24px;height:24px;accent-color:var(--accent);flex-shrink:0}
+#mis-file{width:100%;min-height:44px;color:var(--muted);font-size:var(--fs-sm);cursor:pointer}
 
-/* Alt mode buttons */
-.amode-btn{padding:1px 6px;font-size:10px;background:transparent;
-           border:1px solid var(--border2);color:var(--muted);cursor:pointer;
-           font-family:var(--head);letter-spacing:1px;text-transform:uppercase;transition:all .15s}
-.amode-btn.amode-on{border-color:var(--accent);color:var(--accent)}
+/* Altitude reference: a small segmented choice beside the altitude input */
+.alt-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2)}
+.alt-row>label{font-size:var(--fs-sm);font-weight:500;color:var(--muted)}
+.amode{display:flex;flex-shrink:0;border:1px solid var(--dim);border-radius:var(--r-sm);overflow:hidden}
+.amode-btn{min-width:44px;min-height:42px;padding:0 var(--sp-2);background:transparent;border:none;
+           border-left:1px solid var(--border2);color:var(--muted);font-family:var(--head);font-size:var(--fs-xs);
+           font-weight:500;letter-spacing:.8px;cursor:pointer}
+.amode-btn:first-child{border-left:none}
+.amode-btn:hover{color:var(--text)}
+.amode-btn.amode-on{background:var(--accent-bg);color:var(--accent)}
 
-/* Primary button */
-#sb .btn{width:100%;padding:7px;background:transparent;border:1px solid var(--accent);
-     color:var(--accent);cursor:pointer;font-family:var(--head);font-size:12px;
-     font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-top:4px;transition:all .15s}
-#sb .btn:hover{background:var(--accent);color:var(--ink)}
-#sb .btn.active{background:var(--accent);color:var(--ink)}
-#sb .btn.stop{border-color:var(--red);color:var(--red)}
-#sb .btn.stop:hover{background:var(--red);color:var(--ink)}
-.btn-row{display:flex;gap:4px;margin-top:4px}
-#sb .btn-row .btn{margin:0;flex:1;padding:6px 2px;font-size:11px}
+/* Buttons: base .btn (44 px); inside the panel full width, in rows of equal width */
+#sb .btn{width:100%;font-size:var(--fs-sm);padding:var(--sp-2) var(--sp-3);margin-top:var(--sp-2)}
+#sb .btn.active{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+#sb .btn-primary.active{background:var(--accent);color:var(--ink)}
+#sb .btn:disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+#sb .btn.ico{flex:0 0 44px;width:44px;padding:0}
+.btn-row{display:flex;gap:var(--sp-2);margin-top:var(--sp-2)}
+#sb .btn-row .btn{flex:1;width:auto;min-width:0;margin:0}
+.seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:var(--sp-1) 0 var(--sp-3);
+      border:1px solid var(--dim);border-radius:var(--r-sm);overflow:hidden}
+#sb .seg3 .btn{margin:0;border:none;border-left:1px solid var(--border2);border-radius:0;background:transparent;color:var(--muted)}
+#sb .seg3 .btn:first-child{border-left:none}
+#sb .seg3 .btn:hover{color:var(--text);background:var(--surface2)}
+#sb .seg3 .btn.active{background:var(--accent-bg);color:var(--accent)}
+.split{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);margin-top:var(--sp-2)}
+#sb .split .btn{width:auto;margin:0;flex-shrink:0}
 
 /* Slider rows */
-.vtx-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.vtx-row label{font-family:var(--head);font-size:10px;color:var(--muted);white-space:nowrap;
-               letter-spacing:1px;text-transform:uppercase}
-.vtx-row input[type=range]{flex:1;accent-color:var(--accent);height:4px}
-.vtx-row span{font-size:13px;color:var(--accent);width:52px;text-align:right;font-family:var(--head)}
+.vtx-row{display:flex;align-items:center;gap:var(--sp-3);min-height:44px}
+.vtx-row>label{font-size:var(--fs-sm);font-weight:500;color:var(--muted);white-space:nowrap}
+.vtx-row input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.vtx-row>span{min-width:56px;text-align:right;font-family:var(--mono);font-size:var(--fs-sm);color:var(--text);white-space:nowrap}
+.hdg-row{display:flex;align-items:center;gap:var(--sp-3)}
+.hdg-row .u-in{flex:0 0 108px}
+.hdg-row input[type=range]{flex:1;min-width:0}
+.hdg-row #hdg-sl-lbl{width:32px;text-align:right;font-family:var(--mono);font-size:var(--fs-sm);color:var(--text)}
 
 /* Custom layer dropdown */
 .layer-dd{position:relative;width:100%}
-.layer-dd-btn{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);
-              padding:5px 28px 5px 8px;font-family:var(--mono);font-size:13px;
+.layer-dd-btn{width:100%;min-height:44px;background:var(--bg);border:1px solid var(--dim);border-radius:var(--r-sm);
+              color:var(--text);padding:0 36px 0 var(--sp-3);font-family:var(--sans);font-size:var(--fs-sm);
               cursor:pointer;text-align:left;position:relative;transition:border-color .15s}
 .layer-dd-btn:hover,.layer-dd-btn.open{border-color:var(--accent)}
-.layer-dd-btn::after{content:'▾';position:absolute;right:8px;top:50%;transform:translateY(-50%);
-                     color:var(--muted);font-size:11px;pointer-events:none}
-.layer-dd-list{display:none;position:absolute;top:100%;left:0;right:0;z-index:9999;
-               background:var(--surface);border:1px solid var(--accent);
-               border-top:none;margin-top:-1px}
+.layer-dd-btn::after{content:'▾';position:absolute;right:var(--sp-3);top:50%;transform:translateY(-50%);
+                     color:var(--muted);font-size:var(--fs-sm);pointer-events:none}
+.layer-dd-list{display:none;margin-top:var(--sp-1);background:var(--surface2);border:1px solid var(--border2);
+               border-radius:var(--r-sm);overflow:hidden}
 .layer-dd-list.open{display:block}
-.layer-dd-item{padding:7px 10px;font-family:var(--mono);font-size:13px;color:var(--text);
-               cursor:pointer;transition:background .1s}
-.layer-dd-item:hover{background:var(--surface2);color:var(--accent)}
+.layer-dd-item{display:flex;align-items:center;min-height:44px;padding:0 var(--sp-3);font-size:var(--fs-sm);
+               color:var(--text);cursor:pointer;transition:background-color .1s}
+.layer-dd-item:hover{background:var(--surface)}
 .layer-dd-item.active{color:var(--accent)}
 
-/* Sim */
-.sim-sub{padding-top:8px;border-top:1px solid var(--border);margin-top:8px}
-.sim-tabs{display:flex;gap:3px;margin:7px 0}
-#sb .sim-tabs .btn{margin:0;flex:1;padding:6px 2px;font-size:11px}
-.sim-st{font-size:11px;margin-top:6px;color:var(--muted);font-family:var(--head);letter-spacing:1px}
+/* Status and helper lines */
+.sim-sub{padding-top:var(--sp-3);border-top:1px solid var(--border);margin-top:var(--sp-1)}
+.sim-st{font-size:var(--fs-sm);margin-top:var(--sp-2);color:var(--muted)}
 .sim-st.run{color:var(--green)}
 .sim-st.stop{color:var(--muted)}
 .sim-st.done{color:var(--amber)}
-.center-lbl{font-size:11px;color:var(--muted);margin:4px 0;word-break:break-all;
-            font-family:var(--head);letter-spacing:.5px}
-.info-txt{font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--head);letter-spacing:.5px}
+.center-lbl{font-size:var(--fs-sm);color:var(--muted);margin:var(--sp-2) 0 0;overflow-wrap:anywhere;line-height:1.4}
+.info-txt{font-size:var(--fs-sm);line-height:1.45;color:var(--muted);margin-top:var(--sp-2)}
+.info-txt:empty{display:none}
 .info-txt.ok{color:var(--green)}
 .info-txt.warn{color:var(--amber)}
-.info-txt.bad{color:var(--red)}
+.info-txt.bad{color:var(--red-fg)}
+.help{font-size:var(--fs-xs);line-height:1.45;color:var(--muted);margin:var(--sp-1) 0 var(--sp-3)}
+#sim-spd-src{margin:0 0 var(--sp-3)}
+#veg-draw-hint{display:none;color:var(--amber)}
+.sub-h{margin:var(--sp-4) 0 var(--sp-2);padding-top:var(--sp-3);border-top:1px solid var(--border);
+       font-size:var(--fs-sm);font-weight:500;color:var(--muted)}
+#sb .disclosure{margin:var(--sp-2) 0 0;background:transparent;border-color:var(--border)}
+#sb .disclosure>summary{font-size:var(--fs-sm);font-weight:500;color:var(--muted);padding:0 var(--sp-3)}
+#sb .disclosure>summary:hover{color:var(--text)}
+#sb .disclosure>.disclosure-body{padding:0 var(--sp-3) var(--sp-3)}
+#sb .disclosure .help{margin:0}
+.divider{height:1px;background:var(--border);margin:var(--sp-3) 0}
 
-/* ── ATTITUDE PANEL ── */
-#att{position:absolute;bottom:28px;left:8px;z-index:900}
-.att-pnl{background:var(--surface);border:1px solid var(--border2);
-         border-top:2px solid var(--accent);padding:12px 14px;width:226px}
-.att-pnl h2{font-family:var(--head);font-size:11px;font-weight:700;color:var(--accent);
-            text-transform:uppercase;letter-spacing:2px;margin-bottom:9px}
-.ar{display:flex;align-items:center;gap:6px;margin-bottom:6px}
-.ar span{color:var(--muted);width:52px;font-size:10px;font-family:var(--head);
-         text-transform:uppercase;letter-spacing:1px}
-.ar b{color:var(--text);width:52px;text-align:right;font-size:13px;font-family:var(--head)}
+/* ── ATTITUDE AND RANGE BOX (bottom left; top right and minimised on a phone) ── */
+#att{position:absolute;bottom:var(--sp-2);left:var(--sp-2);z-index:900}
+.att-pnl{width:248px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);
+         box-shadow:0 8px 24px var(--shadow);line-height:var(--lh-tight);overflow:hidden}
+.att-hd{display:flex;align-items:center;gap:var(--sp-2);width:100%;min-height:44px;padding:0 var(--sp-3);
+        background:transparent;border:none;color:var(--text);font-family:var(--head);font-size:var(--fs-md);
+        font-weight:500;letter-spacing:.3px;text-align:left;cursor:pointer}
+.att-hd:hover{background:var(--surface2)}
+.att-hd::after{content:'';flex-shrink:0;margin-left:auto;width:7px;height:7px;border-right:2px solid var(--muted);
+               border-bottom:2px solid var(--muted);transform:rotate(-135deg) translate(-2px,-2px)}
+#att.att-min .att-hd::after{transform:rotate(45deg) translate(-2px,-2px)}
+#att.att-min .att-b{display:none}
+.att-b{padding:0 var(--sp-3) var(--sp-3)}
+.ar{display:flex;align-items:center;gap:var(--sp-2);min-height:24px}
+.ar span{color:var(--muted);width:56px;font-size:var(--fs-xs)}
+.ar b{color:var(--text);width:56px;text-align:right;font-size:var(--fs-sm);font-weight:400;font-family:var(--mono)}
 .bw{flex:1;height:4px;background:var(--surface2);border-radius:2px;position:relative;overflow:hidden}
+.bw.hdg{background:transparent;height:auto;overflow:visible}
+#hdg-lbl{font-family:var(--mono);font-size:var(--fs-xs);color:var(--text)}
 .bf{height:100%;background:var(--accent);position:absolute;top:0;transition:all .25s}
-.bc{position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--border2)}
-.divider{height:1px;background:var(--border2);margin:8px 0}
-.rng-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px}
-.rng-row span{color:var(--muted);font-family:var(--head);font-size:10px;
-              text-transform:uppercase;letter-spacing:1px}
-.rng-row b{color:var(--text);font-family:var(--head)}
+.bc{position:absolute;top:0;left:50%;width:1px;height:100%;background:var(--dim)}
+.att-b .divider{margin:var(--sp-2) 0}
+.rng-row{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-2);min-height:22px;font-size:var(--fs-sm)}
+.rng-row span{color:var(--muted);font-size:var(--fs-xs)}
+.rng-row b{color:var(--text);font-family:var(--mono);font-weight:400;text-align:right}
 .rng-row b.warn-val{color:var(--amber)}
-.ter-txt{font-size:11px;margin-top:6px;color:var(--dim);font-family:var(--head);
-         letter-spacing:1px;text-transform:uppercase}
+.ter-txt{font-size:var(--fs-xs);margin-top:var(--sp-2);color:var(--muted)}
 .ter-txt.ready{color:var(--green)}
-.ter-txt.fetching{color:var(--amber);animation:blink .8s step-end infinite}
+.ter-txt.fetching{color:var(--amber)}
 
 /* Legend */
-.lr{display:flex;align-items:center;gap:9px;margin-bottom:5px;color:var(--muted);font-size:12px}
+.lr{display:flex;align-items:center;gap:var(--sp-3);min-height:24px;color:var(--text-2);font-size:var(--fs-sm);line-height:1.3}
 .ls{width:22px;height:4px;border-radius:1px;flex-shrink:0}
-.ls.dot{height:8px;width:8px;border-radius:50%}
+.ls.dot{height:8px;width:8px;border-radius:50%;margin:0 7px}
 .c-blue{background:var(--blue)}.c-teal{background:var(--teal)}.c-accent{background:var(--accent)}
 .c-green{background:var(--green)}.c-red{background:var(--red)}.c-amber{background:var(--amber)}
 .c-purple{background:var(--purple)}.c-rose{background:var(--rose)}
 .c-op{background:var(--green);height:8px;opacity:.6}.c-worst{background:var(--green);height:8px;opacity:.7}
 .c-best{background:var(--amber);height:8px;opacity:.5}.c-null{background:var(--red);opacity:.5}
 .c-nodata{background:var(--grey);border:1px dashed var(--muted)}.c-shadow{border-top:2px dotted var(--muted);height:0}
-.lg-note{font-size:11px;color:var(--amber);margin:2px 0 6px;font-family:var(--head);letter-spacing:.5px}
+.lr.lr-note{color:var(--muted);font-size:var(--fs-xs);padding-left:34px;min-height:20px}
+.lg-note{font-size:var(--fs-xs);line-height:1.4;color:var(--amber);margin:2px 0 var(--sp-2) 34px}
 .lg-note:empty{display:none}
 
-/* Leaflet overrides */
-.leaflet-container{background:#111}
-.leaflet-popup-content-wrapper{background:var(--surface);color:var(--text);
-                               border:1px solid var(--border2);font-family:var(--mono);font-size:13px}
+/* Leaflet: dark controls, 44 px tap targets */
+.leaflet-container{background:var(--bg);font-family:var(--sans)}
+.leaflet-touch .leaflet-bar,.leaflet-bar{border:1px solid var(--border2);border-radius:var(--r-md);
+  box-shadow:0 4px 12px var(--shadow);overflow:hidden;background:var(--surface)}
+.leaflet-touch .leaflet-bar a,.leaflet-bar a{width:44px;height:44px;line-height:44px;background:var(--surface);
+  color:var(--text);border-bottom:1px solid var(--border2);border-radius:0}
+.leaflet-bar a:hover,.leaflet-bar a:focus{background:var(--surface2);color:var(--text)}
+.leaflet-bar a.leaflet-disabled{background:var(--surface);color:var(--muted);opacity:.5}
+.leaflet-touch .leaflet-bar a:first-child,.leaflet-touch .leaflet-bar a:last-child{border-radius:0}
+#btn-measure{display:flex;align-items:center;justify-content:center;font-size:18px;line-height:1;text-decoration:none}
+.leaflet-control-attribution{color:var(--muted)}
+.leaflet-container .leaflet-control-attribution{background:var(--surface);border-top-left-radius:var(--r-sm);padding:1px var(--sp-2)}
+.leaflet-control-attribution a{color:var(--text-2)}
+.leaflet-popup-content-wrapper{background:var(--surface);color:var(--text);border:1px solid var(--border2);
+                               border-radius:var(--r-md);font-family:var(--mono);font-size:13px}
 .leaflet-popup-tip{background:var(--surface)}
+.leaflet-container a.leaflet-popup-close-button{color:var(--muted)}
 .op-lbl{background:transparent;border:none;box-shadow:none;color:var(--green);font-family:var(--head);
-        font-weight:700;font-size:11px;letter-spacing:2px}
+        font-weight:600;font-size:var(--fs-xs);letter-spacing:1.5px}
 .op-lbl::before{display:none}
 
-/* ── CURSOR BAR ── */
-#cursor-bar{position:absolute;bottom:0;left:50%;transform:translateX(-50%);z-index:900;
-            background:rgba(15,15,15,.96);border:1px solid var(--border2);border-bottom:none;
-            border-radius:4px 4px 0 0;padding:5px 20px;font-size:11px;color:var(--muted);
-            display:flex;gap:14px;pointer-events:none;white-space:nowrap;
-            font-family:var(--head);letter-spacing:1px;text-transform:uppercase}
-#cursor-bar .cv{color:var(--text);text-transform:none;font-family:var(--mono)}
-#cursor-bar .cmeasure{color:var(--amber);animation:blink .8s step-end infinite}
-.mlabel{background:rgba(0,0,0,.88);color:var(--amber);font-size:11px;font-family:var(--mono);
-        padding:2px 6px;white-space:nowrap;border:1px solid rgba(250,204,21,.3)}
+/* ── CURSOR BAR (bottom, centred over the free map area) ── */
+#cursor-bar{position:absolute;bottom:var(--sp-2);left:calc((100% - var(--sb-w) - 16px) / 2);transform:translateX(-50%);z-index:900;
+            display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-1) var(--sp-4);min-height:32px;
+            background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);
+            box-shadow:0 4px 12px var(--shadow);font-size:var(--fs-xs);color:var(--muted);pointer-events:none;white-space:nowrap}
+body:has(#sb-wrap.sb-off) #cursor-bar,body:has(#sb-wrap.sb-off) #maphint{left:50%}
+#cursor-ll,#cursor-bar .cv{color:var(--text);font-family:var(--mono);font-size:var(--fs-sm)}
+.cb-sep{width:1px;align-self:stretch;margin:2px 0;background:var(--border2)}
+#cursor-bar .cmeasure{display:none;color:var(--amber)}
+.mlabel{background:var(--surface);color:var(--amber);font-size:var(--fs-xs);font-family:var(--mono);
+        padding:2px 6px;white-space:nowrap;border:1px solid var(--amber-line);border-radius:var(--r-sm)}
 #map.measuring{cursor:crosshair !important}
 #map.picking,#map.picking-gcs{cursor:crosshair}
 
-/* ── TOAST ── */
-#toast{position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:9999;
-       background:var(--surface);border:1px solid var(--accent);color:var(--accent);
-       padding:6px 18px;font-family:var(--head);font-size:11px;font-weight:700;
-       letter-spacing:2px;text-transform:uppercase;pointer-events:none;opacity:0;transition:opacity .2s}
+/* ── TOAST and PLACEMENT HINT ── */
+#toast{position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:9999;max-width:calc(100vw - 32px);
+       background:var(--surface);border:1px solid var(--accent);border-radius:var(--r-md);color:var(--text);
+       padding:var(--sp-2) var(--sp-4);font-family:var(--head);font-size:var(--fs-sm);font-weight:500;
+       letter-spacing:.5px;box-shadow:0 8px 24px var(--shadow);pointer-events:none;opacity:0;transition:opacity .2s}
 #toast.show{opacity:1}
-#maphint{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:900;
-          background:rgba(15,15,15,.92);border:1px solid var(--border2);color:var(--muted);
-          padding:6px 18px;font-size:11px;pointer-events:none;font-family:var(--head);
-          letter-spacing:1.5px;text-transform:uppercase}
-@keyframes blink{50%{opacity:.4}}
+#maphint{position:absolute;top:60px;left:calc((100% - var(--sb-w) - 16px) / 2);transform:translateX(-50%);z-index:900;
+         max-width:min(440px,calc(100vw - var(--sb-w) - 96px));padding:var(--sp-2) var(--sp-4);
+         background:var(--surface);border:1px solid var(--border2);border-radius:var(--r-md);
+         box-shadow:0 4px 12px var(--shadow);color:var(--text-2);font-size:var(--fs-sm);line-height:1.4;
+         text-align:center;pointer-events:none}
 
-/* Offline download panel */
-#sb .btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
-progress.off-prog{width:100%;height:4px;appearance:none;border:none;
-                  background:var(--surface2);margin:4px 0;display:block}
+/* SIMULATED chip: below 1280 px the header shows only the Status button, so a simulated state is marked on the map too */
+#sim-chip{position:absolute;top:60px;left:calc((100% - var(--sb-w) - 16px) / 2);transform:translateX(-50%);z-index:900;
+          padding:var(--sp-1) var(--sp-3);background:var(--surface);border:1px solid var(--amber);border-radius:var(--r-sm);
+          box-shadow:0 4px 12px var(--shadow);color:var(--amber);font-family:var(--head);font-size:var(--fs-sm);font-weight:600;
+          letter-spacing:1px;pointer-events:none}
+body:has(#sb-wrap.sb-off) #sim-chip{left:50%}
+@media(min-width:1280px){#sim-chip{display:none}}
+
+/* Offline download progress */
+[hidden]{display:none !important}   /* sub-panels, progress bars and hints are shown and hidden with the hidden attribute */
+progress.off-prog{display:block;width:100%;height:4px;appearance:none;border:none;border-radius:2px;
+                  background:var(--surface2);margin:var(--sp-2) 0 0}
 progress.off-prog::-webkit-progress-bar{background:var(--surface2)}
 progress.off-prog::-webkit-progress-value{background:var(--accent)}
 progress.off-prog::-moz-progress-bar{background:var(--accent)}
+
+/* Tablet: the attitude box rises above the cursor bar */
+@media(max-width:1199px){#att{bottom:52px}}
+
+/* ── PHONE (≤ 600 px): the controls are a bottom sheet (closed at start), the attitude box a minimised chip at the top right ── */
+@media(max-width:600px){
+  #sb-wrap{position:fixed;top:auto;left:0;right:0;bottom:0;width:auto;max-width:none;max-height:min(68vh,calc(100vh - 120px));
+           border-radius:var(--r-md) var(--r-md) 0 0;border-bottom:none;z-index:1100}
+  #sb-wrap.sb-off{width:auto}
+  #sb-tog{position:relative;justify-content:center;min-height:var(--sheet-h);padding-top:6px}
+  #sb-tog::before{content:'';position:absolute;top:6px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--dim)}
+  #sb-tog .sb-tog-lbl{flex:0 0 auto}
+  #sb-tog::after{transform:rotate(45deg) translate(-2px,-2px)}
+  #sb-wrap.sb-off #sb-tog::after{transform:rotate(-135deg) translate(-2px,-2px);margin:0 0 0 4px}
+  .leaflet-bottom{bottom:var(--sheet-h)}
+  #cursor-bar,body:has(#sb-wrap.sb-off) #cursor-bar{top:56px;bottom:auto;left:64px;right:var(--sp-2);transform:none;justify-content:center;
+              flex-wrap:wrap;row-gap:0;white-space:normal}
+  #maphint,body:has(#sb-wrap.sb-off) #maphint{top:auto;bottom:calc(var(--sheet-h) + 32px);left:var(--sp-4);right:var(--sp-4);transform:none;max-width:none}
+  #att{top:104px;bottom:auto;left:auto;right:var(--sp-2)}
+  #toast{top:auto;bottom:calc(var(--sheet-h) + 32px)}   /* clear of the cursor bar, the attitude box and the status panel */
+  #sim-chip,body:has(#sb-wrap.sb-off) #sim-chip{top:104px;left:64px;transform:none;min-height:44px;display:flex;align-items:center}
+  #att.att-min .att-pnl{width:auto}
+  .att-pnl{width:236px}
+}
 </style>
 </head>
 <body>
@@ -224,223 +322,246 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
 <div id="map"></div>
 <div id="toast"></div>
 <div id="maphint">Click map or use My Location to place the relay aircraft</div>
+<div id="sim-chip" role="status" hidden>⚠ SIMULATED</div>
 <div id="cursor-bar">
   <span id="cursor-ll">— , —</span>
-  <span style="color:var(--border2)">│</span>
-  <span>AMSL:</span><span class="cv" id="cursor-elev">—</span>
-  <span id="cursor-measure" style="display:none" class="cmeasure">📏 click to add point · dbl-click to finish</span>
+  <span class="cb-sep" aria-hidden="true"></span>
+  <span>AMSL</span><span class="cv" id="cursor-elev">—</span>
+  <span id="cursor-measure" class="cmeasure" hidden>📏 click to add point · dbl-click to finish</span>
 </div>
 
 <div id="sb-wrap">
-<button type="button" id="sb-tog" onclick="toggleSb()" title="Toggle controls">◀</button>
+<button type="button" id="sb-tog" onclick="toggleSb()" aria-expanded="true" aria-controls="sb" title="Show or hide the controls"><span class="sb-tog-lbl">Controls</span></button>
 <div id="sb" class="vf-zoom">
-  <div class="pnl">
-    <h2>Simulation</h2>
-    <div class="fld">
-      <div class="vtx-row">
-        <label>Speed</label>
-        <input type="range" id="sim-speed" min="10" max="35" step="0.5" value="12"
-               oninput="document.getElementById('sim-spd-lbl').textContent=this.value+'m/s'">
-        <span id="sim-spd-lbl">12m/s</span>
-      </div>
-      <div class="info-txt" id="sim-spd-src">Min 10 m/s = AIRSPEED_MIN · default 12 m/s = AIRSPEED_CRUISE</div>
-    </div>
-    <div class="sim-tabs">
-      <button type="button" class="btn" id="btn-straight" onclick="selectSimMode('straight')">Straight</button>
-      <button type="button" class="btn" id="btn-orbit"    onclick="selectSimMode('orbit')">Orbit</button>
-      <button type="button" class="btn" id="btn-mission"  onclick="selectSimMode('mission')">Mission</button>
-    </div>
-    <div class="sim-sub" id="sp-straight" style="display:none">
-      <div class="fld"><label>Travel Heading (°)</label>
-        <input id="sim-hdg" type="number" value="0" min="0" max="359" step="1"></div>
-    </div>
-    <div class="sim-sub" id="sp-orbit" style="display:none">
-      <div class="fld"><label>Orbit Radius (m) — also the default loiter radius</label>
-        <input id="sim-orb-r" type="number" value="200" min="50" max="5000" step="10"></div>
-      <div class="center-lbl" id="orb-center-lbl">No orbit center set</div>
-      <button type="button" class="btn" id="btn-pick-center" onclick="startOrbitCenterPick()">⊕ Click Map to Set Center</button>
-      <label class="chk"><input type="checkbox" id="sw-worst" checked onchange="drawSweep()">Worst case (inside all orbit positions)</label>
-      <label class="chk"><input type="checkbox" id="sw-best" checked onchange="drawSweep()">Best case (inside any orbit position)</label>
-      <div class="info-txt" id="sw-st">Orbit sweep: start an orbit to accumulate</div>
-    </div>
-    <div class="sim-sub" id="sp-mission" style="display:none">
-      <div class="fld">
-        <label>Mission Planner .waypoints file</label>
-        <input type="file" id="mis-file" accept=".waypoints,.txt,.mission,.wp"
-               onchange="loadMission(this)"
-               style="color:var(--muted);padding:2px 0;cursor:pointer">
-      </div>
-      <div id="mis-status" class="info-txt" style="margin-bottom:4px">No mission loaded</div>
-      <div class="info-txt">NAV commands played: WAYPOINT 16, LOITER_UNLIM 17, LOITER_TURNS 18, LOITER_TIME 19, LAND 21, TAKEOFF 22, LOITER_TO_ALT 31, SPLINE_WAYPOINT 82, VTOL_TAKEOFF 84, VTOL_LAND 85. Climb/sink 5 m/s (TECS_CLMB_MAX / TECS_SINK_MAX).</div>
-    </div>
-    <div style="display:flex;gap:4px;margin-top:8px">
-      <button type="button" class="btn" id="sim-start-btn" onclick="startSim()" style="flex:1">▶ Start</button>
-      <button type="button" class="btn stop" onclick="stopSim()" style="width:auto;padding:5px 10px">⏹</button>
-    </div>
-    <div id="sim-st" class="sim-st stop">Stopped</div>
-  </div>
-
-  <div class="pnl">
-    <h2>Manual Placement</h2>
-    <div class="fld"><label>Latitude</label>
-      <input id="m-lat" type="number" step="0.00001" placeholder="click map or enter"></div>
-    <div class="fld"><label>Longitude</label>
-      <input id="m-lon" type="number" step="0.00001" placeholder="click map or enter"></div>
+  <details class="pnl" data-pnl="place" open>
+    <summary>Manual placement</summary>
+    <div class="pnl-b">
+    <p class="help">Click the map, enter a position or use My Location to place the relay aircraft.</p>
     <div class="row2">
-      <div class="fld">
-        <label>Alt (m <span id="alt-mode-lbl">REL</span>) <span style="display:inline-flex;gap:2px;vertical-align:middle">
+      <div class="field"><label for="m-lat">Latitude</label>
+        <input id="m-lat" type="number" step="0.00001" placeholder="click map"></div>
+      <div class="field"><label for="m-lon">Longitude</label>
+        <input id="m-lon" type="number" step="0.00001" placeholder="click map"></div>
+    </div>
+    <div class="field">
+      <div class="alt-row">
+        <label for="m-alt">Altitude</label>
+        <div class="amode" role="group" aria-label="Altitude reference">
           <button type="button" id="amode-rel"  class="amode-btn amode-on" onclick="setAltMode('rel')"
                   title="Relative to HOME (ArduPlane: where the carrier armed)">Rel</button>
           <button type="button" id="amode-agl"  class="amode-btn" onclick="setAltMode('agl')"
                   title="Above the terrain under the carrier">AGL</button>
           <button type="button" id="amode-amsl" class="amode-btn" onclick="setAltMode('amsl')"
                   title="Above mean sea level">AMSL</button>
-        </span></label>
-        <input id="m-alt" type="number" value="120" min="-500" max="9000"></div>
-      <div class="fld"><label>Heading (°)</label>
-        <input id="m-hdg" type="number" value="0" min="0" max="359"
-               oninput="syncHdgSlider(this.value); applyManual(true)"></div>
+        </div>
+      </div>
+      <div class="u-in"><input id="m-alt" type="number" value="120" min="-500" max="9000"><span class="u">m <span id="alt-mode-lbl">REL</span></span></div>
     </div>
-    <div class="fld">
-      <div class="vtx-row" style="gap:4px">
-        <label style="white-space:nowrap">Hdg</label>
-        <input type="range" id="m-hdg-sl" min="0" max="359" step="1" value="0"
+    <div class="field">
+      <label for="m-hdg">Heading</label>
+      <div class="hdg-row">
+        <div class="u-in"><input id="m-hdg" type="number" value="0" min="0" max="359"
+               oninput="syncHdgSlider(this.value); applyManual(true)"><span class="u">°</span></div>
+        <input type="range" id="m-hdg-sl" min="0" max="359" step="1" value="0" aria-label="Heading"
                oninput="document.getElementById('m-hdg').value=this.value; applyManual(true)">
-        <span id="hdg-sl-lbl" style="width:32px;text-align:right">N</span>
+        <span id="hdg-sl-lbl">N</span>
       </div>
     </div>
     <div class="row2">
-      <div class="fld"><label>Roll (°)</label>
-        <input id="m-roll" type="number" value="0" min="-90" max="90"></div>
-      <div class="fld"><label>Pitch (°)</label>
-        <input id="m-pitch" type="number" value="0" min="-30" max="30"></div>
+      <div class="field"><label for="m-roll">Roll</label>
+        <div class="u-in"><input id="m-roll" type="number" value="0" min="-90" max="90"><span class="u">°</span></div></div>
+      <div class="field"><label for="m-pitch">Pitch</label>
+        <div class="u-in"><input id="m-pitch" type="number" value="0" min="-30" max="30"><span class="u">°</span></div></div>
     </div>
-    <div class="fld"><label>Client VTX Power (default from client profile)</label>
+    <div class="field"><label for="m-vtx">Client VTX power</label>
       <div class="vtx-row">
         <input type="range" id="m-vtx" min="0" max="33" step="0.1" value="14"
                oninput="setVtx(+this.value)">
-        <span id="vtx-lbl" style="width:auto;min-width:52px">—</span>
+        <span id="vtx-lbl">—</span>
       </div>
+      <span class="hint">Default from the client profile.</span>
     </div>
-    <div class="fld"><label>Client height AGL (m)</label>
-      <input id="m-cagl" type="number" value="3" min="0" max="500" step="1" onchange="setClientAgl(+this.value)">
+    <div class="field"><label for="m-cagl">Client height AGL</label>
+      <div class="u-in"><input id="m-cagl" type="number" value="3" min="0" max="500" step="1" onchange="setClientAgl(+this.value)"><span class="u">m</span></div>
       <div class="btn-row">
-        <button type="button" class="btn" onclick="setClientAgl(3)">Ground 3</button>
-        <button type="button" class="btn" onclick="setClientAgl(30)">Hover 30</button>
-        <button type="button" class="btn" onclick="setClientAgl(100)">Cruise 100</button>
+        <button type="button" class="btn btn-sm" onclick="setClientAgl(3)">Ground 3</button>
+        <button type="button" class="btn btn-sm" onclick="setClientAgl(30)">Hover 30</button>
+        <button type="button" class="btn btn-sm" onclick="setClientAgl(100)">Cruise 100</button>
       </div>
     </div>
-    <button type="button" class="btn" onclick="applyManual()">▶ Apply / Update</button>
-    <button type="button" class="btn" onclick="geolocate()">⊕ Use My Location</button>
+    <button type="button" class="btn btn-primary" onclick="applyManual()">▶ Apply / Update</button>
     <div class="btn-row">
+      <button type="button" class="btn" onclick="geolocate()">⊕ Use My Location</button>
       <button type="button" class="btn" id="home-pick-btn" onclick="startHomePick()" title="HOME is the reference for REL altitudes">⌂ Set Home</button>
-      <button type="button" class="btn stop" onclick="clearHome()" style="flex:0 0 auto;padding:6px 10px">✕</button>
+      <button type="button" class="btn btn-ghost ico" onclick="clearHome()" aria-label="Clear home" title="Clear home">✕</button>
     </div>
     <div class="center-lbl" id="home-lbl">Home not set — REL uses the terrain under the carrier</div>
-  </div>
+    </div>
+  </details>
 
-  <div class="pnl" id="hint-pnl">
-    Click map or use My Location to place the relay aircraft
-  </div>
+  <details class="pnl" data-pnl="sim">
+    <summary>Simulation</summary>
+    <div class="pnl-b">
+    <div class="vtx-row">
+      <label for="sim-speed">Speed</label>
+      <input type="range" id="sim-speed" min="10" max="35" step="0.5" value="12"
+             oninput="document.getElementById('sim-spd-lbl').textContent=this.value+'m/s'">
+      <span id="sim-spd-lbl">12m/s</span>
+    </div>
+    <div class="help" id="sim-spd-src">Min 10 m/s = AIRSPEED_MIN · default 12 m/s = AIRSPEED_CRUISE</div>
+    <div class="seg3" role="group" aria-label="Simulation mode">
+      <button type="button" class="btn" id="btn-straight" onclick="selectSimMode('straight')">Straight</button>
+      <button type="button" class="btn" id="btn-orbit"    onclick="selectSimMode('orbit')">Orbit</button>
+      <button type="button" class="btn" id="btn-mission"  onclick="selectSimMode('mission')">Mission</button>
+    </div>
+    <div class="sim-sub" id="sp-straight" hidden>
+      <div class="field"><label for="sim-hdg">Travel heading</label>
+        <div class="u-in"><input id="sim-hdg" type="number" value="0" min="0" max="359" step="1"><span class="u">°</span></div></div>
+    </div>
+    <div class="sim-sub" id="sp-orbit" hidden>
+      <div class="field"><label for="sim-orb-r">Orbit radius</label>
+        <div class="u-in"><input id="sim-orb-r" type="number" value="200" min="50" max="5000" step="10"><span class="u">m</span></div>
+        <span class="hint">Also the default loiter radius.</span></div>
+      <button type="button" class="btn" id="btn-pick-center" onclick="startOrbitCenterPick()">⊕ Click Map to Set Center</button>
+      <div class="center-lbl" id="orb-center-lbl">No orbit center set</div>
+      <label class="chk"><input type="checkbox" id="sw-worst" checked onchange="drawSweep()">Worst case (inside all orbit positions)</label>
+      <label class="chk"><input type="checkbox" id="sw-best" checked onchange="drawSweep()">Best case (inside any orbit position)</label>
+      <div class="info-txt" id="sw-st">Orbit sweep: start an orbit to accumulate</div>
+    </div>
+    <div class="sim-sub" id="sp-mission" hidden>
+      <div class="field">
+        <label for="mis-file">Mission Planner .waypoints file</label>
+        <input type="file" id="mis-file" accept=".waypoints,.txt,.mission,.wp"
+               onchange="loadMission(this)">
+      </div>
+      <div id="mis-status" class="info-txt">No mission loaded</div>
+      <details class="disclosure">
+        <summary>Commands played</summary>
+        <div class="disclosure-body"><p class="help">NAV commands played: WAYPOINT 16, LOITER_UNLIM 17, LOITER_TURNS 18, LOITER_TIME 19, LAND 21, TAKEOFF 22, LOITER_TO_ALT 31, SPLINE_WAYPOINT 82, VTOL_TAKEOFF 84, VTOL_LAND 85. Climb/sink 5 m/s (TECS_CLMB_MAX / TECS_SINK_MAX).</p></div>
+      </details>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" id="sim-start-btn" onclick="startSim()">▶ Start</button>
+      <button type="button" class="btn ico" onclick="stopSim()" aria-label="Stop" title="Stop">⏹</button>
+    </div>
+    <div id="sim-st" class="sim-st stop">Stopped</div>
+    </div>
+  </details>
 
-  <div class="pnl">
-    <h2>Link Profiles</h2>
-    <div class="fld"><label>Client profile</label>
+  <details class="pnl" data-pnl="links">
+    <summary>Link profiles</summary>
+    <div class="pnl-b">
+    <div class="field"><label for="pf-client">Client profile</label>
       <select id="pf-client" onchange="pickClient(this.value)"></select></div>
-    <div class="sim-tabs">
+    <div class="seg3" role="group" aria-label="Link">
       <button type="button" class="btn" id="pk-video" onclick="pickProfileKind('video')">Video</button>
       <button type="button" class="btn" id="pk-rc"    onclick="pickProfileKind('rc')">RC</button>
       <button type="button" class="btn" id="pk-gcs"   onclick="pickProfileKind('gcs')">GCS</button>
     </div>
-    <div class="info-txt" id="pf-dir" style="margin:0 0 6px"></div>
-    <div class="fld"><label>Active profile</label>
+    <div class="help" id="pf-dir"></div>
+    <div class="field"><label for="pf-sel">Active profile</label>
       <select id="pf-sel" onchange="pickLink(this.value)"></select></div>
-    <div class="fld"><label>Name</label><input id="pf-name" type="text"></div>
-    <div class="row2">
-      <div class="fld"><label>Freq (MHz)</label><input id="pf-freq" type="number" step="1"></div>
-      <div class="fld"><label>TX power (dBm)</label><input id="pf-txp" type="number" step="0.1"></div>
-    </div>
-    <div class="row2">
-      <div class="fld"><label>TX gain (dBi)</label><input id="pf-txg" type="number" step="0.1"></div>
-      <div class="fld"><label>RX gain (dBi)</label><input id="pf-rxg" type="number" step="0.1"></div>
-    </div>
-    <div class="row2">
-      <div class="fld"><label>RX sens (dBm)</label><input id="pf-sens" type="number" step="0.5"></div>
-      <div class="fld"><label>Fade margin (dB)</label><input id="pf-mrg" type="number" step="0.5"></div>
-    </div>
-    <div class="fld"><label>Carrier antenna</label>
-      <select id="pf-ant">
-        <option value="">— (not set)</option>
-        <option value="dual_patch">Dual patch (VRX patches)</option>
-        <option value="dipole">Dipole (vertical)</option>
-        <option value="omni">Omni</option>
-      </select></div>
-    <div class="fld"><label>Notes</label><input id="pf-notes" type="text"></div>
-    <div class="btn-row">
-      <button type="button" class="btn" onclick="saveProfileForm()">✓ Save profile</button>
-      <button type="button" class="btn" onclick="copyProfile()" style="flex:0 0 auto;padding:6px 10px">+ Copy</button>
-    </div>
     <div class="info-txt" id="pf-status"></div>
-    <div class="info-txt">Empty field = unknown (TBD): that link is not drawn. ELRS sensitivity depends on band and packet rate — take it from the ExpressLRS documentation. Saved to <span id="pf-dest">—</span>.</div>
-  </div>
-
-  <div class="pnl">
-    <h2>Terrain Model</h2>
-    <div class="row2">
-      <div class="fld"><label>Fresnel k (× F1)</label>
-        <input id="md-k" type="number" value="0.6" min="0" max="1.5" step="0.1" onchange="setModel()"></div>
-      <div class="fld"><label>Extra margin (m)</label>
-        <input id="md-mrg" type="number" value="0" min="0" max="100" step="1" onchange="setModel()"></div>
+    <details class="disclosure">
+      <summary>Edit profile values</summary>
+      <div class="disclosure-body">
+      <div class="field"><label for="pf-name">Name</label><input id="pf-name" type="text"></div>
+      <div class="row2">
+        <div class="field"><label for="pf-freq">Frequency</label><div class="u-in"><input id="pf-freq" type="number" step="1"><span class="u">MHz</span></div></div>
+        <div class="field"><label for="pf-txp">TX power</label><div class="u-in"><input id="pf-txp" type="number" step="0.1"><span class="u">dBm</span></div></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="pf-txg">TX gain</label><div class="u-in"><input id="pf-txg" type="number" step="0.1"><span class="u">dBi</span></div></div>
+        <div class="field"><label for="pf-rxg">RX gain</label><div class="u-in"><input id="pf-rxg" type="number" step="0.1"><span class="u">dBi</span></div></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="pf-sens">RX sensitivity</label><div class="u-in"><input id="pf-sens" type="number" step="0.5"><span class="u">dBm</span></div></div>
+        <div class="field"><label for="pf-mrg">Fade margin</label><div class="u-in"><input id="pf-mrg" type="number" step="0.5"><span class="u">dB</span></div></div>
+      </div>
+      <div class="field"><label for="pf-ant">Carrier antenna</label>
+        <select id="pf-ant">
+          <option value="">— (not set)</option>
+          <option value="dual_patch">Dual patch (VRX patches)</option>
+          <option value="dipole">Dipole (vertical)</option>
+          <option value="omni">Omni</option>
+        </select></div>
+      <div class="field"><label for="pf-notes">Notes</label><input id="pf-notes" type="text"></div>
+      <p class="help">Empty field = unknown (TBD): that link is not drawn. ELRS sensitivity depends on band and packet rate — take it from the ExpressLRS documentation.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" onclick="saveProfileForm()">✓ Save profile</button>
+        <button type="button" class="btn btn-ghost" onclick="copyProfile()">+ Copy</button>
+      </div>
+      <p class="help">Saved to <span id="pf-dest">—</span>.</p>
+      </div>
+    </details>
     </div>
-    <div class="fld"><label>Forest canopy height (m)</label>
-      <input id="md-tree" type="number" value="15" min="0" max="40" step="1" onchange="setModel()"></div>
-    <div class="info-txt" id="md-info">Clearance = k × F1 + margin. Samples at the DEM pixel size (z11 terrain tiles).</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">Forest is detected from Norgeskart forest colour (Norway only). Elsewhere, or if wrong, draw zones manually:</div>
-    <div style="display:flex;gap:4px;margin-top:4px">
-      <button type="button" class="btn" id="veg-draw-btn" onclick="startVegDraw()" style="flex:1;font-size:11px">✏ Draw forest zone</button>
-      <button type="button" class="btn stop" onclick="clearManualVeg()" style="width:auto;padding:5px 10px;font-size:11px" title="Clear manual zones">✕</button>
-    </div>
-    <div id="veg-draw-hint" style="display:none;font-size:11px;color:var(--amber);margin-top:3px">Click to add points · double-click to close</div>
-  </div>
+  </details>
 
-  <div class="pnl">
-    <h2>GCS Coverage (HM30)</h2>
-    <div class="fld"><label>GCS Latitude</label>
-      <input id="g-lat" type="number" step="0.00001" placeholder="click map or enter"></div>
-    <div class="fld"><label>GCS Longitude</label>
-      <input id="g-lon" type="number" step="0.00001" placeholder="click map or enter"></div>
+  <details class="pnl" data-pnl="terrain">
+    <summary>Terrain model</summary>
+    <div class="pnl-b">
     <div class="row2">
-      <div class="fld"><label>Ant. Height (m)</label>
-        <input id="g-anth" type="number" value="2" min="0.5" max="30" step="0.5"></div>
-      <div class="fld"><label>Max Range (km)</label>
-        <input id="g-range" type="number" value="15" min="1" max="50"></div>
+      <div class="field"><label for="md-k">Fresnel k</label>
+        <div class="u-in"><input id="md-k" type="number" value="0.6" min="0" max="1.5" step="0.1" onchange="setModel()"><span class="u">× F1</span></div></div>
+      <div class="field"><label for="md-mrg">Extra margin</label>
+        <div class="u-in"><input id="md-mrg" type="number" value="0" min="0" max="100" step="1" onchange="setModel()"><span class="u">m</span></div></div>
+    </div>
+    <div class="field"><label for="md-tree">Forest canopy height</label>
+      <div class="u-in"><input id="md-tree" type="number" value="15" min="0" max="40" step="1" onchange="setModel()"><span class="u">m</span></div></div>
+    <div class="help" id="md-info">Clearance = k × F1 + margin. Samples at the DEM pixel size (z11 terrain tiles).</div>
+    <p class="help">Forest is detected from Norgeskart forest colour (Norway only). Elsewhere, or if wrong, draw zones manually:</p>
+    <div class="btn-row">
+      <button type="button" class="btn" id="veg-draw-btn" onclick="startVegDraw()">✏ Draw forest zone</button>
+      <button type="button" class="btn btn-ghost ico" onclick="clearManualVeg()" aria-label="Clear manual zones" title="Clear manual zones">✕</button>
+    </div>
+    <div class="info-txt" id="veg-draw-hint" hidden>Click to add points · double-click to close</div>
+    </div>
+  </details>
+
+  <details class="pnl" data-pnl="gcs">
+    <summary>GCS coverage (HM30)</summary>
+    <div class="pnl-b">
+    <div class="row2">
+      <div class="field"><label for="g-lat">GCS latitude</label>
+        <input id="g-lat" type="number" step="0.00001" placeholder="click map"></div>
+      <div class="field"><label for="g-lon">GCS longitude</label>
+        <input id="g-lon" type="number" step="0.00001" placeholder="click map"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="g-anth">Antenna height</label>
+        <div class="u-in"><input id="g-anth" type="number" value="2" min="0.5" max="30" step="0.5"><span class="u">m</span></div></div>
+      <div class="field"><label for="g-range">Max range</label>
+        <div class="u-in"><input id="g-range" type="number" value="15" min="1" max="50"><span class="u">km</span></div></div>
     </div>
     <button type="button" class="btn" id="g-pick-btn" onclick="startGcsPick()">⊕ Click Map for GCS</button>
     <div class="center-lbl" id="g-pos-lbl">No GCS position set</div>
-    <div style="display:flex;gap:4px;margin-top:4px">
-      <button type="button" class="btn" onclick="computeGcsCoverage()" style="flex:1">▶ Compute</button>
-      <button type="button" class="btn stop" onclick="clearGcsCoverage()" style="width:auto;padding:5px 10px">✕</button>
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" onclick="computeGcsCoverage()">▶ Compute</button>
+      <button type="button" class="btn btn-ghost ico" onclick="clearGcsCoverage()" aria-label="Clear GCS coverage" title="Clear GCS coverage">✕</button>
     </div>
     <div id="g-status" class="info-txt"></div>
     <div id="g-note" class="info-txt warn"></div>
-  </div>
+    </div>
+  </details>
 
-  <div class="pnl">
-    <h2>Live (GCS App)</h2>
+  <details class="pnl" data-pnl="live">
+    <summary>Live (GCS app)</summary>
+    <div class="pnl-b">
     <label class="chk"><input type="checkbox" id="lv-on" onchange="setLiveEnabled(this.checked)">Connect to GCS app (127.0.0.1:47800)</label>
     <label class="chk"><input type="checkbox" id="lv-follow" onchange="setLiveFollow(this.checked)">Coverage follows live carrier</label>
     <div class="info-txt" id="lv-st">GCS APP: NOT RUNNING</div>
     <div class="divider"></div>
     <label class="chk"><input type="checkbox" id="lv-heat" onchange="toggleHeatmap(this.checked)">Measured LQ heatmap (logged samples)</label>
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="info-txt" id="lv-log" style="margin:0">Log: —</div>
-      <button type="button" class="btn stop" onclick="clearLiveLog()"
-              style="width:auto;padding:4px 10px;margin:0;font-size:10px;letter-spacing:1px">✕ Clear log</button>
+    <div class="split">
+      <div class="info-txt" id="lv-log">Log: —</div>
+      <button type="button" class="btn btn-ghost" onclick="clearLiveLog()">✕ Clear log</button>
     </div>
-  </div>
+    </div>
+  </details>
 
-  <div class="pnl">
-    <h2>Map Layer</h2>
+  <details class="pnl" data-pnl="layer">
+    <summary>Map layer</summary>
+    <div class="pnl-b">
     <div class="layer-dd" id="layer-dd">
       <button type="button" class="layer-dd-btn" id="layer-dd-btn" onclick="toggleLayerDd(event)">Topo (OpenTopoMap)</button>
       <div class="layer-dd-list" id="layer-dd-list">
@@ -451,10 +572,12 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
         <div class="layer-dd-item" onclick="pickLayer('dark')">Dark (CartoDB)</div>
       </div>
     </div>
-  </div>
+    </div>
+  </details>
 
-  <div class="pnl">
-    <h2>Legend</h2>
+  <details class="pnl" data-pnl="legend">
+    <summary>Legend</summary>
+    <div class="pnl-b">
     <div class="lr"><div class="ls c-blue"></div><span id="lg-video">Video limit (RF)</span></div>
     <div class="lg-note" id="lg-video-note"></div>
     <div class="lr"><div class="ls c-teal"></div><span id="lg-rc">RC limit (RF)</span></div>
@@ -465,7 +588,7 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     <div class="lr"><div class="ls c-null"></div>No signal (antenna null / behind patches)</div>
     <div class="lr"><div class="ls c-shadow"></div>Shadow re-acquired (not coverage)</div>
     <div class="lr"><div class="ls dot c-green"></div>Relay aircraft</div>
-    <div class="lr" style="color:var(--muted);font-size:10px;margin-top:2px">→ Orange arrow = patches face <span id="lg-face">right</span></div>
+    <div class="lr lr-note">→ Orange arrow = patches face <span id="lg-face">right</span></div>
     <div class="divider"></div>
     <div class="lr"><div class="ls c-worst"></div>Orbit worst case (always covered)</div>
     <div class="lr"><div class="ls c-best"></div>Orbit best case (covered at some point)</div>
@@ -479,42 +602,43 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
     <div class="lr"><div class="ls dot c-accent"></div>Live carrier</div>
     <div class="lr"><div class="ls c-green"></div>Live client · LQ ≥ 70 %</div>
     <div class="lr"><div class="ls c-red"></div>Live client · LQ &lt; 70 % (FPV LINK WEAK)</div>
-  </div>
+    </div>
+  </details>
 
-  <div class="pnl">
-    <h2>Offline Data</h2>
+  <details class="pnl" data-pnl="offline">
+    <summary>Offline data</summary>
+    <div class="pnl-b">
     <button type="button" class="btn" id="off-draw-btn" onclick="startOfflineDraw()">▭ Draw Area</button>
-    <div class="center-lbl" id="off-area-lbl" style="margin-top:6px">No area selected</div>
-    <div class="divider" style="margin:10px 0 8px"></div>
-    <div class="info-txt" id="off-terr-info" style="margin-top:4px">Select area to see tile count</div>
-    <progress class="off-prog" id="off-terr-prog" value="0" max="1" style="display:none"></progress>
-    <button type="button" class="btn" id="off-terr-btn" onclick="downloadTerrainArea()" style="margin-top:4px">↓ Cache Terrain Tiles</button>
-    <div class="divider" style="margin:10px 0 8px"></div>
-    <div class="fld">
-      <label>Map tiles — max zoom</label>
-      <div class="vtx-row" style="margin-bottom:0">
-        <input type="range" id="off-maxz" min="10" max="16" value="14" step="1"
-               oninput="document.getElementById('off-maxz-lbl').textContent=this.value; updateOfflineStats()">
-        <span id="off-maxz-lbl">14</span>
-      </div>
+    <div class="center-lbl" id="off-area-lbl">No area selected</div>
+    <div class="sub-h">Terrain tiles</div>
+    <div class="info-txt" id="off-terr-info">Select area to see tile count</div>
+    <progress class="off-prog" id="off-terr-prog" value="0" max="1" hidden></progress>
+    <button type="button" class="btn" id="off-terr-btn" onclick="downloadTerrainArea()">↓ Cache Terrain Tiles</button>
+    <div class="sub-h">Map tiles</div>
+    <div class="vtx-row">
+      <label for="off-maxz">Max zoom</label>
+      <input type="range" id="off-maxz" min="10" max="16" value="14" step="1"
+             oninput="document.getElementById('off-maxz-lbl').textContent=this.value; updateOfflineStats()">
+      <span id="off-maxz-lbl">14</span>
     </div>
     <div class="info-txt" id="off-map-info">Select area to see tile count</div>
-    <progress class="off-prog" id="off-map-prog" value="0" max="1" style="display:none"></progress>
-    <button type="button" class="btn" id="off-map-btn" onclick="downloadMapArea()" style="margin-top:4px">↓ Cache Map Tiles</button>
+    <progress class="off-prog" id="off-map-prog" value="0" max="1" hidden></progress>
+    <button type="button" class="btn" id="off-map-btn" onclick="downloadMapArea()">↓ Cache Map Tiles</button>
     <div class="info-txt warn" id="off-map-policy"></div>
-    <div class="divider" style="margin:10px 0 8px"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div class="info-txt" id="off-cache-stats" style="margin:0">Cache: loading…</div>
-      <button type="button" class="btn stop" onclick="clearOfflineCache()"
-              style="width:auto;padding:4px 10px;margin:0;font-size:10px;letter-spacing:1px">✕ Clear</button>
+    <div class="split">
+      <div class="info-txt" id="off-cache-stats">Cache: loading…</div>
+      <button type="button" class="btn btn-ghost" onclick="clearOfflineCache()">✕ Clear</button>
     </div>
-  </div>
+    </div>
+  </details>
+  <div class="sb-ver"><div class="info-txt" data-vf-version></div></div>
 </div><!-- #sb -->
 </div><!-- #sb-wrap -->
 
 <div id="att">
   <div class="att-pnl">
-    <h2>Attitude</h2>
+    <button type="button" class="att-hd" id="att-tog" aria-expanded="true" aria-controls="att-b" onclick="toggleAtt()">Attitude &amp; range</button>
+    <div class="att-b" id="att-b">
     <div class="ar"><span>Roll</span>
       <div class="bw"><div class="bc"></div><div class="bf" id="br"></div></div>
       <b id="vr">0°</b></div>
@@ -522,17 +646,15 @@ progress.off-prog::-moz-progress-bar{background:var(--accent)}
       <div class="bw"><div class="bc"></div><div class="bf" id="bp"></div></div>
       <b id="vp">0°</b></div>
     <div class="ar"><span>Heading</span>
-      <div class="bw" style="background:transparent">
-        <span id="hdg-lbl" style="font-size:10px;color:var(--accent)"></span></div>
+      <div class="bw hdg"><span id="hdg-lbl"></span></div>
       <b id="vh">0°</b></div>
     <div class="divider"></div>
-    <div class="rng-row"><span>Video boresight:</span><b id="r-bs">—</b></div>
-    <div class="rng-row"><span>RC max range:</span><b id="r-rc">—</b></div>
-    <div class="rng-row"><span>Op. area:</span><b id="r-op">—</b></div>
-    <div class="rng-row"><span>Patches face:</span><b id="r-dir">—</b></div>
-    <div class="divider"></div>
+    <div class="rng-row"><span>Video boresight</span><b id="r-bs">—</b></div>
+    <div class="rng-row"><span>RC max range</span><b id="r-rc">—</b></div>
+    <div class="rng-row"><span>Op. area</span><b id="r-op">—</b></div>
+    <div class="rng-row"><span>Patches face</span><b id="r-dir">—</b></div>
     <div class="ter-txt" id="ter-st">Terrain: idle</div>
-    <div class="info-txt" data-vf-version></div>
+    </div>
   </div>
 </div>
 
@@ -1175,6 +1297,7 @@ function renderState() {
   } else {
     banner.style.display = 'none';
   }
+  $('sim-chip').hidden = !isSim;
 
   const stEl = $('sim-st');
   if (sim.mode) {
@@ -1340,7 +1463,7 @@ let orbitCenter = null, pickingOrbitCenter = false;
 function selectSimMode(mode) {
   currentSimMode = mode;
   ['straight','orbit','mission'].forEach(m => {
-    $('sp-' + m).style.display = m === mode ? '' : 'none';
+    $('sp-' + m).hidden = m !== mode;
     $('btn-' + m).classList.toggle('active', m === mode);
   });
 }
@@ -1471,7 +1594,7 @@ function startMeasure() {
   measureLayer = L.layerGroup().addTo(map);
   map.doubleClickZoom.disable();
   map.getContainer().classList.add('measuring');
-  $('cursor-measure').style.display = '';
+  $('cursor-measure').hidden = false;
   toast('Click to add points · Double-click to finish · Click 📏 again to clear', 5000);
 }
 
@@ -1481,16 +1604,14 @@ function clearMeasure() {
   if (rubberLayer) { map.removeLayer(rubberLayer); rubberLayer = null; }
   map.doubleClickZoom.enable();
   map.getContainer().classList.remove('measuring');
-  $('cursor-measure').style.display = 'none';
+  $('cursor-measure').hidden = true;
 }
 
 L.Control.Measure = L.Control.extend({
   options: {position:'topleft'},
   onAdd() {
     const c = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-    c.innerHTML = `<a id="btn-measure" href="#" title="Measure distance"
-      style="font-size:15px;line-height:1;color:var(--accent);display:flex;align-items:center;
-             justify-content:center;width:30px;height:30px;text-decoration:none">📏</a>`;
+    c.innerHTML = `<a id="btn-measure" href="#" title="Measure distance" role="button" aria-label="Measure distance">📏</a>`;
     L.DomEvent.disableClickPropagation(c);
     L.DomEvent.on(c.querySelector('a'), 'click', e => {
       L.DomEvent.preventDefault(e);
@@ -1570,7 +1691,7 @@ map.on('dblclick', () => {
   if (rubberLayer) { map.removeLayer(rubberLayer); rubberLayer = null; }
   map.doubleClickZoom.enable();
   map.getContainer().classList.remove('measuring');
-  $('cursor-measure').style.display = 'none';
+  $('cursor-measure').hidden = true;
   const btn = $('btn-measure');
   if (btn) btn.style.background = '';
 });
@@ -1717,7 +1838,7 @@ function startVegDraw() {
   _vegDrawing = true;
   _vegDrawPts = [];
   $('veg-draw-btn').classList.add('active');
-  $('veg-draw-hint').style.display = '';
+  $('veg-draw-hint').hidden = false;
   map.getContainer().style.cursor = 'crosshair';
   map.doubleClickZoom.disable();
   function onMapClick(e) {
@@ -1738,7 +1859,7 @@ function startVegDraw() {
 function _finishVegDraw() {
   _vegDrawing = false;
   $('veg-draw-btn').classList.remove('active');
-  $('veg-draw-hint').style.display = 'none';
+  $('veg-draw-hint').hidden = true;
   map.getContainer().style.cursor = '';
   map.doubleClickZoom.enable();
   if (_vegDrawLayer) { map.removeLayer(_vegDrawLayer); _vegDrawLayer = null; }
@@ -2109,7 +2230,7 @@ async function downloadTerrainArea() {
   const {tx1, ty1, tx2, ty2, count} = areaTiles(TERR_ZOOM);
   if (count > 600) { toast(`Too many tiles (${count}). Reduce area.`, 4000); return; }
   const btn = $('off-terr-btn'), prog = $('off-terr-prog');
-  btn.disabled = true; prog.style.display = '';
+  btn.disabled = true; prog.hidden = false;
   let done = 0, ok = 0;
   for (let tx = tx1; tx <= tx2; tx++) {
     for (let ty = ty1; ty <= ty2; ty++) {
@@ -2118,7 +2239,7 @@ async function downloadTerrainArea() {
       if (done % 5 === 0) $('off-terr-info').textContent = `${done}/${count} terrain tiles…`;
     }
   }
-  btn.disabled = false; prog.style.display = 'none';
+  btn.disabled = false; prog.hidden = true;
   await updateOfflineCacheStats();
   toast(`${ok} of ${count} terrain tiles cached`, 3000);
   updateOfflineStats();
@@ -2137,7 +2258,7 @@ async function downloadMapArea() {
   }
   if (tiles.length > 3000) { toast(`Too many tiles (${tiles.length}). Lower max zoom.`, 4000); return; }
   const btn = $('off-map-btn'), prog = $('off-map-prog');
-  btn.disabled = true; prog.style.display = '';
+  btn.disabled = true; prog.hidden = false;
   let done = 0, errors = 0;
   for (const coords of tiles) {
     const url = src.layer._buildUrl(coords);
@@ -2151,7 +2272,7 @@ async function downloadMapArea() {
     prog.value = ++done / tiles.length;
     if (done % 20 === 0) $('off-map-info').textContent = `${done}/${tiles.length} map tiles (${errors} failed)…`;
   }
-  btn.disabled = false; prog.style.display = 'none';
+  btn.disabled = false; prog.hidden = true;
   await updateOfflineCacheStats();
   toast(`${done - errors} map tiles cached${errors ? ` (${errors} failed)` : ''}`, 4000);
   updateOfflineStats();
@@ -2172,10 +2293,29 @@ async function updateOfflineCacheStats() {
 }
 
 // ─── Sidebar toggle ───────────────────────────────────────────────────────────
-function toggleSb() {
+function toggleSb(open) {
   const w = $('sb-wrap');
-  w.classList.toggle('sb-off');
-  $('sb-tog').textContent = w.classList.contains('sb-off') ? '▶' : '◀';
+  if (open === undefined) w.classList.toggle('sb-off'); else w.classList.toggle('sb-off', !open);
+  $('sb-tog').setAttribute('aria-expanded', w.classList.contains('sb-off') ? 'false' : 'true');
+}
+// Attitude and range box: minimised to its heading (the default on a phone)
+function toggleAtt(open) {
+  const a = $('att');
+  if (open === undefined) a.classList.toggle('att-min'); else a.classList.toggle('att-min', !open);
+  $('att-tog').setAttribute('aria-expanded', a.classList.contains('att-min') ? 'false' : 'true');
+}
+// Control groups (<details data-pnl>): the open / closed state of each is kept in vtol_map_state (mapState.panels)
+function initPanels() {
+  const saved = mapState.panels && typeof mapState.panels === 'object' ? mapState.panels : {};
+  document.querySelectorAll('#sb details[data-pnl]').forEach(d => {
+    if (typeof saved[d.dataset.pnl] === 'boolean') d.open = saved[d.dataset.pnl];
+    d.addEventListener('toggle', () => {
+      mapState.panels = Object.assign({}, mapState.panels, { [d.dataset.pnl]: d.open });
+      saveMapState();
+    });
+  });
+  // phone: the controls start as a closed bottom sheet and the attitude box minimised, so the map is visible
+  if (window.matchMedia && window.matchMedia('(max-width: 600px)').matches) { toggleSb(false); toggleAtt(false); }
 }
 
 // ─── Header status (WP24): key items in the app bar on a wide screen; the Status button opens the full list ─────
@@ -2187,11 +2327,12 @@ function toggleMapStatus(open) {
 }
 document.addEventListener('click', e => { if (!e.target.closest('#map-st, #map-st-btn')) toggleMapStatus(false); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') toggleMapStatus(false); });
-// an amber status value (TBD op. area, terrain not ready) marks the closed status button too
-new MutationObserver(() => $('map-st-btn').classList.toggle('has-warn', !!$('map-st').querySelector('b.warn')))
+// an amber status value (TBD op. area, terrain not ready) or a simulated state marks the closed status button too
+new MutationObserver(() => $('map-st-btn').classList.toggle('has-warn', !!$('map-st').querySelector('b.warn, #sim-banner.sim')))
   .observe($('map-st'), { subtree: true, attributes: true, attributeFilter: ['class'] });
 
 // ─── Start-up: restore the last session, never a built-in site (MAP-09) ──────
+initPanels();
 loadProfiles();
 applySimSpeedLimits();
 // a store write in this tab (VtolStore.save fires 'vtol-store-changed'): the sim speeds follow (WP14 rework F8)

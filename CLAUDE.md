@@ -80,7 +80,7 @@ Tests that read repo files as text use `test/repo-files.js` (`readText`, LF-norm
 |---|---|
 | `index.html` | **Flight Tools**: checklists, emergency modal, Link (GCS app status), Battery Log, Telemetry (`.tlog`/`.bin`/session log), Flights (records, maintenance), Params (import/compare), Weather, Profiles |
 | `manual.html` | **Operations manual**: grouped dropdown nav, all chapters, Parameters tab, Emergency tab |
-| `relay/map.html` + `relay/rfmodel.js` | **Coverage map** (static, no server): link profiles, terrain LOS, Fresnel, foliage, operating area, orbit sweep, mission playback, live layer. Leaflet vendored in `relay/vendor/leaflet/` (byte-exact, `-text`) |
+| `relay/map.html` + `relay/rfmodel.js` | **Coverage map** (static, no server): link profiles, terrain LOS, Fresnel, foliage, operating area, orbit sweep, mission playback, live layer. Controls in collapsible groups (`<details data-pnl>`, open state in `vtol_map_state.panels`), a bottom sheet on a phone (≤ 600 px). Leaflet vendored in `relay/vendor/leaflet/` (byte-exact, `-text`) |
 | `tools/latency-clock.html` | Millisecond clock for the glass-to-glass test |
 | `data/content.js` | `VtolContent` — **single source** of checklists, post-flight, emergency cards and notes, failsafe table, client failsafe chain, network table, callouts, GStreamer pipelines, SDP, failsafe copy block (contract C5) |
 | `data/params-reference.js` | `VtolParamsRef` — generated from the reference `.param` file (C1.6) |
