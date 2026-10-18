@@ -8,6 +8,8 @@
 html:root, html:root[data-sun] {   /* html:root outranks the pages' own :root overrides (manual --muted) */
   --bg:var(--paper); --surface:var(--paper); --surface2:var(--paper); --border:var(--ink); --border2:var(--ink);
   --text:var(--ink); --muted:var(--ink); --accent:var(--ink); --amber:var(--ink); --red:var(--ink); --green:var(--ink); --dim:var(--ink);
+  --text-2:var(--ink); --red-fg:var(--ink); --blue:var(--ink); --orange-lt:var(--ink);   /* WP23 text tokens */
+  --accent-bg:transparent; --red-bg:transparent; --amber-bg:transparent; --green-bg:transparent; --blue-bg:transparent; --red-line:var(--ink); --amber-line:var(--ink);
   --vf-zoom:1;
 }
 *, *::before, *::after {
@@ -16,6 +18,7 @@ html:root, html:root[data-sun] {   /* html:root outranks the pages' own :root ov
 }
 html, body { background:var(--paper) !important; }
 body { font-size:10.5pt; line-height:1.35; overflow:visible !important; }
+p { max-width:none; }   /* full measure on paper */
 a { text-decoration:none; }
 
 /* Never printed */

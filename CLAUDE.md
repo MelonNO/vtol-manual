@@ -92,7 +92,7 @@ Tests that read repo files as text use `test/repo-files.js` (`readText`, LF-norm
 | `js/diagrams.js` | `VtolDiagrams`: generated SVG (battery gauge, trend, sparkline, wind compass, time charts, GPS-Rescue trajectory) — CSS variables only |
 | `js/gcs-client.js` | `GcsClient`: the C2 client for the GCS app API (`http://127.0.0.1:47800`), health polling, SSE, never throws |
 | `js/field.js`, `js/emergency-only.js` | `VtolField`: SW registration + RELOAD toast, version footer, sunlight mode, wake lock, QR, print kneeboard; emergency-only phone mode (`index.html#emergency-only`) |
-| `css/base.css`, `css/print.css`, `fonts/` | Shared tokens and base styles, `@font-face` (self-hosted Oswald, Share Tech Mono); print/kneeboard styles |
+| `css/base.css`, `css/print.css`, `fonts/` | The design system (`docs/design/README.md`): tokens, `@font-face` (self-hosted IBM Plex Sans, Oswald, Share Tech Mono), base elements, one definition of every shared component, sunlight mode, field-use components, reduced motion; print/kneeboard styles. `docs/design/styleguide.html` shows them all (developer page, not precached) |
 | `sw.js`, `sw-precache.js` | Service worker: precache from the generated list; pages/JS/CSS network-first (4 s timeout), other assets stale-while-revalidate; cross-origin never intercepted |
 | `gcs/` | Windows GCS companion app (`vtolgcs` package), tests, `tools/bridge_sim.py`, packaging (see `gcs/README.md`) |
 | `protocol/` | Relay UDP protocol v1 (PROPOSAL) and test vectors (C3) |
@@ -277,21 +277,39 @@ temporary folders — never the real one). Details: `gcs/README.md`. Simulator: 
 
 ## Style conventions
 
-All colours via the CSS variables in `:root` of `css/base.css` — never hard-code new colours in page CSS or inline
-SVG (inline SVG uses `fill="var(--accent)"`; `scripts/check-colours.mjs` fails on hex in inline SVG or inline styles).
-Standalone `.svg` files cannot read page variables: they use the same hex values with a palette comment
+The design system is documented in **`docs/design/README.md`** (principles, token tables, every component with
+copy-ready markup, do's and don'ts); `docs/design/styleguide.html` renders it.
+
+All colours, sizes, spaces and radii via the tokens in `:root` of `css/base.css` — never hard-code new colours in page
+CSS or inline SVG (inline SVG uses `fill="var(--accent)"`; `scripts/check-colours.mjs` fails on hex in inline SVG or
+inline styles). Standalone `.svg` files cannot read page variables: they use the same hex values with a palette comment
 (`img/README.md`).
 
 | Variable | Value | Use |
 |---|---|---|
-| `--accent` | `#f97316` | Orange — primary accent |
-| `--red` | `#ef4444` | Danger / emergency |
-| `--green` | `#22c55e` | GO / healthy |
-| `--amber` | `#facc15` | Warning / caution, TBD and VERIFY markers (`.warn-val`) |
+| `--accent` | `#f97316` | Orange — **interaction only** (active tab, primary button, links, focus) |
+| `--red` | `#ef4444` | Emergency / danger only (small red text uses `--red-fg`) |
+| `--green` | `#22c55e` | GO / healthy only |
+| `--amber` | `#facc15` | Warnings, TBD and VERIFY markers (`.warn-val`) only |
 
-Fonts: `Oswald` (headings), `Share Tech Mono` (body), self-hosted in `fonts/`. Base 15 px. Mobile first: works at
-360 px width, tap targets ≥ 44 px, checklist rows 50 px min-height, checkboxes 24 × 24 px; on mobile (≤ 600 px)
-`index.html` uses a fixed bottom nav. Escape every dynamic text inserted with `innerHTML` (`VtolCommon.escH()` or
+Neutrals (`--bg` < `--surface` < `--surface2`, `--border*`, `--text`, `--text-2`, `--muted`, `--dim`), tints
+(`--*-bg`), type (`--fs-xs` 12 … `--fs-2xl` 28, `--lh-*`), spacing (`--sp-1` … `--sp-7` = 4 … 48 px) and radii
+(`--r-sm`, `--r-md`): see the README. **Contrast rule:** text ≥ 4.5:1 on `--bg`, `--surface` and `--surface2`
+(large / bold ≥ 3:1), control boundaries ≥ 3:1, in normal and sunlight mode (`test/design/tokens.test.js`); `--dim`
+is non-text only.
+
+Fonts (self-hosted in `fonts/`): **IBM Plex Sans** (body text and prose, base **16 px**, line-height 1.6), **Oswald**
+(headings and short labels), **Share Tech Mono** (values, parameters, IPs, ports, code, timers only). Uppercase with
+letter spacing only for short labels. Minimum text size 12 px.
+
+**Component rule:** every component shared by the pages (cards, callouts, section titles, tables, value chips, mode
+badges, steps, the emergency family, buttons, form controls, disclosure) is defined **once**, in the components
+section of `css/base.css`; class names never change (the renderers emit them). Page `<style>` blocks hold
+page-specific rules only and never redefine a component selector (`test/design/components.test.js`).
+
+Mobile first: works at 360 px width, tap targets ≥ 44 px, checklist rows 50 px min-height, checkboxes 24 × 24 px; on
+mobile (≤ 600 px) `index.html` uses a fixed bottom nav. Motion: short functional transitions only; reduced motion
+switches them off. Escape every dynamic text inserted with `innerHTML` (`VtolCommon.escH()` or
 `textContent`). Offline first: no CDN dependencies.
 
 **Safety-critical content:** every parameter value, threshold, IP or procedure must come from the plan, the relay

@@ -1,5 +1,5 @@
 'use strict';
-// WP09 R1 / R2 / R4 / R5 / R7 / R8 (static checks): self-hosted fonts, CSPs, css/base.css on every page, no duplicated
+// WP09 R1 / R2 / R4 / R5 / R7 / R8 (static checks; fonts updated by WP23 R2): self-hosted fonts, CSPs, css/base.css on every page, no duplicated
 // token blocks, manifest + icons, mode toggle, version line, service-worker hook, print stylesheet.
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,21 +14,36 @@ const csp = html => ((html.match(/<meta http-equiv="Content-Security-Policy" con
 // Width / height of a PNG from its IHDR chunk.
 const pngSize = f => { const b = fs.readFileSync(path.join(ROOT, f)); assert.equal(b.toString('latin1', 1, 4), 'PNG', f); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
 
-test('R1: no Google Fonts anywhere; @font-face in css/base.css points at the self-hosted woff2 files; OFL licences present', () => {
+test('R1 (WP23 R7e): no Google Fonts anywhere; @font-face in css/base.css points at the self-hosted woff2 files (≤ 80 KB each); OFL licences present', () => {
   for (const f of [...Object.keys(PAGES), 'css/base.css', 'css/print.css', 'sw.js']) {
     assert.doesNotMatch(readText(f), /fonts\.googleapis|fonts\.gstatic|@import/, f);
   }
   const css = readText('css/base.css');
   const faces = [...css.matchAll(/@font-face\{([^}]+)\}/g)].map(m => m[1]);
-  assert.equal(faces.length, 3);
-  for (const fam of ['Oswald', 'Share Tech Mono']) assert.ok(faces.some(f => f.includes("font-family:'" + fam + "'")), fam);
+  assert.equal(faces.length, 5);
+  for (const fam of ['IBM Plex Sans', 'Oswald', 'Share Tech Mono']) assert.ok(faces.some(f => f.includes("font-family:'" + fam + "'")), fam);
+  assert.ok(faces.every(f => /font-display:swap/.test(f) && /unicode-range:U\+/.test(f)), 'swap + unicode-range on every face');
   assert.ok(faces.filter(f => f.includes("'Oswald'")).every(f => /font-weight:200 700/.test(f)), 'Oswald variable file covers 400/600/700');
-  for (const m of css.matchAll(/url\(\.\.\/(fonts\/[\w.-]+\.woff2)\)/g)) {
-    const buf = fs.readFileSync(path.join(ROOT, m[1]));
-    assert.equal(buf.toString('latin1', 0, 4), 'wOF2', m[1] + ' is WOFF2');
+  const plex = faces.filter(f => f.includes("'IBM Plex Sans'"));
+  assert.equal(plex.length, 2, 'IBM Plex Sans: latin + latin-ext');
+  assert.ok(plex.every(f => /font-weight:100 700/.test(f)), 'IBM Plex Sans variable file covers 400/600');
+  const files = [...css.matchAll(/url\(\.\.\/(fonts\/[\w.-]+\.woff2)\)/g)].map(m => m[1]);
+  assert.equal(files.length, 5);
+  for (const f of ['fonts/ibm-plex-sans-latin.woff2', 'fonts/ibm-plex-sans-latin-ext.woff2']) assert.ok(files.includes(f), f + ' referenced');
+  for (const f of files) {
+    const buf = fs.readFileSync(path.join(ROOT, f));
+    assert.equal(buf.toString('latin1', 0, 4), 'wOF2', f + ' is WOFF2');
+    assert.ok(buf.length <= 80 * 1024, f + ' ≤ 80 KB');
   }
-  for (const f of ['fonts/OFL-Oswald.txt', 'fonts/OFL-ShareTechMono.txt']) assert.match(readText(f), /SIL OPEN FONT LICENSE Version 1\.1/i, f);
-  assert.match(readText('fonts/README.md'), /fonts\.gstatic\.com\/s\/oswald/);
+  for (const f of ['fonts/OFL-Oswald.txt', 'fonts/OFL-ShareTechMono.txt', 'fonts/OFL-IBMPlexSans.txt']) assert.match(readText(f), /SIL OPEN FONT LICENSE Version 1\.1/i, f);
+  assert.match(readText('fonts/OFL-IBMPlexSans.txt'), /Copyright © 2017 IBM Corp\. with Reserved Font Name "Plex"/);
+  const readme = readText('fonts/README.md');
+  assert.match(readme, /fonts\.gstatic\.com\/s\/oswald/);
+  assert.match(readme, /fonts\.gstatic\.com\/s\/ibmplexsans/);
+  for (const f of files) {
+    const sha = require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, f))).digest('hex');
+    assert.ok(readme.includes(sha), f + ' sha256 recorded in fonts/README.md');
+  }
 });
 
 test('R1: every page has a tight CSP: fonts self only, no Google hosts, worker / manifest self, object none', () => {
