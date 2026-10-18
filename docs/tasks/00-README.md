@@ -105,5 +105,5 @@ direction: `04-REDESIGN-CONTEXT.md`. The PM pushes `main` once the whole program
 | WP24 | done | APPROVED (round 1) | yes |
 | WP25 | in progress | — | no |
 | WP26 | in progress | — | no |
-| WP27 | in progress | — | no |
+| WP27 | done (1 rework) | APPROVED (round 2) | yes |
 | WP28 | not started | — | no |

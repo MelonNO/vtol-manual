@@ -46,3 +46,8 @@ request-fold table and the screenshot list.
 - M5: dead `.hdr-*` selectors in `css/print.css`; dead `.vf-hdr-tools` / `.vf-lbl` in `css/base.css` §6 — remove; update `docs/design/README.md` for the shell (WP24 request).
 - M6: scrolling past the end of the Menu sheet scrolls the page and closes the sheet — contain the scroll (`overscroll-behavior:contain`) or keep it open.
 - Fold in WP25's sticky sub-tab request (WP25 report).
+
+## Carried over from the WP27 verification (MINOR)
+
+- Map, desktop width: the "⊕ Use My Location" label is 10 px wider than its button and touches the border (phones fine) — fix in `relay/map.html` page CSS or via the shared button rule; WP28 may touch this one rule in `relay/map.html`.
+- Fold in the WP27 report §6 requests (M3 shell height 1 px, sunlight borders for map overlays, shared patterns: unit-suffix input, segmented choice, helper line, icon button).
