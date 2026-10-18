@@ -68,6 +68,7 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
 .man-photo img.contain{object-fit:contain;background:var(--surface);}
 .man-photo figcaption{padding:8px 14px;font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;border-top:1px solid var(--border2);}
 .man-photo figcaption .credit{text-transform:none;letter-spacing:0;}
+.man-photo figcaption a,#image-credits-table a{color:var(--accent);}
 .man-photo-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0;}
 .man-photo-row .man-photo{margin:0;}
 @media(max-width:600px){.man-photo-row{grid-template-columns:1fr;}}
@@ -1354,14 +1355,14 @@ footer{border-top:1px solid var(--border2);padding:12px 28px;font-size:11px;colo
 
   <div class="section-title" id="image-credits">Image Credits</div>
   <p>Photos in this manual that the project did not take, with source and licence. <strong>Representative images</strong> show similar equipment, not this aircraft or this setup; own photos will replace them (shot list in <code>img/README.md</code>).</p>
-  <div class="tbl-wrap"><table>
+  <div class="tbl-wrap"><table id="image-credits-table">
     <thead><tr><th>Where</th><th>Image</th><th>Author · licence · source</th></tr></thead>
     <tbody>
-    <tr><td>Client Drones</td><td>Representative analog FPV quad</td><td>Euflipo · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Dron-fpv.jpg" target="_blank" rel="noopener">Wikimedia Commons</a> · resized</td></tr>
-    <tr><td>Maintenance</td><td>Representative pitot-static tube (labels by ArduPilot)</td><td>ArduPilot Dev Team · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a> · <a href="https://ardupilot.org/plane/docs/common-pitot-considerations.html" target="_blank" rel="noopener">ArduPilot Plane docs, Pitot Tube Considerations</a> · resized</td></tr>
-    <tr><td>Reference Client #1</td><td>Matek F405-STD</td><td>Matek Systems vendor marketing image · licence not recorded · to be replaced with own photo</td></tr>
-    <tr><td>Overview, Aircraft</td><td>Heewing T2 Cruza (2 images)</td><td>Heewing vendor marketing images · licence not recorded · to be replaced with own photos</td></tr>
-    <tr><td>RF &amp; Comms</td><td>SIYI HM30</td><td>SIYI vendor marketing image · licence not recorded · to be replaced with own photo</td></tr>
+    <tr data-img="rep_fpv_quad"><td>Client Drones</td><td>Representative analog FPV quad</td><td>Euflipo · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a> · <a href="https://commons.wikimedia.org/wiki/File:Dron-fpv.jpg" target="_blank" rel="noopener">Wikimedia Commons</a> · resized</td></tr>
+    <tr data-img="rep_pitot_tube"><td>Maintenance</td><td>Representative pitot-static tube (labels by ArduPilot)</td><td>ArduPilot Dev Team · <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener">CC BY-SA 3.0</a> · <a href="https://ardupilot.org/plane/docs/common-pitot-considerations.html" target="_blank" rel="noopener">ArduPilot Plane docs, Pitot Tube Considerations</a> · resized</td></tr>
+    <tr data-img="matek_f405"><td>Reference Client #1</td><td>Matek F405-STD</td><td>Matek Systems vendor marketing image · licence not recorded · to be replaced with own photo</td></tr>
+    <tr data-img="t2_vtol t2_vtol2"><td>Overview, Aircraft</td><td>Heewing T2 Cruza (2 images)</td><td>Heewing vendor marketing images · licence not recorded · to be replaced with own photos</td></tr>
+    <tr data-img="siyi_hm30"><td>RF &amp; Comms</td><td>SIYI HM30</td><td>SIYI vendor marketing image · licence not recorded · to be replaced with own photo</td></tr>
     </tbody>
   </table></div>
 </div>
